@@ -2,13 +2,14 @@
 
 import os
 import sys
+import os
 
 import itertools
 import argparse
 import errno
 import math
 
-
+import pickle
 import gffutils
 
 # from collections import deque
@@ -17,6 +18,20 @@ import gffutils
 from modules import create_splice_graph as splice_graph
 from modules import mummer_wrapper 
 
+def pickle_dump(data, filename):
+    with open(os.path.join(args.outfolder,filename), 'wb') as f:
+        # Pickle the 'data' dictionary using the highest protocol available.
+        pickle.dump(data, f, pickle.HIGHEST_PROTOCOL)
+
+
+def pickle_load(filename):
+    with open(filename, 'rb') as f:
+        # The protocol version used is detected automatically, so we do not
+        # have to specify it.
+        data = pickle.load(f)
+    return data
+
+
 def construct_graph(args):
     fn = gffutils.example_filename(args.gff)
     db = gffutils.create_db(fn, dbfn='test.db', force=True, keep_order=True, merge_strategy='merge', sort_attribute_values=True)
@@ -24,12 +39,19 @@ def construct_graph(args):
 
     gene_graphs, topological_sorts = splice_graph.create_graph(db)
     refs_sequences = splice_graph.get_sequences_from_choordinates(gene_graphs, args.ref)
-    
-    dump to pickle here! Both graph and reference seqs
+    # print(refs_sequences)
+    # dump to pickle here! Both graph and reference seqs
+    pickle_dump(gene_graphs, 'graphs.pickle')
+    pickle_dump(topological_sorts, 'top_sorts.pickle')
+    pickle_dump(refs_sequences, 'refs_sequences.pickle')
 
-def align_reads(args)
-    
-    mummer_wrapper.find_mems(args.refs, args.reads)
+
+def align_reads(args):
+    gene_graphs = pickle_load( os.path.join(args.outfolder, 'graphs.pickle') )
+    topological_sorts = pickle_load( os.path.join(args.outfolder, 'top_sorts.pickle') )
+    refs_sequences = pickle_load( os.path.join(args.outfolder, 'refs_sequences.pickle') )
+
+    mummer_wrapper.find_mems(refs_sequences, args.reads, args.outfolder)
     # non_redundant_segments = splice_graph.collapse_identical_for_mumer(exon_db)
 
     # exon_db = parse_tsv()
@@ -47,19 +69,29 @@ if __name__ == '__main__':
     subparsers = parser.add_subparsers(help='Subcommands for eaither constructing a graph, or align reads')
     # parser.add_argument("-v", help='Different subcommands for eaither constructing a graph, or align reads')
 
+    pipeline_parser = subparsers.add_parser('pipeline', help= "Construct a splicing graph and align reads to it")
     construct_graph_parser = subparsers.add_parser('construct', help= "Construct a splicing graph")
     align_reads_parser = subparsers.add_parser('align', help="Classify and align reads with colinear chaining to DAGs")
 
+    pipeline_parser.add_argument('gff', type=str, help='Path to gff or gtf file with gene models.')
+    pipeline_parser.add_argument('ref', type=str, help='Reference genome (fasta)')
+    pipeline_parser.add_argument('reads', type=str, help='Path to fasta/fastq file with reads.')
+    pipeline_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
+    # pipeline_parser.add_argument('--pickle', action='store_true', help='Store the graph on file.')
+    pipeline_parser.set_defaults(which='pipeline')
+
+
     construct_graph_parser.add_argument('gff', type=str, help='Path to gff or gtf file with gene models.')
     construct_graph_parser.add_argument('ref', type=str, help='Reference genome (fasta)')
-    construct_graph_parser.add_argument('--outfile', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
-    construct_graph_parser.add_argument('--pickle', action='store_true', help='Store the graph on file.')
+    construct_graph_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
+    # construct_graph_parser.add_argument('--pickle', action='store_true', help='Store the graph on file.')
     construct_graph_parser.set_defaults(which='construct_graph')
 
 
-    align_reads_parser.add_argument('graph', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')    
     align_reads_parser.add_argument('refs', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')    
     align_reads_parser.add_argument('reads', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
+    align_reads_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')    
+
     align_reads_parser.set_defaults(which='align_reads')
 
     args = parser.parse_args()
@@ -70,9 +102,11 @@ if __name__ == '__main__':
         sys.exit()
 
     if args.which == 'construct_graph':
-
         construct_graph(args)
     elif args.which == 'align_reads':
         align_reads(args)
+    elif args.which == 'pipeline':
+        construct_graph(args)
+        align_reads(args)        
     else:
         print('invalid call')

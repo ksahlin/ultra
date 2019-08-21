@@ -2,7 +2,7 @@
 from collections import defaultdict
 import networkx as nx
 
-from help_functions import readfq
+from modules.help_functions import readfq
 
 def parse_tsv(): 
     pass
