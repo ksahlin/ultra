@@ -1,3 +1,5 @@
+#! /usr/bin/env python
+
 import os
 import sys
 
@@ -5,50 +7,53 @@ import itertools
 import argparse
 import errno
 import math
-import random
+
+
+import gffutils
+
 # from collections import deque
 
 
-def parse_tsv(): # maybe support gff too
-    pass
+from modules import create_splice_graph as splice_graph
 
-def collapse_identical_for_mumer():
-    '''
-        Creates a mapping from one segment on the genome to several exons containig the segment, this to remove redundancy in database when calling mummer
-    '''
-    pass
+def construct_graph(args):
+    fn = gffutils.example_filename(args.gff)
+    db = gffutils.create_db(fn, dbfn='test.db', force=True, keep_order=True, merge_strategy='merge', sort_attribute_values=True)
+    db = gffutils.FeatureDB('test.db', keep_order=True)
 
-def create_exon_graph():
-    pass
+    gene_graphs, topological_sorts = splice_graph.create_graph(db)
 
-def main(args):
+    # non_redundant_segments = splice_graph.collapse_identical_for_mumer(exon_db)
 
-    exon_db = parse_tsv()
-    non_redundant_segments = collapse_identical_for_mumer(exon_db)
-    graph = create_graph()
-    graph_top_sorted_order = top_sort_graph()
-    hits = run_mummer(non_redundant_segments, reads )
-    for read_hits in hits:
-        chain_hits_read()
+    # exon_db = parse_tsv()
+    # graph = create_graph()
+    # graph_top_sorted_order = top_sort_graph()
+    # hits = run_mummer(non_redundant_segments, reads )
+    # for read_hits in hits:
+    #     chain_hits_read()
 
-    # reads = { acc : (seq, qual) for acc, (seq,qual) in readfq(open(args.reads, 'r'))}
-    # reads_sampled = random.sample(list(reads.keys()), args.nr_reads)
 
-    # outfile = open(args.outfile, "w")
-    # for acc in reads_sampled:
-    #     seq, qual = reads[acc]
-    #     outfile.write("@{0}\n{1}\n+\n{2}\n".format(acc, seq, qual))
-
-    # outfile.close()
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Plot p-minimizers shared.")
-    parser.add_argument('--reads', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
-    parser.add_argument('--transcripts', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
-    parser.add_argument('--gff', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
-    parser.add_argument('--outfile', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
-    # parser.add_argument('--nr_reads', type=int, default = 1000000, help='Nr reads')
-    
+
+    parser = argparse.ArgumentParser(description="torkel -- Classify long reads based on transcript graphs")
+    subparsers = parser.add_subparsers(help='Subcommands for eaither constructing a graph, or align reads')
+    # parser.add_argument("-v", help='Different subcommands for eaither constructing a graph, or align reads')
+
+    construct_graph_parser = subparsers.add_parser('construct', help= "Construct a splicing graph")
+    align_reads_parser = subparsers.add_parser('align', help="Classify and align reads with colinear chaining to DAGs")
+
+    construct_graph_parser.add_argument('gff', type=str, help='Path to gff or gtf file with gene models.')
+    construct_graph_parser.add_argument('ref', type=str, help='Reference genome (fasta)')
+    construct_graph_parser.add_argument('--outfile', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
+    construct_graph_parser.add_argument('--pickle', action='store_true', help='Store the graph on file.')
+    construct_graph_parser.set_defaults(which='construct_graph')
+
+
+    align_reads_parser.add_argument('--graph', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')    
+    align_reads_parser.add_argument('--reads', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
+    align_reads_parser.set_defaults(which='align_reads')
+
     args = parser.parse_args()
 
 
@@ -56,5 +61,10 @@ if __name__ == '__main__':
         parser.print_help()
         sys.exit()
 
-    main(args)
+    if args.which == 'construct_graph':
 
+        construct_graph(args)
+    elif args.which == 'align_reads':
+        align_reads(args)
+    else:
+        print('invalid call')
