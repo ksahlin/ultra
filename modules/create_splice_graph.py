@@ -2,20 +2,22 @@
 from collections import defaultdict
 import networkx as nx
 
+from help_functions import readfq
+
 def parse_tsv(): 
     pass
 
 
 def create_graph(db): 
-
-    print(dir(db))
+    # print(dir(db))
     gene_database = {} # gene_id : { (exon_start, exon_stop) : set() }
     topological_sorts = {} # gene_id : { (exon_start, exon_stop) : set() }
     collapsed_exon_to_transcript = {}
     for gene in db.features_of_type('gene'):
         # print(dir(gene))
-        print(gene.id, gene.seqid, gene.start, gene.stop, gene.attributes)
-        gene_graph = nx.DiGraph()
+        # print(gene.id, gene.seqid, gene.start, gene.stop, gene.attributes)
+        gene_graph = nx.DiGraph(chr=str(gene.seqid))
+        print( gene_graph.graph)
         collapsed_exon_to_transcript[gene.id] = defaultdict(set)
         already_parsed_exons = set()
         
@@ -44,7 +46,22 @@ def create_graph(db):
 
     return gene_database, topological_sorts
 
-def extract_spanning_paths()
+def get_sequences_from_choordinates(gene_graphs, ref):
+    refs = {acc : seq for acc, (seq, _) in readfq(open(ref,"r"))}
+    segments = {}
+    for gene_id in gene_graphs:
+        gene_graph = gene_graphs[gene_id]
+        chromosome = gene_graph.graph['chr']
+        for node in gene_graph:
+            start,stop = node[0], node[1]
+            seq = refs[chromosome][start : stop]
+
+            segments[node] = seq
+    # print(segments)
+    return segments
+
+def extract_spanning_paths():
+    pass
 
 def collapse_identical_for_mumer():
     '''
