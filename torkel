@@ -15,6 +15,7 @@ import gffutils
 
 
 from modules import create_splice_graph as splice_graph
+from modules import mummer_wrapper 
 
 def construct_graph(args):
     fn = gffutils.example_filename(args.gff)
@@ -22,7 +23,13 @@ def construct_graph(args):
     db = gffutils.FeatureDB('test.db', keep_order=True)
 
     gene_graphs, topological_sorts = splice_graph.create_graph(db)
+    refs_sequences = splice_graph.get_sequences_from_choordinates(gene_graphs, args.ref)
+    
+    dump to pickle here! Both graph and reference seqs
 
+def align_reads(args)
+    
+    mummer_wrapper.find_mems(args.refs, args.reads)
     # non_redundant_segments = splice_graph.collapse_identical_for_mumer(exon_db)
 
     # exon_db = parse_tsv()
@@ -50,8 +57,9 @@ if __name__ == '__main__':
     construct_graph_parser.set_defaults(which='construct_graph')
 
 
-    align_reads_parser.add_argument('--graph', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')    
-    align_reads_parser.add_argument('--reads', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
+    align_reads_parser.add_argument('graph', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')    
+    align_reads_parser.add_argument('refs', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')    
+    align_reads_parser.add_argument('reads', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
     align_reads_parser.set_defaults(which='align_reads')
 
     args = parser.parse_args()
