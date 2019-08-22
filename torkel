@@ -56,6 +56,7 @@ def align_reads(args):
     gene_graphs = pickle_load( os.path.join(args.outfolder, 'graphs.pickle') )
     topological_sorts = pickle_load( os.path.join(args.outfolder, 'top_sorts.pickle') )
     refs_sequences = pickle_load( os.path.join(args.outfolder, 'refs_sequences.pickle') )
+    paths = pickle_load( os.path.join(args.outfolder, 'paths.pickle') )
     collapsed_exon_to_transcript = pickle_load( os.path.join(args.outfolder, 'collapsed_exon_to_transcript.pickle') )
 
     mummer_wrapper.find_mems(refs_sequences, args.reads, args.outfolder)
