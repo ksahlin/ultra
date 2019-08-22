@@ -37,21 +37,29 @@ def construct_graph(args):
     db = gffutils.create_db(fn, dbfn='test.db', force=True, keep_order=True, merge_strategy='merge', sort_attribute_values=True)
     db = gffutils.FeatureDB('test.db', keep_order=True)
 
-    gene_graphs, topological_sorts = splice_graph.create_graph(db)
+    gene_graphs, collapsed_exon_to_transcript = splice_graph.create_graph(db)
+
+    topological_sorts = splice_graph.create_global_source_sink(gene_graphs)    
+    paths = splice_graph.derive_path_cover(gene_graphs, topological_sorts)
+    
     refs_sequences = splice_graph.get_sequences_from_choordinates(gene_graphs, args.ref)
     # print(refs_sequences)
     # dump to pickle here! Both graph and reference seqs
     pickle_dump(gene_graphs, 'graphs.pickle')
     pickle_dump(topological_sorts, 'top_sorts.pickle')
     pickle_dump(refs_sequences, 'refs_sequences.pickle')
+    pickle_dump(paths, 'paths.pickle')
+    pickle_dump(collapsed_exon_to_transcript, 'collapsed_exon_to_transcript.pickle')
 
 
 def align_reads(args):
     gene_graphs = pickle_load( os.path.join(args.outfolder, 'graphs.pickle') )
     topological_sorts = pickle_load( os.path.join(args.outfolder, 'top_sorts.pickle') )
     refs_sequences = pickle_load( os.path.join(args.outfolder, 'refs_sequences.pickle') )
+    collapsed_exon_to_transcript = pickle_load( os.path.join(args.outfolder, 'collapsed_exon_to_transcript.pickle') )
 
     mummer_wrapper.find_mems(refs_sequences, args.reads, args.outfolder)
+
     # non_redundant_segments = splice_graph.collapse_identical_for_mumer(exon_db)
 
     # exon_db = parse_tsv()
