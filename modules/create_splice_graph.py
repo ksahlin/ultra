@@ -10,8 +10,7 @@ def parse_tsv():
 
 def create_graph(db): 
     # print(dir(db))
-    gene_database = {} # gene_id : { (exon_start, exon_stop) : set() }
-    topological_sorts = {} # gene_id : { (exon_start, exon_stop) : set() }
+    gene_graphs = {} # gene_id : { (exon_start, exon_stop) : set() }
     collapsed_exon_to_transcript = {}
     for gene in db.features_of_type('gene'):
         # print(dir(gene))
@@ -24,27 +23,28 @@ def create_graph(db):
         #add nodes
         for exon in db.children(gene, featuretype='exon', order_by='start'):
             collapsed_exon_to_transcript[gene.id][ (exon.start, exon.stop) ].update([ transcript_tmp for transcript_tmp in  exon.attributes['transcript_id']])
-            if (exon.start, exon.stop) in already_parsed_exons:
+            # if (exon.start, exon.stop) in already_parsed_exons:
                 
-                gene_graph.add_node( (exon.start, exon.stop) )
+            gene_graph.add_node( (exon.start, exon.stop) )
+            # print(gene_graph.nodes[(exon.start, exon.stop)])
 
         #add edges
         for transcript in db.children(gene, featuretype='transcript', order_by='start'):
             # print(dir(transcript))
-            # print('transcript', transcript.id, transcript.start, transcript.stop)
             consecutive_exons = [exon for exon in db.children(transcript, featuretype='exon', order_by='start')]
+            print('transcript', transcript.id, transcript.start, transcript.stop, [ (exon.start, exon.stop) for exon in db.children(transcript, featuretype='exon', order_by='start')])
+
             for e1,e2 in zip(consecutive_exons[:-1], consecutive_exons[1:]):
                 # print('exon', exon.id, exon.start, exon.stop)
-                gene_graph.add_edge( (e1.start, e1.stop),  (e2.start, e2.stop)  )
+                gene_graph.add_edge( (e1.start, e1.stop),  (e2.start, e2.stop), weight=1  )
                 
 
-        print(gene_graph.edges())
-        gene_database[gene.id] = gene_graph
+        # print(gene_graph.edges())
+        gene_graphs[gene.id] = gene_graph
         
-        top_sort = list(nx.topological_sort(gene_graph))
-        topological_sorts[gene.id] = top_sort
+    # print(collapsed_exon_to_transcript)
+    return gene_graphs, collapsed_exon_to_transcript
 
-    return gene_database, topological_sorts
 
 def get_sequences_from_choordinates(gene_graphs, ref):
     refs = {acc : seq for acc, (seq, _) in readfq(open(ref,"r"))}
@@ -60,8 +60,61 @@ def get_sequences_from_choordinates(gene_graphs, ref):
     # print(segments)
     return segments
 
-def extract_spanning_paths():
-    pass
+# def create_global_source_sink(gene_graphs, topological_sorts):
+#     for gene_id in gene_graphs:
+
+def create_global_source_sink(gene_graphs):
+    topological_sorts = {} 
+
+    for gene_id in gene_graphs:
+        gene_graph = gene_graphs[gene_id]
+        in_deg = gene_graph.in_degree
+        sources = [node for node, in_degree in in_deg if in_degree == 0]
+        out_deg = gene_graph.out_degree
+        sinks = [node for node, out_degree in out_deg if out_degree == 0]
+        
+        print("sources", sources)
+        print("sinks", sinks)
+        source_node =  ("source", "source") # follow the tuple format of other nodes
+        gene_graph.add_node( source_node )
+        sink_node =  ("sink", "sink") # follow the tuple format of other nodes
+        gene_graph.add_node( sink_node )
+
+        # nr_nodes = len(list(gene_graph.nodes()))
+        gene_graph.add_edges_from([(source_node, s) for s in sources], weight= 1)
+        gene_graph.add_edges_from([(s, sink_node) for s in sinks], weight = 1)
+        print(gene_graph.edges(data=True))
+        top_sort = list(nx.topological_sort(gene_graph))
+        topological_sorts[gene_id] = top_sort
+    return topological_sorts
+
+
+def derive_path_cover(gene_graphs, topological_sorts):
+    for gene_id in gene_graphs:
+        top_sort = topological_sorts[gene_id]
+        gene_graph = gene_graphs[gene_id]
+        # print([ [G[n][nbr]["weight"] for nbr in G.neighbors(n)] for n in order ])
+        # print(order)
+        print("GRAPH", gene_graph.nodes(data=True))
+
+        path_cover = []
+        while True:
+            longest_path = nx.algorithms.dag.dag_longest_path(gene_graph, weight='weight')
+            longest_path_edges = [(n1, n2) for n1,n2 in zip(longest_path[:-1], longest_path[1:])]
+            # print(longest_path)
+            # print([(n1, n2) for n1,n2 in zip(longest_path[:-1], longest_path[1:])])
+            tot_weight = sum( [gene_graph[n1][n2]["weight"] for n1,n2 in longest_path_edges])
+            print( "Longest path", longest_path, "tot weight", tot_weight)
+            if tot_weight  == 2:
+                break
+            else:
+                path_cover.append(longest_path)
+                for n1,n2 in longest_path_edges:
+                    if gene_graph.in_degree[n1] != 0 and  gene_graph.out_degree[n2] != 0:
+                        gene_graph[n1][n2]["weight"] = 0
+
+        print("Nr paths:", len(path_cover))
+    sys.exit()
 
 def collapse_identical_for_mumer():
     '''
