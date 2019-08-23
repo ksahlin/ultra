@@ -25,7 +25,7 @@ def create_graph(db):
             collapsed_exon_to_transcript[gene.id][ (exon.start, exon.stop) ].update([ transcript_tmp for transcript_tmp in  exon.attributes['transcript_id']])
             # if (exon.start, exon.stop) in already_parsed_exons:
                 
-            gene_graph.add_node( (exon.start, exon.stop) )
+            gene_graph.add_node( (exon.start, exon.stop), weight=1  )
             # print(gene_graph.nodes[(exon.start, exon.stop)])
 
         #add edges
@@ -36,7 +36,7 @@ def create_graph(db):
 
             for e1,e2 in zip(consecutive_exons[:-1], consecutive_exons[1:]):
                 # print('exon', exon.id, exon.start, exon.stop)
-                gene_graph.add_edge( (e1.start, e1.stop),  (e2.start, e2.stop), weight=1  )
+                gene_graph.add_edge( (e1.start, e1.stop),  (e2.start, e2.stop) )
                 
 
         # print(gene_graph.edges())
@@ -53,6 +53,8 @@ def get_sequences_from_choordinates(gene_graphs, ref):
         gene_graph = gene_graphs[gene_id]
         chromosome = gene_graph.graph['chr']
         for node in gene_graph:
+            if node == ("source", "source") or node == ("sink", "sink"):
+                continue
             start,stop = node[0], node[1]
             seq = refs[chromosome][start : stop]
 
@@ -72,49 +74,143 @@ def create_global_source_sink(gene_graphs):
         sources = [node for node, in_degree in in_deg if in_degree == 0]
         out_deg = gene_graph.out_degree
         sinks = [node for node, out_degree in out_deg if out_degree == 0]
-        
+        print()
+        print(gene_id)
         print("sources", sources)
         print("sinks", sinks)
         source_node =  ("source", "source") # follow the tuple format of other nodes
-        gene_graph.add_node( source_node )
+        gene_graph.add_node( source_node, weight=1  )
         sink_node =  ("sink", "sink") # follow the tuple format of other nodes
-        gene_graph.add_node( sink_node )
+        gene_graph.add_node( sink_node, weight=1  )
 
         # nr_nodes = len(list(gene_graph.nodes()))
-        gene_graph.add_edges_from([(source_node, s) for s in sources], weight= 1)
-        gene_graph.add_edges_from([(s, sink_node) for s in sinks], weight = 1)
+        gene_graph.add_edges_from([(source_node, s) for s in sources])
+        gene_graph.add_edges_from([(s, sink_node) for s in sinks])
         print(gene_graph.edges(data=True))
         top_sort = list(nx.topological_sort(gene_graph))
         topological_sorts[gene_id] = top_sort
     return topological_sorts
 
 
+# Function originally from: https://networkx.github.io/documentation/stable/_modules/networkx/algorithms/dag.html#dag_longest_path
+# but modified networkx code to hold values in nodes instead of edges. Also, we send in topological sort so that we dont need to recompure every time we call this function.
+
+def dag_longest_path(G, topological_sort, weight='weight', default_weight=1):
+    """Returns the longest path in a directed acyclic graph (DAG).
+
+    If `G` has edges with `weight` attribute the edge data are used as
+    weight values.
+
+    Parameters
+    ----------
+    G : NetworkX DiGraph
+        A directed acyclic graph (DAG)
+
+    weight : str, optional
+        Edge data key to use for weight
+
+    default_weight : int, optional
+        The weight of edges that do not have a weight attribute
+
+    Returns
+    -------
+    list
+        Longest path
+
+    Raises
+    ------
+    NetworkXNotImplemented
+        If `G` is not directed
+
+    See also
+    --------
+    dag_longest_path_length
+
+    """
+    if not G:
+        return []
+    dist = {}  # stores {v : (length, u)}
+    # print(topological_sort)
+    for v in topological_sort:
+        # us = [(dist[u][0] + data.get(weight, default_weight), u)
+        #       for u, data in G.pred[v].items()]
+        if v == ('source', 'source'):
+            dist[v] = (1, None)
+            continue
+        else:
+            v_weight = G.nodes[v]['weight']
+            us = [(dist[u][0] + v_weight, u) # G.nodes[u]['weight']
+                for u in G.pred[v]]  
+            # print(us)   
+            maxu = max(us, key=lambda x: x[0])  #if us else (1, v)       
+            dist[v] = maxu 
+
+        # us = [(dist[u][0] + G.nodes[u]['weight'], u) # G.nodes[u]['weight']
+        #       for u in G.pred[v]]
+
+        # print(v, list(G.pred[v].items()), us)
+        # Use the best predecessor if there is one and its distance is
+        # non-negative, otherwise terminate.
+        # maxu = max(us, key=lambda x: x[0]) if us else (1, v)
+        # print(maxu)
+        # dist[v] = maxu if maxu[0] >= 1 else (1, v)
+    u = None
+    v = max(dist, key=lambda x: dist[x][0])
+    # print('MAX', v, dist)
+    path = []
+    while v:
+        path.append(v)
+        u = v
+        v = dist[v][1]
+    path.reverse()
+    # sys.exit()
+
+    return path
+
+
 def derive_path_cover(gene_graphs, topological_sorts):
+    path_covers = {} 
     for gene_id in gene_graphs:
-        top_sort = topological_sorts[gene_id]
+        topological_sort = topological_sorts[gene_id]
         gene_graph = gene_graphs[gene_id]
         # print([ [G[n][nbr]["weight"] for nbr in G.neighbors(n)] for n in order ])
         # print(order)
-        print("GRAPH", gene_graph.nodes(data=True))
+        print("GRAPH",gene_id, gene_graph.nodes(data=True))
+        print(gene_id, gene_graph.edges(data=True))
 
         path_cover = []
+        nodes_traversed = set()
         while True:
-            longest_path = nx.algorithms.dag.dag_longest_path(gene_graph, weight='weight')
-            longest_path_edges = [(n1, n2) for n1,n2 in zip(longest_path[:-1], longest_path[1:])]
+            longest_path = dag_longest_path(gene_graph, topological_sort, weight='weight')
+            # longest_path_edges = [(n1, n2) for n1,n2 in zip(longest_path[:-1], longest_path[1:])]
             # print(longest_path)
             # print([(n1, n2) for n1,n2 in zip(longest_path[:-1], longest_path[1:])])
-            tot_weight = sum( [gene_graph[n1][n2]["weight"] for n1,n2 in longest_path_edges])
+            # tot_weight = sum( [gene_graph[n1][n2]["weight"] for n1,n2 in longest_path_edges])
+            # print("GRAPH",gene_id, gene_graph.nodes(data=True))
+            tot_weight = sum( [gene_graph.nodes[n]["weight"] for n in longest_path])
             print( "Longest path", longest_path, "tot weight", tot_weight)
+            # sys.exit()
+
             if tot_weight  == 2:
+                # print(gene_graph.nodes(data=True))
                 break
             else:
                 path_cover.append(longest_path)
-                for n1,n2 in longest_path_edges:
-                    if gene_graph.in_degree[n1] != 0 and  gene_graph.out_degree[n2] != 0:
-                        gene_graph[n1][n2]["weight"] = 0
-
+                nodes_traversed.update(longest_path)
+                for n in longest_path:
+                    if n != ("source", "source") and n != ("sink", "sink"):
+                        gene_graph.nodes[n]["weight"] = 0
+                # for n1,n2 in longest_path_edges:
+                #     if gene_graph.in_degree[n1] != 0 and  gene_graph.out_degree[n2] != 0:
+                #         gene_graph[n1][n2]["weight"] = 0
+        
+            path_covers[gene_id] = path_cover
+            # print(nodes_traversed ^ set(gene_graph.nodes()))
+        assert len(nodes_traversed ^ set(gene_graph.nodes())) == 0
         print("Nr paths:", len(path_cover))
-    sys.exit()
+        # sys.exit()
+    return path_covers
+
 
 def collapse_identical_for_mumer():
     '''
