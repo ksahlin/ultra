@@ -17,6 +17,7 @@ import gffutils
 
 from modules import create_splice_graph as splice_graph
 from modules import mummer_wrapper 
+from modules import graph_chainer 
 
 def pickle_dump(data, filename):
     with open(os.path.join(args.outfolder,filename), 'wb') as f:
@@ -56,11 +57,17 @@ def align_reads(args):
     gene_graphs = pickle_load( os.path.join(args.outfolder, 'graphs.pickle') )
     topological_sorts = pickle_load( os.path.join(args.outfolder, 'top_sorts.pickle') )
     refs_sequences = pickle_load( os.path.join(args.outfolder, 'refs_sequences.pickle') )
-    paths = pickle_load( os.path.join(args.outfolder, 'paths.pickle') )
+    path_covers = pickle_load( os.path.join(args.outfolder, 'paths.pickle') )
     collapsed_exon_to_transcript = pickle_load( os.path.join(args.outfolder, 'collapsed_exon_to_transcript.pickle') )
 
     mummer_wrapper.find_mems(refs_sequences, args.reads, args.outfolder)
 
+    for gene_id in gene_graphs:
+        gene_graph = gene_graphs[gene_id]
+        topological_sort = topological_sorts[gene_id]
+        path_cover = path_covers[gene_id]
+        graph_chainer.calc_last2reach(gene_graph, path_cover, topological_sort)
+        sys.exit()
     # non_redundant_segments = splice_graph.collapse_identical_for_mumer(exon_db)
 
     # exon_db = parse_tsv()
