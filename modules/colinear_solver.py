@@ -52,7 +52,7 @@ def main(mems):
         # linear scan -- replace with range max Q tree
         T_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if  mems[j_prime].d < v.c]
         if T_values:
-            print(T_values)
+            # print(T_values)
             T_traceback_index, max_c_value_case_a = max(T_values, key=lambda x: x[1])
         else:
             max_c_value_case_a = 0
@@ -60,7 +60,7 @@ def main(mems):
 
         I_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if v.c <= mems[j_prime].d  <= v.d]
         if I_values:
-            print(I_values)
+            # print(I_values)
             I_traceback_index, max_c_value_case_b = max(I_values, key=lambda x: x[1])
             I_v_prev_coord = mems[I_traceback_index].d
         else:
@@ -82,7 +82,7 @@ def main(mems):
     # print('Value vector:', C)
     # print(argmax(C))
     # print(traceback_pointers)
-    # solution_index = argmax(C)
+    solution_index = argmax(C)
 
     solution = []
     while True:

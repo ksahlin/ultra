@@ -2,6 +2,10 @@ import os
 import subprocess
 from sys import stdout
 
+from collections import defaultdict
+from collections import namedtuple
+
+
 def find_mems(refs_sequences, reads, outfolder):
     refs_path = open(os.path.join(outfolder, "refs_sequences_tmp.fa"), "w")
     for chr_id  in refs_sequences:
@@ -31,26 +35,29 @@ def find_mems(refs_sequences, reads, outfolder):
     # return consensus
 
 def parse_results(mems_folder):
+    mem = namedtuple('Mem', ['x', 'y', 'c', 'd', 'val'])
+
     file = open(os.path.join(mems_folder, "mummer_mems.txt"), 'r')
     mems_db = {}
+    # read_mems_tmp = {}
     for i, line in enumerate(file):
         if line[0] == '>':
             if i == 0:
                 acc = line.split()[1].strip()  # mems_db[line.split()[1].strip)()] = [] 
             else:
-                mems_db[acc] = [] 
+                mems_db[acc] = read_mems_tmp 
                 acc = line.split()[1].strip() 
-            read_mems_tmp = {}
+            
+            read_mems_tmp = defaultdict(list)
 
         else:
             vals =  line.split() #11404_11606           1     11405       202
-            mem_len = vals[3]
-            chr_id, ref_start, ref_stop = vals[0].split('_')
-            ref_start = int(ref_start)
-            ref_stop = int(ref_stop)
-            mem_tuple = (ref_start, ref_stop)
+            mem_len = int(vals[3])
+            read_start = int(vals[1])
+            ref_start = int(vals[2])
+            chr_id = vals[0].split('_')[0]
+            mem_tuple = mem(read_start, read_start + mem_len, ref_start, ref_start + mem_len,  mem_len)
             
             read_mems_tmp[chr_id].append( mem_tuple )
-
-
-            print()
+        # print(line)
+    return mems_db
