@@ -17,6 +17,7 @@ import gffutils
 
 from modules import create_splice_graph as splice_graph
 from modules import mummer_wrapper 
+from modules import colinear_solver 
 from modules import graph_chainer 
 
 def pickle_dump(data, filename):
@@ -62,13 +63,21 @@ def align_reads(args):
 
     mummer_wrapper.find_mems(refs_sequences, args.reads, args.outfolder)
     mems  = mummer_wrapper.parse_results(args.outfolder)
+    print(mems)
 
-    for gene_id in gene_graphs:
-        gene_graph = gene_graphs[gene_id]
-        topological_sort = topological_sorts[gene_id]
-        path_cover = path_covers[gene_id]
-        graph_chainer.calc_last2reach(gene_graph, path_cover, topological_sort)
-        sys.exit()
+    for read_acc in mems:
+        for chr_id in mems[read_acc]:
+            solution = colinear_solver.main(mems[read_acc][chr_id])
+            print(read_acc, "alignment to:", chr_id, "best solution val:", sum([ mem.val  for mem in  solution]) , solution)
+
+    sys.exit()
+
+    # for gene_id in gene_graphs:
+    #     gene_graph = gene_graphs[gene_id]
+    #     topological_sort = topological_sorts[gene_id]
+    #     path_cover = path_covers[gene_id]
+    #     graph_chainer.calc_last2reach(gene_graph, path_cover, topological_sort)
+    #     sys.exit()
     # non_redundant_segments = splice_graph.collapse_identical_for_mumer(exon_db)
 
     # exon_db = parse_tsv()
