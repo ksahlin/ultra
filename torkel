@@ -61,6 +61,7 @@ def align_reads(args):
     collapsed_exon_to_transcript = pickle_load( os.path.join(args.outfolder, 'collapsed_exon_to_transcript.pickle') )
 
     mummer_wrapper.find_mems(refs_sequences, args.reads, args.outfolder)
+    mems  = mummer_wrapper.parse_results(args.outfolder)
 
     for gene_id in gene_graphs:
         gene_graph = gene_graphs[gene_id]
