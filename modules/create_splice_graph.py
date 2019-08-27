@@ -52,13 +52,14 @@ def get_sequences_from_choordinates(gene_graphs, ref):
     for gene_id in gene_graphs:
         gene_graph = gene_graphs[gene_id]
         chromosome = gene_graph.graph['chr']
+        segments[chromosome] = {}
         for node in gene_graph:
             if node == ("source", "source") or node == ("sink", "sink"):
                 continue
             start,stop = node[0], node[1]
             seq = refs[chromosome][start : stop]
 
-            segments[node] = seq
+            segments[chromosome][node] = seq
     # print(segments)
     return segments
 
