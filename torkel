@@ -69,6 +69,7 @@ def align_reads(args):
         for chr_id in mems[read_acc]:
             solution = colinear_solver.main(mems[read_acc][chr_id])
             print(read_acc, "alignment to:", chr_id, "best solution val:", sum([ mem.val  for mem in  solution]) , solution)
+            check if matches previous annotation here!
 
     sys.exit()
 
