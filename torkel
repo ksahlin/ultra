@@ -43,20 +43,19 @@ def construct_graph(args):
     genes_to_ref, parts_to_exons, exons_to_transcripts, annotated_transcripts = parts_graph.create_graph_from_exon_parts(db, args.min_mem )
     refs_sequences = parts_graph.get_sequences_from_choordinates(parts_to_exons, genes_to_ref, args.ref)
 
-    # gene_graphs, collapsed_exon_to_transcript, annotated_transcripts = splice_graph.create_graph_from_exon_parts(db, args.min_mem )
+    # gene_graphs, exons_to_transcripts, annotated_transcripts = splice_graph.create_graph(db)
     # topological_sorts = splice_graph.create_global_source_sink(gene_graphs)    
     # paths = splice_graph.derive_path_cover(gene_graphs, topological_sorts)
     # refs_sequences = splice_graph.get_sequences_from_choordinates(gene_graphs, args.ref)
+    # pickle_dump(topological_sorts, 'top_sorts.pickle')
+    # pickle_dump(paths, 'paths.pickle')
 
-    # print(refs_sequences)
     # dump to pickle here! Both graph and reference seqs
     pickle_dump(genes_to_ref, 'genes_to_ref.pickle')
     pickle_dump(annotated_transcripts, 'annotated_transcripts.pickle')
-    pickle_dump(topological_sorts, 'top_sorts.pickle')
     pickle_dump(refs_sequences, 'refs_sequences.pickle')
-    pickle_dump(paths, 'paths.pickle')
     pickle_dump(exons_to_transcripts, 'exons_to_transcripts.pickle')
-    pickle_dump(exons_to_transcripts, 'parts_to_exons.pickle')
+    pickle_dump(parts_to_exons, 'parts_to_exons.pickle')
 
 
 # def check_if_present_in_database(solution, exons_to_transcripts):
@@ -65,11 +64,13 @@ def construct_graph(args):
 
 
 def align_reads(args):
+    # topological_sorts = pickle_load( os.path.join(args.outfolder, 'top_sorts.pickle') )
+    # path_covers = pickle_load( os.path.join(args.outfolder, 'paths.pickle') )
+
     genes_to_ref = pickle_load( os.path.join(args.outfolder, 'genes_to_ref.pickle') )
-    topological_sorts = pickle_load( os.path.join(args.outfolder, 'top_sorts.pickle') )
-    refs_sequences = pickle_load( os.path.join(args.outfolder, 'refs_sequences.pickle') )
-    path_covers = pickle_load( os.path.join(args.outfolder, 'paths.pickle') )
     parts_to_exons = pickle_load( os.path.join(args.outfolder, 'parts_to_exons.pickle') )
+
+    refs_sequences = pickle_load( os.path.join(args.outfolder, 'refs_sequences.pickle') )
     exons_to_transcripts = pickle_load( os.path.join(args.outfolder, 'exons_to_transcripts.pickle') )
     annotated_transcripts = pickle_load( os.path.join(args.outfolder, 'annotated_transcripts.pickle') )
 
@@ -79,14 +80,22 @@ def align_reads(args):
 
     for read_acc in mems:
         for chr_id in mems[read_acc]:
-            solution = colinear_solver.main(mems[read_acc][chr_id])
-            print(read_acc, "alignment to:", chr_id, "best solution val:", sum([ mem.val  for mem in  solution]) , solution)
+            solution, value = colinear_solver.main(mems[read_acc][chr_id])
+            print(read_acc, "alignment to:", chr_id, "best solution val:", value , solution)
             # print(exons_to_transcripts)
             # check if matches previous annotation here!
             predicted_transcript = tuple( mem.exon_part_id for mem in solution)
+
+            Start working with the annotation of parts to previously annotated transcripts here
+            1. do Edlib/parasail of read to adjacent blocks and check if all blocks have support
+            2. Then create function that go from adjacent parts (on genome) back to a unique exon, 
+            then checks the combination of exons against previously annotated transcripts
+            Need larger size of blocks in case mems are not found for the exact 20bp stretch.. or something to real with this... 
+
             if predicted_transcript in annotated_transcripts[chr_id]:
                 print('Found')
             else:
+
                 print('Not found', predicted_transcript)
                 for ann_tr in annotated_transcripts[chr_id]:
                     print(ann_tr)

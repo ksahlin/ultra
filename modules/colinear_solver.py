@@ -83,7 +83,10 @@ def main(mems):
     # print(argmax(C))
     # print(traceback_pointers)
     solution_index = argmax(C)
-
+    # print()
+    # print(C[solution_index], C)
+    value = C[solution_index]
+    # print()
     solution = []
     while True:
         solution.append(mems[solution_index])
@@ -94,7 +97,7 @@ def main(mems):
 
 
     # print("Solution:", solution)
-    return solution[::-1]
+    return solution[::-1], value
     # traceback(C, best_solution_index)
 
 
