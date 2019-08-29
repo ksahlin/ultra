@@ -16,6 +16,7 @@ import gffutils
 
 
 from modules import create_splice_graph as splice_graph
+from modules import create_parts_graph as parts_graph
 from modules import mummer_wrapper 
 from modules import colinear_solver 
 from modules import graph_chainer 
@@ -39,33 +40,37 @@ def construct_graph(args):
     db = gffutils.create_db(fn, dbfn='test.db', force=True, keep_order=True, merge_strategy='merge', sort_attribute_values=True)
     db = gffutils.FeatureDB('test.db', keep_order=True)
 
-    gene_graphs, collapsed_exon_to_transcript, annotated_transcripts = splice_graph.create_graph_from_exon_parts(db, args.min_mem )
+    genes_to_ref, parts_to_exons, exons_to_transcripts, annotated_transcripts = parts_graph.create_graph_from_exon_parts(db, args.min_mem )
+    refs_sequences = parts_graph.get_sequences_from_choordinates(parts_to_exons, genes_to_ref, args.ref)
 
-    topological_sorts = splice_graph.create_global_source_sink(gene_graphs)    
-    paths = splice_graph.derive_path_cover(gene_graphs, topological_sorts)
-    
-    refs_sequences = splice_graph.get_sequences_from_choordinates(gene_graphs, args.ref)
+    # gene_graphs, collapsed_exon_to_transcript, annotated_transcripts = splice_graph.create_graph_from_exon_parts(db, args.min_mem )
+    # topological_sorts = splice_graph.create_global_source_sink(gene_graphs)    
+    # paths = splice_graph.derive_path_cover(gene_graphs, topological_sorts)
+    # refs_sequences = splice_graph.get_sequences_from_choordinates(gene_graphs, args.ref)
+
     # print(refs_sequences)
     # dump to pickle here! Both graph and reference seqs
-    pickle_dump(gene_graphs, 'graphs.pickle')
+    pickle_dump(genes_to_ref, 'genes_to_ref.pickle')
     pickle_dump(annotated_transcripts, 'annotated_transcripts.pickle')
     pickle_dump(topological_sorts, 'top_sorts.pickle')
     pickle_dump(refs_sequences, 'refs_sequences.pickle')
     pickle_dump(paths, 'paths.pickle')
-    pickle_dump(collapsed_exon_to_transcript, 'collapsed_exon_to_transcript.pickle')
+    pickle_dump(exons_to_transcripts, 'exons_to_transcripts.pickle')
+    pickle_dump(exons_to_transcripts, 'parts_to_exons.pickle')
 
 
-# def check_if_present_in_database(solution, collapsed_exon_to_transcript):
+# def check_if_present_in_database(solution, exons_to_transcripts):
 #     for mem in solution:
 #         pass
 
 
 def align_reads(args):
-    gene_graphs = pickle_load( os.path.join(args.outfolder, 'graphs.pickle') )
+    genes_to_ref = pickle_load( os.path.join(args.outfolder, 'genes_to_ref.pickle') )
     topological_sorts = pickle_load( os.path.join(args.outfolder, 'top_sorts.pickle') )
     refs_sequences = pickle_load( os.path.join(args.outfolder, 'refs_sequences.pickle') )
     path_covers = pickle_load( os.path.join(args.outfolder, 'paths.pickle') )
-    collapsed_exon_to_transcript = pickle_load( os.path.join(args.outfolder, 'collapsed_exon_to_transcript.pickle') )
+    parts_to_exons = pickle_load( os.path.join(args.outfolder, 'parts_to_exons.pickle') )
+    exons_to_transcripts = pickle_load( os.path.join(args.outfolder, 'exons_to_transcripts.pickle') )
     annotated_transcripts = pickle_load( os.path.join(args.outfolder, 'annotated_transcripts.pickle') )
 
     mummer_wrapper.find_mems(refs_sequences, args.reads, args.outfolder, args.min_mem)
@@ -76,7 +81,7 @@ def align_reads(args):
         for chr_id in mems[read_acc]:
             solution = colinear_solver.main(mems[read_acc][chr_id])
             print(read_acc, "alignment to:", chr_id, "best solution val:", sum([ mem.val  for mem in  solution]) , solution)
-            # print(collapsed_exon_to_transcript)
+            # print(exons_to_transcripts)
             # check if matches previous annotation here!
             predicted_transcript = tuple( mem.exon_part_id for mem in solution)
             if predicted_transcript in annotated_transcripts[chr_id]:
@@ -112,7 +117,7 @@ def align_reads(args):
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description="torkel -- Classify long reads based on transcript graphs")
+    parser = argparse.ArgumentParser(description="torkel -- Classify long reads based on transcript parts graphs")
     subparsers = parser.add_subparsers(help='Subcommands for eaither constructing a graph, or align reads')
     # parser.add_argument("-v", help='Different subcommands for eaither constructing a graph, or align reads')
 
