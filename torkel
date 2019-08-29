@@ -39,7 +39,7 @@ def construct_graph(args):
     db = gffutils.create_db(fn, dbfn='test.db', force=True, keep_order=True, merge_strategy='merge', sort_attribute_values=True)
     db = gffutils.FeatureDB('test.db', keep_order=True)
 
-    gene_graphs, collapsed_exon_to_transcript, annotated_transcripts = splice_graph.create_graph(db, args.min_mem )
+    gene_graphs, collapsed_exon_to_transcript, annotated_transcripts = splice_graph.create_graph_from_exon_parts(db, args.min_mem )
 
     topological_sorts = splice_graph.create_global_source_sink(gene_graphs)    
     paths = splice_graph.derive_path_cover(gene_graphs, topological_sorts)
