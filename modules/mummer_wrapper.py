@@ -6,7 +6,7 @@ from collections import defaultdict
 from collections import namedtuple
 
 
-def find_mems(refs_sequences, reads, outfolder):
+def find_mems(refs_sequences, reads, outfolder, min_mem):
     refs_path = open(os.path.join(outfolder, "refs_sequences_tmp.fa"), "w")
     for chr_id  in refs_sequences:
         for (start,stop), seq  in refs_sequences[chr_id].items():
@@ -17,7 +17,7 @@ def find_mems(refs_sequences, reads, outfolder):
         # print('Running spoa...', end=' ')
         stdout.flush()
         null = open(os.path.join(outfolder, "mummer_errors.1") , "w")
-        subprocess.check_call([ 'mummer',   '-maxmatch', '-l' , '20',  refs_path.name, reads], stdout=output_file, stderr=null)
+        subprocess.check_call([ 'mummer',   '-maxmatch', '-l' , str(min_mem),  refs_path.name, reads], stdout=output_file, stderr=null)
         # print('Done.')
         stdout.flush()
     output_file.close()
@@ -35,7 +35,7 @@ def find_mems(refs_sequences, reads, outfolder):
     # return consensus
 
 def parse_results(mems_folder):
-    mem = namedtuple('Mem', ['x', 'y', 'c', 'd', 'val'])
+    mem = namedtuple('Mem', ['x', 'y', 'c', 'd', 'val', "exon_part_id"])
 
     file = open(os.path.join(mems_folder, "mummer_mems.txt"), 'r')
     mems_db = {}
@@ -52,12 +52,18 @@ def parse_results(mems_folder):
 
         else:
             vals =  line.split() #11404_11606           1     11405       202
+            exon_part_id = vals[0]
+            chr_id, ref_coord_start, ref_coord_end = exon_part_id.split('_')
             mem_len = int(vals[3])
-            read_start = int(vals[1])
-            ref_start = int(vals[2])
-            chr_id = vals[0].split('_')[0]
-            mem_tuple = mem(read_start, read_start + mem_len, ref_start, ref_start + mem_len,  mem_len)
+            mem_ref_exon_part_start = int(vals[1])
+            mem_read_start = int(vals[2])
+            mem_tuple = mem(mem_read_start, mem_read_start + mem_len - 1, 
+                            int(ref_coord_start) + mem_ref_exon_part_start, int(ref_coord_start) + mem_ref_exon_part_start + mem_len - 1,  mem_len, exon_part_id)
             
             read_mems_tmp[chr_id].append( mem_tuple )
         # print(line)
+    # add last read
+    mems_db[acc] = read_mems_tmp 
+
+
     return mems_db

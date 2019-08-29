@@ -94,14 +94,14 @@ def main(mems):
 
 
     # print("Solution:", solution)
-    return solution
+    return solution[::-1]
     # traceback(C, best_solution_index)
 
 
 if __name__ == '__main__':
-    mem = namedtuple('Mem', ['x', 'y', 'c', 'd', 'val'])
+    mem = namedtuple('Mem', ['x', 'y', 'c', 'd', 'val', 'exon_part_id'])
 
-    mems = [mem(0, 21,1000, 1021, 22), mem(100, 130, 1030,1060, 31), mem(65, 90, 6050, 6075, 26),mem(75, 101, 6060, 6086, 27)]
+    mems = [mem(0, 21,1000, 1021, 22, 'id1'), mem(100, 130, 1030,1060, 31, 'id2'), mem(65, 90, 6050, 6075, 26, 'id3'), mem(75, 101, 6060, 6086, 27, 'id4')]
     main(mems)
 
     import random
@@ -116,7 +116,7 @@ if __name__ == '__main__':
     ref_intervals = [(pos, pos + mem_lengths[i] - 1) for i, pos in enumerate(positions)]
     print(ref_intervals)
 
-    mems = [mem(read_iv[0],read_iv[1], ref_intervals[i][0], ref_intervals[i][1], mem_lengths[i]  ) for i, read_iv in enumerate(read_intervals)]
+    mems = [mem(read_iv[0],read_iv[1], ref_intervals[i][0], ref_intervals[i][1], mem_lengths[i], i ) for i, read_iv in enumerate(read_intervals)]
     print(mems)
     # sys.exit()
     main(mems)
