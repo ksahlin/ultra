@@ -22,6 +22,35 @@ def create_graph_from_exon_parts(db, min_mem):
         already_parsed_exons = set()
         
         #add nodes
+        exons = [exon for exon in db.children(gene, featuretype='exon', order_by='start') ]
+        print([(e.start, e.stop) for e in exons])
+
+        all_starts = [(e.start, 'start') for e in exons]
+        all_stops = [(e.stop, 'stop') for e in exons]
+        all_starts_and_stops = sorted( set(all_starts + all_stops))
+
+        print(all_starts_and_stops)
+        parts = []
+        for e1, e2 in zip(all_starts_and_stops[:-1], all_starts_and_stops[1:]):
+            if (e1[1], e2[1]) != ('stop', 'start'):
+                if int(e2[0]) - int(e1[0]) <= min_mem:
+                    if e1[1] == 'start' and e2[1] == 'stop':
+                        print('Need to extend over junction because exon smaller tham min mem')
+                    elif e2[1] == 'stop':
+                        print('extending smaller part upstream',e1, e2)
+                    elif e1[1] == 'start':
+                        print('extending smaller part to downstream',e1, e2)
+
+                else:
+                    parts.append((e1, e2))
+        print(parts)
+        # extend the parts that are smaller than min_mem to length min_mem + 1
+
+        sys.exit()
+        for e1, e2 in zip(consecutive_exons[:-1], consecutive_exons[1:]) in exons:
+            if e2.start < e1.stop:
+                part = []
+
         for exon in db.children(gene, featuretype='exon', order_by='start'):
             collapsed_exon_to_transcript[gene.id][ (exon.start, exon.stop) ].update([ transcript_tmp for transcript_tmp in  exon.attributes['transcript_id']])
             # if (exon.start, exon.stop) in already_parsed_exons:
