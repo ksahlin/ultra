@@ -39,7 +39,7 @@ def construct_graph(args):
     db = gffutils.create_db(fn, dbfn='test.db', force=True, keep_order=True, merge_strategy='merge', sort_attribute_values=True)
     db = gffutils.FeatureDB('test.db', keep_order=True)
 
-    gene_graphs, collapsed_exon_to_transcript = splice_graph.create_graph(db)
+    gene_graphs, collapsed_exon_to_transcript, annotated_transcripts = splice_graph.create_graph(db, args.min_mem )
 
     topological_sorts = splice_graph.create_global_source_sink(gene_graphs)    
     paths = splice_graph.derive_path_cover(gene_graphs, topological_sorts)
@@ -48,10 +48,16 @@ def construct_graph(args):
     # print(refs_sequences)
     # dump to pickle here! Both graph and reference seqs
     pickle_dump(gene_graphs, 'graphs.pickle')
+    pickle_dump(annotated_transcripts, 'annotated_transcripts.pickle')
     pickle_dump(topological_sorts, 'top_sorts.pickle')
     pickle_dump(refs_sequences, 'refs_sequences.pickle')
     pickle_dump(paths, 'paths.pickle')
     pickle_dump(collapsed_exon_to_transcript, 'collapsed_exon_to_transcript.pickle')
+
+
+# def check_if_present_in_database(solution, collapsed_exon_to_transcript):
+#     for mem in solution:
+#         pass
 
 
 def align_reads(args):
@@ -60,8 +66,9 @@ def align_reads(args):
     refs_sequences = pickle_load( os.path.join(args.outfolder, 'refs_sequences.pickle') )
     path_covers = pickle_load( os.path.join(args.outfolder, 'paths.pickle') )
     collapsed_exon_to_transcript = pickle_load( os.path.join(args.outfolder, 'collapsed_exon_to_transcript.pickle') )
+    annotated_transcripts = pickle_load( os.path.join(args.outfolder, 'annotated_transcripts.pickle') )
 
-    mummer_wrapper.find_mems(refs_sequences, args.reads, args.outfolder)
+    mummer_wrapper.find_mems(refs_sequences, args.reads, args.outfolder, args.min_mem)
     mems  = mummer_wrapper.parse_results(args.outfolder)
     print(mems)
 
@@ -69,7 +76,20 @@ def align_reads(args):
         for chr_id in mems[read_acc]:
             solution = colinear_solver.main(mems[read_acc][chr_id])
             print(read_acc, "alignment to:", chr_id, "best solution val:", sum([ mem.val  for mem in  solution]) , solution)
-            check if matches previous annotation here!
+            # print(collapsed_exon_to_transcript)
+            # check if matches previous annotation here!
+            predicted_transcript = tuple( mem.exon_part_id for mem in solution)
+            if predicted_transcript in annotated_transcripts[chr_id]:
+                print('Found')
+            else:
+                print('Not found', predicted_transcript)
+                for ann_tr in annotated_transcripts[chr_id]:
+                    print(ann_tr)
+        if read_acc == 'read_several_optimal_matchings_1001_1186_1469_1534':
+            sys.exit()
+            # check_if_present_in_database(solution, annotated_transcripts[chr_id])
+
+        # parasail_align_to_best(read, concatenated_exon_parts)
 
     sys.exit()
 
@@ -103,6 +123,7 @@ if __name__ == '__main__':
     pipeline_parser.add_argument('gff', type=str, help='Path to gff or gtf file with gene models.')
     pipeline_parser.add_argument('ref', type=str, help='Reference genome (fasta)')
     pipeline_parser.add_argument('reads', type=str, help='Path to fasta/fastq file with reads.')
+    pipeline_parser.add_argument('--min_mem', type=int, default=20, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
     pipeline_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
     # pipeline_parser.add_argument('--pickle', action='store_true', help='Store the graph on file.')
     pipeline_parser.set_defaults(which='pipeline')
@@ -111,13 +132,16 @@ if __name__ == '__main__':
     construct_graph_parser.add_argument('gff', type=str, help='Path to gff or gtf file with gene models.')
     construct_graph_parser.add_argument('ref', type=str, help='Reference genome (fasta)')
     construct_graph_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
+    construct_graph_parser.add_argument('--min_mem', type=int, default=20, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
     # construct_graph_parser.add_argument('--pickle', action='store_true', help='Store the graph on file.')
     construct_graph_parser.set_defaults(which='construct_graph')
 
 
     align_reads_parser.add_argument('refs', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')    
     align_reads_parser.add_argument('reads', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
-    align_reads_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')    
+    align_reads_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')   
+    align_reads_parser.add_argument('--min_mem', type=int, default=20, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
+
 
     align_reads_parser.set_defaults(which='align_reads')
 

@@ -8,10 +8,11 @@ def parse_tsv():
     pass
 
 
-def create_graph(db): 
+def create_graph_from_exon_parts(db, min_mem): 
     # print(dir(db))
     gene_graphs = {} # gene_id : { (exon_start, exon_stop) : set() }
     collapsed_exon_to_transcript = {}
+    annotated_transcripts = defaultdict(set)
     for gene in db.features_of_type('gene'):
         # print(dir(gene))
         # print(gene.id, gene.seqid, gene.start, gene.stop, gene.attributes)
@@ -33,17 +34,60 @@ def create_graph(db):
             # print(dir(transcript))
             consecutive_exons = [exon for exon in db.children(transcript, featuretype='exon', order_by='start')]
             print('transcript', transcript.id, transcript.start, transcript.stop, [ (exon.start, exon.stop) for exon in db.children(transcript, featuretype='exon', order_by='start')])
-
             for e1,e2 in zip(consecutive_exons[:-1], consecutive_exons[1:]):
                 # print('exon', exon.id, exon.start, exon.stop)
                 gene_graph.add_edge( (e1.start, e1.stop),  (e2.start, e2.stop) )
+
+            annotated_transcripts[gene.seqid].add( tuple( '_'.join([str(item) for item in (gene.seqid, exon.start, exon.stop)]) for exon in db.children(transcript, featuretype='exon', order_by='start') ) )
+
                 
 
         # print(gene_graph.edges())
         gene_graphs[gene.id] = gene_graph
         
     # print(collapsed_exon_to_transcript)
-    return gene_graphs, collapsed_exon_to_transcript
+    return gene_graphs, collapsed_exon_to_transcript, annotated_transcripts
+
+
+def create_graph(db): 
+    # print(dir(db))
+    gene_graphs = {} # gene_id : { (exon_start, exon_stop) : set() }
+    collapsed_exon_to_transcript = {}
+    annotated_transcripts = defaultdict(set)
+    for gene in db.features_of_type('gene'):
+        # print(dir(gene))
+        # print(gene.id, gene.seqid, gene.start, gene.stop, gene.attributes)
+        gene_graph = nx.DiGraph(chr=str(gene.seqid))
+        print( gene_graph.graph)
+        collapsed_exon_to_transcript[gene.id] = defaultdict(set)
+        already_parsed_exons = set()
+        
+        #add nodes
+        for exon in db.children(gene, featuretype='exon', order_by='start'):
+            collapsed_exon_to_transcript[gene.id][ (exon.start, exon.stop) ].update([ transcript_tmp for transcript_tmp in  exon.attributes['transcript_id']])
+            # if (exon.start, exon.stop) in already_parsed_exons:
+                
+            gene_graph.add_node( (exon.start, exon.stop), weight=1  )
+            # print(gene_graph.nodes[(exon.start, exon.stop)])
+
+        #add edges
+        for transcript in db.children(gene, featuretype='transcript', order_by='start'):
+            # print(dir(transcript))
+            consecutive_exons = [exon for exon in db.children(transcript, featuretype='exon', order_by='start')]
+            print('transcript', transcript.id, transcript.start, transcript.stop, [ (exon.start, exon.stop) for exon in db.children(transcript, featuretype='exon', order_by='start')])
+            for e1,e2 in zip(consecutive_exons[:-1], consecutive_exons[1:]):
+                # print('exon', exon.id, exon.start, exon.stop)
+                gene_graph.add_edge( (e1.start, e1.stop),  (e2.start, e2.stop) )
+
+            annotated_transcripts[gene.seqid].add( tuple( '_'.join([str(item) for item in (gene.seqid, exon.start, exon.stop)]) for exon in db.children(transcript, featuretype='exon', order_by='start') ) )
+
+                
+
+        # print(gene_graph.edges())
+        gene_graphs[gene.id] = gene_graph
+        
+    # print(collapsed_exon_to_transcript)
+    return gene_graphs, collapsed_exon_to_transcript, annotated_transcripts
 
 
 def get_sequences_from_choordinates(gene_graphs, ref):
