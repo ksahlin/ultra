@@ -17,10 +17,9 @@ def create_graph_from_exon_parts(db, min_mem):
         # print(dir(gene))
         # print(gene.id, gene.seqid, gene.start, gene.stop, gene.attributes)
         genes_to_ref[gene.id] = str(gene.seqid)
-        parts_to_exons[gene.id] = defaultdict(set)
+        # parts_to_exons[gene.id] = defaultdict(set)
         exons_to_transcripts[gene.id] = defaultdict(set)
-        already_parsed_exons = set()
-        
+        parts_to_exons_for_gene = {}        
         #add nodes
         exons = [exon for exon in db.children(gene, featuretype='exon', order_by='start') ]
         chord_to_exon = defaultdict(list)
@@ -54,7 +53,7 @@ def create_graph_from_exon_parts(db, min_mem):
                         print('extending smaller part upstream',p1, p2)
                         exon_id =  chord_to_exon[p2[0]][0]
                         if p1[0] - exon_to_chord[exon_id][0] > min_mem - part_length: # enough room to extend
-                            parts_to_exons[(p1[0] - (min_mem - part_length), p2[0])] = active_exons
+                            parts_to_exons_for_gene[(p1[0] - (min_mem - part_length), p2[0])] = active_exons
                             print("extended:", (p1[0] - (min_mem - part_length), p2[0]) , "active_exons:", active_exons)
                         else:
                             print("Not enough room to extend!!")
@@ -63,15 +62,19 @@ def create_graph_from_exon_parts(db, min_mem):
                         print('extending smaller part to downstream',p1, p2)
                         exon_id =  chord_to_exon[p1[0]][0]
                         if exon_to_chord[exon_id][1] - p2[0] > min_mem - part_length: # enough room to extend
-                            parts_to_exons[(p1[0], p2[0] + (min_mem - part_length))] = active_exons
+                            parts_to_exons_for_gene[(p1[0], p2[0] + (min_mem - part_length))] = active_exons
                             print("extended:", (p1[0], p2[0] + (min_mem - part_length)), "active_exons:", active_exons )
                         else:
                             print("Not enough room to extend!!")
                 else:
-                    parts_to_exons[(p1[0], p2[0])] = active_exons
+                    parts_to_exons_for_gene[(p1[0], p2[0])] = active_exons
 
-        print(parts_to_exons)
+        print(parts_to_exons_for_gene)
         # extend the parts that are smaller than min_mem to length min_mem + 1
+        parts_to_exons[gene.id] = parts_to_exons_for_gene
+
+        for exon in db.children(gene, featuretype='exon', order_by='start'):
+            exons_to_transcripts[gene.id][ (exon.start, exon.stop) ].update([ transcript_tmp for transcript_tmp in  exon.attributes['transcript_id']])
 
         for transcript in db.children(gene, featuretype='transcript', order_by='start'):
             annotated_transcripts[gene.seqid].add( tuple( '_'.join([str(item) for item in (gene.seqid, exon.start, exon.stop)]) for exon in db.children(transcript, featuretype='exon', order_by='start') ) )
@@ -88,13 +91,11 @@ def get_sequences_from_choordinates(parts_to_exons, genes_to_ref, ref):
         parts_instance = parts_to_exons[gene_id]
         chromosome = genes_to_ref[gene_id]
         segments[chromosome] = {}
-        for node in gene_graph:
-            if node == ("source", "source") or node == ("sink", "sink"):
-                continue
-            start,stop = node[0], node[1]
-            seq = refs[chromosome][start : stop]
+        for part in parts_instance:
+            start,stop = part[0], part[1]
+            seq = refs[chromosome][start -1 : stop+1] # gtf 1 indexed and last coordinate is inclusive
 
-            segments[chromosome][node] = seq
+            segments[chromosome][part] = seq
     # print(segments)
     return segments
 

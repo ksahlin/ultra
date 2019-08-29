@@ -54,7 +54,7 @@ def get_sequences_from_choordinates(gene_graphs, ref):
     refs = {acc : seq for acc, (seq, _) in readfq(open(ref,"r"))}
     segments = {}
     for gene_id in gene_graphs:
-        parts_instance = gene_graphs[gene_id]
+        gene_graph = gene_graphs[gene_id]
         chromosome = gene_graph.graph['chr']
         segments[chromosome] = {}
         for node in gene_graph:
