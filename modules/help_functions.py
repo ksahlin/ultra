@@ -1,4 +1,10 @@
 
+import sys
+import re
+
+import parasail
+
+
 '''
     Below code taken from https://github.com/lh3/readfq/blob/master/readfq.py
 '''
@@ -33,3 +39,91 @@ def readfq(fp): # this is a generator function
             if last: # reach EOF before reading enough quality
                 yield name, (seq, None) # yield a fasta record instead
                 break
+
+
+
+def cigar_to_seq(cigar, query, ref):
+    cigar_tuples = []
+    result = re.split(r'[=DXSMI]+', cigar)
+    i = 0
+    for length in result[:-1]:
+        i += len(length)
+        type_ = cigar[i]
+        i += 1
+        cigar_tuples.append((int(length), type_ ))
+
+    r_index = 0
+    q_index = 0
+    q_aln = []
+    r_aln = []
+    for length_ , type_ in cigar_tuples:
+        if type_ == "=" or type_ == "X":
+            q_aln.append(query[q_index : q_index + length_])
+            r_aln.append(ref[r_index : r_index + length_])
+
+            r_index += length_
+            q_index += length_
+        
+        elif  type_ == "I":
+            # insertion w.r.t. reference
+            r_aln.append('-' * length_)
+            q_aln.append(query[q_index: q_index + length_])
+            #  only query index change
+            q_index += length_
+
+        elif type_ == 'D':
+            # deletion w.r.t. reference
+            r_aln.append(ref[r_index: r_index + length_])
+            q_aln.append('-' * length_)
+            #  only ref index change
+            r_index += length_
+        
+        else:
+            print("error")
+            print(cigar)
+            sys.exit()
+
+    return  "".join([s for s in q_aln]), "".join([s for s in r_aln])
+
+def parasail_alignment(s1, s2, match_score = 2, mismatch_penalty = -2, opening_penalty = 5, gap_ext = 1):
+    user_matrix = parasail.matrix_create("ACGT", match_score, mismatch_penalty)
+    result = parasail.sg_trace_scan_16(s1, s2, opening_penalty, gap_ext, user_matrix)
+    if result.saturated:
+        print("SATURATED!",len(s1), len(s2))
+        result = parasail.sg_trace_scan_32(s1, s2, opening_penalty, gap_ext, user_matrix)
+        print("computed 32 bit instead")
+
+    # difference in how to obtain string from parasail between python v2 and v3... 
+    if sys.version_info[0] < 3:
+        cigar_string = str(result.cigar.decode).decode('utf-8')
+    else:
+        cigar_string = str(result.cigar.decode, 'utf-8')
+    
+    s1_alignment, s2_alignment = cigar_to_seq(cigar_string, s1, s2)
+    return s1_alignment, s2_alignment
+
+    # # Rolling window of matching blocks
+    # match_vector = [ 1 if n1 == n2 else 0 for n1, n2 in zip(s1_alignment, s2_alignment) ]    
+    # match_window = deque(match_vector[:k]) # initialization
+    # current_match_count = sum(match_window)
+    # aligned_region = []
+    # if current_match_count >= match_id:
+    #     aligned_region.append(1)
+    # else:
+    #     aligned_region.append(0)
+
+
+    # for new_m_state in match_vector[k:]:
+    #     prev_m_state = match_window.popleft()
+    #     current_match_count = current_match_count - prev_m_state + new_m_state 
+    #     match_window.append(new_m_state)
+        
+    #     if current_match_count >= match_id:
+    #         aligned_region.append(1)
+    #     else:        
+    #         aligned_region.append(0)
+
+    # # print("".join([str(m) for m in aligned_region]))
+    # # print("Aligned ratio (tot aligned/len(seq1):", sum(aligned_region)/float(len(s1)))
+    # alignment_ratio = sum(aligned_region)/float(len(s1))
+    # return (s1, s2, (s1_alignment, s2_alignment, alignment_ratio))

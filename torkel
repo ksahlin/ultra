@@ -20,6 +20,8 @@ from modules import create_parts_graph as parts_graph
 from modules import mummer_wrapper 
 from modules import colinear_solver 
 from modules import graph_chainer 
+from modules import help_functions
+
 
 def pickle_dump(data, filename):
     with open(os.path.join(args.outfolder,filename), 'wb') as f:
@@ -76,31 +78,68 @@ def align_reads(args):
 
     mummer_wrapper.find_mems(refs_sequences, args.reads, args.outfolder, args.min_mem)
     mems  = mummer_wrapper.parse_results(args.outfolder)
-    print(mems)
 
+    reads = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r'))}
+
+    print(mems)
+    print(refs_sequences)
+    print(parts_to_exons)
     for read_acc in mems:
         for chr_id in mems[read_acc]:
             solution, value = colinear_solver.main(mems[read_acc][chr_id])
             print(read_acc, "alignment to:", chr_id, "best solution val:", value , solution)
             # print(exons_to_transcripts)
             # check if matches previous annotation here!
-            predicted_transcript = tuple( mem.exon_part_id for mem in solution)
 
-            Start working with the annotation of parts to previously annotated transcripts here
-            1. do Edlib/parasail of read to adjacent blocks and check if all blocks have support
-            2. Then create function that go from adjacent parts (on genome) back to a unique exon, 
-            then checks the combination of exons against previously annotated transcripts
-            Need larger size of blocks in case mems are not found for the exact 20bp stretch.. or something to real with this... 
+            chained_parts_seq = []
+            chained_parts_ids = []
+            prev_ref_stop = -1
+            for mem in solution:
+                ref_chr_id, ref_start, ref_stop =  mem.exon_part_id.split('_')
+                ref_start, ref_stop = int(ref_start), int(ref_stop)
+                print("lll",ref_chr_id, ref_start, ref_stop)
+                seq = refs_sequences[ref_chr_id][(ref_start, ref_stop)]
+                if ref_start < prev_ref_stop:
+                    chained_parts_seq.append(seq[prev_ref_stop - ref_start: ])
+                else:
+                    chained_parts_seq.append(seq)
 
-            if predicted_transcript in annotated_transcripts[chr_id]:
-                print('Found')
-            else:
+                if ref_start > prev_ref_stop + 1 : # new separate exon on the genome
+                    chained_parts_ids.append(parts_to_exons[ref_chr_id][ (ref_start, ref_stop)])
+                else: # part of an exon
+                    chained_parts_ids[-1] = chained_parts_ids[-1] ^ parts_to_exons[ref_chr_id][(ref_start, ref_stop)]  here we get mora annotations than we want , need a function to check that an exon has all parts covered!
 
-                print('Not found', predicted_transcript)
-                for ann_tr in annotated_transcripts[chr_id]:
-                    print(ann_tr)
-        if read_acc == 'read_several_optimal_matchings_1001_1186_1469_1534':
-            sys.exit()
+                prev_ref_stop = ref_stop
+
+            created_ref_seq = "".join([part for part in chained_parts_seq])
+            # predicted_transcript = tuple( mem.exon_part_id for mem in solution)
+            # print( "predicted:", predicted_transcript)
+
+            read_seq = reads[read_acc]
+            read_aln, ref_aln = help_functions.parasail_alignment(read_seq, created_ref_seq)
+            print('read', read_seq)
+            print('ref',created_ref_seq)
+            print(read_aln)
+            print(ref_aln, tuple( mem.exon_part_id for mem in solution))
+            # print([parts_to_exons[ mem.exon_part_id] for mem in solution])
+            print(chained_parts_ids)
+            # Start working with the annotation of parts to previously annotated transcripts here
+            # 1. do Edlib/parasail of read to adjacent blocks and check if all blocks have support
+            # 2. Then create function that go from adjacent parts (on genome) back to a unique exon, 
+            # 3. then checks the combination of exons against previously annotated transcripts
+            # Need larger size of blocks in case mems are not found for the exact 20bp stretch..
+            # Maybe a second pass mem finding of reads to only the smallest parts using a smaller minimum mem size
+
+        #     if predicted_transcript in annotated_transcripts[chr_id]:
+        #         print('Found')
+        #     else:
+
+        #         print('Not found', predicted_transcript)
+        #         for ann_tr in annotated_transcripts[chr_id]:
+        #             print(ann_tr)
+        # if read_acc == 'read_several_optimal_matchings_1001_1186_1469_1534':
+        #     sys.exit()
+
             # check_if_present_in_database(solution, annotated_transcripts[chr_id])
 
         # parasail_align_to_best(read, concatenated_exon_parts)
