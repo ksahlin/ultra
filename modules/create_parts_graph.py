@@ -44,7 +44,7 @@ def create_graph_from_exon_parts(db, min_mem):
                 elif p1[1] == 'start' and p2[1] == 'start':
                     active_exons = set(chord_to_exon[p1[0]]) - set(chord_to_exon[p2[0]])
 
-                part_length = int(p2[0]) - int(p1[0]) + 1
+                part_length = int(p2[0]) - int(p1[0]) #+ 1 # make python 0-indexed plus not containing last choord
                 if part_length < min_mem:
                     if p1[1] == 'start' and p2[1] == 'stop':
                         print('Need to extend over junction because exon smaller tham min mem. Treat this case!')
@@ -93,7 +93,7 @@ def get_sequences_from_choordinates(parts_to_exons, genes_to_ref, ref):
         segments[chromosome] = {}
         for part in parts_instance:
             start,stop = part[0], part[1]
-            seq = refs[chromosome][start -1 : stop+1] # gtf 1 indexed and last coordinate is inclusive
+            seq = refs[chromosome][start -1 : stop -1] # gtf 1 indexed and last coordinate is inclusive
 
             segments[chromosome][part] = seq
     # print(segments)
