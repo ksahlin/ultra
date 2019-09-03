@@ -3,7 +3,7 @@ import sys
 import re
 
 import parasail
-
+import edlib
 
 '''
     Below code taken from https://github.com/lh3/readfq/blob/master/readfq.py
@@ -85,6 +85,15 @@ def cigar_to_seq(cigar, query, ref):
 
     return  "".join([s for s in q_aln]), "".join([s for s in r_aln])
 
+
+def edlib_alignment(read_seq, ref_seq):
+    result = edlib.align(read_seq, ref_seq, task="path", mode="NW")
+    cigar_string = result["cigar"]
+    read_alignment, ref_alignment = cigar_to_seq(cigar_string, read_seq, ref_seq)
+
+    return read_alignment, ref_alignment
+
+
 def parasail_alignment(s1, s2, match_score = 2, mismatch_penalty = -2, opening_penalty = 5, gap_ext = 1):
     user_matrix = parasail.matrix_create("ACGT", match_score, mismatch_penalty)
     result = parasail.sg_trace_scan_16(s1, s2, opening_penalty, gap_ext, user_matrix)
@@ -127,3 +136,4 @@ def parasail_alignment(s1, s2, match_score = 2, mismatch_penalty = -2, opening_p
     # # print("Aligned ratio (tot aligned/len(seq1):", sum(aligned_region)/float(len(s1)))
     # alignment_ratio = sum(aligned_region)/float(len(s1))
     # return (s1, s2, (s1_alignment, s2_alignment, alignment_ratio))
+
