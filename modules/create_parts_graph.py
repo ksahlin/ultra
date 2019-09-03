@@ -19,7 +19,8 @@ def create_graph_from_exon_parts(db, min_mem):
     parts_to_exons = {}
     exons_to_transcripts = {}
     parts_to_transcript_annotations = defaultdict(lambda: defaultdict(set))
-    all_parts_pairs_annotations = defaultdict(set)
+    transcripts_to_parts_annotations = defaultdict(lambda: defaultdict(set))
+    all_parts_pairs_annotations = defaultdict(lambda: defaultdict(set))
     all_part_sites_annotations = defaultdict(set)
     # annotated_transcripts = defaultdict(set)
     for gene in db.features_of_type('gene'):
@@ -116,8 +117,9 @@ def create_graph_from_exon_parts(db, min_mem):
             for exon in db.children(transcript, featuretype='exon', order_by='start'):
                 transcript_parts +=  exons_to_parts[exon.id]
             parts_to_transcript_annotations[gene.seqid][ tuple(transcript_parts) ].add(  transcript.id )
+            transcripts_to_parts_annotations[gene.seqid][ transcript.id ].add( tuple(transcript_parts)  )
             for part_start, part_stop in transcript_parts:
-                all_parts_pairs_annotations[str(gene.seqid)].add( ( part_start, part_stop ))
+                all_parts_pairs_annotations[str(gene.seqid)][( part_start, part_stop )].add( transcript.id )
                 all_part_sites_annotations[str(gene.seqid)].add(part_start)
                 all_part_sites_annotations[str(gene.seqid)].add(part_stop)
 
@@ -126,7 +128,7 @@ def create_graph_from_exon_parts(db, min_mem):
     # sys.exit()
 
     # print(exons_to_transcripts)
-    return  genes_to_ref, parts_to_exons, exons_to_transcripts, parts_to_transcript_annotations, all_parts_pairs_annotations, all_part_sites_annotations #annotated_transcripts
+    return  genes_to_ref, parts_to_exons, exons_to_transcripts, parts_to_transcript_annotations, transcripts_to_parts_annotations,  all_parts_pairs_annotations, all_part_sites_annotations #annotated_transcripts
 
 
 

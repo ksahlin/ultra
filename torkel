@@ -44,7 +44,7 @@ def construct_graph(args):
     db = gffutils.create_db(fn, dbfn='test.db', force=True, keep_order=True, merge_strategy='merge', sort_attribute_values=True)
     db = gffutils.FeatureDB('test.db', keep_order=True)
 
-    genes_to_ref, parts_to_exons, exons_to_transcripts, parts_to_transcript_annotations, all_parts_pairs_annotations, all_part_sites_annotations = parts_graph.create_graph_from_exon_parts(db, args.min_mem )
+    genes_to_ref, parts_to_exons, exons_to_transcripts, parts_to_transcript_annotations, transcripts_to_parts_annotations,  all_parts_pairs_annotations, all_part_sites_annotations = parts_graph.create_graph_from_exon_parts(db, args.min_mem )
     refs_sequences = parts_graph.get_sequences_from_choordinates(parts_to_exons, genes_to_ref, args.ref)
 
     # gene_graphs, exons_to_transcripts, annotated_transcripts = splice_graph.create_graph(db)
@@ -57,6 +57,7 @@ def construct_graph(args):
     # dump to pickle here! Both graph and reference seqs
     pickle_dump(genes_to_ref, 'genes_to_ref.pickle')
     pickle_dump(parts_to_transcript_annotations, 'parts_to_transcript_annotations.pickle')
+    pickle_dump(transcripts_to_parts_annotations, 'transcripts_to_parts_annotations.pickle')
     pickle_dump(refs_sequences, 'refs_sequences.pickle')
     pickle_dump(exons_to_transcripts, 'exons_to_transcripts.pickle')
     pickle_dump(parts_to_exons, 'parts_to_exons.pickle')
@@ -79,6 +80,7 @@ def align_reads(args):
     refs_sequences = pickle_load( os.path.join(args.outfolder, 'refs_sequences.pickle') )
     exons_to_transcripts = pickle_load( os.path.join(args.outfolder, 'exons_to_transcripts.pickle') )
     parts_to_transcript_annotations = pickle_load( os.path.join(args.outfolder, 'parts_to_transcript_annotations.pickle') )
+    transcripts_to_parts_annotations = pickle_load( os.path.join(args.outfolder, 'transcripts_to_parts_annotations.pickle') )
     all_parts_pairs_annotations = pickle_load( os.path.join(args.outfolder, 'all_parts_pairs_annotations.pickle') )
     all_part_sites_annotations = pickle_load( os.path.join(args.outfolder, 'all_part_sites_annotations.pickle') )
 
@@ -91,6 +93,7 @@ def align_reads(args):
     print(refs_sequences)
     print(parts_to_exons)
     print(parts_to_transcript_annotations)
+    print(all_parts_pairs_annotations)
     for read_acc in mems:
         for chr_id in mems[read_acc]:
             solution, value = colinear_solver.main(mems[read_acc][chr_id])
@@ -148,8 +151,9 @@ def align_reads(args):
             # Need larger size of blocks in case mems are not found for the exact 20bp stretch..
             # Maybe a second pass mem finding of reads to only the smallest parts using a smaller minimum mem size
 
-            classify_alignment.main(chr_id, predicted_transcript, parts_to_transcript_annotations, all_parts_pairs_annotations, all_part_sites_annotations)
+            classify_alignment.main(chr_id, predicted_transcript, parts_to_transcript_annotations, transcripts_to_parts_annotations, all_parts_pairs_annotations, all_part_sites_annotations)
 
+            # Write alignment to SAM file
 
         # if read_acc == 'read_several_optimal_matchings_1001_1186_1469_1534':
         #     sys.exit()
