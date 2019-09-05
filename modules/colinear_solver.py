@@ -32,7 +32,7 @@ def main(mems):
 
     """
     mems = sorted(mems, key = lambda x: x.y )
-    print(mems)
+    # print(mems)
     T = [ (v.d, v.val)  for v in mems]
     I = [ (v.d, v.val)  for v in mems]
     
@@ -91,7 +91,7 @@ def main(mems):
     while True:
         solution.append(mems[solution_index])
         solution_index = traceback_pointers[solution_index]
-        print(solution_index)
+        # print(solution_index)
         if solution_index is None:
             break
 

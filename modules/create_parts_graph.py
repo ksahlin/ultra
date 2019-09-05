@@ -34,14 +34,14 @@ def create_graph_from_exon_parts(db, min_mem):
         exons = [exon for exon in db.children(gene, featuretype='exon', order_by='start') ]
         chord_to_exon = defaultdict(list)
         for e in exons:
-            chord_to_exon[e.start].append(e.id)
+            chord_to_exon[e.start - 1].append(e.id)
             chord_to_exon[e.stop].append(e.id)
 
-        exon_to_chord = {e.id : (e.start, e.stop) for e in exons}
-        print([(e.start, e.stop) for e in exons])
+        exon_to_chord = {e.id : (e.start-1, e.stop) for e in exons}
+        print([(e.start-1, e.stop) for e in exons])
 
 
-        all_starts = [(e.start, 'start') for e in exons]
+        all_starts = [(e.start -1, 'start') for e in exons]
         all_stops = [(e.stop, 'stop') for e in exons]
         all_starts_and_stops = sorted( set(all_starts + all_stops))
         print()
@@ -141,7 +141,7 @@ def get_sequences_from_choordinates(parts_to_exons, genes_to_ref, ref):
         segments[chromosome] = {}
         for part in parts_instance:
             start,stop = part[0], part[1]
-            seq = refs[chromosome][start -1 : stop -1] # gtf 1 indexed and last coordinate is inclusive
+            seq = refs[chromosome][start : stop] # gtf 1 indexed and last coordinate is inclusive
 
             segments[chromosome][part] = seq
     # print(segments)

@@ -19,7 +19,7 @@ def main(chr_id, predicted_transcript, parts_to_transcript_annotations, transcri
         print()
         print('Found, FSM to:', parts_to_transcript_annotations[chr_id][tuple(predicted_transcript)])
         print()
-        return
+        return "FSM"
     # else:
 
     #     print('Did not find FSM', predicted_transcript)
@@ -35,8 +35,8 @@ def main(chr_id, predicted_transcript, parts_to_transcript_annotations, transcri
     for transcript_id in in_all_pairs:
         transcript = transcripts_to_parts_annotations[chr_id][transcript_id]
         if contains(predicted_transcript, transcript):
-            print("Found, ISM to", transcript_id )
-            return
+            # print("Found, ISM to", transcript_id )
+            return "ISM"
         else:
             print(predicted_transcript, transcript)
 
@@ -67,13 +67,15 @@ def main(chr_id, predicted_transcript, parts_to_transcript_annotations, transcri
             print()
             print('Found, NIC (new combination of exons):', tuple(predicted_transcript) )
             print()             
-            return   
+            for ann_tr in parts_to_transcript_annotations[chr_id]:
+                print(parts_to_transcript_annotations[chr_id][ann_tr] ,ann_tr)
+            return  "NIC_comb"
 
         else:
             print()
             print('Found, NIC (new donor-acceptor pair):', tuple(predicted_transcript) )
             print()   
-            return             
+            return   "NIC_novel"          
     # else:
     #     print('Did not find NIC', predicted_transcript)
 
@@ -81,4 +83,4 @@ def main(chr_id, predicted_transcript, parts_to_transcript_annotations, transcri
     print()
     print('NNC:', tuple(predicted_transcript) )
     print()       
-    return         
+    return "NNC" 
