@@ -13,7 +13,8 @@ import math
 import dill as pickle 
 import gffutils
 
-# from collections import deque
+
+from collections import defaultdict
 
 
 from modules import create_splice_graph as splice_graph
@@ -89,80 +90,86 @@ def align_reads(args):
 
     reads = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r'))}
 
-    print(mems)
-    print(refs_sequences)
-    print(parts_to_exons)
-    print(parts_to_transcript_annotations)
-    print(all_parts_pairs_annotations)
+    # print(mems)
+    # print(refs_sequences)
+    # print(parts_to_exons)
+    # print(parts_to_transcript_annotations)
+    # print(all_parts_pairs_annotations)
+    classifications = defaultdict(int)
     for read_acc in mems:
         for chr_id in mems[read_acc]:
             solution, value = colinear_solver.main(mems[read_acc][chr_id])
-            print(read_acc, "alignment to:", chr_id, "best solution val:", value , solution)
             # print(exons_to_transcripts)
             # check if matches previous annotation here!
-
-            chained_parts_seq = []
-            chained_parts_ids = []
-            prev_ref_stop = -1
-            predicted_transcript = []
-            for mem in solution:
-                ref_chr_id, ref_start, ref_stop =  mem.exon_part_id.split('_')
-                ref_start, ref_stop = int(ref_start), int(ref_stop)
-                predicted_transcript.append( (ref_start, ref_stop) )
-                print("lll",ref_chr_id, ref_start, ref_stop)
-                seq = refs_sequences[ref_chr_id][(ref_start, ref_stop)]
-                if ref_start < prev_ref_stop:
-                    chained_parts_seq.append(seq[prev_ref_stop - ref_start: ])
-                else:
-                    chained_parts_seq.append(seq)
-
-                if ref_start > prev_ref_stop + 1 : # new separate exon on the genome
-                    chained_parts_ids.append(parts_to_exons[ref_chr_id][ (ref_start, ref_stop)])
-                else: # part of an exon
-                    chained_parts_ids[-1] = chained_parts_ids[-1] ^ parts_to_exons[ref_chr_id][(ref_start, ref_stop)]  #here we get mora annotations than we want , need a function to check that an exon has all parts covered!
-
-                prev_ref_stop = ref_stop
-
-            created_ref_seq = "".join([part for part in chained_parts_seq])
-            # predicted_transcript = tuple( mem.exon_part_id for mem in solution)
-            # print( "predicted:", predicted_transcript)
-
             read_seq = reads[read_acc]
-            read_aln, ref_aln = help_functions.parasail_alignment(read_seq, created_ref_seq)
-            print('read', read_seq)
-            print('ref',created_ref_seq)
-            print(read_aln)
-            print(ref_aln, tuple( mem.exon_part_id for mem in solution))
-            # print([parts_to_exons[ mem.exon_part_id] for mem in solution])
-            print(chained_parts_ids)
 
-            # result_read_to_ref = edlib.align(seq, ref_tmp, task="path", mode="HW")
-            # print(result_read_to_ref)
-            read_alignment, ref_alignment = help_functions.edlib_alignment(read_seq, created_ref_seq)
-            print('read', read_alignment)
-            print('ref',ref_alignment)
+            if value > len(read_seq) * 0.8:
+                print(read_acc, "alignment to:", chr_id, "best solution val:", value , solution)
+                chained_parts_seq = []
+                chained_parts_ids = []
+                prev_ref_stop = -1
+                predicted_transcript = []
+                for mem in solution:
+                    ref_chr_id, ref_start, ref_stop =  mem.exon_part_id.split('_')
+                    ref_start, ref_stop = int(ref_start), int(ref_stop)
+                    predicted_transcript.append( (ref_start, ref_stop) )
+                    # print("lll",ref_chr_id, ref_start, ref_stop)
+                    seq = refs_sequences[ref_chr_id][(ref_start, ref_stop)]
+                    if ref_start < prev_ref_stop:
+                        chained_parts_seq.append(seq[prev_ref_stop - ref_start: ])
+                    else:
+                        chained_parts_seq.append(seq)
+
+                    if ref_start > prev_ref_stop + 1 : # new separate exon on the genome
+                        chained_parts_ids.append(parts_to_exons[ref_chr_id][ (ref_start, ref_stop)])
+                    else: # part of an exon
+                        chained_parts_ids[-1] = chained_parts_ids[-1] ^ parts_to_exons[ref_chr_id][(ref_start, ref_stop)]  #here we get mora annotations than we want , need a function to check that an exon has all parts covered!
+
+                    prev_ref_stop = ref_stop
+
+                created_ref_seq = "".join([part for part in chained_parts_seq])
+                # predicted_transcript = tuple( mem.exon_part_id for mem in solution)
+                # print( "predicted:", predicted_transcript)
+
+
+                read_aln, ref_aln = help_functions.parasail_alignment(read_seq, created_ref_seq)
+                # print('read', read_seq)
+                # print('ref',created_ref_seq)
+                print(read_aln)
+                print(ref_aln, tuple( mem.exon_part_id for mem in solution))
+                print(read_aln == ref_aln)
+                # print([parts_to_exons[ mem.exon_part_id] for mem in solution])
+                print(chained_parts_ids)
+
+                # result_read_to_ref = edlib.align(seq, ref_tmp, task="path", mode="HW")
+                # print(result_read_to_ref)
+                read_alignment, ref_alignment = help_functions.edlib_alignment(read_seq, created_ref_seq)
+                # print('read', read_alignment)
+                # print('ref',ref_alignment)
 
 
 
-            # Start working with the annotation of parts to previously annotated transcripts here
-            # 1. do Edlib/parasail of read to adjacent blocks and check if all blocks have support
-            # 2. Then create function that go from adjacent parts (on genome) back to a unique exon, 
-            # 3. then checks the combination of exons against previously annotated transcripts
-            # Need larger size of blocks in case mems are not found for the exact 20bp stretch..
-            # Maybe a second pass mem finding of reads to only the smallest parts using a smaller minimum mem size
+                # Start working with the annotation of parts to previously annotated transcripts here
+                # 1. do Edlib/parasail of read to adjacent blocks and check if all blocks have support
+                # 2. Then create function that go from adjacent parts (on genome) back to a unique exon, 
+                # 3. then checks the combination of exons against previously annotated transcripts
+                # Need larger size of blocks in case mems are not found for the exact 20bp stretch..
+                # Maybe a second pass mem finding of reads to only the smallest parts using a smaller minimum mem size
 
-            classify_alignment.main(chr_id, predicted_transcript, parts_to_transcript_annotations, transcripts_to_parts_annotations, all_parts_pairs_annotations, all_part_sites_annotations)
+                classification = classify_alignment.main(chr_id, predicted_transcript, parts_to_transcript_annotations, transcripts_to_parts_annotations, all_parts_pairs_annotations, all_part_sites_annotations)
+                classifications[classification] += 1
+                print(classification)
+                print()
+                # Write alignment to SAM file
 
-            # Write alignment to SAM file
+            # if read_acc == 'read_several_optimal_matchings_1001_1186_1469_1534':
+            #     sys.exit()
 
-        # if read_acc == 'read_several_optimal_matchings_1001_1186_1469_1534':
-        #     sys.exit()
+                # check_if_present_in_database(solution, parts_to_transcript_annotations[chr_id])
 
-            # check_if_present_in_database(solution, parts_to_transcript_annotations[chr_id])
+            # parasail_align_to_best(read, concatenated_exon_parts)
 
-        # parasail_align_to_best(read, concatenated_exon_parts)
-
-    sys.exit()
+    print(classifications)
 
     # for gene_id in gene_graphs:
     #     gene_graph = gene_graphs[gene_id]
