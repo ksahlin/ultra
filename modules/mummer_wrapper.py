@@ -58,9 +58,9 @@ def parse_results(mems_folder):
             mem_ref_exon_part_start = int(vals[1])
             mem_read_start = int(vals[2])
             # convert to 0-indexed as python, however last coordinate is inclusive of the hit, not as in python end-indexing
-            mem_tuple = mem(mem_read_start-1, mem_read_start-1 + mem_len - 1, 
-                            int(ref_coord_start) - 1 + mem_ref_exon_part_start - 1, 
-                            int(ref_coord_start) - 1 + mem_ref_exon_part_start -1 + mem_len - 1,  mem_len, exon_part_id)
+            mem_tuple = mem(int(ref_coord_start) - 1 + mem_ref_exon_part_start - 1, int(ref_coord_start) - 1 + mem_ref_exon_part_start -1 + mem_len - 1,
+                            mem_read_start-1, mem_read_start-1 + mem_len - 1, 
+                            mem_len, exon_part_id)
             
             read_mems_tmp[chr_id].append( mem_tuple )
         # print(line)
