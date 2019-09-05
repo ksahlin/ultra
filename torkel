@@ -95,13 +95,16 @@ def align_reads(args):
     # print(parts_to_exons)
     # print(parts_to_transcript_annotations)
     # print(all_parts_pairs_annotations)
-    classifications = defaultdict(int)
+    classifications = defaultdict(str)
     for read_acc in mems:
         for chr_id in mems[read_acc]:
             solution, value = colinear_solver.main(mems[read_acc][chr_id])
             # print(exons_to_transcripts)
             # check if matches previous annotation here!
             read_seq = reads[read_acc]
+            if read_seq == '76_SIRV4_SIRV406':
+                print(read_seq, solution, value)
+                sys.exit()
 
             if value > len(read_seq) * 0.8:
                 print(read_acc, "alignment to:", chr_id, "best solution val:", value , solution)
@@ -143,7 +146,7 @@ def align_reads(args):
 
                 # result_read_to_ref = edlib.align(seq, ref_tmp, task="path", mode="HW")
                 # print(result_read_to_ref)
-                read_alignment, ref_alignment = help_functions.edlib_alignment(read_seq, created_ref_seq)
+                # read_alignment, ref_alignment = help_functions.edlib_alignment(read_seq, created_ref_seq)
                 # print('read', read_alignment)
                 # print('ref',ref_alignment)
 
@@ -157,7 +160,7 @@ def align_reads(args):
                 # Maybe a second pass mem finding of reads to only the smallest parts using a smaller minimum mem size
 
                 classification = classify_alignment.main(chr_id, predicted_transcript, parts_to_transcript_annotations, transcripts_to_parts_annotations, all_parts_pairs_annotations, all_part_sites_annotations)
-                classifications[classification] += 1
+                classifications[read_acc] = classification
                 print(classification)
                 print()
                 # Write alignment to SAM file
@@ -170,7 +173,16 @@ def align_reads(args):
             # parasail_align_to_best(read, concatenated_exon_parts)
 
     print(classifications)
+    counts = defaultdict(int)
+    for read_acc in reads:
+        if read_acc not in classifications:
+            print(read_acc, "did not meet the threshold")
+        elif classifications[read_acc] != 'FSM':
+            print(read_acc, classifications[read_acc]) 
+        counts[classifications[read_acc]] += 1
 
+
+    print(counts)
     # for gene_id in gene_graphs:
     #     gene_graph = gene_graphs[gene_id]
     #     topological_sort = topological_sorts[gene_id]

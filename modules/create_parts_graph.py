@@ -43,7 +43,9 @@ def create_graph_from_exon_parts(db, min_mem):
 
         all_starts = [(e.start -1, 'start') for e in exons]
         all_stops = [(e.stop, 'stop') for e in exons]
-        all_starts_and_stops = sorted( set(all_starts + all_stops))
+        # all_starts_and_stops = sorted( set(all_starts + all_stops))
+        all_starts_and_stops = sorted( set(all_starts + all_stops), key = lambda x: (x[0],len(x[1])) ) # all stops before starts if the same coordinate
+
         print()
         print(str(gene.seqid))
         print()
@@ -54,7 +56,11 @@ def create_graph_from_exon_parts(db, min_mem):
                 active_exons =  active_exons - set(chord_to_exon[p1[0]])
             elif p1[1] == 'start':
                 active_exons =  active_exons | set(chord_to_exon[p1[0]])
-    
+            
+            # if p1[0] == 4056:
+            #     print(p1, p2)
+            #     print(all_starts_and_stops2)
+            #     sys.exit()
             print(p1, p2, active_exons)
 
             if active_exons:  
@@ -70,24 +76,59 @@ def create_graph_from_exon_parts(db, min_mem):
                 if part_length < min_mem:
                     if p1[1] == 'start' and p2[1] == 'stop':
                         print('Need to extend over junction because exon smaller tham min mem. Treat this case!')
+                        # exon_id_upstream = chord_to_exon[p1[0]][0]
+                        
+                        # e_ids = [e_id for e_id in chord_to_exon[p1[0]] + chord_to_exon[p2[0]] ]
+                        # furthest_upstream = min([ exon_to_chord[e_id][0] for e_id in e_ids])
+                        # print(e_ids,furthest_upstream )
+                        # # exon_id_downstream =  chord_to_exon[p2[0]][0]
+
+                        # # e_ids_downstream = [e_id for e_id in chord_to_exon[p2[0]] +=  ]
+                        # furthest_downstream = max([ exon_to_chord[e_id][1] for e_id in e_ids])
+                        # print(e_ids,furthest_downstream )
+
+                        # if p1[0] - furthest_upstream > min_mem - part_length: # enough room to extend
+                        #     parts_to_exons_for_gene[(p1[0] - (min_mem - part_length), p2[0])] = active_exons
+                        #     print("MANAGED upstream!", (p1[0] - (min_mem - part_length), p2[0]))
+                        #     # sys.exit()
+
+                        # elif furthest_downstream - p2[0] > min_mem - part_length: # enough room to extend
+                        #     parts_to_exons_for_gene[(p1[0], p2[0] + (min_mem - part_length))] = active_exons
+                        #     print("MANAGED downstream!")
+                        #     # sys.exit()
+
+                        # else:
+                        #     print("DIDN'T MANAGE!", p1[0], p2[0], )
+                        # sys.exit()
 
                     elif p1[1] == 'stop' and p2[1] == 'stop':
                         print('extending smaller part upstream',p1, p2)
-                        exon_id =  chord_to_exon[p2[0]][0]
-                        if p1[0] - exon_to_chord[exon_id][0] > min_mem - part_length: # enough room to extend
+                        # exon_id =  chord_to_exon[p1[0]][0]
+                        # furthest_upstream = exon_to_chord[exon_id][0] 
+                        e_ids = [e_id for e_id in chord_to_exon[p1[0]] ]
+                        furthest_upstream = min([ exon_to_chord[e_id][0] for e_id in e_ids])
+
+                        if p1[0] - furthest_upstream > min_mem - part_length: # enough room to extend
                             parts_to_exons_for_gene[(p1[0] - (min_mem - part_length), p2[0])] = active_exons
                             print("extended:", (p1[0] - (min_mem - part_length), p2[0]) , "active_exons:", active_exons)
                         else:
                             print("Not enough room to extend!!")
+                            # sys.exit()
 
                     elif p1[1] == 'start' and p2[1] == 'start':
                         print('extending smaller part to downstream',p1, p2)
-                        exon_id =  chord_to_exon[p1[0]][0]
-                        if exon_to_chord[exon_id][1] - p2[0] > min_mem - part_length: # enough room to extend
+                        # exon_id =  chord_to_exon[p2[0]][0]
+                        # furthest_downstream = exon_to_chord[exon_id][1]
+                        e_ids = [e_id for e_id in chord_to_exon[p2[0]]]
+                        furthest_downstream = max([ exon_to_chord[e_id][1] for e_id in e_ids])
+
+                        if furthest_downstream - p2[0] > min_mem - part_length: # enough room to extend
                             parts_to_exons_for_gene[(p1[0], p2[0] + (min_mem - part_length))] = active_exons
                             print("extended:", (p1[0], p2[0] + (min_mem - part_length)), "active_exons:", active_exons )
                         else:
                             print("Not enough room to extend!!")
+                            sys.exit()
+
                 else:
                     parts_to_exons_for_gene[(p1[0], p2[0])] = active_exons
             else:
