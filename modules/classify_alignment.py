@@ -12,7 +12,7 @@ def contains(sub, pri):
         else:
             i = found+1
 
-def main(chr_id, predicted_transcript, parts_to_transcript_annotations, transcripts_to_parts_annotations, all_parts_pairs_annotations, all_part_sites_annotations):
+def main(chr_id, predicted_exons, predicted_transcript, exons_to_transcripts, parts_to_transcript_annotations, transcripts_to_parts_annotations, all_parts_pairs_annotations, all_part_sites_annotations):
 
     # FSM
     if tuple(predicted_transcript) in parts_to_transcript_annotations[chr_id]:
@@ -20,6 +20,12 @@ def main(chr_id, predicted_transcript, parts_to_transcript_annotations, transcri
         print('Found, FSM to:', parts_to_transcript_annotations[chr_id][tuple(predicted_transcript)])
         print()
         return "FSM"
+    elif tuple(predicted_exons) in exons_to_transcripts[chr_id]:
+        print()
+        print('Found, FSM but not classified by parts to:', exons_to_transcripts[chr_id][tuple(predicted_exons)])
+        print()
+        return "FSM"       
+
     # else:
 
     #     print('Did not find FSM', predicted_transcript)
