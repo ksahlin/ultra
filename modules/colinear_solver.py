@@ -79,10 +79,13 @@ def main(mems):
 
         C[j] = max(C_a[j], C_b[j])
 
-    # print('Value vector:', C)
+    print('Value vector:', C)
+    # print(traceback_pointers)
+
     # print(argmax(C))
     # print(traceback_pointers)
     solution_index = argmax(C)
+    # solution_index = len(C) - argmax(C[::-1]) -1
     # print()
     # print(C[solution_index], C)
     value = C[solution_index]
@@ -95,9 +98,14 @@ def main(mems):
         if solution_index is None:
             break
 
+    non_unique = [x for x in set(C) if C.count(x) > 1]
+    unique = True
+    if non_unique:
+        unique = False
+        # print(traceback_pointers)
 
-    # print("Solution:", solution)
-    return solution[::-1], value
+    # print("Solution:", solution[::-1])
+    return solution[::-1], value, unique
     # traceback(C, best_solution_index)
 
 
