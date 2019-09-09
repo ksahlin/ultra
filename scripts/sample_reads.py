@@ -74,7 +74,7 @@ def main(args):
         print("sampled", chr_id, transcript_id)
         transcript = annotated_transcripts[chr_id][transcript_id]
         read = "".join([refs[chr_id][start:stop] for start,stop in transcript])
-        outfile.write(">{0}_{1}_{2}\n{3}\n+\n{4}\n".format(i, chr_id, transcript_id, read, "I"*len(read)))
+        outfile.write("@{0}_{1}_{2}\n{3}\n+\n{4}\n".format(i, chr_id, transcript_id, read, "I"*len(read)))
     outfile.close()
 
 

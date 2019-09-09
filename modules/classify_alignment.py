@@ -15,7 +15,7 @@ def contains(sub, pri):
 def main(chr_id, predicted_exons, predicted_transcript, exons_to_transcripts, parts_to_transcript_annotations, transcripts_to_parts_annotations, all_parts_pairs_annotations, all_part_sites_annotations):
 
     # FSM
-    transcripts = ''
+    transcript = ''
     if tuple(predicted_transcript) in parts_to_transcript_annotations[chr_id]:
         transcript = ",".join( tr for tr in parts_to_transcript_annotations[chr_id][tuple(predicted_transcript)])
         print()
