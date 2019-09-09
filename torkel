@@ -120,7 +120,7 @@ def align_reads(args):
             #     print(read_seq, solution, value)
             #     sys.exit()
 
-            if value > len(read_seq) * 0.8:
+            if value > len(read_seq) * 0.2:
                 print(read_acc, "alignment to:", chr_id, "best solution val:", value , solution)
                 chained_parts_seq = []
                 chained_parts_ids = []
@@ -202,6 +202,9 @@ def align_reads(args):
                     # sys.exit()
 
                 sam_output.main(read_acc, chr_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, alignment_outfile)
+
+            else: 
+                sam_output.main(read_acc, '*', 'unaligned', predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, alignment_outfile)
 
                 # Write alignment to SAM file
 
