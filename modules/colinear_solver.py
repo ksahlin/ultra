@@ -21,7 +21,7 @@ def traceback(index, C):
 
     return 
 
-def main(mems):
+def read_coverage(mems):
     """
         Algorithm 15.1 in Genome scale algorithmic design, Makinen et al.
 
@@ -107,6 +107,11 @@ def main(mems):
     # print("Solution:", solution[::-1])
     return solution[::-1], value, unique
     # traceback(C, best_solution_index)
+
+
+
+
+
 
 
 if __name__ == '__main__':

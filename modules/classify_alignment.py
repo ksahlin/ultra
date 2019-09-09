@@ -15,16 +15,19 @@ def contains(sub, pri):
 def main(chr_id, predicted_exons, predicted_transcript, exons_to_transcripts, parts_to_transcript_annotations, transcripts_to_parts_annotations, all_parts_pairs_annotations, all_part_sites_annotations):
 
     # FSM
+    transcripts = ''
     if tuple(predicted_transcript) in parts_to_transcript_annotations[chr_id]:
+        transcript = ",".join( tr for tr in parts_to_transcript_annotations[chr_id][tuple(predicted_transcript)])
         print()
-        print('Found, FSM to:', parts_to_transcript_annotations[chr_id][tuple(predicted_transcript)])
+        print('Found, FSM to:', transcript)
         print()
-        return "FSM"
+        return "FSM", transcript
     elif tuple(predicted_exons) in exons_to_transcripts[chr_id]:
+        transcript = ",".join( tr for tr in exons_to_transcripts[chr_id][tuple(predicted_exons)])  
         print()
-        print('Found, FSM but not classified by parts to:', exons_to_transcripts[chr_id][tuple(predicted_exons)])
+        print('Found, FSM but not classified by parts to:', transcript)
         print()
-        return "FSM"       
+        return "FSM", transcript
 
     # else:
 
@@ -39,10 +42,11 @@ def main(chr_id, predicted_exons, predicted_transcript, exons_to_transcripts, pa
     # print(in_all_pairs)
     # print(predicted_transcript)
     for transcript_id in in_all_pairs:
-        transcript = transcripts_to_parts_annotations[chr_id][transcript_id]
-        if contains(predicted_transcript, transcript):
+        transcript_parts = transcripts_to_parts_annotations[chr_id][transcript_id]
+        if contains(predicted_transcript, transcript_parts):
             # print("Found, ISM to", transcript_id )
-            return "ISM"
+            transcript = transcript_id
+            return "ISM", transcript
         else:
             print(predicted_transcript, transcript)
 
@@ -75,13 +79,13 @@ def main(chr_id, predicted_exons, predicted_transcript, exons_to_transcripts, pa
             print()             
             for ann_tr in parts_to_transcript_annotations[chr_id]:
                 print(parts_to_transcript_annotations[chr_id][ann_tr] ,ann_tr)
-            return  "NIC_comb"
+            return  "NIC_comb", transcript
 
         else:
             print()
             print('Found, NIC (new donor-acceptor pair):', tuple(predicted_transcript) )
             print()   
-            return   "NIC_novel"          
+            return   "NIC_novel", transcript          
     # else:
     #     print('Did not find NIC', predicted_transcript)
 
@@ -89,4 +93,4 @@ def main(chr_id, predicted_exons, predicted_transcript, exons_to_transcripts, pa
     print()
     print('NNC:', tuple(predicted_transcript) )
     print()       
-    return "NNC" 
+    return "NNC", transcript
