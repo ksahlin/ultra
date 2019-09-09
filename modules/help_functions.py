@@ -83,7 +83,7 @@ def cigar_to_seq(cigar, query, ref):
             print(cigar)
             sys.exit()
 
-    return  "".join([s for s in q_aln]), "".join([s for s in r_aln])
+    return  "".join([s for s in q_aln]), "".join([s for s in r_aln]), cigar_tuples
 
 
 # def edlib_alignment(read_seq, ref_seq):
@@ -108,8 +108,8 @@ def parasail_alignment(s1, s2, match_score = 2, mismatch_penalty = -2, opening_p
     else:
         cigar_string = str(result.cigar.decode, 'utf-8')
     
-    s1_alignment, s2_alignment = cigar_to_seq(cigar_string, s1, s2)
-    return s1_alignment, s2_alignment
+    s1_alignment, s2_alignment, cigar_tuples = cigar_to_seq(cigar_string, s1, s2)
+    return s1_alignment, s2_alignment, cigar_string, cigar_tuples
 
     # # Rolling window of matching blocks
     # match_vector = [ 1 if n1 == n2 else 0 for n1, n2 in zip(s1_alignment, s2_alignment) ]    

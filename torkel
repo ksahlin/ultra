@@ -13,7 +13,7 @@ import math
 # import pickle
 import dill as pickle 
 import gffutils
-
+import pysam
 
 from collections import defaultdict
 
@@ -25,6 +25,7 @@ from modules import colinear_solver
 from modules import graph_chainer 
 from modules import help_functions
 from modules import classify_alignment
+from modules import sam_output
 
 
 def pickle_dump(data, filename):
@@ -96,7 +97,10 @@ def align_reads(args):
     mems  = mummer_wrapper.parse_results(args.outfolder)
 
     reads = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r'))}
-
+    
+    refs = { acc : len(seq) for acc, (seq, qual) in help_functions.readfq(open(args.ref, 'r'))} 
+    alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, "torkel.sam"), "w", reference_names=list(refs.keys()), reference_lengths=list(refs.values()) ) #, template=samfile)
+    print(alignment_outfile.header)
     # print(mems)
     # print(refs_sequences)
     # print(parts_to_exons)
@@ -108,7 +112,7 @@ def align_reads(args):
         print(read_acc)
 
         for chr_id in mems[read_acc]:
-            solution, value, unique = colinear_solver.main(mems[read_acc][chr_id])
+            solution, value, unique = colinear_solver.read_coverage(mems[read_acc][chr_id])
             # print(exons_to_transcripts)
             # check if matches previous annotation here!
             read_seq = reads[read_acc]
@@ -152,11 +156,12 @@ def align_reads(args):
                 print(predicted_exons)
 
 
-                read_aln, ref_aln = help_functions.parasail_alignment(read_seq, created_ref_seq)
+                read_aln, ref_aln, cigar_string, cigar_tuples = help_functions.parasail_alignment(read_seq, created_ref_seq)
                 # print('read', read_seq)
                 # print('ref',created_ref_seq)
                 print(read_aln)
                 print(ref_aln, tuple( mem.exon_part_id for mem in solution))
+                print(cigar_string)
                 print(read_aln == ref_aln)
                 # print([parts_to_exons[ mem.exon_part_id] for mem in solution])
                 print(chained_parts_ids)
@@ -179,7 +184,7 @@ def align_reads(args):
                 # Need larger size of blocks in case mems are not found for the exact 20bp stretch..
                 # Maybe a second pass mem finding of reads to only the smallest parts using a smaller minimum mem size
 
-                classification = classify_alignment.main(chr_id, predicted_exons, predicted_transcript, exons_to_transcripts, parts_to_transcript_annotations, transcripts_to_parts_annotations, all_parts_pairs_annotations, all_part_sites_annotations)
+                classification, annotated_to_transcript_id = classify_alignment.main(chr_id, predicted_exons, predicted_transcript, exons_to_transcripts, parts_to_transcript_annotations, transcripts_to_parts_annotations, all_parts_pairs_annotations, all_part_sites_annotations)
                 classifications[read_acc] = (classification, value / float(len(read_seq)))
                 print(classification)
                 if classification == 'NIC_comb':
@@ -196,6 +201,8 @@ def align_reads(args):
                     print(solution)
                     # sys.exit()
 
+                sam_output.main(read_acc, chr_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, alignment_outfile)
+
                 # Write alignment to SAM file
 
             # if read_acc == 'read_several_optimal_matchings_1001_1186_1469_1534':
@@ -204,6 +211,8 @@ def align_reads(args):
                 # check_if_present_in_database(solution, parts_to_transcript_annotations[chr_id])
 
             # parasail_align_to_best(read, concatenated_exon_parts)
+
+    alignment_outfile.close()
 
     print(classifications)
     counts = defaultdict(int)
@@ -216,6 +225,8 @@ def align_reads(args):
 
         if read_acc in classifications:
             alignment_coverage += classifications[read_acc][1]
+            if classifications[read_acc][1] < 1.0:
+                print(read_acc, 'alignemnt coverage:', classifications[read_acc][1])
         
         counts[classifications[read_acc][0]] += 1
 

@@ -61,7 +61,7 @@ def create_graph_from_exon_parts(db, min_mem):
             elif p1[1] == 'start':
                 active_exons =  active_exons | set(chord_to_exon[p1[0]])
             
-            # if p1[0] == 4056:
+            # if p1[0] == 11122 or p2[0] == 11153:
             #     print(p1, p2)
             #     print(all_starts_and_stops2)
             #     sys.exit()
@@ -98,7 +98,7 @@ def create_graph_from_exon_parts(db, min_mem):
                             print("Tackle this!! HERE")
 
                             if tightest_bound_downstream - p2[0] > min_mem - part_length: # enough room to extend
-                                parts_to_exons_for_gene[(p1[0], p2[0] + (min_mem - part_length))] = active_starts_only # | active_both_directions
+                                parts_to_exons_for_gene[(p1[0], p2[0] + (min_mem - part_length))] = active_starts_only  | active_both_directions
                                 print("MANAGED downstream!")
                                 # sys.exit()
 
@@ -109,21 +109,22 @@ def create_graph_from_exon_parts(db, min_mem):
                             print(p1,p2, tightest_bound_upstream)
 
                             if p1[0] - tightest_bound_upstream > min_mem - part_length: # enough room to extend
-                                parts_to_exons_for_gene[(p1[0] - (min_mem - part_length), p2[0])] = active_stops_only # | active_both_directions
+                                parts_to_exons_for_gene[(p1[0] - (min_mem - part_length), p2[0])] = active_stops_only  | active_both_directions
                                 print("MANAGED upstream!", (p1[0] - (min_mem - part_length), p2[0]))
                                 # sys.exit()
                         
-                        if active_both_directions:
-                            e_ids = [e_id for e_id in active_both_directions ]
-                            tightest_bound_downstream = min([ exon_to_chord[e_id][1] for e_id in e_ids])
-                            tightest_bound_upstream = max([ exon_to_chord[e_id][0] for e_id in e_ids])
+                        # if active_both_directions:
+                        #     e_ids = [e_id for e_id in active_both_directions ]
+                        #     tightest_bound_downstream = min([ exon_to_chord[e_id][1] for e_id in e_ids])
+                        #     tightest_bound_upstream = max([ exon_to_chord[e_id][0] for e_id in e_ids])
 
-                            if (tightest_bound_downstream - p2[0]) + (p1[0] - tightest_bound_upstream) > min_mem - part_length: # enough room to extend
-                                parts_to_exons_for_gene[(p1[0] - (min_mem - part_length), p2[0] + (min_mem - part_length))] =  active_both_directions
+                        #     if (tightest_bound_downstream - p2[0]) + (p1[0] - tightest_bound_upstream) > min_mem - part_length: # enough room to extend
+                        #         parts_to_exons_for_gene[(p1[0] - (min_mem - part_length), p2[0] + (min_mem - part_length))] =  active_both_directions
                 
-                            # if p1[0] == 1962 or p2[0] ==  1983:
-                            #     print(p1, p2, active_exons)
-                            #     sys.exit()
+                        # if (p1[0] - (min_mem - part_length), p2[0] + (min_mem - part_length)) == (11122, 11153):
+                        #     print('looool',p1, p2, active_exons)
+                        #     print(exon_to_chord)
+                        #     sys.exit()
 
                         if active_start_and_stop:
                             print("DIDN'T MANAGE!", p1[0], p2[0], )
