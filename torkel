@@ -231,7 +231,9 @@ def align_reads(args):
             if classifications[read_acc][1] < 1.0:
                 print(read_acc, 'alignemnt coverage:', classifications[read_acc][1])
         
-        counts[classifications[read_acc][0]] += 1
+            counts[classifications[read_acc][0]] += 1
+        else:
+            counts['unaligned'] += 1
 
 
     print(counts)

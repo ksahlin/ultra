@@ -96,7 +96,7 @@ def cigar_to_seq(cigar, query, ref):
 
 def parasail_alignment(s1, s2, match_score = 2, mismatch_penalty = -2, opening_penalty = 5, gap_ext = 1):
     user_matrix = parasail.matrix_create("ACGT", match_score, mismatch_penalty)
-    result = parasail.sg_trace_scan_16(s1, s2, opening_penalty, gap_ext, user_matrix)
+    result = parasail.nw_trace_scan_16(s1, s2, opening_penalty, gap_ext, user_matrix)
     if result.saturated:
         print("SATURATED!",len(s1), len(s2))
         result = parasail.sg_trace_scan_32(s1, s2, opening_penalty, gap_ext, user_matrix)
