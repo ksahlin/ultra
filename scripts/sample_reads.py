@@ -74,7 +74,11 @@ def main(args):
         print("sampled", chr_id, transcript_id)
         transcript = annotated_transcripts[chr_id][transcript_id]
         read = "".join([refs[chr_id][start:stop] for start,stop in transcript])
-        outfile.write("@{0}_{1}_{2}\n{3}\n+\n{4}\n".format(i, chr_id, transcript_id, read, "I"*len(read)))
+        if args.fastq:
+            outfile.write("@{0}_{1}_{2}\n{3}\n+\n{4}\n".format(i, chr_id, transcript_id, read, "I"*len(read)))
+        else:
+            outfile.write(">{0}_{1}_{2}\n{3}\n".format(i, chr_id, transcript_id, read))
+
     outfile.close()
 
 
@@ -84,6 +88,7 @@ if __name__ == '__main__':
     parser.add_argument('gff_file', type=str, help='Path to the refs file')
     parser.add_argument('outfile', type=str, help='Output path of results')
     parser.add_argument('--nr_reads', type=int, default=100, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
+    parser.add_argument('--fastq', action='store_true', help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
 
     args = parser.parse_args()
 
