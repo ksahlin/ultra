@@ -18,7 +18,7 @@ def create_graph_from_exon_parts(db, min_mem):
     genes_to_ref = {} # gene_id : { (exon_start, exon_stop) : set() }
     parts_to_exons = {}
     exon_choordinates = {}
-    exons_to_transcripts = defaultdict(dict)
+    splices_to_transcripts = defaultdict(dict)
     parts_to_transcript_annotations = defaultdict(lambda: defaultdict(set))
     transcripts_to_parts_annotations = defaultdict(lambda: defaultdict(set))
     all_parts_pairs_annotations = defaultdict(lambda: defaultdict(set))
@@ -30,7 +30,7 @@ def create_graph_from_exon_parts(db, min_mem):
         genes_to_ref[gene.id] = str(gene.seqid)
         exon_choordinates[str(gene.seqid)] = {}
         # parts_to_exons[gene.id] = defaultdict(set)
-        # exons_to_transcripts[gene.seqid] = {}
+        # splices_to_transcripts[gene.seqid] = {}
         parts_to_exons_for_gene = {}        
         #add nodes
         exons = [exon for exon in db.children(gene, featuretype='exon', order_by='start') ]
@@ -205,7 +205,7 @@ def create_graph_from_exon_parts(db, min_mem):
         parts_to_exons[gene.id] = parts_to_exons_for_gene
 
         # for exon in db.children(gene, featuretype='exon', order_by='start'):
-        #     exons_to_transcripts[gene.id][ (exon.start, exon.stop) ].update([ transcript_tmp for transcript_tmp in  exon.attributes['transcript_id']])
+        #     splices_to_transcripts[gene.id][ (exon.start, exon.stop) ].update([ transcript_tmp for transcript_tmp in  exon.attributes['transcript_id']])
 
         # for transcript in db.children(gene, featuretype='transcript', order_by='start'):
         #     annotated_transcripts[gene.seqid].add( tuple( '_'.join([str(item) for item in (gene.seqid, exon.start, exon.stop)]) for exon in db.children(transcript, featuretype='exon', order_by='start') ) )
@@ -217,7 +217,9 @@ def create_graph_from_exon_parts(db, min_mem):
                 transcript_parts +=  exons_to_parts[exon.id]
                 transcript_exons.append( (exon.start-1, exon.stop) )
 
-            exons_to_transcripts[gene.seqid][ tuple(transcript_exons)] = transcript.id
+            transcript_splices = [ (e1[1],e2[0]) for e1, e2 in zip(transcript_exons[:-1],transcript_exons[1:])]
+
+            splices_to_transcripts[gene.seqid][ tuple(transcript_splices)] = transcript.id
             parts_to_transcript_annotations[gene.seqid][ tuple(transcript_parts) ].add(  transcript.id )
             transcripts_to_parts_annotations[gene.seqid][ transcript.id ].add( tuple(transcript_parts)  )
             for part_start, part_stop in transcript_parts:
@@ -229,8 +231,8 @@ def create_graph_from_exon_parts(db, min_mem):
 
     # sys.exit()
 
-    # print(exons_to_transcripts)
-    return  genes_to_ref, parts_to_exons, exons_to_transcripts, parts_to_transcript_annotations, transcripts_to_parts_annotations,  all_parts_pairs_annotations, all_part_sites_annotations,exon_choordinates #annotated_transcripts
+    # print(splices_to_transcripts)
+    return  genes_to_ref, parts_to_exons, splices_to_transcripts, parts_to_transcript_annotations, transcripts_to_parts_annotations,  all_parts_pairs_annotations, all_part_sites_annotations,exon_choordinates #annotated_transcripts
 
 
 
