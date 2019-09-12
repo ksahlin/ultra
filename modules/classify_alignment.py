@@ -12,7 +12,7 @@ def contains(sub, pri):
         else:
             i = found+1
 
-def main(chr_id, predicted_exons, predicted_transcript, exons_to_transcripts, parts_to_transcript_annotations, transcripts_to_parts_annotations, all_parts_pairs_annotations, all_part_sites_annotations):
+def main(chr_id, predicted_splices, predicted_transcript, splices_to_transcripts, parts_to_transcript_annotations, transcripts_to_parts_annotations, all_parts_pairs_annotations, all_part_sites_annotations):
 
     # FSM
     transcript = ''
@@ -22,8 +22,8 @@ def main(chr_id, predicted_exons, predicted_transcript, exons_to_transcripts, pa
         print('Found, FSM to:', transcript)
         print()
         return "FSM", transcript
-    elif tuple(predicted_exons) in exons_to_transcripts[chr_id]:
-        transcript = ",".join( tr for tr in exons_to_transcripts[chr_id][tuple(predicted_exons)])  
+    elif tuple(predicted_splices) in splices_to_transcripts[chr_id]:
+        transcript = ",".join( tr for tr in splices_to_transcripts[chr_id][tuple(predicted_splices)])  
         print()
         print('Found, FSM but not classified by parts to:', transcript)
         print()
@@ -77,8 +77,11 @@ def main(chr_id, predicted_exons, predicted_transcript, exons_to_transcripts, pa
             print()
             print('Found, NIC (new combination of exons):', tuple(predicted_transcript) )
             print()             
-            for ann_tr in parts_to_transcript_annotations[chr_id]:
-                print(parts_to_transcript_annotations[chr_id][ann_tr] ,ann_tr)
+            # for ann_tr in parts_to_transcript_annotations[chr_id]:
+            #     print(parts_to_transcript_annotations[chr_id][ann_tr] ,ann_tr)
+            for ann_tr in splices_to_transcripts[chr_id]:
+                print(splices_to_transcripts[chr_id][ann_tr] ,ann_tr)
+
             return  "NIC_comb", transcript
 
         else:

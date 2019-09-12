@@ -47,10 +47,10 @@ def construct_graph(args):
     db = gffutils.create_db(fn, dbfn='test.db', force=True, keep_order=True, merge_strategy='merge', sort_attribute_values=True)
     db = gffutils.FeatureDB('test.db', keep_order=True)
 
-    genes_to_ref, parts_to_exons, exons_to_transcripts, parts_to_transcript_annotations, transcripts_to_parts_annotations,  all_parts_pairs_annotations, all_part_sites_annotations, exon_choordinates = parts_graph.create_graph_from_exon_parts(db, args.min_mem )
+    genes_to_ref, parts_to_exons, splices_to_transcripts, parts_to_transcript_annotations, transcripts_to_parts_annotations,  all_parts_pairs_annotations, all_part_sites_annotations, exon_choordinates = parts_graph.create_graph_from_exon_parts(db, args.min_mem )
     refs_sequences = parts_graph.get_sequences_from_choordinates(parts_to_exons, genes_to_ref, args.ref)
 
-    # gene_graphs, exons_to_transcripts, annotated_transcripts = splice_graph.create_graph(db)
+    # gene_graphs, splices_to_transcripts, annotated_transcripts = splice_graph.create_graph(db)
     # topological_sorts = splice_graph.create_global_source_sink(gene_graphs)    
     # paths = splice_graph.derive_path_cover(gene_graphs, topological_sorts)
     # refs_sequences = splice_graph.get_sequences_from_choordinates(gene_graphs, args.ref)
@@ -63,13 +63,13 @@ def construct_graph(args):
     pickle_dump(parts_to_transcript_annotations, 'parts_to_transcript_annotations.pickle')
     pickle_dump(transcripts_to_parts_annotations, 'transcripts_to_parts_annotations.pickle')
     pickle_dump(refs_sequences, 'refs_sequences.pickle')
-    pickle_dump(exons_to_transcripts, 'exons_to_transcripts.pickle')
+    pickle_dump(splices_to_transcripts, 'splices_to_transcripts.pickle')
     pickle_dump(parts_to_exons, 'parts_to_exons.pickle')
     pickle_dump(all_parts_pairs_annotations, 'all_parts_pairs_annotations.pickle')
     pickle_dump(all_part_sites_annotations, 'all_part_sites_annotations.pickle')
 
 
-# def check_if_present_in_database(solution, exons_to_transcripts):
+# def check_if_present_in_database(solution, splices_to_transcripts):
 #     for mem in solution:
 #         pass
 
@@ -87,7 +87,7 @@ def align_reads(args):
     exon_choordinates = pickle_load( os.path.join(args.outfolder, 'exon_choordinates.pickle') )
 
     refs_sequences = pickle_load( os.path.join(args.outfolder, 'refs_sequences.pickle') )
-    exons_to_transcripts = pickle_load( os.path.join(args.outfolder, 'exons_to_transcripts.pickle') )
+    splices_to_transcripts = pickle_load( os.path.join(args.outfolder, 'splices_to_transcripts.pickle') )
     parts_to_transcript_annotations = pickle_load( os.path.join(args.outfolder, 'parts_to_transcript_annotations.pickle') )
     transcripts_to_parts_annotations = pickle_load( os.path.join(args.outfolder, 'transcripts_to_parts_annotations.pickle') )
     all_parts_pairs_annotations = pickle_load( os.path.join(args.outfolder, 'all_parts_pairs_annotations.pickle') )
@@ -113,7 +113,7 @@ def align_reads(args):
 
         for chr_id in mems[read_acc]:
             solution, value, unique = colinear_solver.read_coverage(mems[read_acc][chr_id])
-            # print(exons_to_transcripts)
+            # print(splices_to_transcripts)
             # check if matches previous annotation here!
             read_seq = reads[read_acc]
             # if read_seq == '76_SIRV4_SIRV406':
@@ -153,7 +153,10 @@ def align_reads(args):
                 # print( "predicted:", predicted_transcript)
                 print(predicted_exons)
                 predicted_exons = [ (e1[1],e2[0]) for (e1, e2) in zip(predicted_exons[:-1], predicted_exons[1:] )]
+                predicted_splices = [ (e1[1],e2[0]) for e1, e2 in zip(predicted_exons[:-1],predicted_exons[1:])]
+
                 print(predicted_exons)
+                print(predicted_splices)
 
 
                 read_aln, ref_aln, cigar_string, cigar_tuples = help_functions.parasail_alignment(read_seq, created_ref_seq)
@@ -184,7 +187,7 @@ def align_reads(args):
                 # Need larger size of blocks in case mems are not found for the exact 20bp stretch..
                 # Maybe a second pass mem finding of reads to only the smallest parts using a smaller minimum mem size
 
-                classification, annotated_to_transcript_id = classify_alignment.main(chr_id, predicted_exons, predicted_transcript, exons_to_transcripts, parts_to_transcript_annotations, transcripts_to_parts_annotations, all_parts_pairs_annotations, all_part_sites_annotations)
+                classification, annotated_to_transcript_id = classify_alignment.main(chr_id, predicted_splices, predicted_transcript, splices_to_transcripts, parts_to_transcript_annotations, transcripts_to_parts_annotations, all_parts_pairs_annotations, all_part_sites_annotations)
                 classifications[read_acc] = (classification, value / float(len(read_seq)))
                 print(classification)
                 if classification == 'NIC_comb':
@@ -192,8 +195,9 @@ def align_reads(args):
                     print(solution)
                     print(parts_to_exons[ref_chr_id])
                     print(predicted_exons)
-                    print(chr_id, exons_to_transcripts[chr_id])
-                    print( tuple(predicted_exons) in exons_to_transcripts[chr_id])
+                    print(predicted_splices)
+                    print(chr_id, splices_to_transcripts[chr_id])
+                    print( tuple(predicted_splices) in splices_to_transcripts[chr_id])
                     print(transcripts_to_parts_annotations[chr_id]['SIRV308'])
                     # sys.exit()
                 elif classification == 'FSM':
