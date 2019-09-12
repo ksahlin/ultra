@@ -268,7 +268,7 @@ if __name__ == '__main__':
     pipeline_parser.add_argument('gff', type=str, help='Path to gff or gtf file with gene models.')
     pipeline_parser.add_argument('ref', type=str, help='Reference genome (fasta)')
     pipeline_parser.add_argument('reads', type=str, help='Path to fasta/fastq file with reads.')
-    pipeline_parser.add_argument('--min_mem', type=int, default=20, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
+    pipeline_parser.add_argument('--min_mem', type=int, default=16, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
     pipeline_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
     # pipeline_parser.add_argument('--pickle', action='store_true', help='Store the graph on file.')
     pipeline_parser.set_defaults(which='pipeline')
@@ -277,7 +277,7 @@ if __name__ == '__main__':
     construct_graph_parser.add_argument('gff', type=str, help='Path to gff or gtf file with gene models.')
     construct_graph_parser.add_argument('ref', type=str, help='Reference genome (fasta)')
     construct_graph_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
-    construct_graph_parser.add_argument('--min_mem', type=int, default=20, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
+    construct_graph_parser.add_argument('--min_mem', type=int, default=16, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
     # construct_graph_parser.add_argument('--pickle', action='store_true', help='Store the graph on file.')
     construct_graph_parser.set_defaults(which='construct_graph')
 
@@ -285,7 +285,7 @@ if __name__ == '__main__':
     align_reads_parser.add_argument('refs', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')    
     align_reads_parser.add_argument('reads', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
     align_reads_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')   
-    align_reads_parser.add_argument('--min_mem', type=int, default=20, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
+    align_reads_parser.add_argument('--min_mem', type=int, default=16, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
 
 
     align_reads_parser.set_defaults(which='align_reads')
