@@ -1,0 +1,303 @@
+#! /usr/bin/env python
+from __future__ import print_function
+
+import os
+import sys
+import os
+
+import itertools
+import argparse
+import errno
+import math
+
+# import pickle
+import dill as pickle 
+import gffutils
+import pysam
+
+from collections import defaultdict
+
+
+from modules import create_splice_graph as splice_graph
+from modules import create_augmented_gene as augmented_gene 
+from modules import mummer_wrapper 
+from modules import colinear_solver 
+from modules import graph_chainer 
+from modules import help_functions
+from modules import classify_read_with_mams
+from modules import sam_output
+
+
+def pickle_dump(data, filename):
+    with open(os.path.join(args.outfolder,filename), 'wb') as f:
+        # Pickle the 'data' dictionary using the highest protocol available.
+        pickle.dump(data, f, pickle.HIGHEST_PROTOCOL)
+
+
+def pickle_load(filename):
+    with open(filename, 'rb') as f:
+        # The protocol version used is detected automatically, so we do not
+        # have to specify it.
+        data = pickle.load(f)
+    return data
+
+
+def construct_graph(args):
+    fn = gffutils.example_filename(args.gff)
+    db = gffutils.create_db(fn, dbfn='test.db', force=True, keep_order=True, merge_strategy='merge', sort_attribute_values=True)
+    db = gffutils.FeatureDB('test.db', keep_order=True)
+
+    genes_to_ref, parts_to_exons, splices_to_transcripts, parts_to_transcript_annotations, transcripts_to_parts_annotations,  all_parts_pairs_annotations, all_part_sites_annotations, exon_id_to_choordinates = augmented_gene.create_graph_from_exon_parts(db, args.min_mem )
+    refs_sequences = augmented_gene.get_sequences_from_choordinates(parts_to_exons, genes_to_ref, args.ref)
+
+    # gene_graphs, splices_to_transcripts, annotated_transcripts = splice_graph.create_graph(db)
+    # topological_sorts = splice_graph.create_global_source_sink(gene_graphs)    
+    # paths = splice_graph.derive_path_cover(gene_graphs, topological_sorts)
+    # refs_sequences = splice_graph.get_sequences_from_choordinates(gene_graphs, args.ref)
+    # pickle_dump(topological_sorts, 'top_sorts.pickle')
+    # pickle_dump(paths, 'paths.pickle')
+
+    # dump to pickle here! Both graph and reference seqs
+    pickle_dump(genes_to_ref, 'genes_to_ref.pickle')
+    pickle_dump(exon_id_to_choordinates, 'exon_id_to_choordinates.pickle')
+    pickle_dump(parts_to_transcript_annotations, 'parts_to_transcript_annotations.pickle')
+    pickle_dump(transcripts_to_parts_annotations, 'transcripts_to_parts_annotations.pickle')
+    pickle_dump(refs_sequences, 'refs_sequences.pickle')
+    pickle_dump(splices_to_transcripts, 'splices_to_transcripts.pickle')
+    pickle_dump(parts_to_exons, 'parts_to_exons.pickle')
+    pickle_dump(all_parts_pairs_annotations, 'all_parts_pairs_annotations.pickle')
+    pickle_dump(all_part_sites_annotations, 'all_part_sites_annotations.pickle')
+
+
+# def check_if_present_in_database(solution, splices_to_transcripts):
+#     for mem in solution:
+#         pass
+
+
+
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
+def align_reads(args):
+    # topological_sorts = pickle_load( os.path.join(args.outfolder, 'top_sorts.pickle') )
+    # path_covers = pickle_load( os.path.join(args.outfolder, 'paths.pickle') )
+
+    genes_to_ref = pickle_load( os.path.join(args.outfolder, 'genes_to_ref.pickle') )
+    parts_to_exons = pickle_load( os.path.join(args.outfolder, 'parts_to_exons.pickle') )
+    exon_id_to_choordinates = pickle_load( os.path.join(args.outfolder, 'exon_id_to_choordinates.pickle') )
+
+    refs_sequences = pickle_load( os.path.join(args.outfolder, 'refs_sequences.pickle') )
+    splices_to_transcripts = pickle_load( os.path.join(args.outfolder, 'splices_to_transcripts.pickle') )
+    parts_to_transcript_annotations = pickle_load( os.path.join(args.outfolder, 'parts_to_transcript_annotations.pickle') )
+    transcripts_to_parts_annotations = pickle_load( os.path.join(args.outfolder, 'transcripts_to_parts_annotations.pickle') )
+    all_parts_pairs_annotations = pickle_load( os.path.join(args.outfolder, 'all_parts_pairs_annotations.pickle') )
+    all_part_sites_annotations = pickle_load( os.path.join(args.outfolder, 'all_part_sites_annotations.pickle') )
+
+    mummer_wrapper.find_mems(refs_sequences, args.reads, args.outfolder, args.min_mem)
+    mems  = mummer_wrapper.parse_results(args.outfolder)
+
+    reads = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r'))}
+    
+    refs = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.ref, 'r'))} 
+    refs_lengths = { acc : len(seq) for acc, seq in refs.items()} 
+    alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, "torkel.sam"), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
+    print(alignment_outfile.header)
+    # print(mems)
+    # print(refs_sequences)
+    # print(parts_to_exons)
+    # print(parts_to_transcript_annotations)
+    # print(all_parts_pairs_annotations)
+    classifications = defaultdict(str)
+    for read_acc in mems:
+        print()
+        print(read_acc)
+
+        for chr_id in mems[read_acc]:
+            solution, value, unique = colinear_solver.read_coverage(mems[read_acc][chr_id])
+            # print(splices_to_transcripts)
+            # check if matches previous annotation here!
+            read_seq = reads[read_acc]
+
+            print(len(read_seq))
+
+            # if read_seq == '76_SIRV4_SIRV406':
+            #     print(read_seq, solution, value)
+            #     sys.exit()
+
+            if value > len(read_seq) * 0.7:
+                print(read_acc, "alignment to:", chr_id, "best solution val:", value , solution)
+
+                # classification, annotated_to_transcript_id =  classify_read_with_mams.main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq)
+
+                # chained_parts_seq = []
+                # chained_parts_ids = []
+                # prev_ref_stop = -1
+                # predicted_transcript = []
+                # predicted_exons = []
+                # for mem in solution:
+                #     ref_chr_id, ref_start, ref_stop =  mem.exon_part_id.split('_')
+                #     ref_start, ref_stop = int(ref_start), int(ref_stop)
+                #     predicted_transcript.append( (ref_start, ref_stop) )
+                #     # print("lll",ref_chr_id, ref_start, ref_stop)
+                #     seq = refs_sequences[ref_chr_id][(ref_start, ref_stop)]
+                #     if ref_start < prev_ref_stop:
+                #         chained_parts_seq.append(seq[prev_ref_stop - ref_start: ])
+                #     else:
+                #         chained_parts_seq.append(seq)
+
+                #     if ref_start > prev_ref_stop + 1 : # new separate exon on the genome
+                #         chained_parts_ids.append(parts_to_exons[ref_chr_id][ (ref_start, ref_stop)])
+                #         predicted_exons.append((prev_ref_stop, ref_start))
+                #     else: # part of an exon
+                #         chained_parts_ids[-1] = chained_parts_ids[-1] ^ parts_to_exons[ref_chr_id][(ref_start, ref_stop)]  #here we get mora annotations than we want , need a function to check that an exon has all parts covered!
+
+                #     prev_ref_stop = ref_stop
+
+                # predicted_exons.append((prev_ref_stop, -1))
+
+                # created_ref_seq = "".join([part for part in chained_parts_seq])
+                # # predicted_transcript = tuple( mem.exon_part_id for mem in solution)
+                # # print( "predicted:", predicted_transcript)
+                # print(predicted_exons)
+                # predicted_exons = [ (e1[1],e2[0]) for (e1, e2) in zip(predicted_exons[:-1], predicted_exons[1:] )]
+                # predicted_splices = [ (e1[1],e2[0]) for e1, e2 in zip(predicted_exons[:-1],predicted_exons[1:])]
+
+                # print(predicted_exons)
+                # print(predicted_splices)
+
+
+                # read_aln, ref_aln, cigar_string, cigar_tuples = help_functions.parasail_alignment(read_seq, created_ref_seq)
+                # # print('read', read_seq)
+                # # print('ref',created_ref_seq)
+                # print(read_aln)
+                # print(ref_aln, tuple( mem.exon_part_id for mem in solution))
+                # print(cigar_string)
+                # print(read_aln == ref_aln)
+                # # print([parts_to_exons[ mem.exon_part_id] for mem in solution])
+                # print(chained_parts_ids)
+
+
+
+            #     classification, annotated_to_transcript_id = classify_alignment.main(chr_id, predicted_splices, predicted_transcript, splices_to_transcripts, parts_to_transcript_annotations, transcripts_to_parts_annotations, all_parts_pairs_annotations, all_part_sites_annotations)
+            #     classifications[read_acc] = (classification, value / float(len(read_seq)))
+            #     print(classification)
+            #     if classification == 'NIC_comb':
+            #         eprint(read_acc, 'NIC_comb unique solution:', unique)
+            #         print(solution)
+            #         print(parts_to_exons[ref_chr_id])
+            #         print(predicted_exons)
+            #         print(predicted_splices)
+            #         print(chr_id, splices_to_transcripts[chr_id])
+            #         print( tuple(predicted_splices) in splices_to_transcripts[chr_id])
+            #         print(transcripts_to_parts_annotations[chr_id]['SIRV308'])
+            #         # sys.exit()
+            #     elif classification == 'FSM':
+            #         eprint('FSM unique solution:', unique)
+            #         print(solution)
+            #         # sys.exit()
+
+            #     sam_output.main(read_acc, chr_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, alignment_outfile)
+
+            # else: 
+            #     sam_output.main(read_acc, '*', 'unaligned', predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, alignment_outfile)
+
+                # Write alignment to SAM file
+
+            # if read_acc == 'read_several_optimal_matchings_1001_1186_1469_1534':
+            #     sys.exit()
+
+                # check_if_present_in_database(solution, parts_to_transcript_annotations[chr_id])
+
+            # parasail_align_to_best(read, concatenated_exon_parts)
+
+    alignment_outfile.close()
+
+    print(classifications)
+    counts = defaultdict(int)
+    alignment_coverage = 0
+    for read_acc in reads:
+        if read_acc not in classifications:
+            print(read_acc, "did not meet the threshold")
+        elif classifications[read_acc][0] != 'FSM':
+            print(read_acc, classifications[read_acc]) 
+
+        if read_acc in classifications:
+            alignment_coverage += classifications[read_acc][1]
+            if classifications[read_acc][1] < 1.0:
+                print(read_acc, 'alignemnt coverage:', classifications[read_acc][1])
+        
+            counts[classifications[read_acc][0]] += 1
+        else:
+            counts['unaligned'] += 1
+
+
+    print(counts)
+    print("total alignmenrt coverage:", alignment_coverage)
+    # for gene_id in gene_graphs:
+    #     gene_graph = gene_graphs[gene_id]
+    #     topological_sort = topological_sorts[gene_id]
+    #     path_cover = path_covers[gene_id]
+    #     graph_chainer.calc_last2reach(gene_graph, path_cover, topological_sort)
+    #     sys.exit()
+    # non_redundant_segments = splice_graph.collapse_identical_for_mumer(exon_db)
+
+    # exon_db = parse_tsv()
+    # graph = create_graph()
+    # graph_top_sorted_order = top_sort_graph()
+    # hits = run_mummer(non_redundant_segments, reads )
+    # for read_hits in hits:
+    #     chain_hits_read()
+
+
+
+if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser(description="torkel -- Classify long reads based on transcript parts graphs")
+    subparsers = parser.add_subparsers(help='Subcommands for eaither constructing a graph, or align reads')
+    # parser.add_argument("-v", help='Different subcommands for eaither constructing a graph, or align reads')
+
+    pipeline_parser = subparsers.add_parser('pipeline', help= "Construct a splicing graph and align reads to it")
+    construct_graph_parser = subparsers.add_parser('construct', help= "Construct a splicing graph")
+    align_reads_parser = subparsers.add_parser('align', help="Classify and align reads with colinear chaining to DAGs")
+
+    pipeline_parser.add_argument('gff', type=str, help='Path to gff or gtf file with gene models.')
+    pipeline_parser.add_argument('ref', type=str, help='Reference genome (fasta)')
+    pipeline_parser.add_argument('reads', type=str, help='Path to fasta/fastq file with reads.')
+    pipeline_parser.add_argument('--min_mem', type=int, default=16, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
+    pipeline_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
+    # pipeline_parser.add_argument('--pickle', action='store_true', help='Store the graph on file.')
+    pipeline_parser.set_defaults(which='pipeline')
+
+
+    construct_graph_parser.add_argument('gff', type=str, help='Path to gff or gtf file with gene models.')
+    construct_graph_parser.add_argument('ref', type=str, help='Reference genome (fasta)')
+    construct_graph_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
+    construct_graph_parser.add_argument('--min_mem', type=int, default=16, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
+    # construct_graph_parser.add_argument('--pickle', action='store_true', help='Store the graph on file.')
+    construct_graph_parser.set_defaults(which='construct_graph')
+
+
+    align_reads_parser.add_argument('refs', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')    
+    align_reads_parser.add_argument('reads', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
+    align_reads_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')   
+    align_reads_parser.add_argument('--min_mem', type=int, default=16, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
+
+
+    align_reads_parser.set_defaults(which='align_reads')
+
+    args = parser.parse_args()
+
+
+    if len(sys.argv)==1:
+        parser.print_help()
+        sys.exit()
+
+    if args.which == 'construct_graph':
+        construct_graph(args)
+    elif args.which == 'align_reads':
+        align_reads(args)
+    elif args.which == 'pipeline':
+        construct_graph(args)
+        align_reads(args)        
+    else:
+        print('invalid call')
