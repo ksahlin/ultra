@@ -142,11 +142,11 @@ def main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq):
 
     # output solution per exon
     print(covered_regions)
-    print("val", value, "solution:", solution)
+    print("val", value, "the solution:", solution)
     print()
     print()
     print()
-    return 'None', -1
+    return 'None', -1, value
     # check if exon combination is present in some annotation
 
 

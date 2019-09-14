@@ -122,6 +122,9 @@ def align_reads(args):
 
             if value > len(read_seq) * 0.2:
                 print(read_acc, "alignment to:", chr_id, "best solution val:", value , solution)
+                if read_acc == '96_SIRV4_SIRV404':
+                    print(len(read_seq))
+                    sys.exit()
                 chained_parts_seq = []
                 chained_parts_ids = []
                 prev_ref_stop = -1

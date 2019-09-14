@@ -125,10 +125,13 @@ def align_reads(args):
             #     sys.exit()
 
             if value > len(read_seq) * 0.7:
-                print(read_acc, "alignment to:", chr_id, "best solution val:", value , solution)
-
-                # classification, annotated_to_transcript_id =  classify_read_with_mams.main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq)
-
+                # if read_acc == '96_SIRV4_SIRV404':
+                #     sys.exit()
+                classification, annotated_to_transcript_id, mam_value =  classify_read_with_mams.main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq)
+                print(read_acc, "alignment to:", chr_id, "best solution val mems:", value, 'best mam value:', mam_value)
+                print("Solution mems:", solution)
+                print(read_acc, value, len(read_seq))
+                assert value == mam_value == len(read_seq)
                 # chained_parts_seq = []
                 # chained_parts_ids = []
                 # prev_ref_stop = -1
