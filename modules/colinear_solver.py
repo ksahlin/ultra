@@ -32,7 +32,7 @@ def read_coverage(mems):
 
     """
     mems = sorted(mems, key = lambda x: x.y )
-    # print(mems)
+    print(mems)
     T = [ (v.d, v.val)  for v in mems]
     I = [ (v.d, v.val)  for v in mems]
     

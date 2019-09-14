@@ -17,7 +17,6 @@ def create_graph_from_exon_parts(db, min_mem):
     """
     # print(dir(db))
     genes_to_ref = {} # gene_id : { (exon_start, exon_stop) : set() }
-    parts_to_exons = {}
     exon_id_to_choordinates = {}
     splices_to_transcripts = defaultdict(dict)
     parts_to_transcript_annotations = defaultdict(lambda: defaultdict(set))
@@ -25,69 +24,53 @@ def create_graph_from_exon_parts(db, min_mem):
     all_parts_pairs_annotations = defaultdict(lambda: defaultdict(set))
     all_part_sites_annotations = defaultdict(set)
     # annotated_transcripts = defaultdict(set)
+
+    parts_to_exons = defaultdict(lambda: defaultdict(set))
+    for i, exon in enumerate(db.features_of_type('exon', order_by='seqid')):
+        # print(exon.id, exon.start, exon.stop, exon.seqid)
+        exon_id_to_choordinates[exon.id] = (exon.start - 1, exon.stop)
+        # creating the augmentation
+        if i == 0: # initialization
+            prev_seq_id = exon.seqid
+            active_start = exon.start - 1
+            active_stop = exon.stop
+            active_exons = set() 
+            active_exons.add(exon.id)
+
+        if exon.seqid != prev_seq_id: # switching chromosomes
+            parts_to_exons[prev_seq_id][(active_start, active_stop)] = active_exons
+            prev_seq_id = exon.seqid
+            active_start = exon.start - 1
+            active_stop = exon.stop
+            active_exons = set() 
+            active_exons.add(exon.id)           
+
+        if exon.start - 1 > active_stop:
+            parts_to_exons[exon.seqid][(active_start, active_stop)] = active_exons
+            active_exons = set()
+            active_exons.add(exon.id)
+
+            active_start = exon.start - 1
+            active_stop = exon.stop
+
+        else:
+            active_exons.add(exon.id)    
+            active_stop = max(active_stop, exon.stop)
+
+        assert active_start <= exon.start - 1
+
+    parts_to_exons[exon.seqid][(active_start, active_stop)] = active_exons
+
+    for sid in parts_to_exons:
+        print(sid, parts_to_exons[sid])
+        print()
+    
+    exons_to_parts = reverse_mapping(parts_to_exons)
+
+    # sys.exit()
+
     for gene in db.features_of_type('gene'):
-        # print(dir(gene))
-        # print(gene.id, gene.seqid, gene.start, gene.stop, gene.attributes)
         genes_to_ref[gene.id] = str(gene.seqid)
-        # exon_id_to_choordinates[str(gene.seqid)] = {}
-        parts_to_exons[str(gene.seqid)] = defaultdict(set)
-        # splices_to_transcripts[gene.seqid] = {}
-        #add nodes
-        exons = [exon for exon in db.children(gene, featuretype='exon', order_by='start') ]
-        chord_to_exon = defaultdict(list)
-
-        parts_to_exons_for_gene = {}        
-        active_exons = set() #set(chord_to_exon[all_starts_and_stops[0][0]])
-
-        for i, e in enumerate(exons):
-            chord_to_exon[e.start - 1].append(e.id)
-            chord_to_exon[e.stop].append(e.id)
-            exon_id_to_choordinates[e.id] = (e.start - 1, e.stop)
-
-            # creating the augmentation
-            if i == 0:
-                active_start = e.start - 1
-                active_stop = e.stop
-                active_exons.add(e.id)
-
-            if e.start - 1 > active_stop:
-                parts_to_exons_for_gene[(active_start, active_stop)] = active_exons
-                active_exons = set()
-                active_exons.add(e.id)
-
-                active_start = e.start - 1
-                active_stop = e.stop
-
-            else:
-                active_exons.add(e.id)    
-                active_stop = e.stop
-
-        parts_to_exons_for_gene[(active_start, active_stop)] = active_exons
-
-        # print(parts_to_exons_for_gene)
-
-        exon_to_chord = {e.id : (e.start-1, e.stop) for e in exons}
-        # print([(e.start-1, e.stop) for e in exons])
-
-
-
-        # print("PARTS to exons",  parts_to_exons_for_gene)
-        exons_to_parts = reverse_mapping(parts_to_exons_for_gene)
-        # print("EXONS to PARTS",  exons_to_parts)
-
-        # extend the parts that are smaller than min_mem to length min_mem + 1
-        # parts_to_exons[gene.id] = parts_to_exons_for_gene
-        for (start,stop), active_exons in parts_to_exons_for_gene.items():
-            if (start,stop) in parts_to_exons[str(gene.seqid)]:
-                parts_to_exons[str(gene.seqid)][(start,stop)].update(active_exons)
-            else:
-                parts_to_exons[str(gene.seqid)][(start,stop)] = active_exons
-
-        # for exon in db.children(gene, featuretype='exon', order_by='start'):
-        #     splices_to_transcripts[gene.id][ (exon.start, exon.stop) ].update([ transcript_tmp for transcript_tmp in  exon.attributes['transcript_id']])
-
-        # for transcript in db.children(gene, featuretype='transcript', order_by='start'):
-        #     annotated_transcripts[gene.seqid].add( tuple( '_'.join([str(item) for item in (gene.seqid, exon.start, exon.stop)]) for exon in db.children(transcript, featuretype='exon', order_by='start') ) )
 
         for transcript in db.children(gene, featuretype='transcript', order_by='start'):
             transcript_parts = []
@@ -110,9 +93,12 @@ def create_graph_from_exon_parts(db, min_mem):
 
     # print(parts_to_exons)
     # sys.exit()
-
+    # for sid in parts_to_exons:
+    #     print(sid, parts_to_exons[sid])
+    #     print()
+    # sys.exit()
     # print(splices_to_transcripts)
-    return  genes_to_ref, parts_to_exons, splices_to_transcripts, parts_to_transcript_annotations, transcripts_to_parts_annotations,  all_parts_pairs_annotations, all_part_sites_annotations, exon_id_to_choordinates #annotated_transcripts
+    return  genes_to_ref, parts_to_exons, splices_to_transcripts, parts_to_transcript_annotations, transcripts_to_parts_annotations,  all_parts_pairs_annotations, all_part_sites_annotations, exon_id_to_choordinates 
 
 
 
