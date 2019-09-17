@@ -67,10 +67,10 @@ def edlib_alignment(query, target):
     cigar_string = result["cigar"]
     locations = result['locations']
     query_alignment, target_alignment, cigar_tuples = cigar_to_seq(cigar_string, query, target)
-    print(locations)
-    print(query_alignment)
-    print(target_alignment)
-    print(result['editDistance'])
+    # print(locations)
+    # print(query_alignment)
+    # print(target_alignment)
+    # print(result['editDistance'])
 
     # query_rc = reverse_complement(query)
     # target_rc = reverse_complement(target)
@@ -120,7 +120,7 @@ def main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq):
             e_start, e_stop = exon_id_to_choordinates[exon_id]
             if e_stop - e_start > 15:
                 ref_seq = refs[ref_chr_id][e_start: e_stop]
-                print(exon_id, e_stop - e_start)
+                # print(exon_id, e_stop - e_start)
                 # align them to the read and get the best approxinate match
                 locations, edit_distance, read_alignment, ref_alignment = edlib_alignment(ref_seq, read_seq)
 
@@ -133,7 +133,7 @@ def main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq):
                     start,stop = locations[0]
                     covered_regions.append((start,stop, score, exon_id))
                     mam_tuple = mam(e_start, e_stop, start, stop, 
-                            (stop - start)*score, exon_id)
+                            (stop - start + 1)*score, exon_id)
                     mam_instance.append(mam_tuple)
             else:
                 print("not aligning exons smaller than 15bp")
@@ -141,11 +141,12 @@ def main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq):
     solution, value, unique = colinear_solver.read_coverage_mam_score(mam_instance)
 
     # output solution per exon
-    print(covered_regions)
-    print("val", value, "the solution:", solution)
-    print()
-    print()
-    print()
+    # print(covered_regions)
+    # print()
+    # print("val", value, "the mam solution:", solution)
+    # print()
+    # print()
+    # print()
     return 'None', -1, value
     # check if exon combination is present in some annotation
 
