@@ -156,9 +156,11 @@ def read_coverage_mam_score(mems):
             T_traceback_index = None
 
         # I_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if v.c <= mems[j_prime].d  <= v.d]
-        I_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if v.c <= mems[j_prime].d  <= v.c + (v.d - v.c)*(1.0 - v.val/(v.d - v.c)) ]
+        I_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if v.c <= mems[j_prime].d  <= v.c + (v.d - v.c)*(1.0 - v.val/(v.d - v.c)) ]  Maybe bug here, check the objective!! need to be careful
         if I_values:
-            # print(I_values)
+            # I_values_plus_chord_diff = [ (j_prime, c_val + (v.d - mems[j_prime].d)) for j_prime, c_val in I_values]
+            # I_traceback_index, max_c_value_case_b = max(I_values_plus_chord_diff, key=lambda x: x[1])
+
             I_traceback_index, max_c_value_case_b = max(I_values, key=lambda x: x[1])
             I_v_prev_coord = mems[I_traceback_index].d
             C_b[j] = max_c_value_case_b + (v.val - v.val*(v.d - I_v_prev_coord)) # (v.d - I_v_prev_coord) +
