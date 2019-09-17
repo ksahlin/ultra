@@ -61,21 +61,22 @@ def read_coverage(mems):
         I_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if v.c <= mems[j_prime].d  <= v.d]
         if I_values:
             # print(I_values)
-            I_traceback_index, max_c_value_case_b = max(I_values, key=lambda x: x[1])
-            I_v_prev_coord = mems[I_traceback_index].d
-            C_b[j] = (v.d - I_v_prev_coord) + max_c_value_case_b # shouldnt it be v.d - v_tmp.d
+            I_values_plus_chord_diff = [ (j_prime, c_val + (v.d - mems[j_prime].d)) for j_prime, c_val in I_values]
+            I_traceback_index, max_c_value_case_b = max(I_values_plus_chord_diff, key=lambda x: x[1])
+            # I_v_prev_coord = mems[I_traceback_index].d
+            # C_b[j] = (v.d - I_v_prev_coord) + max_c_value_case_b # shouldnt it be v.d - v_tmp.d
+            C_b[j] = max_c_value_case_b # shouldnt it be v.d - v_tmp.d
 
         else:
             I_value = 0
-            I_v_prev_coord = v.c + 1
+            I_v_prev_coord = v.c - 1
             I_traceback_index = None
             max_c_value_case_b = 0
-
-            # C_b[j] = 0
+            C_b[j] = 0
 
 
         C_a[j] = (v.d - v.c + 1) +  max_c_value_case_a
-        C_b[j] = (v.d - I_v_prev_coord) + max_c_value_case_b # shouldnt it be v.d - v_tmp.d
+        # C_b[j] = (v.d - I_v_prev_coord) + max_c_value_case_b # shouldnt it be v.d - v_tmp.d
 
         if C_a[j] >= C_b[j]:
             traceback_pointers[j] = T_traceback_index
@@ -83,8 +84,9 @@ def read_coverage(mems):
             traceback_pointers[j] = I_traceback_index
 
         C[j] = max(C_a[j], C_b[j])
+        print(v.c, v.d, v.d -v.c, C_a[j], C_b[j], v.d, I_values, T_values)
 
-    print('Value vector:', C)
+    print('Value vector mem:', C)
     # print(traceback_pointers)
 
     # print(argmax(C))
@@ -109,7 +111,7 @@ def read_coverage(mems):
         unique = False
         # print(traceback_pointers)
 
-    # print("Solution:", solution[::-1])
+    print("MEM Solution:", solution[::-1])
     return solution[::-1], value, unique
     # traceback(C, best_solution_index)
 
@@ -176,7 +178,7 @@ def read_coverage_mam_score(mems):
 
         C[j] =  max(C_a[j], C_b[j]) #C_a[j] 
 
-    print('Value vector:', C)
+    print('Value vector Max approx matches:', C)
     # print(traceback_pointers)
 
     # print(argmax(C))
