@@ -109,7 +109,7 @@ def main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq):
     predicted_transcript = []
     predicted_exons = []
     covered_regions = []
-    mam = namedtuple('Mem', ['x', 'y', 'c', 'd', 'val', "exon_id"])
+    mam = namedtuple('Mem', ['x', 'y', 'c', 'd', 'val', "identity", "exon_id"])
     mam_instance = []
     for mem in solution:
         ref_chr_id, ref_start, ref_stop =  mem.exon_part_id.split('_')
@@ -123,7 +123,8 @@ def main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq):
                 # print(exon_id, e_stop - e_start)
                 # align them to the read and get the best approxinate match
                 locations, edit_distance, read_alignment, ref_alignment = edlib_alignment(ref_seq, read_seq)
-
+                if edit_distance == -1:
+                    continue
                 score = (len(ref_seq) - edit_distance)/len(ref_seq)
                 # if len(locations) > 1:
                 #     print("bug",locations)
@@ -133,17 +134,17 @@ def main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq):
                     start,stop = locations[0]
                     covered_regions.append((start,stop, score, exon_id))
                     mam_tuple = mam(e_start, e_stop, start, stop, 
-                            (stop - start + 1)*score, exon_id)
+                            (stop - start + 1)*score, score,  exon_id)
                     mam_instance.append(mam_tuple)
             else:
                 print("not aligning exons smaller than 15bp")
     # best find a colinear chaining with best cover (score of each segment is length of mam*identity)
-    solution, value, unique = colinear_solver.read_coverage_mam_score(mam_instance)
+    solution_mam, value, unique = colinear_solver.read_coverage_mam_score(mam_instance)
 
-    # output solution per exon
+    # output solution_mam per exon
     # print(covered_regions)
-    # print()
-    # print("val", value, "the mam solution:", solution)
+    print("Solutiuon mam")
+    print("val", value, "the mam solution_mam:", solution_mam)
     # print()
     # print()
     # print()
