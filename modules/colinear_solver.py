@@ -118,7 +118,7 @@ def read_coverage(mems):
 
 
 
-def read_coverage_mam_score(mems):
+def read_coverage_mam_score(mams):
     """
         Algorithm 15.1 in Genome scale algorithmic design, Makinen et al.
 
@@ -128,14 +128,14 @@ def read_coverage_mam_score(mems):
         each mem is an Namedtuple. python object
 
     """
-    mems = sorted(mems, key = lambda x: x.y )
-    # print(mems)
-    T = [ (v.d, v.val)  for v in mems]
-    I = [ (v.d, v.val)  for v in mems]
+    mams = sorted(mams, key = lambda x: x.y )
+    # print(mams)
+    T = [ (v.d, v.val)  for v in mams]
+    I = [ (v.d, v.val)  for v in mams]
     
-    # T_dict = {mems[i][3] : -10000 for i in range(len(mems))}
+    # T_dict = {mams[i][3] : -10000 for i in range(len(mams))}
     # T_dict[0] = -10000
-    # I_dict = {mems[i][3] : -10000 for i in range(len(mems))}
+    # I_dict = {mams[i][3] : -10000 for i in range(len(mams))}
     # I_dict[0] = -10000
 
     C_a = [0]*(len(T))
@@ -144,10 +144,10 @@ def read_coverage_mam_score(mems):
     traceback_pointers = [None]*(len(T))
 
     for j in range(len(T)):
-        v =  mems[j]
+        v =  mams[j]
 
         # linear scan -- replace with range max Q tree
-        T_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if  mems[j_prime].d < v.c]
+        T_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if  mams[j_prime].d < v.c]
         if T_values:
             # print(T_values)
             T_traceback_index, max_c_value_case_a = max(T_values, key=lambda x: x[1])
@@ -155,15 +155,16 @@ def read_coverage_mam_score(mems):
             max_c_value_case_a = 0
             T_traceback_index = None
 
-        # I_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if v.c <= mems[j_prime].d  <= v.d]
-        I_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if v.c <= mems[j_prime].d  <= v.c + (v.d - v.c)*(1.0 - v.val/(v.d - v.c)) ]  Maybe bug here, check the objective!! need to be careful
+        I_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if v.c <= mams[j_prime].d  <= v.d]
+        # I_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if v.c <= mams[j_prime].d  <= v.c + (v.d - v.c)*(1.0 - v.val/(v.d - v.c)) ]  #Maybe bug here, check the objective!! need to be careful
         if I_values:
-            # I_values_plus_chord_diff = [ (j_prime, c_val + (v.d - mems[j_prime].d)) for j_prime, c_val in I_values]
-            # I_traceback_index, max_c_value_case_b = max(I_values_plus_chord_diff, key=lambda x: x[1])
+            I_values_plus_chord_diff = [ (j_prime, c_val + (v.d - mams[j_prime].d)*v.identity - max(0, (mams[j_prime].d - v.c +1)*v.identity  - (mams[j_prime].d - v.c +1)*mams[j_prime].identity) ) for j_prime, c_val in I_values]  # Last max is takeing which of the two mams had highest idendity in shared region. 
+            I_traceback_index, max_c_value_case_b = max(I_values_plus_chord_diff, key=lambda x: x[1])
+            C_b[j] = max_c_value_case_b
 
-            I_traceback_index, max_c_value_case_b = max(I_values, key=lambda x: x[1])
-            I_v_prev_coord = mems[I_traceback_index].d
-            C_b[j] = max_c_value_case_b + (v.val - v.val*(v.d - I_v_prev_coord)) # (v.d - I_v_prev_coord) +
+            # I_traceback_index, max_c_value_case_b = max(I_values, key=lambda x: x[1])
+            # I_v_prev_coord = mams[I_traceback_index].d
+            # C_b[j] = max_c_value_case_b + (v.val - v.val*(v.d - I_v_prev_coord)) # (v.d - I_v_prev_coord) +
 
         else:
             I_value = 0
@@ -193,7 +194,7 @@ def read_coverage_mam_score(mems):
     # print()
     solution = []
     while True:
-        solution.append(mems[solution_index])
+        solution.append(mams[solution_index])
         solution_index = traceback_pointers[solution_index]
         # print(solution_index)
         if solution_index is None:
