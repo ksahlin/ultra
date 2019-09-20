@@ -137,8 +137,8 @@ def align_reads(args):
 
 
 
-                # if 'SIRV503' not in read_acc:
-                #     assert value == mam_value == len(read_seq)
+                if 'SIRV503' not in read_acc:
+                    assert value == mam_value == len(read_seq)
                 # if read_acc == '34_SIRV3_SIRV307':
                 #     sys.exit()
 
