@@ -146,7 +146,7 @@ def main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq, over
             else:
                 print("not aligning exons smaller than 10bp") # TODO: align these and take all locations
 
-            if  len(ref_seq) >= 0.8*len(read_seq): # read is potentially contained within exon 
+            if  e_stop - e_start >= 0.8*len(read_seq): # read is potentially contained within exon 
                 print()
                 print("aligning read to exon")
                 locations, edit_distance, ref_alignment, read_alignment = edlib_alignment(read_seq, ref_seq)
