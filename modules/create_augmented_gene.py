@@ -61,6 +61,9 @@ def create_graph_from_exon_parts(db, min_mem):
 
     parts_to_exons[exon.seqid][(active_start, active_stop)] = active_exons
 
+    # print(parts_to_exons["SIRV3"])
+    # sys.exit()
+    
     for sid in parts_to_exons:
         print(sid, parts_to_exons[sid])
         print()

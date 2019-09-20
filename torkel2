@@ -125,16 +125,18 @@ def align_reads(args):
             #     sys.exit()
 
             if value > len(read_seq) * 0.7:
-                # if read_acc == '96_SIRV4_SIRV404':
-                #     sys.exit()
                 classification, annotated_to_transcript_id, mam_value =  classify_read_with_mams.main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq)
                 print(read_acc, "alignment to:", chr_id, "best solution val mems:", value, 'best mam value:', mam_value)
 
                 print()
                 print(read_acc, value, len(read_seq))
                 print(value, mam_value, len(read_seq))
-                if 'SIRV503' not in read_acc:
-                    assert value == mam_value == len(read_seq)
+
+                if read_acc == '109:1124|e270485c-f376-4a8f-93a2-581ef2a6bfc5_runid=8c239806e6f576cd17d6b7d532976b1fe830f9c6_sampleid=pcs109_sirv_mix2_LC_read=12924_ch=183_start_time=2019-04-12T18:22:36Z_strand=+_strand=+':
+                    sys.exit()
+
+                # if 'SIRV503' not in read_acc:
+                #     assert value == mam_value == len(read_seq)
                 # if read_acc == '34_SIRV3_SIRV307':
                 #     sys.exit()
 

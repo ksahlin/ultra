@@ -111,35 +111,64 @@ def main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq):
     covered_regions = []
     mam = namedtuple('Mem', ['x', 'y', 'c', 'd', 'val', "identity", "exon_id"])
     mam_instance = []
+    unique_exon_locations = set()
     for mem in solution:
         ref_chr_id, ref_start, ref_stop =  mem.exon_part_id.split('_')
         ref_start, ref_stop = int(ref_start), int(ref_stop)
         # get all exons associated with the part
         # print(parts_to_exons)
-        for exon_id in parts_to_exons[ref_chr_id][(ref_start, ref_stop)]:
+        unique_exon_locations.add((ref_chr_id, ref_start, ref_stop))
+    print()
+    print(unique_exon_locations)
+    print()
+    for (ref_chr_id, ref_start, ref_stop) in unique_exon_locations:
+        exon_ids = parts_to_exons[ref_chr_id][(ref_start, ref_stop)]
+        print(exon_ids)
+        for exon_id in exon_ids:
             e_start, e_stop = exon_id_to_choordinates[exon_id]
-            if e_stop - e_start > 15:
+            if e_stop - e_start > 10:
                 ref_seq = refs[ref_chr_id][e_start: e_stop]
                 # print(exon_id, e_stop - e_start)
                 # align them to the read and get the best approxinate match
-                locations, edit_distance, read_alignment, ref_alignment = edlib_alignment(ref_seq, read_seq)
-                if edit_distance == -1:
-                    continue
-                score = (len(ref_seq) - edit_distance)/len(ref_seq)
-                # if len(locations) > 1:
-                #     print("bug",locations)
-                #     sys.exit()
 
-                if score > 0.8:
-                    start,stop = locations[0]
-                    covered_regions.append((start,stop, score, exon_id))
-                    mam_tuple = mam(e_start, e_stop, start, stop, 
-                            (stop - start + 1)*score, score,  exon_id)
-                    mam_instance.append(mam_tuple)
+                locations, edit_distance, read_alignment, ref_alignment = edlib_alignment(ref_seq, read_seq)
+                print(exon_id, e_start, e_stop, len(ref_seq), len(read_seq),edit_distance)
+
+                if edit_distance >= 0:
+                    score = (len(ref_seq) - edit_distance)/len(ref_seq)
+
+                    if score > 0.8:
+                        start, stop = locations[0]
+                        covered_regions.append((start,stop, score, exon_id))
+                        mam_tuple = mam(e_start, e_stop, start, stop, 
+                                (stop - start + 1)*score, score,  exon_id)
+                        mam_instance.append(mam_tuple)
             else:
-                print("not aligning exons smaller than 15bp")
+                print("not aligning exons smaller than 10bp") # TODO: align these and take all locations
+
+            if  len(ref_seq) >= 0.8*len(read_seq): # read is potentially contained within exon 
+                print()
+                print("aligning read to exon")
+                locations, edit_distance, ref_alignment, read_alignment = edlib_alignment(read_seq, ref_seq)
+                print(exon_id, e_start, e_stop, len(ref_seq), len(read_seq),edit_distance)
+                print()
+                if edit_distance >= 0:
+                    score = (len(read_seq) - edit_distance)/len(read_seq)
+
+                    if score > 0.8:
+                        start, stop = 0, len(read_seq)
+                        covered_regions.append((start,stop, score, exon_id))
+                        mam_tuple = mam(e_start, e_stop, start, stop, 
+                                (stop - start + 1)*score, score,  exon_id)
+                        mam_instance.append(mam_tuple)
+                
+
     # best find a colinear chaining with best cover (score of each segment is length of mam*identity)
     solution_mam, value, unique = colinear_solver.read_coverage_mam_score(mam_instance)
+
+    # classify read here!! 
+    # pay attention to that if a lolution where a read has been aligned to a exon is accepted, 
+    # its probably contained within the exon and should not be counted as FSM
 
     # output solution_mam per exon
     # print(covered_regions)
