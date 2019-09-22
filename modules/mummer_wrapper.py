@@ -43,10 +43,10 @@ def parse_results(mems_folder):
     for i, line in enumerate(file):
         if line[0] == '>':
             if i == 0:
-                acc = line.split()[1].strip()  # mems_db[line.split()[1].strip)()] = [] 
+                read_acc = line.split()[1].strip()  # mems_db[line.split()[1].strip)()] = [] 
             else:
-                mems_db[acc] = read_mems_tmp 
-                acc = line.split()[1].strip() 
+                mems_db[read_acc] = read_mems_tmp 
+                read_acc = line.split()[1].strip() 
             
             read_mems_tmp = defaultdict(list)
 
@@ -65,7 +65,7 @@ def parse_results(mems_folder):
             read_mems_tmp[chr_id].append( mem_tuple )
         # print(line)
     # add last read
-    mems_db[acc] = read_mems_tmp 
+    mems_db[read_acc] = read_mems_tmp 
 
 
     return mems_db

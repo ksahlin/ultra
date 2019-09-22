@@ -35,33 +35,32 @@ def main(chr_id, predicted_splices, splices_to_transcripts, transcripts_to_splic
     print(predicted_splices)
     in_all_pairs = set.intersection(*hits)
     print(in_all_pairs)
-    # print(predicted_transcript)
     for transcript_id in in_all_pairs:
         transcript_splices = transcripts_to_splices[chr_id][transcript_id]
-        if contains(predicted_transcript, transcript_splices):
+        if contains(predicted_splices, transcript_splices):
             # print("Found, ISM to", transcript_id )
             transcript = transcript_id
             return "ISM", transcript
         else:
-            print(predicted_transcript, transcript)
+            print(predicted_splices, transcript)
 
 
-    all_sites_annotations_chr  = all_part_sites_annotations[chr_id] 
+    all_splice_sites_annotations_chromosome = all_splice_sites_annotations[chr_id] 
     is_nic = True
-    for start, stop in predicted_transcript:
-        if start not in all_sites_annotations_chr or stop not in all_sites_annotations_chr:
+    for start, stop in predicted_splices:
+        if start not in all_splice_sites_annotations_chromosome or stop not in all_splice_sites_annotations_chromosome:
             is_nic = False
     if is_nic:
-        all_pairs_annotations_chr = all_parts_pairs_annotations[chr_id]
+        all_splice_pairs_annotations_chromosome = all_splice_pairs_annotations[chr_id]
         is_nic_comb = True
-        for start, stop in predicted_transcript:
-            if (start, stop) not in all_pairs_annotations_chr:
+        for start, stop in predicted_splices:
+            if (start, stop) not in all_splice_pairs_annotations_chromosome:
                 is_nic_comb = False
 
 
         if is_nic_comb:
             print()
-            print('Found, NIC (new combination of exons):', tuple(predicted_transcript) )
+            print('Found, NIC (new combination of exons):', tuple(predicted_splices) )
             print()             
             for ann_tr in splices_to_transcripts[chr_id]:
                 print(splices_to_transcripts[chr_id][ann_tr] ,ann_tr)
@@ -70,10 +69,10 @@ def main(chr_id, predicted_splices, splices_to_transcripts, transcripts_to_splic
 
         else:
             print()
-            print('Found, NIC (new donor-acceptor pair):', tuple(predicted_transcript) )
+            print('Found, NIC (new donor-acceptor pair):', tuple(predicted_splices) )
             print()   
             return   "NIC_novel", transcript          
     print()
-    print('NNC:', tuple(predicted_transcript) )
+    print('NNC:', tuple(predicted_splices) )
     print()       
     return "NNC", transcript

@@ -156,7 +156,7 @@ def main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq, over
                     score = (len(read_seq) - edit_distance)/len(read_seq)
 
                     if score > 0.7:
-                        start, stop = 0, len(read_seq)
+                        start, stop = 0, len(read_seq) - 1
                         covered_regions.append((start,stop, score, exon_id, ref_chr_id))
                         mam_tuple = mam(e_start, e_stop, start, stop, 
                                 (stop - start + 1)*score, score,  exon_id, ref_chr_id)
