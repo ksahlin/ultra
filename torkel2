@@ -111,12 +111,12 @@ def align_reads(args):
     # print(parts_to_transcript_annotations)
     # print(all_splice_pairs_annotations)
     classifications = defaultdict(str)
+    read_accessions_with_mappings = set()
     for read_acc in mems:
         print()
         print(read_acc)
-
-        for chr_id in mems[read_acc]:
-            solution, value, unique = colinear_solver.read_coverage(mems[read_acc][chr_id])
+        for chr_id, mems_to_chromosome in sorted(mems[read_acc].items(), key=lambda x: sum([mem_tmp[4] for mem_tmp in x[1]]), reverse=True):
+            solution, value, unique = colinear_solver.read_coverage(mems_to_chromosome)
             # print(splices_to_transcripts)
             # check if matches previous annotation here!
             read_seq = reads[read_acc]
@@ -178,7 +178,6 @@ def align_reads(args):
                 if classification == 'NIC_comb':
                     eprint(read_acc, 'NIC_comb unique solution:', unique)
                     print(solution)
-                    print(parts_to_exons[ref_chr_id])
                     print(predicted_exons)
                     print(predicted_splices)
                     print(chr_id, splices_to_transcripts[chr_id])
@@ -189,6 +188,12 @@ def align_reads(args):
                     print(value, mam_value, len(read_seq))
                     print(solution)
                     # sys.exit()
+                
+                sam_output.main(read_acc, chr_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, alignment_outfile)
+                read_accessions_with_mappings.add(read_acc)
+            else:
+                if read_acc not in read_accessions_with_mappings:
+                    sam_output.main(read_acc, '*', 'unaligned', predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, alignment_outfile)
 
 
 
