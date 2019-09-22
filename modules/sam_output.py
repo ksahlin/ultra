@@ -84,15 +84,20 @@ def get_genomic_cigar(read_aln, ref_aln, predicted_exons):
 def main(read_id, ref_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, alignment_outfile):
     print(ref_id, classification, predicted_exons, read_aln, ref_aln, alignment_outfile)
     read_sam_entry = pysam.AlignedSegment(alignment_outfile.header)
-    
-    genomic_cigar = get_genomic_cigar(read_aln, ref_aln, predicted_exons)
-    print('genomic cigar:', genomic_cigar)
+    if classification != 'unaligned':
+        genomic_cigar = get_genomic_cigar(read_aln, ref_aln, predicted_exons)
+        print('genomic cigar:', genomic_cigar)
+        read_sam_entry.cigarstring = genomic_cigar
+        read_sam_entry.reference_start = predicted_exons[0][0]
+
+    else:
+        read_sam_entry.cigarstring = '*'
+        read_sam_entry.reference_start = -1
+
     read_sam_entry.query_name = read_id
     read_sam_entry.flag = 0 # TODO: add reverse complements
     read_sam_entry.reference_name = ref_id
-    read_sam_entry.reference_start = predicted_exons[0][0]
     read_sam_entry.mapping_quality = 60 # TODO: calculate mapping quality 
-    read_sam_entry.cigarstring = genomic_cigar
     print(annotated_to_transcript_id)
     read_sam_entry.set_tag('AN', annotated_to_transcript_id)
     read_sam_entry.set_tag('CN', classification)
