@@ -6,22 +6,22 @@ from collections import defaultdict
 from collections import namedtuple
 
 
-def find_mems(refs_sequences, reads, outfolder, min_mem):
-    refs_path = open(os.path.join(outfolder, "refs_sequences_tmp.fa"), "w")
+def find_mems(outfolder, refs_sequences, read_path, refs_path, mummer_out_path, min_mem):
+    refs_path = open(refs_path, 'w') #open(os.path.join(outfolder, "refs_sequences_tmp.fa"), "w")
     for chr_id  in refs_sequences:
         for (start,stop), seq  in refs_sequences[chr_id].items():
             refs_path.write(">{0}\n{1}\n".format(chr_id + str("_") + str(start) + "_" + str(stop), seq))
     refs_path.close()
-    mummer_out_file = os.path.join( outfolder, "mummer_mems.txt" )
-    with open(mummer_out_file, "w") as output_file:
+    # mummer_out_path = os.path.join( outfolder, "mummer_mems.txt" )
+    with open(mummer_out_path, "w") as output_file:
         # print('Running spoa...', end=' ')
         stdout.flush()
         null = open(os.path.join(outfolder, "mummer_errors.1") , "w")
-        subprocess.check_call([ 'mummer',   '-maxmatch', '-l' , str(min_mem),  refs_path.name, reads], stdout=output_file, stderr=null)
+        subprocess.check_call([ 'mummer',   '-maxmatch', '-l' , str(min_mem),  refs_path.name, read_path], stdout=output_file, stderr=null)
         # print('Done.')
         stdout.flush()
     output_file.close()
-    mummer_file = open(mummer_out_file, "r").readlines()
+    mummer_file = open(mummer_out_path, "r").readlines()
     for line in mummer_file:
         print(line)
     # consensus = l[1].strip()
@@ -34,13 +34,14 @@ def find_mems(refs_sequences, reads, outfolder, min_mem):
     # r.close()
     # return consensus
 
-def parse_results(mems_folder):
+def parse_results(mems_path):
     mem = namedtuple('Mem', ['x', 'y', 'c', 'd', 'val', "exon_part_id"])
 
-    file = open(os.path.join(mems_folder, "mummer_mems.txt"), 'r')
+    # file = open(os.path.join(mems_folder, "mummer_mems.txt"), 'r')
     mems_db = {}
     # read_mems_tmp = {}
-    for i, line in enumerate(file):
+
+    for i, line in enumerate(open(mems_path, 'r')):
         if line[0] == '>':
             if i == 0:
                 read_acc = line.split()[1].strip()  # mems_db[line.split()[1].strip)()] = [] 
