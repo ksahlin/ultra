@@ -7,7 +7,7 @@ import edlib
 
 from collections import namedtuple
 from modules import colinear_solver 
-
+from modules import help_functions
 
 def cigar_to_seq(cigar, query, ref):
     cigar_tuples = []
@@ -53,14 +53,6 @@ def cigar_to_seq(cigar, query, ref):
     return  "".join([s for s in q_aln]), "".join([s for s in r_aln]), cigar_tuples
 
 
-def reverse_complement(string):
-    #rev_nuc = {'A':'T', 'C':'G', 'G':'C', 'T':'A', 'N':'N', 'X':'X'}
-    # Modified for Abyss output
-    rev_nuc = {'A':'T', 'C':'G', 'G':'C', 'T':'A', 'a':'t', 'c':'g', 'g':'c', 't':'a', 'N':'N', 'X':'X', 'n':'n', 'Y':'R', 'R':'Y', 'K':'M', 'M':'K', 'S':'S', 'W':'W', 'B':'V', 'V':'B', 'H':'D', 'D':'H', 'y':'r', 'r':'y', 'k':'m', 'm':'k', 's':'s', 'w':'w', 'b':'v', 'v':'b', 'h':'d', 'd':'h'}
-
-    rev_comp = ''.join([rev_nuc[nucl] for nucl in reversed(string)])
-    return(rev_comp)
-
 
 def edlib_alignment(query, target):
     result = edlib.align(query, target, task="path", mode="HW")
@@ -100,7 +92,7 @@ def contains(sub, pri):
         else:
             i = found+1
 
-def main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq, overlap_threshold):
+def main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq, overlap_threshold, is_rc):
 
 
     # chained_parts_seq = []
@@ -127,6 +119,9 @@ def main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq, over
         for exon_id in exon_ids:
             e_start, e_stop = exon_id_to_choordinates[exon_id]
             if e_stop - e_start > 10:
+                # if is_rc:
+                #     ref_seq = help_functions.reverse_complement(refs[ref_chr_id][e_start: e_stop])
+                # else:
                 ref_seq = refs[ref_chr_id][e_start: e_stop]
                 # print(exon_id, e_stop - e_start)
                 # align them to the read and get the best approxinate match
@@ -164,8 +159,10 @@ def main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq, over
                 
 
     # best find a colinear chaining with best cover (score of each segment is length of mam*identity)
-    mam_solution, value, unique = colinear_solver.read_coverage_mam_score(mam_instance, overlap_threshold)
-
+    if mam_instance:
+        mam_solution, value, unique = colinear_solver.read_coverage_mam_score(mam_instance, overlap_threshold)
+    else:
+        return 'None', -1, 0, []
     # classify read here!! 
     # pay attention to that if a lolution where a read has been aligned to a exon is accepted, 
     # its probably contained within the exon and should not be counted as FSM
