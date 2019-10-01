@@ -26,7 +26,7 @@ def readfq(fp): # this is a generator function
                     last = l[:-1] # save this line
                     break
         if not last: break
-        name, seqs, last = last[1:], [], None
+        name, seqs, last = last[1:].replace(" ", "_"), [], None
         for l in fp: # read the sequence
             if l[0] in '@+>':
                 last = l[:-1]
@@ -334,61 +334,29 @@ def get_error_rate_stats_per_read(reads_primary_locations, reads, annotated_spli
             # print(read.is_reverse)
             read_index += 1
 
-            if args.align:
-                read_seq = reads[read.query_name]
-                ref_seq = reference[read.reference_name]
-                ref_alignment, m_line, read_alignment, ins, del_, subs, matches = cigar_to_seq_mm2_local(read, ref_seq, read_seq)
-                alignments_detailed[read.query_name] = (ref_alignment, m_line, read_alignment)
+            ins = sum([length for type_, length in read.cigartuples if type_ == 1])
+            del_old = sum([length for type_, length in read.cigartuples if type_ == 2 and length <  args.min_intron])
+            subs = sum([length for type_, length in read.cigartuples if type_ == 8])
+            matches = sum([length for type_, length in read.cigartuples if type_ == 7])
+            called_intron_lengths = [length for type_, length in read.cigartuples if type_ == 3]
 
-                # if read.query_name == 'b1d0ee62-7557-4645-8d1e-c1ccfb60c997_runid=8c239806e6f576cd17d6b7d532976b1fe830f9c6_sampleid=pcs109_sirv_mix2_LC_read=29302_ch=69_start_time=2019-04-12T22:47:30Z_strand=-':
-                #     print(read.query_alignment_start)
-                #     print(read.query_name, "primary", read.flag, read.reference_name) 
-                #     print(ref_alignment)
-                #     print(m_line)
-                #     print(read_alignment)
-                #     print(ins, del_, subs, matches)
+
+            # Deletion is treated separately because of potential short introns -- if in annotation
+            if read.reference_name in annotated_splice_coordinates_pairs:
+                del_new = 0
+                chr_coordinate_pairs = annotated_splice_coordinates_pairs[read.reference_name]
+                read_deletion_coordinate_pairs = get_deletion_sites(read)
+                for start_del, stop_del, del_length in read_deletion_coordinate_pairs:
+                    if (start_del, stop_del) not in chr_coordinate_pairs:
+                        del_new += del_length
+                    else:
+                        print("True intron masked as deletion, length:", del_length, read.reference_name, start_del, stop_del)
+
             else:
-                # print(read.cigartuples)
-
-                ins = sum([length for type_, length in read.cigartuples if type_ == 1])
-                del_old = sum([length for type_, length in read.cigartuples if type_ == 2 and length <  args.min_intron])
-                subs = sum([length for type_, length in read.cigartuples if type_ == 8])
-                matches = sum([length for type_, length in read.cigartuples if type_ == 7])
-                called_intron_lengths = [length for type_, length in read.cigartuples if type_ == 3]
-
-
-                # Deletion is treated separately because of potential short introns -- if in annotation
-                if read.reference_name in annotated_splice_coordinates_pairs:
-                    del_new = 0
-                    chr_coordinate_pairs = annotated_splice_coordinates_pairs[read.reference_name]
-                    read_deletion_coordinate_pairs = get_deletion_sites(read)
-                    for start_del, stop_del, del_length in read_deletion_coordinate_pairs:
-                        if (start_del, stop_del) not in chr_coordinate_pairs:
-                            del_new += del_length
-                        else:
-                            print("True intron masked as deletion, length:", del_length, read.reference_name, start_del, stop_del)
-
-                else:
-                    del_new = sum([length for type_, length in read.cigartuples if type_ == 2 and length <  args.min_intron])
-
-                # print(del_new, del_old)
-                # if del_new > del_old:
-                #     print("New:",del_new, "Old:", del_old) #, [length for type_, length in read.cigartuples if type_ == 2], read.cigarstring, read_deletion_coordinate_pairs)
-                    # print([length for type_, length in read.cigartuples if type_ == 2 and length >=  20])
+                del_new = sum([length for type_, length in read.cigartuples if type_ == 2 and length <  args.min_intron])
 
             all_called_intron_lengths.append(called_intron_lengths)
-            # if [length for type_, length in read.cigartuples if type_ == 2 and length >  20]:
-            #     print([length for type_, length in read.cigartuples if type_ == 2 and length >  20])
-            #     print(get_deletion_coordiantes(read))
-            # if tot_ins != ins or tot_subs != subs or tot_del != del_ or tot_match != matches:
-            #     print(tot_ins, ins, tot_subs, subs, tot_del, del_, tot_match, matches)
-            
-            # if read.query_name in alignments:
-            #     print("read", read_index, alignments[read.query_name], read.reference_name)
-            #     print("New:", (ins, del_, subs, matches))
-            #     print(read.flag, read.query_name)
-            #     print("BUG")
-            #     # sys.exit()
+
             assert read.query_name not in alignments
             alignments[read.query_name] = (ins, del_new, subs, matches, read.reference_name, read.reference_start, read.reference_end + 1, read.flag, read_index)
 
@@ -422,7 +390,8 @@ def get_summary_stats(reads, quantile):
 
     return tot_ins, tot_del, tot_subs, tot_match, sum_aln_bases
 
-def print_detailed_values_to_file(alignments_dict, annotations_dict, reads_to_cluster_size, reads, outfile, reads_unaligned_in_other_method, reads_missing_from_clustering_correction_output, read_type):
+
+def print_detailed_values_to_file(alignments_dict, annotations_dict, reads, outfile, reads_unaligned_in_other_method, read_type):
     # read_calss is FSM, NIC, NNC, ISM
     # donwnload human gtf file to compare against, check how sqanti does it.
     # also sent isONclust tsv file to this script to get cluster size 
@@ -431,15 +400,11 @@ def print_detailed_values_to_file(alignments_dict, annotations_dict, reads_to_cl
     for (acc, (ins, del_, subs, matches, chr_id, reference_start, reference_end, sam_flag, read_index)) in alignments_sorted:
         error_rate = round( 100* (ins + del_ + subs) /float( (ins + del_ + subs + matches) ), 4 )
         read_class = annotations_dict[acc] #"NA" # annotations_dict[acc]
-        if acc in reads_to_cluster_size:
-            cluster_size = reads_to_cluster_size[acc]
-        else:
-            cluster_size = 1
         read_length = len(reads[acc])
         is_unaligned_in_other_method = 1 if acc in reads_unaligned_in_other_method else 0
         # is_missing_from_clustering_or_correction = 1 if acc in reads_missing_from_clustering_correction_output else 0
 
-        info_tuple = (acc, read_type, ins, del_, subs, matches, error_rate, read_length, cluster_size, is_unaligned_in_other_method, *read_class, chr_id, reference_start, reference_end + 1, sam_flag) # 'tot_splices', 'read_sm_junctions', 'read_nic_junctions', 'fsm', 'nic', 'ism', 'nnc', 'no_splices'  )
+        info_tuple = (acc, read_type, ins, del_, subs, matches, error_rate, read_length, is_unaligned_in_other_method, *read_class, chr_id, reference_start, reference_end + 1, sam_flag) # 'tot_splices', 'read_sm_junctions', 'read_nic_junctions', 'fsm', 'nic', 'ism', 'nnc', 'no_splices'  )
         # print(*info_tuple)
         # outfile.write("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10}\n".format(*info_tuple))
         outfile.write( ",".join( [str(item) for item in info_tuple] ) + "\n")
@@ -541,23 +506,23 @@ def parasail_alignment(read, reference, x_acc = "", y_acc = "", match_score = 2,
     read_alignment, ref_alignment = cigar_to_seq(cigar_string, read, reference)
     return read_alignment, ref_alignment
 
-def get_cluster_sizes(cluster_file, reads):
-    cluster_sizes = defaultdict(int)
-    tmp_reads = {}
-    for line in open(args.cluster_file, "r"):
-        cl_id, acc = line.split() 
-        if acc in reads:
-            cluster_sizes[cl_id] += 1  
-            tmp_reads[acc] = cl_id
-        else:
-            cluster_sizes[cl_id] += 1  
-            tmp_reads[acc.split("_")[0]] = cl_id
+# def get_cluster_sizes(cluster_file, reads):
+#     cluster_sizes = defaultdict(int)
+#     tmp_reads = {}
+#     for line in open(args.cluster_file, "r"):
+#         cl_id, acc = line.split() 
+#         if acc in reads:
+#             cluster_sizes[cl_id] += 1  
+#             tmp_reads[acc] = cl_id
+#         else:
+#             cluster_sizes[cl_id] += 1  
+#             tmp_reads[acc.split("_")[0]] = cl_id
 
-    reads_to_cluster_size = {}
-    for acc, cl_id in tmp_reads.items():
-        reads_to_cluster_size[acc] = cluster_sizes[cl_id]
+#     reads_to_cluster_size = {}
+#     for acc, cl_id in tmp_reads.items():
+#         reads_to_cluster_size[acc] = cluster_sizes[cl_id]
 
-    return reads_to_cluster_size
+#     return reads_to_cluster_size
 
 
 def get_splice_sites(cigar_tuples, first_exon_start, minimum_annotated_intron, annotated_chr_coordinate_pairs):
@@ -566,14 +531,14 @@ def get_splice_sites(cigar_tuples, first_exon_start, minimum_annotated_intron, a
     
     for i, (l,t) in enumerate(cigar_tuples):
         if t == "D":
-            if l >= minimum_annotated_intron -1:
-                # print("long del", l)
-                splice_start = ref_pos
-                ref_pos += l
-                splice_stop = ref_pos
-                splice_sites.append( (splice_start, splice_stop) )
+            # if l >= minimum_annotated_intron -1:
+            #     # print("long del", l)
+            #     splice_start = ref_pos
+            #     ref_pos += l
+            #     splice_stop = ref_pos
+            #     splice_sites.append( (splice_start, splice_stop) )
                 
-            else:
+            # else:
                 if (ref_pos, ref_pos + l) in annotated_chr_coordinate_pairs:
                     splice_sites.append( (ref_pos, ref_pos + l) )
                     print("HEERE")
@@ -625,9 +590,12 @@ def get_read_candidate_splice_sites(reads_primary_locations, minimum_annotated_i
 
             read_splice_sites[read.query_name] = {}  
             read_splice_sites[read.query_name][read.reference_name] = get_splice_sites(read_cigar_tuples, q_start, minimum_annotated_intron, annotated_chr_coordinate_pairs)
-
+            # if acc == '261:647|8b7c0adb-b728-4191-9257-97bdc4e73ba0_runid=8c239806e6f576cd17d6b7d532976b1fe830f9c6_sampleid=pcs109_sirv_mix2_LC_read=117640_ch=474_start_time=2019-04-13T18:27:44Z_strand=-_strand=+':
+            #     print(get_splice_sites(read_cigar_tuples, q_start, minimum_annotated_intron, annotated_chr_coordinate_pairs))
+            #     sys.exit()
             # read_deletion_coordinate_pairs = get_deletion_sites(read)
             # read_splice_sites[read.query_name][read.reference_name] = read_deletion_coordinate_pairs
+        
 
     return read_splice_sites
 
@@ -751,94 +719,112 @@ def get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordina
         read_annotations[read_acc] = {}
         total_reads += 1
         assert len(all_reads_splice_sites[read_acc]) == 1
-        for chr_id in all_reads_splice_sites[read_acc]:
-            # print(chr_id)
-            # print(annotated_splice_coordinates)
-            if chr_id not in annotated_splice_coordinates:
-                alignments_not_matching_annotated_sites += 1
-                annotated_sites = set()
-                annotated_pairs = set()
-                annotated_isoforms = set()
+        chr_id, read_splice_sites = list(all_reads_splice_sites[read_acc].items())[0]
+
+        # print(reads_primary_locations[read_acc].flag, read_splice_sites)
+        # print(chr_id)
+        # print(annotated_splice_coordinates)
+        if chr_id not in annotated_splice_coordinates:
+            alignments_not_matching_annotated_sites += 1
+            annotated_sites = set()
+            annotated_pairs = set()
+            annotated_isoforms = set()
+        else:
+            annotated_sites = annotated_splice_coordinates[chr_id]
+            annotated_pairs = annotated_splice_coordinates_pairs[chr_id]
+            annotated_isoforms = annotated_ref_isoforms[chr_id]
+
+        # print(annotated_pairs)
+        # print( chr_id, read_splice_sites)
+        # print(annotated_ref_isoforms[chr_id])
+        read_sm_junctions = 0
+        read_nic_junctions = 0
+        read_splice_letters = []
+        read_splice_choords = []
+        total_individual_in_data += len(read_splice_sites)*2
+        total_pairs_in_data += len(read_splice_sites)
+
+        for splice_site in read_splice_sites:
+            start_sp, stop_sp = splice_site
+            if reads_primary_locations[read_acc].flag == 0:
+                donor = ref_seqs[chr_id][start_sp: start_sp + 2] 
+                acceptor = ref_seqs[chr_id][stop_sp - 2: stop_sp]
             else:
-                annotated_sites = annotated_splice_coordinates[chr_id]
-                annotated_pairs = annotated_splice_coordinates_pairs[chr_id]
-                annotated_isoforms = annotated_ref_isoforms[chr_id]
+                acceptor = reverse_complement(ref_seqs[chr_id][start_sp: start_sp + 2])
+                donor = reverse_complement(ref_seqs[chr_id][stop_sp - 2: stop_sp])
 
-            # print(annotated_pairs)
-            # print( chr_id, all_reads_splice_sites[read_acc][chr_id])
-            # print(annotated_ref_isoforms[chr_id])
-            read_sm_junctions = 0
-            read_nic_junctions = 0
-            read_splice_letters = []
-            read_splice_choords = []
-            for read_splice_sites in all_reads_splice_sites[read_acc][chr_id]:
-                start_sp, stop_sp = read_splice_sites
-                if reads_primary_locations[read_acc].flag == 0:
-                    donor = ref_seqs[chr_id][start_sp: start_sp + 2] 
-                    acceptor = ref_seqs[chr_id][stop_sp - 2: stop_sp]
+            if donor == "GT" and acceptor == "AG":
+                canonical_splice += 1
+            all_splice += 1
+
+            read_splice_letters.append( donor + str("-") + acceptor )
+            read_splice_choords.append( str(start_sp) + str("-") + str(stop_sp) )
+            # print(splice_site)
+            if (start_sp, stop_sp) in annotated_pairs:
+                tot_sm_pairs += 1 
+                total_individual_true += 2
+                read_sm_junctions += 1
+
+            elif start_sp in annotated_sites and stop_sp in annotated_sites:
+                # print((start_sp, stop_sp), annotated_pairs )
+                tot_nic_pairs += 1
+                total_individual_true += 2
+                read_nic_junctions += 1
+
+            elif start_sp in annotated_sites:
+                total_individual_true += 1  
+
+            elif stop_sp in annotated_sites:
+                total_individual_true += 1  
+
+            # for sp in splice_site:
+            #     # print(sp)
+            #     # print(annotated_sites)
+            #     total += 1
+            #     if sp in annotated_sites:
+            #         total_true += 1
+
+        # check set intersection between read splice sites and annotated splice sites
+        read_nic, read_ism, read_nnc, read_no_splices = 0,0,0,0
+        read_type = ''
+        transcript_fsm_id = "NA"
+        # print(tuple(read_splice_sites))
+        # print(annotated_ref_isoforms[chr_id])
+        # print(annotated_ref_isoforms)
+
+        if len(read_splice_sites) > 0:
+
+            if tuple(read_splice_sites) in annotated_isoforms:
+                total_transcript_fsm += 1
+                read_type = 'FSM'
+                transcript_fsm_id = annotated_isoforms[ tuple(read_splice_sites) ]
+
+
+            elif len(read_splice_sites) == read_sm_junctions + read_nic_junctions:
+                if read_nic_junctions >= 1:
+                    total_transcript_nic += 1
+                    read_type = 'NIC'
+                    print('NIC', read_acc)
+
                 else:
-                    acceptor = reverse_complement(ref_seqs[chr_id][start_sp: start_sp + 2])
-                    donor = reverse_complement(ref_seqs[chr_id][stop_sp - 2: stop_sp])
+                    total_transcript_ism += 1
+                    read_type = 'ISM'
 
-                if donor == "GT" and acceptor == "AG":
-                    canonical_splice += 1
-                all_splice += 1
-
-                read_splice_letters.append( donor + str("-") + acceptor )
-                read_splice_choords.append( str(start_sp) + str("-") + str(stop_sp) )
-                # print(read_splice_sites)
-                total_individual_in_data += 2
-                total_pairs_in_data += 1
-                if (start_sp, stop_sp) in annotated_pairs:
-                    tot_sm_pairs += 1 
-                    total_individual_true += 2
-                    read_sm_junctions += 1
-
-                elif start_sp in annotated_sites and stop_sp in annotated_sites:
-                    # print((start_sp, stop_sp), annotated_pairs )
-                    tot_nic_pairs += 1
-                    total_individual_true += 2
-                    read_nic_junctions += 1
-
-                elif start_sp in annotated_sites:
-                    total_individual_true += 1  
-
-                elif stop_sp in annotated_sites:
-                    total_individual_true += 1  
-
-                # for sp in read_splice_sites:
-                #     # print(sp)
-                #     # print(annotated_sites)
-                #     total += 1
-                #     if sp in annotated_sites:
-                #         total_true += 1
-
-            # check set intersection between read splice sites and annotated splice sites
-            read_fsm, read_nic, read_ism, read_nnc, read_no_splices = 0,0,0,0,0
-            transcript_fsm_id = "NA"
-            if  len(all_reads_splice_sites[read_acc][chr_id]) > 0:
-
-                if tuple(all_reads_splice_sites[read_acc][chr_id]) in annotated_isoforms:
-                    total_transcript_fsm += 1
-                    read_fsm = 1
-                    transcript_fsm_id = annotated_isoforms[ tuple(all_reads_splice_sites[read_acc][chr_id]) ]
-                    # print(annotated_ref_isoforms[chr_id][tuple(all_reads_splice_sites[read_acc][chr_id])], tuple(all_reads_splice_sites[read_acc][chr_id]))
-
-                elif len(all_reads_splice_sites[read_acc][chr_id]) == read_sm_junctions + read_nic_junctions:
-                    if read_nic_junctions >= 1:
-                        total_transcript_nic += 1
-                        read_nic = 1
-                    else:
-                        total_transcript_ism += 1
-                        read_ism = 1
-                else:
-                    total_transcript_nnc += 1
-                    read_nnc = 1
+                    # print(read_acc)
+                    # print(tuple(read_splice_sites))
+                    # for an in annotated_ref_isoforms[chr_id]:
+                    #     print(an)
+                    # print()
+                    # print(annotated_ref_isoforms[chr_id])
             else:
-                total_transcript_no_splices += 1                
-                read_no_splices = 1
+                total_transcript_nnc += 1
+                read_nnc = 1
+                read_type = 'NNC'
+        else:
+            total_transcript_no_splices += 1                
+            read_type = 'NO_SPLICE'
 
-        read_annotation = namedtuple('Annotation', ['tot_splices', 'read_sm_junctions', 'read_nic_junctions', 'fsm', 'nic', 'ism', 'nnc', 'no_splices', "donor_acceptors", "donor_acceptors_choords", "transcript_fsm_id" ])
+        read_annotation = namedtuple('Annotation', ['tot_splices', 'read_sm_junctions', 'read_nic_junctions', 'annotation', "donor_acceptors", "donor_acceptors_choords", "transcript_fsm_id" ])
         if read_splice_letters:
             donor_acceptors = ":".join([str(item) for item in read_splice_letters])
             donor_acceptors_choords = ":".join([str(item) for item in read_splice_choords])
@@ -846,10 +832,10 @@ def get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordina
         else: 
             donor_acceptors = "NA"
             donor_acceptors_choords = "NA"
-        read_annotations[read_acc] = read_annotation( len(all_reads_splice_sites[read_acc][chr_id]), read_sm_junctions, read_nic_junctions, read_fsm, read_nic, read_ism, read_nnc, read_no_splices, donor_acceptors, donor_acceptors_choords, transcript_fsm_id )
+        read_annotations[read_acc] = read_annotation( len(read_splice_sites), read_sm_junctions, read_nic_junctions, read_type, donor_acceptors, donor_acceptors_choords, transcript_fsm_id )
                 # print("FSM!!")
     # print(annotated_ref_isoforms[chr_id])
-    # print( tuple(all_reads_splice_sites[read_acc][chr_id]))
+    # print( tuple(read_splice_sites))
     print("Total splice sizes found in cigar in reads (individual, pairs):", total_individual_in_data, total_pairs_in_data, "total matching annotations (individual):", total_individual_true,
              "total annotated junctions (splice match pairs):", tot_sm_pairs,  "total NIC junctions in (pairs):", tot_nic_pairs, "total reads aligned:", total_reads)
     print("total transcripts FSM:", total_transcript_fsm)
@@ -875,38 +861,38 @@ def pickle_load(filename):
         data = pickle.load(f)
     return data
 
-def print_exact_alignments(reads, corr_reads):
-    tot = 0
-    for acc in reads:
-        if acc not in corr_reads:
-            print(acc, "Not in corrected reads")
-        else:
-            orig_seq = reads[acc]
-            corr_seq = corr_reads[acc]
-            read_alignment, ref_alignment = parasail_alignment(orig_seq, corr_seq)
-            orig_dlen = [d_len for ch, d_len in  [(ch, len(list(_))) for ch, _ in itertools.groupby(read_alignment)] if ch == "-" ]
-            corr_dlen = [d_len for ch, d_len in  [(ch, len(list(_))) for ch, _ in itertools.groupby(ref_alignment)] if ch == "-" ] 
-            if corr_dlen:
-                max_orig_dlen = max( orig_dlen )
-            else:
-                max_orig_dlen = 0
-            if corr_dlen:
-                max_corr_dlen = max( corr_dlen )
-            else:
-                max_corr_dlen = 0
+# def print_exact_alignments(reads, mm2_reads):
+#     tot = 0
+#     for acc in reads:
+#         if acc not in mm2_reads:
+#             print(acc, "Not in corrected reads")
+#         else:
+#             orig_seq = reads[acc]
+#             mm2_seq = corr_reads[acc]
+#             read_alignment, ref_alignment = parasail_alignment(orig_seq, corr_seq)
+#             orig_dlen = [d_len for ch, d_len in  [(ch, len(list(_))) for ch, _ in itertools.groupby(read_alignment)] if ch == "-" ]
+#             corr_dlen = [d_len for ch, d_len in  [(ch, len(list(_))) for ch, _ in itertools.groupby(ref_alignment)] if ch == "-" ] 
+#             if corr_dlen:
+#                 max_orig_dlen = max( orig_dlen )
+#             else:
+#                 max_orig_dlen = 0
+#             if corr_dlen:
+#                 max_corr_dlen = max( corr_dlen )
+#             else:
+#                 max_corr_dlen = 0
 
-            if max_corr_dlen > 10 or max_orig_dlen > 10:
-                print("orig", acc, read_alignment)
-                print(orig[acc])
-                print("corr", acc, ref_alignment)
-                print(corr[acc])
-                print(corr_detailed[acc][0])
-                print(corr_detailed[acc][1])
-                print(corr_detailed[acc][2])
+#             if max_corr_dlen > 10 or max_orig_dlen > 10:
+#                 print("orig", acc, read_alignment)
+#                 print(orig[acc])
+#                 print("corr", acc, ref_alignment)
+#                 print(corr[acc])
+#                 print(corr_detailed[acc][0])
+#                 print(corr_detailed[acc][1])
+#                 print(corr_detailed[acc][2])
 
-                tot += 1
-                print()
-    print("TOT structural diffs:", tot)
+#                 tot += 1
+#                 print()
+#     print("TOT structural diffs:", tot)
 
 def main(args):
     if args.load_database:
@@ -925,48 +911,41 @@ def main(args):
         pickle_dump(minimum_annotated_intron, os.path.join( args.outfolder, 'minimum_annotated_intron.pickle') )
 
     reads = { acc.split()[0] : seq for i, (acc, (seq, qual)) in enumerate(readfq(open(args.reads, 'r')))}
-    corr_reads = { acc.split()[0] : seq for i, (acc, (seq, qual)) in enumerate(readfq(open(args.corr_reads, 'r')))}
-    orig_primary_locations = decide_primary_locations(args.orig_sam, args)
-    corr_primary_locations = decide_primary_locations(args.corr_sam, args)
-    # sys.exit()
-    refs = {}
-    if args.align:
-        refs = { acc.split()[0] : seq for i, (acc, (seq, _)) in enumerate(readfq(open(args.refs, 'r')))}
-        corr, corr_detailed = get_error_rate_stats_per_read(corr_primary_locations, corr_reads, annotated_splice_coordinates_pairs, args, reference = refs)
-        orig, orig_detailed = get_error_rate_stats_per_read(orig_primary_locations, reads, annotated_splice_coordinates_pairs, args, reference = refs)
-    else: 
-        corr, corr_detailed = get_error_rate_stats_per_read(corr_primary_locations, corr_reads, annotated_splice_coordinates_pairs, args)
-        orig, orig_detailed = get_error_rate_stats_per_read(orig_primary_locations, reads, annotated_splice_coordinates_pairs, args)
+    torkel_primary_locations = decide_primary_locations(args.torkel_sam, args)
+    mm2_primary_locations = decide_primary_locations(args.mm2_sam, args)
 
-    print( "Reads successfully aligned:", len(orig),len(corr))
+    torkel, torkel_detailed = get_error_rate_stats_per_read(torkel_primary_locations, reads, annotated_splice_coordinates_pairs, args)
+    mm2, mm2_detailed = get_error_rate_stats_per_read(mm2_primary_locations, reads, annotated_splice_coordinates_pairs, args)
 
-    if args.align:
-        print_exact_alignments(reads, corr_reads)
+    print( "Reads successfully aligned:", len(mm2),len(torkel))
+
+    # if args.align:
+    #     print_exact_alignments(reads, corr_reads)
 
 
-    quantile_tot_orig, quantile_insertions_orig, quantile_deletions_orig, quantile_substitutions_orig = print_quantile_values(orig)
-    quantile_tot_corr, quantile_insertions_corr, quantile_deletions_corr, quantile_substitutions_corr = print_quantile_values(corr)
+    quantile_tot_torkel, quantile_insertions_torkel, quantile_deletions_torkel, quantile_substitutions_torkel = print_quantile_values(torkel)
+    quantile_tot_mm2, quantile_insertions_mm2, quantile_deletions_mm2, quantile_substitutions_mm2 = print_quantile_values(mm2)
 
-    orig_stats = get_summary_stats(orig, 1.0)
-    corr_stats = get_summary_stats(corr, 1.0)
+    torkel_stats = get_summary_stats(torkel, 1.0)
+    mm2_stats = get_summary_stats(mm2, 1.0)
     
     print("Distribution of error rates (Percent)")
     print("Reads, Best, top 5%, top 10%, top 25%, Median, top 75%, top 90%, top 95%, Worst")
-    print("Original,{0},{1},{2},{3},{4},{5},{6},{7},{8}".format( *[round(100*round(x,3), 2) for x in quantile_tot_orig ] ))
-    print("Corrected,{0},{1},{2},{3},{4},{5},{6},{7},{8}".format( *[round(100*round(x,3), 2) for x in quantile_tot_corr ] ))
+    print("torkel,{0},{1},{2},{3},{4},{5},{6},{7},{8}".format( *[round(100*round(x,3), 2) for x in quantile_tot_torkel ] ))
+    print("mm2,{0},{1},{2},{3},{4},{5},{6},{7},{8}".format( *[round(100*round(x,3), 2) for x in quantile_tot_mm2 ] ))
 
     outfile = open(os.path.join(args.outfolder, "results.csv"), "w")
-    outfile.write("Original,tot,{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}\n".format( *[round(100*round(x,3), 2) for x in quantile_tot_orig ], *orig_stats, len(orig)))
-    outfile.write("Corrected,tot,{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}\n".format( *[round(100*round(x,3), 2) for x in quantile_tot_corr ], *corr_stats, len(corr)))
+    outfile.write("torkel,tot,{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}\n".format( *[round(100*round(x,3), 2) for x in quantile_tot_torkel ], *torkel_stats, len(torkel)))
+    outfile.write("mm2,tot,{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}\n".format( *[round(100*round(x,3), 2) for x in quantile_tot_mm2 ], *mm2_stats, len(mm2)))
     
-    outfile.write("Original,ins,{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}\n".format( *[round(100*round(x,3), 2) for x in quantile_insertions_orig ], *orig_stats, len(orig)))
-    outfile.write("Corrected,ins,{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}\n".format( *[round(100*round(x,3), 2) for x in quantile_insertions_corr ], *corr_stats, len(corr)))
+    outfile.write("torkel,ins,{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}\n".format( *[round(100*round(x,3), 2) for x in quantile_insertions_torkel ], *torkel_stats, len(torkel)))
+    outfile.write("mm2,ins,{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}\n".format( *[round(100*round(x,3), 2) for x in quantile_insertions_mm2 ], *mm2_stats, len(mm2)))
 
-    outfile.write("Original,del,{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}\n".format( *[round(100*round(x,3), 2) for x in quantile_deletions_orig ], *orig_stats, len(orig)))
-    outfile.write("Corrected,del,{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}\n".format( *[round(100*round(x,3), 2) for x in quantile_deletions_corr ], *corr_stats, len(corr)))
+    outfile.write("torkel,del,{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}\n".format( *[round(100*round(x,3), 2) for x in quantile_deletions_torkel ], *torkel_stats, len(torkel)))
+    outfile.write("mm2,del,{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}\n".format( *[round(100*round(x,3), 2) for x in quantile_deletions_mm2 ], *mm2_stats, len(mm2)))
 
-    outfile.write("Original,subs,{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}\n".format( *[round(100*round(x,3), 2) for x in quantile_substitutions_orig ], *orig_stats, len(orig)))
-    outfile.write("Corrected,subs,{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}\n".format( *[round(100*round(x,3), 2) for x in quantile_substitutions_corr ], *corr_stats, len(corr)))
+    outfile.write("torkel,subs,{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}\n".format( *[round(100*round(x,3), 2) for x in quantile_substitutions_torkel ], *torkel_stats, len(torkel)))
+    outfile.write("mm2,subs,{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14}\n".format( *[round(100*round(x,3), 2) for x in quantile_substitutions_mm2 ], *mm2_stats, len(mm2)))
 
     outfile.close()    
 
@@ -977,32 +956,32 @@ def main(args):
     # print(annotated_splice_coordinates)
     print("SHORTEST INTRON:", minimum_annotated_intron)
     minimum_annotated_intron = max(minimum_annotated_intron,  args.min_intron)
-    corrected_splice_sites = get_read_candidate_splice_sites(corr_primary_locations, minimum_annotated_intron, annotated_splice_coordinates_pairs)
-    original_splice_sites = get_read_candidate_splice_sites(orig_primary_locations, minimum_annotated_intron, annotated_splice_coordinates_pairs)
-    if len(refs) == 0:
-        refs = { acc.split()[0] : seq for i, (acc, (seq, _)) in enumerate(readfq(open(args.refs, 'r')))}
+    mm2_splice_sites = get_read_candidate_splice_sites(mm2_primary_locations, minimum_annotated_intron, annotated_splice_coordinates_pairs)
+    torkel_splice_sites = get_read_candidate_splice_sites(torkel_primary_locations, minimum_annotated_intron, annotated_splice_coordinates_pairs)
 
-    corr_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, corrected_splice_sites, refs, corr_primary_locations)
-    orig_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, original_splice_sites, refs, orig_primary_locations)
-    reads_to_cluster_size = get_cluster_sizes(args.cluster_file, reads)
+    refs = { acc.split()[0] : seq for i, (acc, (seq, _)) in enumerate(readfq(open(args.refs, 'r')))}
 
-    reads_missing_from_clustering_correction_output = set(reads.keys()) - set(corr_reads.keys())
-    bug_if_not_empty = set(corr_reads.keys()) - set(reads.keys())
-    reads_unaligned_in_original = set(reads.keys()) - set(orig_primary_locations.keys())
-    reads_unaligned_in_correction = set(corr_reads.keys()) - set(corr_primary_locations.keys()) 
+    print('MINIMAP2')
+    mm2_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, mm2_splice_sites, refs, mm2_primary_locations)
+    print('uLTRA')
+    torkel_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, torkel_splice_sites, refs, torkel_primary_locations)
+    # reads_to_cluster_size = get_cluster_sizes(args.cluster_file, reads)
+
+    reads_unaligned_in_torkel = set(reads.keys()) - set(torkel_primary_locations.keys())
+    reads_unaligned_in_mm2 = set(reads.keys()) - set(mm2_primary_locations.keys()) 
 
     detailed_results_outfile = open(os.path.join(args.outfolder, "results_per_read.csv"), "w")
-    detailed_results_outfile.write("acc,read_type,ins,del,subs,matches,error_rate,read_length,cluster_size, is_unaligned_in_other_method,tot_splices,read_sm_junctions,read_nic_junctions,fsm,nic,ism,nnc,no_splices,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag\n")
-    print_detailed_values_to_file(corr, corr_splice_results, reads_to_cluster_size, corr_reads, detailed_results_outfile, reads_unaligned_in_original, reads_missing_from_clustering_correction_output, "corrected")    
-    print_detailed_values_to_file(orig, orig_splice_results, reads_to_cluster_size, reads, detailed_results_outfile, reads_unaligned_in_correction, reads_missing_from_clustering_correction_output, "original")
+    detailed_results_outfile.write("acc,read_type,ins,del,subs,matches,error_rate,read_length,cluster_size, is_unaligned_in_other_method,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag\n")
+
+    print_detailed_values_to_file(mm2, mm2_splice_results, reads, detailed_results_outfile, reads_unaligned_in_torkel, "minimap2")    
+
+    print_detailed_values_to_file(torkel, torkel_splice_results, reads, detailed_results_outfile, reads_unaligned_in_mm2, "uLTRA")
     detailed_results_outfile.close()
 
     print()
-    print("Reads successfully aligned (original/corrected):", len(orig),len(corr))
-    print("Total reads (original/corrected):", len(reads),len(corr_reads))
-    print("READS MISSING FROM CLUSTERING/CORRECTION INPUT:", len(reads_missing_from_clustering_correction_output))
-    print("READS UNALIGNED (ORIGINAL/CORRECTED):", len(reads_unaligned_in_original), len(reads_unaligned_in_correction) )
-    print("BUG IF NOT EMPTY:",len(bug_if_not_empty))
+    print("Reads successfully aligned (original/corrected):", len(torkel),len(mm2))
+    print("Total reads", len(reads))
+    print("READS UNALIGNED (ORIGINAL/CORRECTED):", len(reads_unaligned_in_torkel), len(reads_unaligned_in_mm2) )
 
     ###########################################################################
     ###########################################################################
@@ -1010,26 +989,24 @@ def main(args):
 
 
 
-    # print(orig_sorted)
-    # print(",".join([s for s in orig_stats]))
-    # print(",".join([s for s in corr_stats]))
+    # print(torkel_sorted)
+    # print(",".join([s for s in torkel_stats]))
+    # print(",".join([s for s in mm2_stats]))
 
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Evaluate pacbio IsoSeq transcripts.")
-    parser.add_argument('orig_sam', type=str, help='Path to the original read file')
-    parser.add_argument('corr_sam', type=str, help='Path to the corrected read file')
+    parser.add_argument('torkel_sam', type=str, help='Path to the original read file')
+    parser.add_argument('mm2_sam', type=str, help='Path to the corrected read file')
     parser.add_argument('reads', type=str, help='Path to the read file')
-    parser.add_argument('corr_reads', type=str, help='Path to the corrected read file')
     parser.add_argument('refs', type=str, help='Path to the refs file')
-    parser.add_argument('cluster_file', type=str, help='Path to the refs file')
     parser.add_argument('gff_file', type=str, help='Path to the refs file')
     parser.add_argument('outfolder', type=str, help='Output path of results')
-    parser.add_argument('--min_intron', type=int, default=30, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
+    parser.add_argument('--min_intron', type=int, default=15, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
     parser.add_argument('--infer_genes', action= "store_true", help='Include pairwise alignment of original and corrected read.')
     parser.add_argument('--load_database', action= "store_true", help='Load already computed splice junctions and transcript annotations instead of constructing a new database.')
-    parser.add_argument('--align', action= "store_true", help='Include pairwise alignment of original and corrected read.')
+    # parser.add_argument('--align', action= "store_true", help='Include pairwise alignment of original and corrected read.')
 
     args = parser.parse_args()
 

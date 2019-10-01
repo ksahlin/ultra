@@ -1,5 +1,6 @@
 import pysam
-
+from itertools import groupby
+from operator import itemgetter
 
 def get_segments(read_aln, ref_aln, predicted_exons):
     segments = []
@@ -20,13 +21,23 @@ def get_segments(read_aln, ref_aln, predicted_exons):
 
         if n != '-':
             curr_ref_pos += 1
-    if n != '-' and curr_ref_pos in ref_seq_break_points:
+
+    if n != '-' and curr_ref_pos in ref_seq_break_points: 
         ref_aln_break_points.append(i)
 
+
+    # remove any consecutive breakpoints caused by insertions in junctions
+    ref_aln_break_points_no_consecutive = []
+    for k, g in groupby( enumerate(ref_aln_break_points), key=lambda x: x[0] - x[1]):
+        consecutive_group_of_coords = list(map(itemgetter(1), g))
+        print(consecutive_group_of_coords)
+        ref_aln_break_points_no_consecutive.append(consecutive_group_of_coords[0])
+
     print('ref_aln_break_points', ref_aln_break_points)
+    print('ref_aln_break_points_no_consecutive', ref_aln_break_points_no_consecutive)
 
     e_start = 0
-    for e_stop in ref_aln_break_points:
+    for e_stop in ref_aln_break_points_no_consecutive:
         segments.append( (read_aln[ e_start : e_stop ], ref_aln[ e_start : e_stop ]) )
         e_start = e_stop
     return segments
@@ -44,6 +55,9 @@ def get_type(n1, n2):
 def get_cigars(segments):
     segments_cigar = []
     for read, ref in segments:
+        print(read)
+        print(ref)
+        print()
         c = []
         prev_type = get_type(read[0], ref[0])
         length = 1
@@ -68,6 +82,7 @@ def get_genomic_cigar(read_aln, ref_aln, predicted_exons):
 
     segments = get_segments(read_aln, ref_aln, predicted_exons)
     cigars = get_cigars(segments)
+    print('cigar segments', cigars)
     genomic_cigar = []
     intron_lengths = [e2[0] - e1[1] for e1, e2 in zip(predicted_exons[:-1], predicted_exons[1:])]
     for i in range(len(cigars)):
