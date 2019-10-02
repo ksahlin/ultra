@@ -99,7 +99,7 @@ def calc_evalue(read_alignment, ref_alignment, m, n):
         lambda=1.37 and K=0.711
         E=mn2**-S
     """
-    a, b, c, d = 1, -2, 4,  1
+    a, b, c, d = 1, -1, 1,  1
     lambda_=1.37
     K=0.711
 
@@ -115,8 +115,8 @@ def calc_evalue(read_alignment, ref_alignment, m, n):
         raw_score = 0
     bit_score = (lambda_*raw_score - math.log(K) )/ math.log(2)
     evalue = m*n*2**(-bit_score)
-    print(read_alignment)
-    print(ref_alignment)
+    # print(read_alignment)
+    # print(ref_alignment)
     print(I,X,G,O)
     print(raw_score, bit_score, evalue)
     return evalue
@@ -171,7 +171,7 @@ def main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq, over
     print(unique_exon_choordinates)
     print()
 
-    for (ref_chr_id, e_start, e_stop), all_exon_ids in unique_exon_choordinates.items():
+    for (ref_chr_id, e_start, e_stop), all_exon_ids in sorted(unique_exon_choordinates.items(), key=lambda x: x[0][1]):
         if e_stop - e_start > 10:
             # if is_rc:
             #     ref_seq = help_functions.reverse_complement(refs[ref_chr_id][e_start: e_stop])
@@ -180,14 +180,22 @@ def main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq, over
             # print(exon_id, e_stop - e_start)
             # align them to the read and get the best approxinate match
 
-            locations, edit_distance, read_alignment, ref_alignment = edlib_alignment(ref_seq, read_seq)
-            print(exon_id, e_start, e_stop, len(ref_seq), len(read_seq),edit_distance,(len(ref_seq) - edit_distance)/len(ref_seq))
+            locations, edit_distance, ref_alignment, read_alignment = edlib_alignment(ref_seq, read_seq)
+            print()
+            # print(ref_seq)
+            print(ref_chr_id, e_start, e_stop)
+            print(exon_id, e_start, e_stop, locations, len(ref_seq), len(read_seq),edit_distance,(len(ref_seq) - edit_distance)/len(ref_seq))
+            print(read_alignment)
+            print(ref_alignment)
             if edit_distance >= 0:
                 calc_complessed_score(read_alignment, ref_alignment, len(read_seq), len(ref_seq))
-                # e_score = calc_evalue(read_alignment, ref_alignment, len(read_seq), len(ref_seq))
+                e_score = calc_evalue(read_alignment, ref_alignment, len(read_seq), len(ref_seq))
                 score = (len(ref_seq) - edit_distance)/len(ref_seq)
                 # print(e_score, score, edit_distance )
-
+                # if score > 0.6 and e_score >= 1.0:
+                #     print('HERE')
+                    # sys.exit()
+                # if e_score < 1.0:
                 if score > 0.6:
                     start, stop = locations[0]
                     covered_regions.append((start,stop, score, exon_id, ref_chr_id))
@@ -206,7 +214,7 @@ def main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq, over
             print()
             if edit_distance >= 0:
                 score = (len(read_seq) - edit_distance)/len(read_seq)
-
+                # if e_score < 1.0:
                 if score > 0.6:
                     start, stop = 0, len(read_seq) - 1
                     covered_regions.append((start,stop, score, exon_id, ref_chr_id))
