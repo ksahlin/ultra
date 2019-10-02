@@ -252,9 +252,9 @@ def align_reads(args):
             # if classification == 'NIC_novel':
             #     print('NIC_novel', read_acc)
             #     sys.exit()
-            # if read_acc == '464:2454|2d6b14f0-3651-4799-ab9e-4852fa29b3b6_runid=8c239806e6f576cd17d6b7d532976b1fe830f9c6_sampleid=pcs109_sirv_mix2_LC_read=35720_ch=117_start_time=2019-04-12T23:50:21Z_strand=+_strand=+_rescue=1':
-            #     print(read_acc)
-            #     sys.exit()
+            if read_acc == '57:1951|1ccdb275-f1e1-4738-b8d4-bed7845837b8_runid=8c239806e6f576cd17d6b7d532976b1fe830f9c6_sampleid=pcs109_sirv_mix2_LC_read=33560_ch=371_start_time=2019-04-12T23:37:39Z_strand=-_strand=+':
+                print(read_acc)
+                sys.exit()
 
                 # predicted_transcript = []
                 # chained_parts_seq = []
