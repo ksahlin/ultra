@@ -169,7 +169,7 @@ def align_reads(args):
             print(read_acc, is_rc, value)
 
             if value > 0: #value > len(read_seq) * 0.2:
-                classification, annotated_to_transcript_id, mam_value, mam_solution =  classify_read_with_mams.main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq, args.overlap_threshold, is_rc)
+                non_covered_regions, mam_value, mam_solution, unique_exon_choordinates =  classify_read_with_mams.main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq, args.overlap_threshold, is_rc)
                 if mam_value > 0:
                     print(read_acc, "alignment to:", chr_id, "best solution val mems:", value, 'best mam value:', mam_value)
 
@@ -218,6 +218,9 @@ def align_reads(args):
                     print(classifications)
                     classification, annotated_to_transcript_id = classify_alignment2.main(chr_id, predicted_splices, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations)
 
+                    if len(non_covered_regions) >= 3 and (max(non_covered_regions[1:-1]) > args.non_covered_cutoff): # checing for internal (splice site) non covered regions
+                        classification = 'Unclassified_insufficient_junction_coverage'
+
 
                     classifications[read_acc] = (classification, mam_value / float(len(read_seq)))
                     print(classification)
@@ -234,7 +237,16 @@ def align_reads(args):
                         print(value, mam_value, len(read_seq))
                         print(solution)
                         # sys.exit()
-                    
+                    elif classification == "NNC":
+                        eprint('NNC unique solution:', unique)
+                        print(value, mam_value, len(read_seq))
+                        print(mam_solution)
+                        print('here', sorted(all_splice_sites_annotations[chr_id]))
+                        print(non_covered_regions)
+                        print(predicted_splices)
+                        print(predicted_exons)
+                        print(unique_exon_choordinates)
+                        # sys.exit()
 
 
                     sam_output.main(read_acc, chr_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, alignment_outfile, is_rc)
@@ -247,96 +259,9 @@ def align_reads(args):
                 if read_acc not in read_accessions_with_mappings:
                     sam_output.main(read_acc, '*', 'unaligned', [], '*', '*', '*', alignment_outfile, is_rc)
 
-
-
-            # if classification == 'NIC_novel':
-            #     print('NIC_novel', read_acc)
+            # if read_acc == '121:704|5230da5d-0723-40ce-bee6-a493eb9f52af_runid=8c239806e6f576cd17d6b7d532976b1fe830f9c6_sampleid=pcs109_sirv_mix2_LC_read=113416_ch=180_start_time=2019-04-13T18:27:14Z_strand=+_strand=+':
+            #     print('Here')
             #     sys.exit()
-            if read_acc == '57:1951|1ccdb275-f1e1-4738-b8d4-bed7845837b8_runid=8c239806e6f576cd17d6b7d532976b1fe830f9c6_sampleid=pcs109_sirv_mix2_LC_read=33560_ch=371_start_time=2019-04-12T23:37:39Z_strand=-_strand=+':
-                print(read_acc)
-                sys.exit()
-
-                # predicted_transcript = []
-                # chained_parts_seq = []
-                # chained_parts_ids = []
-                # prev_ref_stop = -1
-                # predicted_exons = []
-                # for mem in solution:
-                #     ref_chr_id, ref_start, ref_stop =  mem.exon_part_id.split('_')
-                #     ref_start, ref_stop = int(ref_start), int(ref_stop)
-                #     predicted_transcript.append( (ref_start, ref_stop) )
-                #     # print("lll",ref_chr_id, ref_start, ref_stop)
-                #     seq = ref_part_sequences[ref_chr_id][(ref_start, ref_stop)]
-                #     if ref_start < prev_ref_stop:
-                #         chained_parts_seq.append(seq[prev_ref_stop - ref_start: ])
-                #     else:
-                #         chained_parts_seq.append(seq)
-
-                #     if ref_start > prev_ref_stop + 1 : # new separate exon on the genome
-                #         chained_parts_ids.append(parts_to_exons[ref_chr_id][ (ref_start, ref_stop)])
-                #         predicted_exons.append((prev_ref_stop, ref_start))
-                #     else: # part of an exon
-                #         chained_parts_ids[-1] = chained_parts_ids[-1] ^ parts_to_exons[ref_chr_id][(ref_start, ref_stop)]  #here we get mora annotations than we want , need a function to check that an exon has all parts covered!
-
-                #     prev_ref_stop = ref_stop
-
-                # predicted_exons.append((prev_ref_stop, -1))
-
-                # created_ref_seq = "".join([part for part in chained_parts_seq])
-                # # predicted_transcript = tuple( mem.exon_part_id for mem in solution)
-                # # print( "predicted:", predicted_transcript)
-                # print(predicted_exons)
-                # predicted_exons = [ (e1[1],e2[0]) for (e1, e2) in zip(predicted_exons[:-1], predicted_exons[1:] )]
-                # predicted_splices = [ (e1[1],e2[0]) for e1, e2 in zip(predicted_exons[:-1],predicted_exons[1:])]
-
-                # print(predicted_exons)
-                # print(predicted_splices)
-
-
-                # read_aln, ref_aln, cigar_string, cigar_tuples = help_functions.parasail_alignment(read_seq, created_ref_seq)
-                # # print('read', read_seq)
-                # # print('ref',created_ref_seq)
-                # print(read_aln)
-                # print(ref_aln, tuple( mem.exon_part_id for mem in solution))
-                # print(cigar_string)
-                # print(read_aln == ref_aln)
-                # # print([parts_to_exons[ mem.exon_part_id] for mem in solution])
-                # print(chained_parts_ids)
-
-
-
-            #     classification, annotated_to_transcript_id = classify_alignment.main(chr_id, predicted_splices, predicted_transcript, splices_to_transcripts, parts_to_transcript_annotations, transcripts_to_parts_annotations, all_splice_pairs_annotations, all_splice_sites_annotations)
-            #     classifications[read_acc] = (classification, value / float(len(read_seq)))
-            #     print(classification)
-            #     if classification == 'NIC_comb':
-            #         eprint(read_acc, 'NIC_comb unique solution:', unique)
-            #         print(solution)
-            #         print(parts_to_exons[ref_chr_id])
-            #         print(predicted_exons)
-            #         print(predicted_splices)
-            #         print(chr_id, splices_to_transcripts[chr_id])
-            #         print( tuple(predicted_splices) in splices_to_transcripts[chr_id])
-            #         print(transcripts_to_parts_annotations[chr_id]['SIRV308'])
-            #         # sys.exit()
-            #     elif classification == 'FSM':
-            #         eprint('FSM unique solution:', unique)
-            #         print(solution)
-            #         # sys.exit()
-
-            #     sam_output.main(read_acc, chr_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, alignment_outfile)
-
-            # else: 
-            #     sam_output.main(read_acc, '*', 'unaligned', predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, alignment_outfile)
-
-                # Write alignment to SAM file
-
-            # if read_acc == 'read_several_optimal_matchings_1001_1186_1469_1534':
-            #     sys.exit()
-
-                # check_if_present_in_database(solution, parts_to_transcript_annotations[chr_id])
-
-            # parasail_align_to_best(read, concatenated_exon_parts)
-
     alignment_outfile.close()
 
     print(classifications)
@@ -392,6 +317,7 @@ if __name__ == '__main__':
     pipeline_parser.add_argument('reads', type=str, help='Path to fasta/fastq file with reads.')
     pipeline_parser.add_argument('--min_mem', type=int, default=16, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
     pipeline_parser.add_argument('--overlap_threshold', type=int, default=10, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
+    pipeline_parser.add_argument('--non_covered_cutoff', type=int, default=10, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
     pipeline_parser.add_argument('--dropoff', type=float, default=0.8, help='Ignore alignment to hits with read coverage of this fraction less than the best hit.')
     pipeline_parser.add_argument('--ignore_rc', action='store_true', help='Ignore to map to reverse complement.')
     pipeline_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
