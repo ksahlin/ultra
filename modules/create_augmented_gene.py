@@ -70,7 +70,7 @@ def create_graph_from_exon_parts(db, min_mem):
     
     # exons_to_parts = reverse_mapping(parts_to_exons)
     # sys.exit()
-
+    # ccc = set()
     for gene in db.features_of_type('gene'):
         genes_to_ref[gene.id] = str(gene.seqid)
 
@@ -78,15 +78,26 @@ def create_graph_from_exon_parts(db, min_mem):
             transcript_exons = []
             for exon in db.children(transcript, featuretype='exon', order_by='start'):
                 transcript_exons.append( (exon.start-1, exon.stop) )
-            transcript_splices = [ (e1[1],e2[0]) for e1, e2 in zip(transcript_exons[:-1],transcript_exons[1:])]
-
-            splices_to_transcripts[gene.seqid][ tuple(transcript_splices)] = transcript.id
-            for site1, site2 in transcript_splices:
+            internal_transcript_splices = [ (e1[1],e2[0]) for e1, e2 in zip(transcript_exons[:-1],transcript_exons[1:])]
+            
+            # internal transcript splices
+            splices_to_transcripts[gene.seqid][ tuple(internal_transcript_splices)] = transcript.id
+            for site1, site2 in internal_transcript_splices:
                 all_splice_pairs_annotations[str(gene.seqid)][(site1, site2)].add( transcript.id )
+                # if site2 == 3105:
+                #     print('LOOOL',gene.seqid)
+                #     ccc.add(gene.seqid)
+
                 all_splice_sites_annotations[str(gene.seqid)].add(site1)
                 all_splice_sites_annotations[str(gene.seqid)].add(site2)
+            
+            # add start and end splice to all_splice_sites_annotations 
+            # all_splice_sites_annotations[str(gene.seqid)].add(transcript_exons[0][0])
+            # all_splice_sites_annotations[str(gene.seqid)].add(transcript_exons[-1][-1])
 
-
+    # if ccc:
+    #     print(ccc)
+    #     sys.exit()
     transcripts_to_splices = reverse_mapping(splices_to_transcripts)
 
             # print("transcript_parts", tuple(transcript_parts))

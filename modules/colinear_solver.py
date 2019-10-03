@@ -155,10 +155,11 @@ def read_coverage_mam_score(mams, overlap_threshold):
             max_c_value_case_a = 0
             T_traceback_index = None
 
-        I_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if v.c <= mams[j_prime].d <= v.c  + overlap_threshold]
+        I_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if v.c <= mams[j_prime].d <= v.c - 1 + overlap_threshold]
         # I_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if v.c <= mams[j_prime].d  <= v.c + (v.d - v.c)*(1.0 - v.val/(v.d - v.c)) ]  #Maybe bug here, check the objective!! need to be careful
         if I_values:
-            I_values_plus_chord_diff = [ (j_prime, c_val + (v.d - mams[j_prime].d)*v.identity - max(0, (mams[j_prime].d - v.c +1)*v.identity  - (mams[j_prime].d - v.c +1)*mams[j_prime].identity) ) for j_prime, c_val in I_values]  # Last max is takeing which of the two mams had highest idendity in shared region. 
+            # I_values_plus_chord_diff = [ (j_prime, c_val + (v.d - mams[j_prime].d)*v.identity - max(0, (mams[j_prime].d - v.c +1)*v.identity  - (mams[j_prime].d - v.c +1)*mams[j_prime].identity) ) for j_prime, c_val in I_values]  # Last max is takeing which of the two mams had highest idendity in shared region. 
+            I_values_plus_chord_diff = [ (j_prime, c_val + (v.val - (mams[j_prime].d - v.c + 1.1 ))) for j_prime, c_val in I_values]  # Penalize the overlap not to double count coverage on read. 1.1 instead of 1.0 to remove tie breakers preferring the non-overlapping solutions
             I_traceback_index, max_c_value_case_b = max(I_values_plus_chord_diff, key=lambda x: x[1])
             C_b[j] = max_c_value_case_b
 
