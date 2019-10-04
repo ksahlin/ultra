@@ -5,14 +5,15 @@
 import os
 import sys
 import os
-
 import itertools
 import argparse
 import errno
 import math
 
-
 from collections import namedtuple
+
+from modules import help_functions
+
 
 def argmax(iterable):
     return max(enumerate(iterable), key=lambda x: x[1])[0]
@@ -190,7 +191,7 @@ def read_coverage_mam_score(mams, overlap_threshold):
     solution_index = argmax(C)
     # solution_index = len(C) - argmax(C[::-1]) -1
     # print()
-    # print(C[solution_index], C)
+    help_functions.eprint(C)
     value = C[solution_index]
     # print()
     solution = []
