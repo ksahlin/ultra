@@ -5,6 +5,11 @@ import re
 import parasail
 # import edlib
 
+
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
+
 def reverse_complement(string):
     #rev_nuc = {'A':'T', 'C':'G', 'G':'C', 'T':'A', 'N':'N', 'X':'X'}
     # Modified for Abyss output

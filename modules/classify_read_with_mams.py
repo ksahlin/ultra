@@ -143,7 +143,7 @@ def main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq, over
     predicted_transcript = []
     predicted_exons = []
     covered_regions = []
-    mam = namedtuple('Mam', ['x', 'y', 'c', 'd', 'val', "identity", "exon_id", "ref_chr_id"])
+    mam = namedtuple('Mam', ['x', 'y', 'c', 'd', 'val', "min_segment_length", "exon_id", "ref_chr_id"])
     mam_instance = []
     unique_part_locations = set()
     for mem in solution:
@@ -191,7 +191,8 @@ def main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq, over
             if edit_distance >= 0:
                 # calc_complessed_score(read_alignment, ref_alignment, len(read_seq), len(ref_seq))
                 # e_score = calc_evalue(read_alignment, ref_alignment, len(read_seq), len(ref_seq))
-                score = min((len(ref_seq) - edit_distance),(len(read_seq) - edit_distance))  #/len(ref_seq)
+                min_segment_length = min( len(ref_seq) ,len(read_seq) )
+                score = min_segment_length - edit_distance  # min((len(ref_seq) - edit_distance),(len(read_seq) - edit_distance))  #/len(ref_seq)
                 print(score, edit_distance, len(ref_seq))
                 # print(e_score, score, edit_distance )
                 # if score > 0.6 and e_score >= 1.0:
@@ -203,7 +204,7 @@ def main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq, over
                     covered_regions.append((start,stop, score, exon_id, ref_chr_id))
                     for exon_id in all_exon_ids:
                         mam_tuple = mam(e_start, e_stop, start, stop, 
-                                score, score,  exon_id, ref_chr_id)
+                                score, min_segment_length,  exon_id, ref_chr_id)
                         mam_instance.append(mam_tuple)
         else:
             print("not aligning exons smaller than 10bp") # TODO: align these and take all locations
@@ -215,7 +216,9 @@ def main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq, over
             print(exon_id, e_start, e_stop, len(ref_seq), len(read_seq),edit_distance)
             print()
             if edit_distance >= 0:
-                score = (len(read_seq) - edit_distance) #/len(read_seq)
+                min_segment_length = min( len(ref_seq) ,len(read_seq) )
+
+                score = min_segment_length - edit_distance #/len(read_seq)
                 # if e_score < 1.0:
                 if score > 0.6:
                     start, stop = 0, len(read_seq) - 1
@@ -286,8 +289,8 @@ def main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq, over
     ###################################################################################################
     ###################################################################################################
       
-    print('mam instance')
-    print(sorted(mam_instance, key= lambda x: x.x))
+    # print('mam instance')
+    # help_functions.eprint(sorted(mam_instance, key= lambda x: x.x))
     # best find a colinear chaining with best cover (score of each segment is length of mam*identity)
     if mam_instance:
         mam_solution, value, unique = colinear_solver.read_coverage_mam_score(mam_instance, overlap_threshold)
