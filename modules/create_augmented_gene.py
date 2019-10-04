@@ -92,8 +92,8 @@ def create_graph_from_exon_parts(db, min_mem):
                 all_splice_sites_annotations[str(gene.seqid)].add(site2)
             
             # add start and end splice to all_splice_sites_annotations 
-            # all_splice_sites_annotations[str(gene.seqid)].add(transcript_exons[0][0])
-            # all_splice_sites_annotations[str(gene.seqid)].add(transcript_exons[-1][-1])
+            all_splice_sites_annotations[str(gene.seqid)].add(transcript_exons[0][0])
+            all_splice_sites_annotations[str(gene.seqid)].add(transcript_exons[-1][-1])
 
     # if ccc:
     #     print(ccc)

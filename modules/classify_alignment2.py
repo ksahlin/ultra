@@ -1,3 +1,4 @@
+from modules import help_functions
 
 def contains(sub, pri):
     M, N = len(pri), len(sub)
@@ -77,8 +78,14 @@ def main(chr_id, predicted_splices, splices_to_transcripts, transcripts_to_splic
             print(predicted_splices, transcript)
 
 
-       
-    print()
-    print('NNC:', tuple(predicted_splices) )
-    print()       
+    
+    # help_functions.eprint()
+    # help_functions.eprint('NNC:', tuple(predicted_splices) )
+    # help_functions.eprint()      
+    # for start, stop in predicted_splices:
+    #     if start not in all_splice_sites_annotations_chromosome:
+    #         help_functions.eprint(start) 
+    #     if stop not in all_splice_sites_annotations_chromosome:
+    #         help_functions.eprint(stop) 
+
     return "NNC", transcript
