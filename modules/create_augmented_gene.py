@@ -26,27 +26,33 @@ def create_graph_from_exon_parts(db, min_mem):
 
     parts_to_exons = defaultdict(lambda: defaultdict(set))
     for i, exon in enumerate(db.features_of_type('exon', order_by='seqid')):
-        exons_to_ref[exon.id] = exon.seqid
-        # print(exon.id, exon.start, exon.stop, exon.seqid)
+        if exon.seqid.isdigit() or exon.seqid == 'X' or exon.seqid == 'Y':
+            chr_id = 'chr'+ exon.seqid
+        elif exon.seqid == 'MT':
+            chr_id = 'chrM'
+        else:
+            chr_id = exon.seqid
+
+        exons_to_ref[exon.id] = chr_id
         exon_id_to_choordinates[exon.id] = (exon.start - 1, exon.stop)
         # creating the augmentation
         if i == 0: # initialization
-            prev_seq_id = exon.seqid
+            prev_seq_id = chr_id
             active_start = exon.start - 1
             active_stop = exon.stop
             active_exons = set() 
             active_exons.add(exon.id)
 
-        if exon.seqid != prev_seq_id: # switching chromosomes
+        if chr_id != prev_seq_id: # switching chromosomes
             parts_to_exons[prev_seq_id][(active_start, active_stop)] = active_exons
-            prev_seq_id = exon.seqid
+            prev_seq_id = chr_id
             active_start = exon.start - 1
             active_stop = exon.stop
             active_exons = set() 
             active_exons.add(exon.id)           
 
         if exon.start - 1 > active_stop:
-            parts_to_exons[exon.seqid][(active_start, active_stop)] = active_exons
+            parts_to_exons[chr_id][(active_start, active_stop)] = active_exons
             active_exons = set()
             active_exons.add(exon.id)
 
@@ -59,7 +65,7 @@ def create_graph_from_exon_parts(db, min_mem):
 
         assert active_start <= exon.start - 1
 
-    parts_to_exons[exon.seqid][(active_start, active_stop)] = active_exons
+    parts_to_exons[chr_id][(active_start, active_stop)] = active_exons
 
     # print(parts_to_exons["SIRV3"])
     # sys.exit()
@@ -81,26 +87,33 @@ def create_graph_from_exon_parts(db, min_mem):
     #     genes_to_ref[gene.id] = str(gene.seqid)
     #     print("here", gene.id,  str(gene.seqid))
     for transcript in db.features_of_type('transcript', order_by='seqid'): #db.children(gene, featuretype='transcript', order_by='start'):
-        # print("here", transcript.id,  str(transcript.seqid))  
+        if transcript.seqid.isdigit() or transcript.seqid == 'X' or transcript.seqid == 'Y':
+            chr_id = 'chr'+ transcript.seqid
+        elif transcript.seqid == 'MT':
+            chr_id = 'chrM'
+        else:
+            chr_id = transcript.seqid
+
+        # print("here", transcript.id,  str(chr_id))  
         transcript_exons = []
         for exon in db.children(transcript, featuretype='exon', order_by='start'):
             transcript_exons.append( (exon.start-1, exon.stop) )
         internal_transcript_splices = [ (e1[1],e2[0]) for e1, e2 in zip(transcript_exons[:-1],transcript_exons[1:])]
         
         # internal transcript splices
-        splices_to_transcripts[transcript.seqid][ tuple(internal_transcript_splices)] = transcript.id
+        splices_to_transcripts[chr_id][ tuple(internal_transcript_splices)] = transcript.id
         for site1, site2 in internal_transcript_splices:
-            all_splice_pairs_annotations[str(transcript.seqid)][(site1, site2)].add( transcript.id )
+            all_splice_pairs_annotations[str(chr_id)][(site1, site2)].add( transcript.id )
             # if site2 == 3105:
-            #     print('LOOOL',transcript.seqid)
-            #     ccc.add(transcript.seqid)
+            #     print('LOOOL',chr_id)
+            #     ccc.add(chr_id)
 
-            all_splice_sites_annotations[str(transcript.seqid)].add(site1)
-            all_splice_sites_annotations[str(transcript.seqid)].add(site2)
+            all_splice_sites_annotations[str(chr_id)].add(site1)
+            all_splice_sites_annotations[str(chr_id)].add(site2)
         
         # add start and end splice to all_splice_sites_annotations 
-        all_splice_sites_annotations[str(transcript.seqid)].add(transcript_exons[0][0])
-        all_splice_sites_annotations[str(transcript.seqid)].add(transcript_exons[-1][-1])
+        all_splice_sites_annotations[str(chr_id)].add(transcript_exons[0][0])
+        all_splice_sites_annotations[str(chr_id)].add(transcript_exons[-1][-1])
 
     # if ccc:
     #     print(ccc)
