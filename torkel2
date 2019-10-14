@@ -52,7 +52,7 @@ def prep_splicing(args):
         print()
         db = gffutils.FeatureDB(database, keep_order=True)
         # sys.exit()
-    elif args.infer_genes:
+    elif not args.disable_infer:
         fn = gffutils.example_filename(args.gtf)
         db = gffutils.create_db(fn, dbfn=database, force=True, keep_order=True, merge_strategy='merge', 
                                 sort_attribute_values=True)
@@ -344,14 +344,14 @@ if __name__ == '__main__':
     pipeline_parser.add_argument('--non_covered_cutoff', type=int, default=10, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
     pipeline_parser.add_argument('--dropoff', type=float, default=0.8, help='Ignore alignment to hits with read coverage of this fraction less than the best hit.')
     pipeline_parser.add_argument('--ignore_rc', action='store_true', help='Ignore to map to reverse complement.')
-    pipeline_parser.add_argument('--infer_genes', action='store_true', help='Slows down splice creation step but is necessary when gene names are not provided in gtf file.')
+    pipeline_parser.add_argument('--disable_infer', action='store_true', help='Makes splice creation step much faster. Thes parameter can be set if gene and transcript name fields are provided in gtf file.')
     pipeline_parser.set_defaults(which='pipeline')
 
 
     prep_splicing_parser.add_argument('gtf', type=str, help='Path to gtf or gtf file with gene models.')
     prep_splicing_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
     prep_splicing_parser.add_argument('--min_mem', type=int, default=16, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
-    prep_splicing_parser.add_argument('--infer_genes', action='store_true', help='Slows down splice creation step but is necessary when gene names are not provided in gtf file.')
+    prep_splicing_parser.add_argument('--disable_infer', action='store_true', help='Makes splice creation step much faster. Thes parameter can be set if gene and transcript name fields are provided in gtf file.')
     prep_splicing_parser.set_defaults(which='prep_splicing')
 
     prep_seqs_parser.add_argument('ref', type=str, help='Reference genome (fasta)')
