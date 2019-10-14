@@ -16,7 +16,7 @@ def create_graph_from_exon_parts(db, min_mem):
         We need to link parts --> exons and exons --> transcripts
     """
     # print(dir(db))
-    genes_to_ref = {} # gene_id : { (exon_start, exon_stop) : set() }
+    # genes_to_ref = {} # gene_id : { (exon_start, exon_stop) : set() }
     exons_to_ref = {} # gene_id : { (exon_start, exon_stop) : set() }
     exon_id_to_choordinates = {}
     splices_to_transcripts = defaultdict(dict)
@@ -63,37 +63,44 @@ def create_graph_from_exon_parts(db, min_mem):
 
     # print(parts_to_exons["SIRV3"])
     # sys.exit()
-
+    print()
     for sid in parts_to_exons:
-        print(sid, parts_to_exons[sid])
+        print(sid, len(parts_to_exons[sid]))
         print()
-    
+
+    # for transcript in db.features_of_type('transcript'):
+    #     genes_to_ref[transcript.id] = str(transcript.seqid)
+    #     print("here", transcript.id,  str(transcript.seqid))  
+    # for gene in db.features_of_type('gene'):
+    #     genes_to_ref[gene.id] = str(gene.seqid)
+    #     print("here", gene.id,  str(gene.seqid))  
     # exons_to_parts = reverse_mapping(parts_to_exons)
     # sys.exit()
     # ccc = set()
-    for gene in db.features_of_type('gene'):
-        genes_to_ref[gene.id] = str(gene.seqid)
+    # for gene in db.features_of_type('gene'):
+    #     genes_to_ref[gene.id] = str(gene.seqid)
+    #     print("here", gene.id,  str(gene.seqid))
+    for transcript in db.features_of_type('transcript', order_by='seqid'): #db.children(gene, featuretype='transcript', order_by='start'):
+        # print("here", transcript.id,  str(transcript.seqid))  
+        transcript_exons = []
+        for exon in db.children(transcript, featuretype='exon', order_by='start'):
+            transcript_exons.append( (exon.start-1, exon.stop) )
+        internal_transcript_splices = [ (e1[1],e2[0]) for e1, e2 in zip(transcript_exons[:-1],transcript_exons[1:])]
+        
+        # internal transcript splices
+        splices_to_transcripts[transcript.seqid][ tuple(internal_transcript_splices)] = transcript.id
+        for site1, site2 in internal_transcript_splices:
+            all_splice_pairs_annotations[str(transcript.seqid)][(site1, site2)].add( transcript.id )
+            # if site2 == 3105:
+            #     print('LOOOL',transcript.seqid)
+            #     ccc.add(transcript.seqid)
 
-        for transcript in db.children(gene, featuretype='transcript', order_by='start'):
-            transcript_exons = []
-            for exon in db.children(transcript, featuretype='exon', order_by='start'):
-                transcript_exons.append( (exon.start-1, exon.stop) )
-            internal_transcript_splices = [ (e1[1],e2[0]) for e1, e2 in zip(transcript_exons[:-1],transcript_exons[1:])]
-            
-            # internal transcript splices
-            splices_to_transcripts[gene.seqid][ tuple(internal_transcript_splices)] = transcript.id
-            for site1, site2 in internal_transcript_splices:
-                all_splice_pairs_annotations[str(gene.seqid)][(site1, site2)].add( transcript.id )
-                # if site2 == 3105:
-                #     print('LOOOL',gene.seqid)
-                #     ccc.add(gene.seqid)
-
-                all_splice_sites_annotations[str(gene.seqid)].add(site1)
-                all_splice_sites_annotations[str(gene.seqid)].add(site2)
-            
-            # add start and end splice to all_splice_sites_annotations 
-            all_splice_sites_annotations[str(gene.seqid)].add(transcript_exons[0][0])
-            all_splice_sites_annotations[str(gene.seqid)].add(transcript_exons[-1][-1])
+            all_splice_sites_annotations[str(transcript.seqid)].add(site1)
+            all_splice_sites_annotations[str(transcript.seqid)].add(site2)
+        
+        # add start and end splice to all_splice_sites_annotations 
+        all_splice_sites_annotations[str(transcript.seqid)].add(transcript_exons[0][0])
+        all_splice_sites_annotations[str(transcript.seqid)].add(transcript_exons[-1][-1])
 
     # if ccc:
     #     print(ccc)
@@ -111,21 +118,20 @@ def create_graph_from_exon_parts(db, min_mem):
     #     print()
     # sys.exit()
     # print(splices_to_transcripts)
-    return  genes_to_ref, exons_to_ref, parts_to_exons, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations, exon_id_to_choordinates
+    return  exons_to_ref, parts_to_exons, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations, exon_id_to_choordinates
 
 
 
-def get_part_sequences_from_choordinates(parts_to_exons, genes_to_ref, refs):
+def get_part_sequences_from_choordinates(parts_to_exons, refs):
     segments = {}
-    for gene_id in parts_to_exons:
-        parts_instance = parts_to_exons[gene_id]
-        chromosome = genes_to_ref[gene_id]
-        segments[chromosome] = {}
+    for chr_id in parts_to_exons:
+        parts_instance = parts_to_exons[chr_id]
+        # chromosome = genes_to_ref[chr_id]
+        segments[chr_id] = {}
         for part in parts_instance:
             start,stop = part[0], part[1]
-            seq = refs[chromosome][start : stop] 
-
-            segments[chromosome][part] = seq
+            seq = refs[chr_id][start : stop] 
+            segments[chr_id][part] = seq
     # print(segments)
     return segments
 

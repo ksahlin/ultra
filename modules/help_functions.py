@@ -1,7 +1,8 @@
 
 import sys
 import re
-
+import os
+import errno
 import parasail
 # import edlib
 
@@ -32,7 +33,7 @@ def readfq(fp): # this is a generator function
                     last = l[:-1] # save this line
                     break
         if not last: break
-        name, seqs, last = last[1:].replace(" ", "_"), [], None
+        name, seqs, last = last[1:].split()[0], [], None
         for l in fp: # read the sequence
             if l[0] in '@+>':
                 last = l[:-1]
@@ -107,6 +108,15 @@ def cigar_to_seq(cigar, query, ref):
 
 #     return read_alignment, ref_alignment
 
+def mkdir_p(path):
+    try:
+        os.makedirs(path)
+        print("creating", path)
+    except OSError as exc:  # Python >2.5
+        if exc.errno == errno.EEXIST and os.path.isdir(path):
+            pass
+        else:
+            raise
 
 def parasail_alignment(s1, s2, match_score = 2, mismatch_penalty = -2, opening_penalty = 5, gap_ext = 1):
     user_matrix = parasail.matrix_create("ACGT", match_score, mismatch_penalty)

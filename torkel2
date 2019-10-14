@@ -18,11 +18,12 @@ import pysam
 from collections import defaultdict
 
 
-from modules import create_splice_graph as splice_graph
+# from modules import create_splice_graph as splice_graph
+# from modules import graph_chainer 
+
 from modules import create_augmented_gene as augmented_gene 
 from modules import mummer_wrapper 
 from modules import colinear_solver 
-from modules import graph_chainer 
 from modules import help_functions
 from modules import classify_read_with_mams
 from modules import classify_alignment2
@@ -43,15 +44,46 @@ def pickle_load(filename):
     return data
 
 
-def construct_graph(args):
-    fn = gffutils.example_filename(args.gff)
-    db = gffutils.create_db(fn, dbfn='test.db', force=True, keep_order=True, merge_strategy='merge', sort_attribute_values=True)
-    db = gffutils.FeatureDB('test.db', keep_order=True)
+def prep_splicing(args):
+    if args.infer_genes:
+        fn = gffutils.example_filename(args.gtf)
+        db = gffutils.create_db(fn, dbfn='test.db', force=True, keep_order=True, merge_strategy='merge', 
+                                sort_attribute_values=True)
+        db = gffutils.FeatureDB('test.db', keep_order=True)
+    else:
+        fn = gffutils.example_filename(args.gtf)
+        db = gffutils.create_db(fn, dbfn='test.db', force=True, keep_order=True, merge_strategy='merge', 
+                                sort_attribute_values=True, disable_infer_genes=True, disable_infer_transcripts=True)
+        db = gffutils.FeatureDB('test.db', keep_order=True)
 
-    genes_to_ref, exons_to_ref, parts_to_exons, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations, exon_id_to_choordinates = augmented_gene.create_graph_from_exon_parts(db, args.min_mem )
+    exons_to_ref, parts_to_exons, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations, exon_id_to_choordinates = augmented_gene.create_graph_from_exon_parts(db, args.min_mem )
+
+    # dump to pickle here! Both graph and reference seqs
+    # pickle_dump(genes_to_ref, 'genes_to_ref.pickle')
+    pickle_dump(exons_to_ref, 'exons_to_ref.pickle')
+    pickle_dump(splices_to_transcripts, 'splices_to_transcripts.pickle')
+    pickle_dump(transcripts_to_splices, 'transcripts_to_splices.pickle')
+    pickle_dump(parts_to_exons, 'parts_to_exons.pickle')
+    pickle_dump(all_splice_pairs_annotations, 'all_splice_pairs_annotations.pickle')
+    pickle_dump(all_splice_sites_annotations, 'all_splice_sites_annotations.pickle')
+    pickle_dump(exon_id_to_choordinates, 'exon_id_to_choordinates.pickle')
+
+
+def prep_seqs(args):
+    # genes_to_ref = pickle_load( os.path.join(args.outfolder, 'genes_to_ref.pickle') )
+    parts_to_exons = pickle_load( os.path.join(args.outfolder, 'parts_to_exons.pickle') )
+    exon_id_to_choordinates = pickle_load( os.path.join(args.outfolder, 'exon_id_to_choordinates.pickle') )
+    exons_to_ref = pickle_load( os.path.join(args.outfolder, 'exons_to_ref.pickle') )
+    print(parts_to_exons.keys())
+    # print(genes_to_ref.keys())
     refs = {acc : seq for acc, (seq, _) in help_functions.readfq(open(args.ref,"r"))}
-    ref_part_sequences = augmented_gene.get_part_sequences_from_choordinates(parts_to_exons, genes_to_ref, refs)
+    print(refs.keys())
+    ref_part_sequences = augmented_gene.get_part_sequences_from_choordinates(parts_to_exons, refs)
     ref_exon_sequences = augmented_gene.get_exon_sequences_from_choordinates(exon_id_to_choordinates, exons_to_ref, refs)
+
+    pickle_dump(exon_id_to_choordinates, 'exon_id_to_choordinates.pickle')
+    pickle_dump(ref_part_sequences, 'ref_part_sequences.pickle')
+    pickle_dump(ref_exon_sequences, 'ref_exon_sequences.pickle')
 
     # gene_graphs, splices_to_transcripts, annotated_transcripts = splice_graph.create_graph(db)
     # topological_sorts = splice_graph.create_global_source_sink(gene_graphs)    
@@ -60,30 +92,12 @@ def construct_graph(args):
     # pickle_dump(topological_sorts, 'top_sorts.pickle')
     # pickle_dump(paths, 'paths.pickle')
 
-    # dump to pickle here! Both graph and reference seqs
-    pickle_dump(genes_to_ref, 'genes_to_ref.pickle')
-    pickle_dump(exon_id_to_choordinates, 'exon_id_to_choordinates.pickle')
-    pickle_dump(ref_part_sequences, 'ref_part_sequences.pickle')
-    pickle_dump(ref_exon_sequences, 'ref_exon_sequences.pickle')
-    pickle_dump(splices_to_transcripts, 'splices_to_transcripts.pickle')
-    pickle_dump(transcripts_to_splices, 'transcripts_to_splices.pickle')
-    pickle_dump(parts_to_exons, 'parts_to_exons.pickle')
-    pickle_dump(all_splice_pairs_annotations, 'all_splice_pairs_annotations.pickle')
-    pickle_dump(all_splice_sites_annotations, 'all_splice_sites_annotations.pickle')
-
-
-# def check_if_present_in_database(solution, splices_to_transcripts):
-#     for mem in solution:
-#         pass
-
-
-
 
 def align_reads(args):
     # topological_sorts = pickle_load( os.path.join(args.outfolder, 'top_sorts.pickle') )
     # path_covers = pickle_load( os.path.join(args.outfolder, 'paths.pickle') )
 
-    genes_to_ref = pickle_load( os.path.join(args.outfolder, 'genes_to_ref.pickle') )
+    # genes_to_ref = pickle_load( os.path.join(args.outfolder, 'genes_to_ref.pickle') )
     parts_to_exons = pickle_load( os.path.join(args.outfolder, 'parts_to_exons.pickle') )
     exon_id_to_choordinates = pickle_load( os.path.join(args.outfolder, 'exon_id_to_choordinates.pickle') )
 
@@ -309,35 +323,41 @@ if __name__ == '__main__':
     subparsers = parser.add_subparsers(help='Subcommands for eaither constructing a graph, or align reads')
     # parser.add_argument("-v", help='Different subcommands for eaither constructing a graph, or align reads')
 
-    pipeline_parser = subparsers.add_parser('pipeline', help= "Construct a splicing graph and align reads to it")
-    construct_graph_parser = subparsers.add_parser('construct', help= "Construct a splicing graph")
+    pipeline_parser = subparsers.add_parser('pipeline', help= "Perform all in one: prepare splicing database and reference sequences and align reads.")
+    prep_splicing_parser = subparsers.add_parser('prep_splicing', help= "Prepare all splicing structures from annotation")
+    prep_seqs_parser = subparsers.add_parser('prep_seqs', help= "Prepare reference sequences to align to.")
     align_reads_parser = subparsers.add_parser('align', help="Classify and align reads with colinear chaining to DAGs")
 
-    pipeline_parser.add_argument('gff', type=str, help='Path to gff or gtf file with gene models.')
+    pipeline_parser.add_argument('gtf', type=str, help='Path to gtf or gtf file with gene models.')
     pipeline_parser.add_argument('ref', type=str, help='Reference genome (fasta)')
     pipeline_parser.add_argument('reads', type=str, help='Path to fasta/fastq file with reads.')
+    pipeline_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
     pipeline_parser.add_argument('--min_mem', type=int, default=16, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
     pipeline_parser.add_argument('--overlap_threshold', type=int, default=10, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
     pipeline_parser.add_argument('--non_covered_cutoff', type=int, default=10, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
     pipeline_parser.add_argument('--dropoff', type=float, default=0.8, help='Ignore alignment to hits with read coverage of this fraction less than the best hit.')
     pipeline_parser.add_argument('--ignore_rc', action='store_true', help='Ignore to map to reverse complement.')
-    pipeline_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
-    # pipeline_parser.add_argument('--pickle', action='store_true', help='Store the graph on file.')
+    pipeline_parser.add_argument('--infer_genes', action='store_true', help='Slows down splice creation step but is necessary when gene names are not provided in gtf file.')
     pipeline_parser.set_defaults(which='pipeline')
 
 
-    construct_graph_parser.add_argument('gff', type=str, help='Path to gff or gtf file with gene models.')
-    construct_graph_parser.add_argument('ref', type=str, help='Reference genome (fasta)')
-    construct_graph_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
-    construct_graph_parser.add_argument('--min_mem', type=int, default=16, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
-    # construct_graph_parser.add_argument('--pickle', action='store_true', help='Store the graph on file.')
-    construct_graph_parser.set_defaults(which='construct_graph')
+    prep_splicing_parser.add_argument('gtf', type=str, help='Path to gtf or gtf file with gene models.')
+    prep_splicing_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
+    prep_splicing_parser.add_argument('--min_mem', type=int, default=16, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
+    prep_splicing_parser.add_argument('--infer_genes', action='store_true', help='Slows down splice creation step but is necessary when gene names are not provided in gtf file.')
+    prep_splicing_parser.set_defaults(which='prep_splicing')
+
+    prep_seqs_parser.add_argument('ref', type=str, help='Reference genome (fasta)')
+    prep_seqs_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
+    prep_seqs_parser.add_argument('--min_mem', type=int, default=16, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
+    prep_seqs_parser.set_defaults(which='prep_seqs')
 
 
-    align_reads_parser.add_argument('refs', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')    
+    align_reads_parser.add_argument('ref', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')    
     align_reads_parser.add_argument('reads', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
     align_reads_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')   
     align_reads_parser.add_argument('--overlap_threshold', type=int, default=10, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
+    align_reads_parser.add_argument('--non_covered_cutoff', type=int, default=10, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
     align_reads_parser.add_argument('--dropoff', type=float, default=0.8, help='Ignore alignment to hits with read coverage of this fraction less than the best hit.')
     align_reads_parser.add_argument('--ignore_rc', action='store_true', help='Ignore to map to reverse complement.')
     align_reads_parser.add_argument('--min_mem', type=int, default=16, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
@@ -347,17 +367,20 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-
+    help_functions.mkdir_p(args.outfolder)
     if len(sys.argv)==1:
         parser.print_help()
         sys.exit()
 
-    if args.which == 'construct_graph':
-        construct_graph(args)
+    if args.which == 'prep_splicing':
+        prep_splicing(args)
+    elif args.which == 'prep_seqs':
+        prep_seqs(args)
     elif args.which == 'align_reads':
         align_reads(args)
     elif args.which == 'pipeline':
-        construct_graph(args)
+        prep_splicing(args)
+        prep_seqs(args)
         align_reads(args)        
     else:
         print('invalid call')
