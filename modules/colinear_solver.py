@@ -33,7 +33,7 @@ def read_coverage(mems):
 
     """
     mems = sorted(mems, key = lambda x: x.y )
-    print("Going in to mem chaining:", mems)
+    # print("Going in to mem chaining:", mems)
     T = [ (v.d, v.val)  for v in mems]
     I = [ (v.d, v.val)  for v in mems]
     
@@ -85,9 +85,9 @@ def read_coverage(mems):
             traceback_pointers[j] = I_traceback_index
 
         C[j] = max(C_a[j], C_b[j])
-        print(v.c, v.d, v.d -v.c, C_a[j], C_b[j], v.d, I_values, T_values)
+        # print(v.c, v.d, v.d -v.c, C_a[j], C_b[j], v.d, I_values, T_values)
 
-    print('Value vector mem:', C)
+    # print('Value vector mem:', C)
     # print(traceback_pointers)
 
     # print(argmax(C))
@@ -112,7 +112,7 @@ def read_coverage(mems):
         unique = False
         # print(traceback_pointers)
 
-    print("MEM Solution:", solution[::-1])
+    # print("MEM Solution:", solution[::-1])
     return solution[::-1], value, unique
     # traceback(C, best_solution_index)
 
@@ -183,7 +183,7 @@ def read_coverage_mam_score(mams, overlap_threshold):
 
         C[j] =  max(C_a[j], C_b[j]) #C_a[j] 
 
-    print('Value vector Max approx matches:', C)
+    # print('Value vector Max approx matches:', C)
     # print(traceback_pointers)
 
     # print(argmax(C))
