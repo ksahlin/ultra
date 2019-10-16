@@ -60,11 +60,11 @@ def readfq(fp): # this is a generator function
 def cigar_to_seq(cigar, query, ref):
     cigar_tuples = []
     result = re.split(r'[=DXSMI]+', cigar)
-    i = 0
+    cig_pos = 0
     for length in result[:-1]:
-        i += len(length)
-        type_ = cigar[i]
-        i += 1
+        cig_pos += len(length)
+        type_ = cigar[cig_pos]
+        cig_pos += 1
         cigar_tuples.append((int(length), type_ ))
 
     r_index = 0
@@ -118,9 +118,9 @@ def mkdir_p(path):
         else:
             raise
 
-def parasail_alignment(s1, s2, match_score = 2, mismatch_penalty = -2, opening_penalty = 5, gap_ext = 1):
+def parasail_alignment(s1, s2, match_score = 2, mismatch_penalty = -2, opening_penalty = 3, gap_ext = 1):
     user_matrix = parasail.matrix_create("ACGT", match_score, mismatch_penalty)
-    result = parasail.nw_trace_scan_16(s1, s2, opening_penalty, gap_ext, user_matrix)
+    result = parasail.sg_trace_scan_16(s1, s2, opening_penalty, gap_ext, user_matrix)
     if result.saturated:
         print("SATURATED!",len(s1), len(s2))
         result = parasail.sg_trace_scan_32(s1, s2, opening_penalty, gap_ext, user_matrix)
@@ -131,8 +131,12 @@ def parasail_alignment(s1, s2, match_score = 2, mismatch_penalty = -2, opening_p
         cigar_string = str(result.cigar.decode).decode('utf-8')
     else:
         cigar_string = str(result.cigar.decode, 'utf-8')
-    
     s1_alignment, s2_alignment, cigar_tuples = cigar_to_seq(cigar_string, s1, s2)
+    print(s1_alignment)
+    print(s2_alignment)
+    print(cigar_string)
+    # sys.exit()
+
     return s1_alignment, s2_alignment, cigar_string, cigar_tuples
 
     # # Rolling window of matching blocks
