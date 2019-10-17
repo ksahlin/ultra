@@ -132,9 +132,9 @@ def parasail_alignment(s1, s2, match_score = 2, mismatch_penalty = -2, opening_p
     else:
         cigar_string = str(result.cigar.decode, 'utf-8')
     s1_alignment, s2_alignment, cigar_tuples = cigar_to_seq(cigar_string, s1, s2)
-    print(s1_alignment)
-    print(s2_alignment)
-    print(cigar_string)
+    # print(s1_alignment)
+    # print(s2_alignment)
+    # print(cigar_string)
     # sys.exit()
 
     return s1_alignment, s2_alignment, cigar_string, cigar_tuples

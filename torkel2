@@ -171,7 +171,7 @@ def align_reads(args):
             if chaining_score/float(best_chaining_score) < args.dropoff:
                 # print(chr_id, chaining_score, best_chaining_score, "NOT CONSIDERED")
                 continue
-            print(chr_id, chaining_score, best_chaining_score)
+            # print(chr_id, chaining_score, best_chaining_score)
 
             if is_rc:
                 read_seq = help_functions.reverse_complement(reads[read_acc])
@@ -224,20 +224,21 @@ def align_reads(args):
 
     alignment_outfile.close()
 
-    print(classifications)
+    # print(classifications)
     counts = defaultdict(int)
     alignment_coverage = 0
     for read_acc in reads:
         if read_acc not in classifications:
-            print(read_acc, "did not meet the threshold")
+            # print(read_acc, "did not meet the threshold")
+            pass
         elif classifications[read_acc][0] != 'FSM':
-            print(read_acc, classifications[read_acc]) 
-
+            # print(read_acc, classifications[read_acc]) 
+            pass
         if read_acc in classifications:
             alignment_coverage += classifications[read_acc][1]
             if classifications[read_acc][1] < 1.0:
-                print(read_acc, 'alignemnt coverage:', classifications[read_acc][1])
-        
+                # print(read_acc, 'alignemnt coverage:', classifications[read_acc][1])
+                pass
             counts[classifications[read_acc][0]] += 1
         else:
             counts['unaligned'] += 1

@@ -56,12 +56,17 @@ def cigar_to_seq(cigar, query, ref):
 
 
 
-def edlib_alignment(query, target, mode = "HW"):
-    result = edlib.align(query, target, task="path", mode=mode)
-    cigar_string = result["cigar"]
-    locations = result['locations']
-    ref_start, ref_stop = locations[0][0], locations[0][1]
-    query_alignment, target_alignment, cigar_tuples = cigar_to_seq(cigar_string, query, target[ref_start: ref_stop+1 ])
+def edlib_alignment(query, target, mode = "HW", task = 'locations', k=-1):
+    result = edlib.align(query, target, task=task, mode=mode, k=k)
+    if result['editDistance'] == -1:
+        return [0,0], -1
+    
+    if task == 'path':
+        locations = result['locations']
+        ref_start, ref_stop = locations[0][0], locations[0][1]
+        cigar_string = result["cigar"]
+        query_alignment, target_alignment, cigar_tuples = cigar_to_seq(cigar_string, query, target[ref_start: ref_stop+1 ])
+    
     # print(locations)
     # print(query_alignment)
     # print(target_alignment)
@@ -78,7 +83,7 @@ def edlib_alignment(query, target, mode = "HW"):
     # print(target_rc_alignment)
     # print(result['editDistance'])
 
-    return locations, result['editDistance'], query_alignment, target_alignment
+    return result['locations'], result['editDistance'] #, query_alignment, target_alignment
 
 
 def calc_complessed_score(read_alignment, ref_alignment, m, n):
@@ -181,7 +186,7 @@ def main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq, over
             # print(exon_id, e_stop - e_start)
             # align them to the read and get the best approxinate match
 
-            locations, edit_distance, ref_alignment, read_alignment = edlib_alignment(ref_seq, read_seq,mode="HW")
+            locations, edit_distance = edlib_alignment(ref_seq, read_seq, mode="HW", k = 0.4*min(len(read_seq), len(ref_seq)) )
             # print()
             # print(ref_seq)
             # print(ref_chr_id, e_start, e_stop)
@@ -222,7 +227,7 @@ def main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq, over
         if  e_stop - e_start >= 0.8*len(read_seq): # read is potentially contained within exon 
             # print()
             # print("aligning read to exon")
-            locations, edit_distance, ref_alignment, read_alignment = edlib_alignment(read_seq, ref_seq, mode="HW")
+            locations, edit_distance = edlib_alignment(read_seq, ref_seq, mode="HW", k = 0.4*min(len(read_seq), len(ref_seq)) )
             # print(exon_id, e_start, e_stop, len(ref_seq), len(read_seq),edit_distance)
             # print()
             if edit_distance >= 0:
