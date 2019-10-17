@@ -22,8 +22,8 @@ def find_mems(outfolder, refs_sequences, read_path, refs_path, mummer_out_path, 
         stdout.flush()
     output_file.close()
     mummer_file = open(mummer_out_path, "r").readlines()
-    for line in mummer_file:
-        print(line)
+    # for line in mummer_file:
+    #     print(line)
     # consensus = l[1].strip()
     # msa = [s.strip() for s in l[3:]]
     # print("regular spoa:", consensus)

@@ -204,13 +204,18 @@ def main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq, over
                 #     print('HERE')
                     # sys.exit()
                 # if e_score < 1.0:
-                if score > 0.6:
+                if (min_segment_length - edit_distance)/float(min_segment_length) > 0.6:
                     start, stop = locations[0]
                     covered_regions.append((start,stop, score, exon_id, ref_chr_id))
-                    for exon_id in all_exon_ids:
-                        mam_tuple = mam(e_start, e_stop, start, stop, 
-                                score, min_segment_length,  exon_id, ref_chr_id)
-                        mam_instance.append(mam_tuple)
+                    for exon_id in all_exon_ids: break
+                    mam_tuple = mam(e_start, e_stop, start, stop, 
+                            score, min_segment_length,  exon_id, ref_chr_id) # only need one of the redundant exon_ids
+                    mam_instance.append(mam_tuple)
+                    # for exon_id in all_exon_ids:
+                    #     mam_tuple = mam(e_start, e_stop, start, stop, 
+                    #             score, min_segment_length,  exon_id, ref_chr_id)
+                    #     mam_instance.append(mam_tuple)
+
         else:
             print("not aligning exons smaller than 10bp") # TODO: align these and take all locations
 
@@ -227,16 +232,19 @@ def main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq, over
                 start, stop = locations[0]
                 min_segment_length = (stop - start)
                 score = min_segment_length -  edit_distance #/len(read_seq)
-
+                # print("LOOK:", min_segment_length, edit_distance, score, locations)
                 # if e_score < 1.0:
-                if score > 0.6:
+                if (min_segment_length -  edit_distance)/float(min_segment_length) > 0.6:
                     start, stop = 0, len(read_seq) - 1
                     covered_regions.append((start,stop, score, exon_id, ref_chr_id))
-                    for exon_id in all_exon_ids:
-                        mam_tuple = mam(e_start, e_stop, start, stop, 
-                                score, min_segment_length,  exon_id, ref_chr_id)
-                        mam_instance.append(mam_tuple)
-
+                    # for exon_id in all_exon_ids:
+                    #     mam_tuple = mam(e_start, e_stop, start, stop, 
+                    #             score, min_segment_length,  exon_id, ref_chr_id)
+                    #     mam_instance.append(mam_tuple)
+                    for exon_id in all_exon_ids: break
+                    mam_tuple = mam(e_start, e_stop, start, stop, 
+                            score, min_segment_length,  exon_id, ref_chr_id)
+                    mam_instance.append(mam_tuple)
     ###################################################################################################
     ###################################################################################################
     ###################################################################################################
@@ -299,7 +307,7 @@ def main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq, over
     ###################################################################################################
       
     # print('mam instance')
-    help_functions.eprint(sorted(mam_instance, key= lambda x: x.x))
+    # help_functions.eprint(sorted(mam_instance, key= lambda x: x.x))
     # best find a colinear chaining with best cover (score of each segment is length of mam*identity)
     if mam_instance:
         mam_solution, value, unique = colinear_solver.read_coverage_mam_score(mam_instance, overlap_threshold)
@@ -313,7 +321,7 @@ def main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq, over
     # print(covered_regions)
     # print("Solutiuon mam")
     # print(len(read_seq))
-    print("val", value, "the mam_solution:", mam_solution)
+    # print("val", value, "the mam_solution:", mam_solution)
     covered = sum([mam.d-mam.c + 1 for mam in mam_solution])
     if len(mam_solution) > 0:
         non_covered_regions = []

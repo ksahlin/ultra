@@ -51,7 +51,7 @@ def read_coverage(mems):
         v =  mems[j]
 
         # linear scan -- replace with range max Q tree
-        T_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if  mems[j_prime].d < v.c]
+        T_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if  mems[j_prime].d < v.c and j_prime < j]
         if T_values:
             # print(T_values)
             T_traceback_index, max_c_value_case_a = max(T_values, key=lambda x: x[1])
@@ -59,7 +59,7 @@ def read_coverage(mems):
             max_c_value_case_a = 0
             T_traceback_index = None
 
-        I_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if v.c <= mems[j_prime].d  <= v.d]
+        I_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if v.c <= mems[j_prime].d  <= v.d and j_prime < j]
         if I_values:
             # print(I_values)
             I_values_plus_chord_diff = [ (j_prime, c_val + (v.d - mems[j_prime].d)) for j_prime, c_val in I_values]
@@ -69,7 +69,6 @@ def read_coverage(mems):
             C_b[j] = max_c_value_case_b # shouldnt it be v.d - v_tmp.d
 
         else:
-            I_value = 0
             I_v_prev_coord = v.c - 1
             I_traceback_index = None
             max_c_value_case_b = 0
@@ -148,7 +147,7 @@ def read_coverage_mam_score(mams, overlap_threshold):
         v =  mams[j]
 
         # linear scan -- replace with range max Q tree
-        T_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if  mams[j_prime].d < v.c]
+        T_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if  mams[j_prime].d < v.c and j_prime < j]
         if T_values:
             # print(T_values)
             T_traceback_index, max_c_value_case_a = max(T_values, key=lambda x: x[1])
@@ -156,7 +155,7 @@ def read_coverage_mam_score(mams, overlap_threshold):
             max_c_value_case_a = 0
             T_traceback_index = None
 
-        I_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if v.c <= mams[j_prime].d <= v.c - 1 + overlap_threshold]
+        I_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if v.c <= mams[j_prime].d <= v.c - 1 + overlap_threshold and j_prime < j]
         # I_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if v.c <= mams[j_prime].d  <= v.c + (v.d - v.c)*(1.0 - v.val/(v.d - v.c)) ]  #Maybe bug here, check the objective!! need to be careful
         if I_values:
             # I_values_plus_chord_diff = [ (j_prime, c_val + (v.d - mams[j_prime].d)*v.identity - max(0, (mams[j_prime].d - v.c +1)*v.identity  - (mams[j_prime].d - v.c +1)*mams[j_prime].identity) ) for j_prime, c_val in I_values]  # Last max is takeing which of the two mams had highest idendity in shared region. 
@@ -169,7 +168,6 @@ def read_coverage_mam_score(mams, overlap_threshold):
             # C_b[j] = max_c_value_case_b + (v.val - v.val*(v.d - I_v_prev_coord)) # (v.d - I_v_prev_coord) +
 
         else:
-            I_value = 0
             I_v_prev_coord = None
             I_traceback_index = None
             C_b[j] = 0
@@ -191,9 +189,10 @@ def read_coverage_mam_score(mams, overlap_threshold):
     solution_index = argmax(C)
     # solution_index = len(C) - argmax(C[::-1]) -1
     # print()
-    help_functions.eprint(C)
+    # help_functions.eprint(C)
     value = C[solution_index]
-    # print()
+    # print("index best sol:", solution_index, argmax(C), C)
+    # print(traceback_pointers)
     solution = []
     while True:
         solution.append(mams[solution_index])
