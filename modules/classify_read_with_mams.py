@@ -11,6 +11,11 @@ from collections import namedtuple, defaultdict
 from modules import colinear_solver 
 from modules import help_functions
 
+
+mam = namedtuple('Mam', ['x', 'y', 'c', 'd', 'val', "min_segment_length", "exon_id", "ref_chr_id"])
+globals()[mam.__name__] = mam # Global needed for multiprocessing
+
+
 def cigar_to_seq(cigar, query, ref):
     cigar_tuples = []
     result = re.split(r'[=DXSMI]+', cigar)
@@ -139,16 +144,13 @@ def contains(sub, pri):
         else:
             i = found+1
 
-def main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq, overlap_threshold, is_rc):
-
-
+def main(solution, ref_exon_sequences, parts_to_exons, exon_id_to_choordinates, read_seq, overlap_threshold, is_rc):
     # chained_parts_seq = []
     # chained_parts_ids = []
     prev_ref_stop = -1
     predicted_transcript = []
     predicted_exons = []
     covered_regions = []
-    mam = namedtuple('Mam', ['x', 'y', 'c', 'd', 'val', "min_segment_length", "exon_id", "ref_chr_id"])
     mam_instance = []
     unique_part_locations = set()
     for mem in solution:
@@ -182,7 +184,10 @@ def main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq, over
             # if is_rc:
             #     ref_seq = help_functions.reverse_complement(refs[ref_chr_id][e_start: e_stop])
             # else:
-            ref_seq = refs[ref_chr_id][e_start: e_stop]
+            # ref_seq = refs[ref_chr_id][e_start: e_stop]
+            ref_seq = ref_exon_sequences[ref_chr_id][(e_start, e_stop)]
+            # print(ref_seq == ref_seq2)
+            # assert ref_seq == ref_seq2
             # print(exon_id, e_stop - e_start)
             # align them to the read and get the best approxinate match
 
@@ -342,8 +347,8 @@ def main(solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq, over
     else:
         non_covered_regions = []
 
-    print(len(read_seq), covered)
-    print(non_covered_regions)
+    # print(len(read_seq), covered)
+    # print(non_covered_regions)
     # if max(non_covered_regions) > 10:
     #     print(non_covered_regions)
     #     sys.exit()

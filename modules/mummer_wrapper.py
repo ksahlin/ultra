@@ -5,6 +5,8 @@ from sys import stdout
 from collections import defaultdict
 from collections import namedtuple
 
+mem = namedtuple('Mem', ['x', 'y', 'c', 'd', 'val', "exon_part_id"])
+globals()[mem.__name__] = mem # Global needed for multiprocessing
 
 def find_mems(outfolder, refs_sequences, read_path, refs_path, mummer_out_path, min_mem):
     refs_path = open(refs_path, 'w') #open(os.path.join(outfolder, "refs_sequences_tmp.fa"), "w")
@@ -34,9 +36,8 @@ def find_mems(outfolder, refs_sequences, read_path, refs_path, mummer_out_path, 
     # r.close()
     # return consensus
 
-def parse_results(mems_path):
-    mem = namedtuple('Mem', ['x', 'y', 'c', 'd', 'val', "exon_part_id"])
 
+def parse_results(mems_path):
     # file = open(os.path.join(mems_folder, "mummer_mems.txt"), 'r')
     mems_db = {}
     # read_mems_tmp = {}

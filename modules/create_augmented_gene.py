@@ -10,6 +10,8 @@ def reverse_mapping(d):
             d_dict[i].append(k)
     return d_dict
 
+def dd_set(): # top level function declaration needed for multiprocessing
+    return defaultdict(set)
 
 def create_graph_from_exon_parts(db, min_mem): 
     """
@@ -20,11 +22,11 @@ def create_graph_from_exon_parts(db, min_mem):
     exons_to_ref = {} # gene_id : { (exon_start, exon_stop) : set() }
     exon_id_to_choordinates = {}
     splices_to_transcripts = defaultdict(dict)
-    all_splice_pairs_annotations = defaultdict(lambda: defaultdict(set))
+    all_splice_pairs_annotations = defaultdict(dd_set)
     all_splice_sites_annotations = defaultdict(set)
     # annotated_transcripts = defaultdict(set)
 
-    parts_to_exons = defaultdict(lambda: defaultdict(set))
+    parts_to_exons = defaultdict(dd_set)
     for i, exon in enumerate(db.features_of_type('exon', order_by='seqid')):
         if exon.seqid.isdigit() or exon.seqid == 'X' or exon.seqid == 'Y':
             chr_id = 'chr'+ exon.seqid

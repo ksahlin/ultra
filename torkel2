@@ -6,6 +6,8 @@ import sys
 import os
 
 import itertools
+from itertools import islice, chain
+
 import argparse
 import errno
 import math
@@ -14,6 +16,7 @@ import math
 import dill as pickle 
 import gffutils
 import pysam
+
 
 from collections import defaultdict
 
@@ -28,20 +31,10 @@ from modules import help_functions
 from modules import classify_read_with_mams
 from modules import classify_alignment2
 from modules import sam_output
+from modules import align
 
 
-def pickle_dump(data, filename):
-    with open(os.path.join(args.outfolder,filename), 'wb') as f:
-        # Pickle the 'data' dictionary using the highest protocol available.
-        pickle.dump(data, f, pickle.HIGHEST_PROTOCOL)
 
-
-def pickle_load(filename):
-    with open(filename, 'rb') as f:
-        # The protocol version used is detected automatically, so we do not
-        # have to specify it.
-        data = pickle.load(f)
-    return data
 
 
 def prep_splicing(args):
@@ -66,21 +59,21 @@ def prep_splicing(args):
     exons_to_ref, parts_to_exons, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations, exon_id_to_choordinates = augmented_gene.create_graph_from_exon_parts(db, args.min_mem )
 
     # dump to pickle here! Both graph and reference seqs
-    # pickle_dump(genes_to_ref, 'genes_to_ref.pickle')
-    pickle_dump(exons_to_ref, 'exons_to_ref.pickle')
-    pickle_dump(splices_to_transcripts, 'splices_to_transcripts.pickle')
-    pickle_dump(transcripts_to_splices, 'transcripts_to_splices.pickle')
-    pickle_dump(parts_to_exons, 'parts_to_exons.pickle')
-    pickle_dump(all_splice_pairs_annotations, 'all_splice_pairs_annotations.pickle')
-    pickle_dump(all_splice_sites_annotations, 'all_splice_sites_annotations.pickle')
-    pickle_dump(exon_id_to_choordinates, 'exon_id_to_choordinates.pickle')
+    # help_functions.pickle_dump(args, genes_to_ref, 'genes_to_ref.pickle')
+    help_functions.pickle_dump(args, exons_to_ref, 'exons_to_ref.pickle')
+    help_functions.pickle_dump(args, splices_to_transcripts, 'splices_to_transcripts.pickle')
+    help_functions.pickle_dump(args, transcripts_to_splices, 'transcripts_to_splices.pickle')
+    help_functions.pickle_dump(args, parts_to_exons, 'parts_to_exons.pickle')
+    help_functions.pickle_dump(args, all_splice_pairs_annotations, 'all_splice_pairs_annotations.pickle')
+    help_functions.pickle_dump(args, all_splice_sites_annotations, 'all_splice_sites_annotations.pickle')
+    help_functions.pickle_dump(args, exon_id_to_choordinates, 'exon_id_to_choordinates.pickle')
 
 
 def prep_seqs(args):
-    # genes_to_ref = pickle_load( os.path.join(args.outfolder, 'genes_to_ref.pickle') )
-    parts_to_exons = pickle_load( os.path.join(args.outfolder, 'parts_to_exons.pickle') )
-    exon_id_to_choordinates = pickle_load( os.path.join(args.outfolder, 'exon_id_to_choordinates.pickle') )
-    exons_to_ref = pickle_load( os.path.join(args.outfolder, 'exons_to_ref.pickle') )
+    # genes_to_ref = help_functions.pickle_load( os.path.join(args.outfolder, 'genes_to_ref.pickle') )
+    parts_to_exons = help_functions.pickle_load( os.path.join(args.outfolder, 'parts_to_exons.pickle') )
+    exon_id_to_choordinates = help_functions.pickle_load( os.path.join(args.outfolder, 'exon_id_to_choordinates.pickle') )
+    exons_to_ref = help_functions.pickle_load( os.path.join(args.outfolder, 'exons_to_ref.pickle') )
     print(parts_to_exons.keys())
     # print(genes_to_ref.keys())
     refs = {acc : seq for acc, (seq, _) in help_functions.readfq(open(args.ref,"r"))}
@@ -88,33 +81,44 @@ def prep_seqs(args):
     ref_part_sequences = augmented_gene.get_part_sequences_from_choordinates(parts_to_exons, refs)
     ref_exon_sequences = augmented_gene.get_exon_sequences_from_choordinates(exon_id_to_choordinates, exons_to_ref, refs)
 
-    pickle_dump(exon_id_to_choordinates, 'exon_id_to_choordinates.pickle')
-    pickle_dump(ref_part_sequences, 'ref_part_sequences.pickle')
-    pickle_dump(ref_exon_sequences, 'ref_exon_sequences.pickle')
+    help_functions.pickle_dump(args, exon_id_to_choordinates, 'exon_id_to_choordinates.pickle')
+    help_functions.pickle_dump(args, ref_part_sequences, 'ref_part_sequences.pickle')
+    help_functions.pickle_dump(args, ref_exon_sequences, 'ref_exon_sequences.pickle')
 
     # gene_graphs, splices_to_transcripts, annotated_transcripts = splice_graph.create_graph(db)
     # topological_sorts = splice_graph.create_global_source_sink(gene_graphs)    
     # paths = splice_graph.derive_path_cover(gene_graphs, topological_sorts)
     # ref_part_sequences = splice_graph.get_sequences_from_choordinates(gene_graphs, args.ref)
-    # pickle_dump(topological_sorts, 'top_sorts.pickle')
-    # pickle_dump(paths, 'paths.pickle')
+    # help_functions.pickle_dump(args, topological_sorts, 'top_sorts.pickle')
+    # help_functions.pickle_dump(args, paths, 'paths.pickle')
+
+
+def import_data(args):
+    exon_id_to_choordinates = help_functions.pickle_load( os.path.join(args.outfolder, 'exon_id_to_choordinates.pickle'))
+    ref_exon_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'ref_exon_sequences.pickle') )
+    splices_to_transcripts = help_functions.pickle_load( os.path.join(args.outfolder, 'splices_to_transcripts.pickle') )
+    transcripts_to_splices = help_functions.pickle_load( os.path.join(args.outfolder, 'transcripts_to_splices.pickle') )
+    all_splice_pairs_annotations = help_functions.pickle_load( os.path.join(args.outfolder, 'all_splice_pairs_annotations.pickle') )
+    all_splice_sites_annotations = help_functions.pickle_load( os.path.join(args.outfolder, 'all_splice_sites_annotations.pickle') )
+    parts_to_exons = help_functions.pickle_load( os.path.join(args.outfolder, 'parts_to_exons.pickle') )
+    return exon_id_to_choordinates, ref_exon_sequences, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations, parts_to_exons
+
+
+def batch(iterable, size):
+    sourceiter = iter(iterable)
+    while True:
+        batchiter = islice(sourceiter, size)
+        try:
+            yield list(chain([next(batchiter)], batchiter))
+        except StopIteration:
+            return
 
 
 def align_reads(args):
-    # topological_sorts = pickle_load( os.path.join(args.outfolder, 'top_sorts.pickle') )
-    # path_covers = pickle_load( os.path.join(args.outfolder, 'paths.pickle') )
+    # topological_sorts = help_functions.pickle_load( os.path.join(args.outfolder, 'top_sorts.pickle') )
+    # path_covers = help_functions.pickle_load( os.path.join(args.outfolder, 'paths.pickle') )
 
-    # genes_to_ref = pickle_load( os.path.join(args.outfolder, 'genes_to_ref.pickle') )
-    parts_to_exons = pickle_load( os.path.join(args.outfolder, 'parts_to_exons.pickle') )
-    exon_id_to_choordinates = pickle_load( os.path.join(args.outfolder, 'exon_id_to_choordinates.pickle') )
-
-    ref_part_sequences = pickle_load( os.path.join(args.outfolder, 'ref_part_sequences.pickle') )
-    ref_exon_sequences = pickle_load( os.path.join(args.outfolder, 'ref_exon_sequences.pickle') )
-    splices_to_transcripts = pickle_load( os.path.join(args.outfolder, 'splices_to_transcripts.pickle') )
-    transcripts_to_splices = pickle_load( os.path.join(args.outfolder, 'transcripts_to_splices.pickle') )
-    all_splice_pairs_annotations = pickle_load( os.path.join(args.outfolder, 'all_splice_pairs_annotations.pickle') )
-    all_splice_sites_annotations = pickle_load( os.path.join(args.outfolder, 'all_splice_sites_annotations.pickle') )
-
+    ref_part_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'ref_part_sequences.pickle') )
 
     ref_path = os.path.join(args.outfolder, "refs_sequences.fa")
     mummer_out_path =  os.path.join( args.outfolder, "mummer_mems.txt" )
@@ -122,6 +126,8 @@ def align_reads(args):
     reads = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r'))}
     mems = mummer_wrapper.parse_results(mummer_out_path)
 
+    # print(ref_exon_sequences)
+    # sys.exit()
 
     mems_rc = []
     if not args.ignore_rc:
@@ -136,95 +142,39 @@ def align_reads(args):
         mems_rc = mummer_wrapper.parse_results(mummer_out_path)
 
 
-    
     refs = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.ref, 'r'))} 
     refs_lengths = { acc : len(seq) for acc, seq in refs.items()} 
-    alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, "torkel.sam"), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
-    print(alignment_outfile.header)
-
-    classifications = defaultdict(str)
-    read_accessions_with_mappings = set()
-    for curr_index, read_acc in enumerate(mems):
-        print()
-        print('curr processing', curr_index, read_acc)
+    del refs
+    
+    auxillary_data = import_data(args)
+    if args.nr_cores == 1:
+        print("ENTER")
+        # print(alignment_outfile.header)
+        read_data = [ (acc, reads[acc], mems[acc], mems_rc[acc], ) for i, acc in enumerate(mems)]
+        # sys.exit()
+        classifications, alignment_outfile_name = align.align_single(read_data, auxillary_data, refs_lengths, args, -1)
+    else:
+        # batch reads and mems up: divide reads by  nr_cores to get batch size
+        # then write to separate SAM-files with a batch index, 
+        # finally merge sam file by simple cat in terminal 
         
-        # do the chaining here immediately!
-        all_chainings = []
-        for chr_id, all_mems_to_chromosome in mems[read_acc].items():
-            solution, mem_solution_value, unique = colinear_solver.read_coverage(all_mems_to_chromosome)
-            all_chainings.append( (chr_id, solution, mem_solution_value, False) )
-        
-        for chr_id, all_mems_to_chromosome in mems_rc[read_acc].items():
-            solution, mem_solution_value, unique = colinear_solver.read_coverage(all_mems_to_chromosome)
-            all_chainings.append( (chr_id, solution, mem_solution_value, True) )
+        batch_size = int(len(reads)/int(args.nr_cores) + 1)
+        read_data = batch([ (acc, reads[acc], mems[acc], mems_rc[acc], ) for i, acc in enumerate(mems)], batch_size)
+        print('Nr reads:', len(reads), 'Batch size:', batch_size)
+        classifications, alignment_outfiles = align.align_parallel(read_data, auxillary_data, refs_lengths, args)
 
-        is_secondary =  False
-        is_rc =  False
-        if not all_chainings:
-            sam_output.main(read_acc, '*', 'unaligned', [], '*', '*', '*', alignment_outfile, is_rc, is_secondary)
-            continue
+        # Combine samfiles produced from each batch
+        alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, "torkel.sam"), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
+    
+        for f in alignment_outfiles:
+            samfile = pysam.AlignmentFile(f, "rb")
+            for read in samfile.fetch():
+                alignment_outfile.write(read)
+            samfile.close()
 
-        all_chainings = sorted(all_chainings, key=lambda x: x[2], reverse=True)
-
-        best_chaining_score = all_chainings[0][2]
-        for chr_id, mem_solution, chaining_score, is_rc in all_chainings:
-            if chaining_score/float(best_chaining_score) < args.dropoff:
-                # print(chr_id, chaining_score, best_chaining_score, "NOT CONSIDERED")
-                continue
-            # print(chr_id, chaining_score, best_chaining_score)
-
-            if is_rc:
-                read_seq = help_functions.reverse_complement(reads[read_acc])
-            else:
-                read_seq = reads[read_acc]
-            # print("mem solution:", chaining_score, mem_solution)
-            non_covered_regions, mam_value, mam_solution, unique_exon_choordinates =  classify_read_with_mams.main(mem_solution, refs, parts_to_exons, exon_id_to_choordinates, read_seq, args.overlap_threshold, is_rc)
-            if mam_value > 0:
-                chained_parts_seq = []
-                prev_ref_stop = -1
-                predicted_exons = []
-                for mam in mam_solution:
-                    predicted_exons.append( (mam.x, mam.y) )
-                    seq = ref_exon_sequences[mam.ref_chr_id][(mam.x, mam.y)] 
-                    if mam.x < prev_ref_stop:
-                        chained_parts_seq.append(seq[prev_ref_stop - mam.x: ])
-                        help_functions.eprint(read_acc,chr_id, 'mem score:', chaining_score,  best_chaining_score, "mam score:",mam_value)
-                        help_functions.eprint("Overlapping exons in solution!",  mam.x, prev_ref_stop, mam)
-                        help_functions.eprint(mam_solution)
-                        # sys.exit()
-                    else:
-                        chained_parts_seq.append(seq)
-                    prev_ref_stop = mam.y
-
-                created_ref_seq = "".join([part for part in chained_parts_seq])
-                predicted_splices = [ (e1[1],e2[0]) for e1, e2 in zip(predicted_exons[:-1],predicted_exons[1:])]
-
-                read_aln, ref_aln, cigar_string, cigar_tuples = help_functions.parasail_alignment(read_seq, created_ref_seq)
-                # print(read_acc, "alignment to:", chr_id, "best solution val mems:", mem_solution, 'best mam value:', mam_value, 'read length:', len(read_seq), "final_alignment_stats:" )
-                # print(read_aln)
-                # print(ref_aln)
-                classification, annotated_to_transcript_id = classify_alignment2.main(chr_id, predicted_splices, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations)
-
-                # checing for internal (splice site) non covered regions
-                if len(non_covered_regions) >= 3 and (max(non_covered_regions[1:-1]) > args.non_covered_cutoff):
-                    classification = 'Unclassified_insufficient_junction_coverage'
+        alignment_outfile.close()
 
 
-                classifications[read_acc] = (classification, mam_value / float(len(read_seq)))
-                if chaining_score < best_chaining_score: 
-                    is_secondary =  True
-                else:
-                    is_secondary =  False
-
-                sam_output.main(read_acc, chr_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, alignment_outfile, is_rc, is_secondary)
-                read_accessions_with_mappings.add(read_acc)
-            else:
-                if read_acc not in read_accessions_with_mappings:
-                    sam_output.main(read_acc, '*', 'unaligned', [], '*', '*', '*', alignment_outfile, is_rc, is_secondary)
-
-    alignment_outfile.close()
-
-    # print(classifications)
     counts = defaultdict(int)
     alignment_coverage = 0
     for read_acc in reads:
@@ -245,22 +195,7 @@ def align_reads(args):
 
 
     print(counts)
-    print("total alignmenrt coverage:", alignment_coverage)
-    # for gene_id in gene_graphs:
-    #     gene_graph = gene_graphs[gene_id]
-    #     topological_sort = topological_sorts[gene_id]
-    #     path_cover = path_covers[gene_id]
-    #     graph_chainer.calc_last2reach(gene_graph, path_cover, topological_sort)
-    #     sys.exit()
-    # non_redundant_segments = splice_graph.collapse_identical_for_mumer(exon_db)
-
-    # exon_db = parse_tsv()
-    # graph = create_graph()
-    # graph_top_sorted_order = top_sort_graph()
-    # hits = run_mummer(non_redundant_segments, reads )
-    # for read_hits in hits:
-    #     chain_hits_read()
-
+    print("total alignment coverage:", alignment_coverage)
 
 
 if __name__ == '__main__':
@@ -280,6 +215,7 @@ if __name__ == '__main__':
     pipeline_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
     pipeline_parser.add_argument('--min_mem', type=int, default=16, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
     pipeline_parser.add_argument('--overlap_threshold', type=int, default=10, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
+    pipeline_parser.add_argument('--t', dest = 'nr_cores', type=int, default=3, help='Number of cores.')
     pipeline_parser.add_argument('--non_covered_cutoff', type=int, default=10, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
     pipeline_parser.add_argument('--dropoff', type=float, default=0.7, help='Ignore alignment to hits with read coverage of this fraction less than the best hit.')
     pipeline_parser.add_argument('--ignore_rc', action='store_true', help='Ignore to map to reverse complement.')
@@ -302,6 +238,7 @@ if __name__ == '__main__':
     align_reads_parser.add_argument('ref', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')    
     align_reads_parser.add_argument('reads', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
     align_reads_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')   
+    align_reads_parser.add_argument('--t', dest = 'nr_cores', type=int, default=3, help='Number of cores.')
     align_reads_parser.add_argument('--overlap_threshold', type=int, default=10, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
     align_reads_parser.add_argument('--non_covered_cutoff', type=int, default=10, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
     align_reads_parser.add_argument('--dropoff', type=float, default=0.7, help='Ignore alignment to hits with read coverage of this fraction less than the best hit.')
