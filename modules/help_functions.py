@@ -3,8 +3,23 @@ import sys
 import re
 import os
 import errno
+
 import parasail
 # import edlib
+import dill as pickle 
+
+def pickle_dump(args, data, filename):
+    with open(os.path.join(args.outfolder,filename), 'wb') as f:
+        # Pickle the 'data' dictionary using the highest protocol available.
+        pickle.dump(data, f, pickle.HIGHEST_PROTOCOL)
+
+
+def pickle_load(filename):
+    with open(filename, 'rb') as f:
+        # The protocol version used is detected automatically, so we do not
+        # have to specify it.
+        data = pickle.load(f)
+    return data
 
 
 def eprint(*args, **kwargs):
