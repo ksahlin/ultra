@@ -17,9 +17,14 @@ from modules import help_functions
 from modules import classify_read_with_mams
 from modules import classify_alignment2
 from modules import sam_output
+from modules import mummer_wrapper
 
 
-def align_single(read_data, auxillary_data, refs_lengths, args,  batch_number):
+# def align_single(read_data, auxillary_data, refs_lengths, args,  batch_number):
+def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
+    mems_path =  os.path.join( args.outfolder, "mummer_mems.txt" )
+    mems_path_rc =  os.path.join( args.outfolder, "mummer_mems_rc.txt" )
+
     if batch_number == -1:
         alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, "torkel.sam"), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
     else:  
@@ -29,10 +34,15 @@ def align_single(read_data, auxillary_data, refs_lengths, args,  batch_number):
     exon_id_to_choordinates, ref_exon_sequences, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations, parts_to_exons = auxillary_data
     classifications = defaultdict(str)
     read_accessions_with_mappings = set()
-    for curr_index, (read_acc, read_seq, mems, mems_rc) in enumerate(read_data):
-        # print()
-        # print('curr processing', curr_index, read_acc)
-        
+
+    for (read_acc, mems), (_, mems_rc) in zip(mummer_wrapper.get_mummer_records(mems_path), mummer_wrapper.get_mummer_records(mems_path_rc)):
+        if read_acc not in reads: # if parallelization not all reads in mummer file are in read batches
+            continue
+        else:
+            read_seq = reads[read_acc]
+        # print(read_acc, len(mems), len(mems_rc))
+    # for curr_index, (read_acc, read_seq, mems, mems_rc) in enumerate(read_data):
+
         # do the chaining here immediately!
         all_chainings = []
         for chr_id, all_mems_to_chromosome in mems.items():
