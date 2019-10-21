@@ -104,14 +104,30 @@ def import_data(args):
     return exon_id_to_choordinates, ref_exon_sequences, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations, parts_to_exons
 
 
-def batch(iterable, size):
-    sourceiter = iter(iterable)
-    while True:
-        batchiter = islice(sourceiter, size)
-        try:
-            yield list(chain([next(batchiter)], batchiter))
-        except StopIteration:
-            return
+def batch(dictionary, size):
+    batches = []
+    sub_dict = {}
+    for i, (acc, seq) in enumerate(dictionary.items()):
+        if i > 0 and i % size == 0:
+            batches.append(sub_dict)
+            sub_dict = {}
+            sub_dict[acc] = seq
+        else:
+            sub_dict[acc] = seq
+
+    if i/size != 0:
+        sub_dict[acc] = seq
+        batches.append(sub_dict)
+    
+    return batches
+
+    # sourceiter = iter(dictionary)
+    # while True:
+    #     batchiter = islice(sourceiter, size)
+    #     try:
+    #         yield list(chain([next(batchiter)], batchiter))
+    #     except StopIteration:
+    #         return
 
 
 def align_reads(args):
@@ -125,30 +141,28 @@ def align_reads(args):
     print("Running mummer forward")
     mummer_wrapper.find_mems(args.outfolder, ref_part_sequences, args.reads, ref_path, mummer_out_path, args.min_mem)
     print("Completed mummer forward")
-    print("Parsing mems")
-    mems = mummer_wrapper.parse_results(mummer_out_path)
-    print("Completed parsing mems")
+    # print("Parsing mems")
+    # mems = mummer_wrapper.parse_results(mummer_out_path)
+    # print("Completed parsing mems")
 
-    # print(ref_exon_sequences)
-    # sys.exit()
     mems_rc = []
-    if not args.ignore_rc:
-        print("Processing reverse complement reads for mummer reads")
-        reads_rc = open(os.path.join(args.outfolder, 'reads_rc.fq'), 'w')
-        for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r')):
-            reads_rc.write('>{0}\n{1}\n'.format(acc, help_functions.reverse_complement(seq)))
-        reads_rc.close()
-        print("Finished processing reverse complement reads for mummer reads")
+    # if not args.ignore_rc:
+    print("Processing reverse complement reads for mummer reads")
+    reads_rc = open(os.path.join(args.outfolder, 'reads_rc.fq'), 'w')
+    for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r')):
+        reads_rc.write('>{0}\n{1}\n'.format(acc, help_functions.reverse_complement(seq)))
+    reads_rc.close()
+    print("Finished processing reverse complement reads for mummer reads")
 
-        args.reads_rc = reads_rc.name
-        ref_path = os.path.join(args.outfolder, "refs_sequences_rc.fa")
-        mummer_out_path =  os.path.join(args.outfolder, "mummer_mems_rc.txt" )
-        print("Starting mummer reverse")
-        mummer_wrapper.find_mems(args.outfolder, ref_part_sequences, args.reads_rc, ref_path, mummer_out_path, args.min_mem)
-        print("Completed mummer reverse")
-        print("Parsing rev comp mems")
-        mems_rc = mummer_wrapper.parse_results(mummer_out_path)
-        print("Finished parsing rev comp mems")
+    args.reads_rc = reads_rc.name
+    ref_path = os.path.join(args.outfolder, "refs_sequences_rc.fa")
+    mummer_out_path =  os.path.join(args.outfolder, "mummer_mems_rc.txt" )
+    print("Starting mummer reverse")
+    mummer_wrapper.find_mems(args.outfolder, ref_part_sequences, args.reads_rc, ref_path, mummer_out_path, args.min_mem)
+    print("Completed mummer reverse")
+    # print("Parsing rev comp mems")
+    # mems_rc = mummer_wrapper.parse_results(mummer_out_path)
+    # print("Finished parsing rev comp mems")
 
     print("Read reference")
     refs = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.ref, 'r'))} 
@@ -164,24 +178,29 @@ def align_reads(args):
     if args.nr_cores == 1:
         # print("ENTER")
         # print(alignment_outfile.header)
-        read_data = [ (acc, reads[acc], mems[acc], mems_rc[acc]) for i, acc in enumerate(mems)]
-        del reads
-        del mems
-        del mems_rc
+        # read_data = [ (acc, reads[acc], mems[acc], mems_rc[acc]) for i, acc in enumerate(mems)]
+        # del reads
+        # del mems
+        # del mems_rc
         # sys.exit()
-        classifications, alignment_outfile_name = align.align_single(read_data, auxillary_data, refs_lengths, args, -1)
+        classifications, alignment_outfile_name = align.align_single(reads, auxillary_data, refs_lengths, args, -1)
     else:
         # batch reads and mems up: divide reads by  nr_cores to get batch size
         # then write to separate SAM-files with a batch index, 
         # finally merge sam file by simple cat in terminal 
         
         batch_size = int(len(reads)/int(args.nr_cores) + 1)
-        read_data = batch([ (acc, reads[acc], mems[acc], mems_rc[acc]) for i, acc in enumerate(mems)], batch_size)
+        read_batches = batch(reads, batch_size)
+        # print(batch_size, len(read_batches))
+        # for b in read_batches:
+        #     print(len(b), b)
+        # sys.exit()
+        # read_data = batch([ (acc, reads[acc], mems[acc], mems_rc[acc]) for i, acc in enumerate(mems)], batch_size)
         print('Nr reads:', len(reads), 'Batch size:', batch_size)
-        del reads
-        del mems
-        del mems_rc
-        classifications, alignment_outfiles = align.align_parallel(read_data, auxillary_data, refs_lengths, args)
+        # del reads
+        # del mems
+        # del mems_rc
+        classifications, alignment_outfiles = align.align_parallel(read_batches, auxillary_data, refs_lengths, args)
 
         # Combine samfiles produced from each batch
         alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, "torkel.sam"), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)

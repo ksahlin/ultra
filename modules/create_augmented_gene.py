@@ -5,7 +5,7 @@ from modules.help_functions import readfq
 
 def reverse_mapping(d):
     d_dict = defaultdict(list)
-    for k,v in sorted(d.items(), key = lambda x: x[0]):
+    for k,v in d.items():
         for i in v:
             d_dict[i].append(k)
     return d_dict
@@ -71,10 +71,10 @@ def create_graph_from_exon_parts(db, min_mem):
 
     # print(parts_to_exons["SIRV3"])
     # sys.exit()
-    print()
-    for sid in parts_to_exons:
-        print(sid, len(parts_to_exons[sid]))
-        print()
+    # print()
+    # for sid in parts_to_exons:
+    #     print(sid, len(parts_to_exons[sid]))
+    #     print()
 
     # for transcript in db.features_of_type('transcript'):
     #     genes_to_ref[transcript.id] = str(transcript.seqid)
