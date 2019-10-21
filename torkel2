@@ -122,35 +122,52 @@ def align_reads(args):
 
     ref_path = os.path.join(args.outfolder, "refs_sequences.fa")
     mummer_out_path =  os.path.join( args.outfolder, "mummer_mems.txt" )
+    print("Running mummer forward")
     mummer_wrapper.find_mems(args.outfolder, ref_part_sequences, args.reads, ref_path, mummer_out_path, args.min_mem)
-    reads = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r'))}
+    print("Completed mummer forward")
+    print("Parsing mems")
     mems = mummer_wrapper.parse_results(mummer_out_path)
+    print("Completed parsing mems")
 
     # print(ref_exon_sequences)
     # sys.exit()
-
     mems_rc = []
     if not args.ignore_rc:
+        print("Processing reverse complement reads for mummer reads")
         reads_rc = open(os.path.join(args.outfolder, 'reads_rc.fq'), 'w')
-        for acc, seq in reads.items():
+        for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r')):
             reads_rc.write('>{0}\n{1}\n'.format(acc, help_functions.reverse_complement(seq)))
         reads_rc.close()
+        print("Finished processing reverse complement reads for mummer reads")
+
         args.reads_rc = reads_rc.name
         ref_path = os.path.join(args.outfolder, "refs_sequences_rc.fa")
         mummer_out_path =  os.path.join(args.outfolder, "mummer_mems_rc.txt" )
+        print("Starting mummer reverse")
         mummer_wrapper.find_mems(args.outfolder, ref_part_sequences, args.reads_rc, ref_path, mummer_out_path, args.min_mem)
+        print("Completed mummer reverse")
+        print("Parsing rev comp mems")
         mems_rc = mummer_wrapper.parse_results(mummer_out_path)
+        print("Finished parsing rev comp mems")
 
-
+    print("Read reference")
     refs = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.ref, 'r'))} 
     refs_lengths = { acc : len(seq) for acc, seq in refs.items()} 
     del refs
-    
+ 
+    print("Completed reading reference")
+
+    reads = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r'))}
+
+    print("Starting aligning reads.")
     auxillary_data = import_data(args)
     if args.nr_cores == 1:
-        print("ENTER")
+        # print("ENTER")
         # print(alignment_outfile.header)
-        read_data = [ (acc, reads[acc], mems[acc], mems_rc[acc], ) for i, acc in enumerate(mems)]
+        read_data = [ (acc, reads[acc], mems[acc], mems_rc[acc]) for i, acc in enumerate(mems)]
+        del reads
+        del mems
+        del mems_rc
         # sys.exit()
         classifications, alignment_outfile_name = align.align_single(read_data, auxillary_data, refs_lengths, args, -1)
     else:
@@ -159,8 +176,11 @@ def align_reads(args):
         # finally merge sam file by simple cat in terminal 
         
         batch_size = int(len(reads)/int(args.nr_cores) + 1)
-        read_data = batch([ (acc, reads[acc], mems[acc], mems_rc[acc], ) for i, acc in enumerate(mems)], batch_size)
+        read_data = batch([ (acc, reads[acc], mems[acc], mems_rc[acc]) for i, acc in enumerate(mems)], batch_size)
         print('Nr reads:', len(reads), 'Batch size:', batch_size)
+        del reads
+        del mems
+        del mems_rc
         classifications, alignment_outfiles = align.align_parallel(read_data, auxillary_data, refs_lengths, args)
 
         # Combine samfiles produced from each batch
