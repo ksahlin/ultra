@@ -23,7 +23,7 @@ def find_mems(outfolder, refs_sequences, read_path, refs_path, mummer_out_path, 
         # print('Done.')
         stdout.flush()
     output_file.close()
-    mummer_file = open(mummer_out_path, "r").readlines()
+    # mummer_file = open(mummer_out_path, "r").readlines()
     # for line in mummer_file:
     #     print(line)
     # consensus = l[1].strip()
