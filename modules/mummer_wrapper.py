@@ -9,17 +9,12 @@ mem = namedtuple('Mem', ['x', 'y', 'c', 'd', 'val', "exon_part_id"])
 globals()[mem.__name__] = mem # Global needed for multiprocessing
 
 def find_mems(outfolder, refs_sequences, read_path, refs_path, mummer_out_path, min_mem):
-    refs_path = open(refs_path, 'w') #open(os.path.join(outfolder, "refs_sequences_tmp.fa"), "w")
-    for chr_id  in refs_sequences:
-        for (start,stop), seq  in refs_sequences[chr_id].items():
-            refs_path.write(">{0}\n{1}\n".format(chr_id + str("_") + str(start) + "_" + str(stop), seq))
-    refs_path.close()
     # mummer_out_path = os.path.join( outfolder, "mummer_mems.txt" )
     with open(mummer_out_path, "w") as output_file:
         # print('Running spoa...', end=' ')
         stdout.flush()
         null = open(os.path.join(outfolder, "mummer_errors.1") , "w")
-        subprocess.check_call([ 'mummer',   '-maxmatch', '-l' , str(min_mem),  refs_path.name, read_path], stdout=output_file, stderr=null)
+        subprocess.check_call([ 'mummer',   '-maxmatch', '-l' , str(min_mem),  refs_path, read_path], stdout=output_file, stderr=null)
         # print('Done.')
         stdout.flush()
     output_file.close()

@@ -137,10 +137,19 @@ def align_reads(args):
     ref_part_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'ref_part_sequences.pickle') )
 
     ref_path = os.path.join(args.outfolder, "refs_sequences.fa")
+    refs_file = open(ref_path, 'w') #open(os.path.join(outfolder, "refs_sequences_tmp.fa"), "w")
+    for chr_id  in ref_part_sequences:
+        for (start,stop), seq  in ref_part_sequences[chr_id].items():
+            refs_file.write(">{0}\n{1}\n".format(chr_id + str("_") + str(start) + "_" + str(stop), seq))
+    refs_file.close()
+
     mummer_out_path =  os.path.join( args.outfolder, "mummer_mems.txt" )
-    print("Running mummer forward")
-    mummer_wrapper.find_mems(args.outfolder, ref_part_sequences, args.reads, ref_path, mummer_out_path, args.min_mem)
-    print("Completed mummer forward")
+    if os.path.isfile(mummer_out_path):
+        pass
+    else:
+        print("Running mummer forward")
+        mummer_wrapper.find_mems(args.outfolder, ref_part_sequences, args.reads, ref_path, mummer_out_path, args.min_mem)
+        print("Completed mummer forward")
     # print("Parsing mems")
     # mems = mummer_wrapper.parse_results(mummer_out_path)
     # print("Completed parsing mems")
@@ -155,11 +164,14 @@ def align_reads(args):
     print("Finished processing reverse complement reads for mummer reads")
 
     args.reads_rc = reads_rc.name
-    ref_path = os.path.join(args.outfolder, "refs_sequences_rc.fa")
+    # ref_path = os.path.join(args.outfolder, "refs_sequences_rc.fa")
     mummer_out_path =  os.path.join(args.outfolder, "mummer_mems_rc.txt" )
-    print("Starting mummer reverse")
-    mummer_wrapper.find_mems(args.outfolder, ref_part_sequences, args.reads_rc, ref_path, mummer_out_path, args.min_mem)
-    print("Completed mummer reverse")
+    if os.path.isfile(mummer_out_path):
+        pass
+    else:
+        print("Starting mummer reverse")
+        mummer_wrapper.find_mems(args.outfolder, ref_part_sequences, args.reads_rc, ref_path, mummer_out_path, args.min_mem)
+        print("Completed mummer reverse")
     # print("Parsing rev comp mems")
     # mems_rc = mummer_wrapper.parse_results(mummer_out_path)
     # print("Finished parsing rev comp mems")
