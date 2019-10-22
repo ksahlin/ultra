@@ -34,7 +34,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
     exon_id_to_choordinates, ref_exon_sequences, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations, parts_to_exons = auxillary_data
     classifications = defaultdict(str)
     read_accessions_with_mappings = set()
-
+    processed_read_counter = 0
     for (read_acc, mems), (_, mems_rc) in zip(mummer_wrapper.get_mummer_records(mems_path), mummer_wrapper.get_mummer_records(mems_path_rc)):
         if read_acc not in reads: # if parallelization not all reads in mummer file are in read batches
             continue
@@ -42,7 +42,9 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
             read_seq = reads[read_acc]
         # print(read_acc, len(mems), len(mems_rc))
     # for curr_index, (read_acc, read_seq, mems, mems_rc) in enumerate(read_data):
-
+        processed_read_counter += 1
+        if processed_read_counter % 100 == 0:
+            print('Processed {0} reads in batch {1}'.format(processed_read_counter, batch_number))
         # do the chaining here immediately!
         all_chainings = []
         for chr_id, all_mems_to_chromosome in mems.items():

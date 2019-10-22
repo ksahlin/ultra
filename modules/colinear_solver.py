@@ -33,6 +33,8 @@ def read_coverage(mems):
 
     """
     mems = sorted(mems, key = lambda x: x.y )
+    print('MEM',len(mems))
+
     # print("Going in to mem chaining:", mems)
     T = [ (v.d, v.val)  for v in mems]
     I = [ (v.d, v.val)  for v in mems]
@@ -129,7 +131,7 @@ def read_coverage_mam_score(mams, overlap_threshold):
 
     """
     mams = sorted(mams, key = lambda x: x.y )
-    # print(mams)
+    print('MAM',len(mams))
     T = [ (v.d, v.val)  for v in mams]
     I = [ (v.d, v.val)  for v in mams]
     
