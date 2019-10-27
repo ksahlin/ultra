@@ -119,15 +119,13 @@ def range_query(tree, l, r, n):
         if pos >= n:
             break
 
-    # right_leaf_node_pos = pos
-    R = tree[pos].d
-    R_pos = pos
+    left_subtree_root_pos.add(pos)
+
     print("search coord: {0}, node pos:{1}, leaf values:{2}.".format(r, pos, (tree[pos].d, tree[pos].Cj,tree[pos].j ) ))
 
     # for left search coord
     pos = 1 # root position
     right_subtree_root_pos = set()
-
     while True: # not yet reached a leaf
         left_child_position = 2*pos
         right_child_position = 2*pos + 1
@@ -142,8 +140,7 @@ def range_query(tree, l, r, n):
         if pos >= n:
             break
    
-    L = tree[pos].d
-    L_pos = pos
+    right_subtree_root_pos.add(pos)
 
     # left_leaf_node_pos = pos
     print("right subtrees:", right_subtree_root_pos, "left subtrees:", left_subtree_root_pos)
@@ -153,25 +150,25 @@ def range_query(tree, l, r, n):
     # now trace back the path back to the root to find maximum value
     # From chapter 3 in GSAD book.
     V_prime = left_subtree_root_pos -  right_subtree_root_pos
-    if V_prime:
-        vl = max(V_prime, key = lambda x: tree[x].Cj)
-        if l == L:
-            vl = max([vl,L_pos], key = lambda x: tree[x].Cj)
-    elif l == L:
-        vl = L_pos
-    else:
-        print("BUGGGG")
+    # if V_prime:
+    vl = max(V_prime, key = lambda x: tree[x].Cj)
+    #     if l == L:
+    #         vl = max([vl,L_pos], key = lambda x: tree[x].Cj)
+    # elif l == L:
+    #     vl = L_pos
+    # else:
+    #     print("BUGGGG")
 
 
     V_biss = right_subtree_root_pos - left_subtree_root_pos 
-    if V_biss:
-        vr = max(V_biss, key = lambda x: tree[x].Cj)
-        if r == R:
-            vr = max([vr,R_pos], key = lambda x: tree[x].Cj)
-    elif r == R:
-        vr = R_pos
-    else:
-        print("BUGGGG")
+    # if V_biss:
+    vr = max(V_biss, key = lambda x: tree[x].Cj)
+    #     if r == R:
+    #         vr = max([vr,R_pos], key = lambda x: tree[x].Cj)
+    # elif r == R:
+    #     vr = R_pos
+    # else:
+    #     print("BUGGGG")
 
     # if l == L:
     #     vl = max([vl,L_pos], key = lambda x: tree[x].Cj)
@@ -195,7 +192,7 @@ def range_query(tree, l, r, n):
 
 def update(tree, leaf_pos, value, n): 
     # change the index to leaf node first  
-    pos = leaf_pos + n  
+    pos = leaf_pos + n
     # tree[pos].Cj = value
     print('updating: ', pos)
 
@@ -287,6 +284,8 @@ for j, mem in enumerate(mems):
     print("vals:", [l.Cj for l in leafs])
     C_a_max, traceback_index, node_pos  = range_query(T, 0, c, len(leafs)) 
     leaf_to_update = mem_to_leaf_index[j]
+    print(node_pos, leaf_to_update, traceback_index)
+    # assert node_pos == leaf_to_update
     # j = node_pos - remainder - n
     print(j, C_a_max, traceback_index, node_pos, leaf_to_update)
 
