@@ -96,49 +96,132 @@ def construct_tree(tree, leafs, n):
     for i in range(n - 1, 0, -1):  
         # print(i)
         # print(tree)
-        tree[i] = min([tree[2 * i ], tree[2 * i + 1]], key = lambda x: x.d ) 
+        min_coord_node = min([tree[2 * i ], tree[2 * i + 1]], key = lambda x: x.d ) # should always be left one though
+        tree_node = Node(min_coord_node.d, min_coord_node.j, 0)
+        tree[i] = tree_node
                           
-def range_query(tree, search_coord, n): 
-    ma = 0 # initialize minimum to 0 
-    curr_node = 1
+def range_query(tree, l, r, n): 
+    # for right search coord
+    pos = 1 # root position
+    left_subtree_root_pos = set()
     while True: # not yet reached a leaf
-        left_child_position = 2*curr_node
-        right_child_position = 2*curr_node + 1
-#         left_child_index = tree[curr_node].d # always holds the left most value in subtree
-        if c > tree[right_child_position].d : # 
-            curr_node = right_child_position         
-        else: # tree[left_child_index].d <= c:
-            curr_node = left_child_position         
+        left_child_position = 2*pos
+        right_child_position = 2*pos + 1
+#         left_child_index = tree[pos].d # always holds the left most value in subtree
+        if r > tree[right_child_position].d : # 
+            if pos != 1: # We are not at root
+                left_subtree_root_pos.add(left_child_position)        
+            pos = right_child_position 
 
-        if curr_node >= n:
+        else: # tree[left_child_index].d <= c:
+            pos = left_child_position         
+
+        if pos >= n:
             break
 
-    print("search coord: {0}, curr_node:{1}, leaf values:{2}.".format(search_coord, curr_node, tree[curr_node]))
-    return tree[curr_node].Cj, tree[curr_node].j, curr_node
+    # right_leaf_node_pos = pos
+    R = tree[pos].d
+    R_pos = pos
+    print("search coord: {0}, node pos:{1}, leaf values:{2}.".format(r, pos, (tree[pos].d, tree[pos].Cj,tree[pos].j ) ))
+
+    # for left search coord
+    pos = 1 # root position
+    right_subtree_root_pos = set()
+
+    while True: # not yet reached a leaf
+        left_child_position = 2*pos
+        right_child_position = 2*pos + 1
+#         left_child_index = tree[pos].d # always holds the left most value in subtree
+        if l > tree[right_child_position].d : # 
+            pos = right_child_position         
+        else: # tree[left_child_index].d <= c:
+            if pos != 1: # We are not at root    
+                right_subtree_root_pos.add(right_child_position)        
+            pos = left_child_position     
+
+        if pos >= n:
+            break
+   
+    L = tree[pos].d
+    L_pos = pos
+
+    # left_leaf_node_pos = pos
+    print("right subtrees:", right_subtree_root_pos, "left subtrees:", left_subtree_root_pos)
+    print("search coord: {0}, node pos:{1}, leaf values:{2}.".format(l, pos, (tree[pos].d, tree[pos].Cj,tree[pos].j ) ))
+
+    # We now have the rightmost leaf node
+    # now trace back the path back to the root to find maximum value
+    # From chapter 3 in GSAD book.
+    V_prime = left_subtree_root_pos -  right_subtree_root_pos
+    if V_prime:
+        vl = max(V_prime, key = lambda x: tree[x].Cj)
+        if l == L:
+            vl = max([vl,L_pos], key = lambda x: tree[x].Cj)
+    elif l == L:
+        vl = L_pos
+    else:
+        print("BUGGGG")
+
+
+    V_biss = right_subtree_root_pos - left_subtree_root_pos 
+    if V_biss:
+        vr = max(V_biss, key = lambda x: tree[x].Cj)
+        if r == R:
+            vr = max([vr,R_pos], key = lambda x: tree[x].Cj)
+    elif r == R:
+        vr = R_pos
+    else:
+        print("BUGGGG")
+
+    # if l == L:
+    #     vl = max([vl,L_pos], key = lambda x: tree[x].Cj)
+    # if r == R:
+    #     vr = max([vr,R_pos], key = lambda x: tree[x].Cj)
+
+    v_max_pos = max([vl,vr], key = lambda x: tree[x].Cj)
+    C_max = tree[v_max_pos].Cj
+    # while (pos > 1): 
+          
+    #     # move up one level at a time in the tree  
+    #     pos >>= 1;  
+    #     print('tracing max to: ', pos)
+    #     # update the values in the nodes  
+    #     # in the next higher level 
+    #     C_max = max(tree[pos].Cj, C_max)  
+    # print(C_max)
+    return C_max, tree[v_max_pos].j, v_max_pos
 
   
 
-def update(tree, pos, value, n): 
-      
+def update(tree, leaf_pos, value, n): 
     # change the index to leaf node first  
-    pos += n  
+    pos = leaf_pos + n  
+    # tree[pos].Cj = value
+    print('updating: ', pos)
+
+
       
     # update the value at the leaf node  
     # at the exact index 
-    tree[pos] = value  
+    tree[pos].Cj = value  
     while (pos > 1): 
           
         # move up one level at a time in the tree  
         pos >>= 1;  
-          
+        print('updating: ', pos)
         # update the values in the nodes  
         # in the next higher level 
-        tree[pos] = max(tree[2 * pos],  
-                           tree[2 * pos + 1])  
+        tree[pos].Cj = max(tree[2 * pos].Cj,  
+                           tree[2 * pos + 1].Cj)  
   
 
 
-
+class Node:
+    __slots__ = ['d', 'j', 'Cj']
+    def __init__(self, d, j, Cj):
+        self.d = d
+        self.j = j
+        self.Cj = Cj
 
 
 st = time()
@@ -159,12 +242,12 @@ for (ref_index, mem_length) in zip(order_in_ref, mem_lengths):
     mems.append(m)
 
 
-node = namedtuple('node', ['d', 'j', 'Cj'])
+# node = namedtuple('node', ['d', 'j', 'Cj'])
 nodes = []
-nodes.append( node(0, -1, 0) ) # add an start node in case a search is smaller than any d coord in tree
+nodes.append( Node(0, -1, 0) ) # add an start node in case a search is smaller than any d coord in tree
 for i, mem in enumerate(mems):
     # if i > 3: break
-    m = node(mem.d, mem.j, 0)
+    m = Node(mem.d, mem.j, 0)
     nodes.append(m)
 
 for i in range(20):
@@ -173,41 +256,48 @@ for i in range(20):
     elif 2**i < len(nodes) < 2**(i+1):
         remainder = 2**(i+1) - len(nodes) 
         for i in range(remainder):
-            nodes.append( node(0, -i - 2, 0) ) # fill up nodes to have leaves a power of 2
+            nodes.append( Node(0, -i - 2, 0) ) # fill up nodes to have leaves a power of 2
         break
 
 leafs = sorted(nodes, key= lambda x: x.d)
 n = len(leafs)
 print(len(leafs))
-print(leafs)
+print([l.j for l in  leafs] )
+print([(m.y, m.c, m.d) for m in  mems])
 # T = {} 
 T = [0 for i in range(2 * n) ]  
 print(len(T))
 # I = [0 for i in range(2 * n)]  
-C = [0]*(len(leafs))
 construct_tree(T, leafs, n)
-print(len(T),T) 
+print(len(T),[ (t.j, t.d) for t in T if type(t) != int]) 
 # construct_segment_tree(I, leafs_I, n); 
 print("time init RQmax:", time()- st)
 st = time()
 # print(nodes)
 print("remainder", remainder)
+C = [0]* (len(mems) + 1) #(len(leafs))
 trace_vector = [None]*(len(mems) + 1)
+
+mem_to_leaf_index = {l.j : i for i,l in enumerate(leafs)}
+
 for j, mem in enumerate(mems):
     print(mem)
     c = mem.c
     # d = mem.d
-    C_a_max, traceback_index, node_pos  = range_query(T, c, len(leafs)) 
+    print("vals:", [l.Cj for l in leafs])
+    C_a_max, traceback_index, node_pos  = range_query(T, 0, c, len(leafs)) 
+    leaf_to_update = mem_to_leaf_index[j]
     # j = node_pos - remainder - n
-    print(j, C_a_max, traceback_index, node_pos)
-    if traceback_index < 0:
-        trace_vector[j+1] = 0
-    else:
-        trace_vector[j+1] = traceback_index
+    print(j, C_a_max, traceback_index, node_pos, leaf_to_update)
 
     # print(C_a_max, traceback_index )
     C_a =  C_a_max +  mem.d - mem.c   # add the mem_length to T since disjoint
-    # update(T, node_pos, C_a, n); # point update 
+    update(T, leaf_to_update, C_a, n) # point update 
+    C[j+1] = C_a
+    if traceback_index < 0:
+        trace_vector[j+1] = 0
+    else:
+        trace_vector[j+1] = traceback_index +1
 
     # trace_vector[]
     # # print(c, d, j_T,  val_T, C_a, l, r)
