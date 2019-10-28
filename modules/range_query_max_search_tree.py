@@ -5,82 +5,7 @@ import queue
 import random
 
 from collections import namedtuple
-# def construct_tree(tree, mems_index, leafs):  
-    
-#     # assign values to leaves of  
-#     # the range query tree  
-#     n = len(leafs)
-#     q = queue.Queue(2*n)
-#     lvl = {}
-#     for i in range(n-1,-1,-1):  
-#         print(i)
-#         # tree[n + i - 1] = leafs[i]
-#         mems_index[n + i - 1] = leafs[i]
-#         tree[n + i - 1] = (None, None) #leaf
-#         lvl[n + i - 1] = 0
-#         q.put(n + i - 1)
-#         print("n", n + i - 1)
-#     print()
-#     node_index = n - 2
-#     print("starting index:", node_index)
-#     while not q.empty():
-#         n1 = q.get()
-#         n2 = q.get()
-#         lvl_n1, lvl_n2 = lvl[n1], lvl[n2]
-#         if lvl_n1 == lvl_n2:
-#             new_internal_node = node_index
-#             lvl[new_internal_node] = lvl_n1 +1  # n1 and n2 are the same level by def here
-#             q.put(new_internal_node)
-#         else:
-#             n1
-#             lvl[new_internal_node] = max(lvl_n1,lvl_n2) + 1
-#         # print(q.get())
-#     sys.exit()
-#     # Build up graph 
-#     # assign values to remaining nodes  
-#     # to compute maximum in a given range  
-#     for i in range(n - 2, -1, -1):
-#         print(i, lvl)
-#         mems_index[i] = min([mems_index[2 * i + 1], mems_index[2 * i + 2]], key = lambda x: x.d )  
 
-#         if lvl[2 * i + 1] == lvl[2 * i + 2]:
-#             tree[i] = (2 * i + 1, 2 * i + 2 )
-#         elif lvl[2 * i + 1] > lvl[2 * i + 2]:
-#             tree[i] = (2 * i + 2, 2 * i + 1 )
-#         else:
-#             print('BUG, should not happend because we fill nodes from right to left!')
-#             sys.exit()
-
-#         lvl[i] = max(lvl[2 * i + 1], lvl[2 * i + 2]) + 1
-                          
-# def range_query(tree, c, n): 
-#     """ Basically the left and right indices  
-#         will move towards right and left respectively  
-#         and with every each next higher level and  
-#         compute the minimum at each height change  
-#         the index to leaf node first """
-#     ma = 0 # initialize maximum value to 0 
-#     curr_node = 0
-#     while curr_node < n: # not yet reached a leaf
-#         right_child_index = curr_node +1
-#         left_child_index = tree[curr_node].d # always hods the left most value in subtree
-#         if tree[right_child_index].d > c: # 
-
-#         elif tree[left_child_index].d <= c:
-
-#     while (left < right): 
-#         if (left & 1): # if left index in odd  
-#                 ma = max(ma, tree[left]) 
-#                 left = left + 1
-#         if (right & 1): # if right index in odd  
-#                 right -= 1
-#                 ma = max(ma, tree[right]) 
-                  
-#         # move to the next higher level 
-#         left = left // 2
-#         right = right // 2
-#     return ma, left, right 
- 
 
 
 from collections import namedtuple
@@ -97,7 +22,7 @@ def construct_tree(tree, leafs, n):
         # print(i)
         # print(tree)
         min_coord_node = min([tree[2 * i ], tree[2 * i + 1]], key = lambda x: x.d ) # should always be left one though
-        tree_node = Node(min_coord_node.d, min_coord_node.j, 0)
+        tree_node = Node(min_coord_node.d, min_coord_node.j, 0, min_coord_node.j_max)
         tree[i] = tree_node
                           
 def range_query(tree, l, r, n): 
@@ -177,6 +102,7 @@ def range_query(tree, l, r, n):
 
     v_max_pos = max([vl,vr], key = lambda x: tree[x].Cj)
     C_max = tree[v_max_pos].Cj
+    # trace down the j index of the leaf that produced the max here
     # while (pos > 1): 
           
     #     # move up one level at a time in the tree  
@@ -186,7 +112,7 @@ def range_query(tree, l, r, n):
     #     # in the next higher level 
     #     C_max = max(tree[pos].Cj, C_max)  
     # print(C_max)
-    return C_max, tree[v_max_pos].j, v_max_pos
+    return C_max, tree[v_max_pos].j_max, v_max_pos
 
   
 
@@ -194,7 +120,7 @@ def update(tree, leaf_pos, value, n):
     # change the index to leaf node first  
     pos = leaf_pos + n
     # tree[pos].Cj = value
-    print('updating: ', pos)
+    # print('updating: ', pos)
 
 
       
@@ -204,21 +130,24 @@ def update(tree, leaf_pos, value, n):
     while (pos > 1): 
           
         # move up one level at a time in the tree  
-        pos >>= 1;  
-        print('updating: ', pos)
+        pos >>= 1  
+        # print('updating: ', pos)
         # update the values in the nodes  
         # in the next higher level 
-        tree[pos].Cj = max(tree[2 * pos].Cj,  
-                           tree[2 * pos + 1].Cj)  
-  
+        cur_best = max([tree[2 * pos], tree[2 * pos + 1]], key=lambda x: x.Cj) 
+        # tree[pos].Cj = max(tree[2 * pos].Cj,  
+        #                    tree[2 * pos + 1].Cj)  
+        tree[pos].Cj = cur_best.Cj
+        tree[pos].j_max = cur_best.j_max
 
 
 class Node:
-    __slots__ = ['d', 'j', 'Cj']
-    def __init__(self, d, j, Cj):
+    __slots__ = ['d', 'j', 'Cj', "j_max"]
+    def __init__(self, d, j, Cj, j_max):
         self.d = d
         self.j = j
         self.Cj = Cj
+        self.j_max = j_max
 
 
 st = time()
@@ -241,10 +170,10 @@ for (ref_index, mem_length) in zip(order_in_ref, mem_lengths):
 
 # node = namedtuple('node', ['d', 'j', 'Cj'])
 nodes = []
-nodes.append( Node(0, -1, 0) ) # add an start node in case a search is smaller than any d coord in tree
+nodes.append( Node(0, -1, 0, -1) ) # add an start node in case a search is smaller than any d coord in tree
 for i, mem in enumerate(mems):
     # if i > 3: break
-    m = Node(mem.d, mem.j, 0)
+    m = Node(mem.d, mem.j, 0, mem.j)
     nodes.append(m)
 
 for i in range(20):
@@ -253,7 +182,7 @@ for i in range(20):
     elif 2**i < len(nodes) < 2**(i+1):
         remainder = 2**(i+1) - len(nodes) 
         for i in range(remainder):
-            nodes.append( Node(0, -i - 2, 0) ) # fill up nodes to have leaves a power of 2
+            nodes.append( Node(0, -i - 2, 0, -i - 2) ) # fill up nodes to have leaves a power of 2
         break
 
 leafs = sorted(nodes, key= lambda x: x.d)
@@ -280,21 +209,22 @@ mem_to_leaf_index = {l.j : i for i,l in enumerate(leafs)}
 for j, mem in enumerate(mems):
     print(mem)
     c = mem.c
-    # d = mem.d
     print("vals:", [l.Cj for l in leafs])
     C_a_max, traceback_index, node_pos  = range_query(T, 0, c, len(leafs)) 
     leaf_to_update = mem_to_leaf_index[j]
-    print(node_pos, leaf_to_update, traceback_index)
+    print(C_a_max, traceback_index, node_pos, leaf_to_update )
     # assert node_pos == leaf_to_update
     # j = node_pos - remainder - n
-    print(j, C_a_max, traceback_index, node_pos, leaf_to_update)
+    # print(j, C_a_max, traceback_index, node_pos, leaf_to_update)
 
     # print(C_a_max, traceback_index )
     C_a =  C_a_max +  mem.d - mem.c   # add the mem_length to T since disjoint
     update(T, leaf_to_update, C_a, n) # point update 
     C[j+1] = C_a
-    if traceback_index < 0:
+    if traceback_index < 0: # any of the additional leaf nodes (with negative index) we add to make number of leafs 2^n
         trace_vector[j+1] = 0
+    elif C_a_max == 0: # first j (i.e. j=0) 
+        trace_vector[j+1]= 0
     else:
         trace_vector[j+1] = traceback_index +1
 
