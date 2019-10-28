@@ -6,7 +6,7 @@ import random
 
 from collections import namedtuple
 
-
+import copy
 
 from collections import namedtuple
 def construct_tree(tree, leafs, n):  
@@ -150,6 +150,7 @@ class Node:
         self.j_max = j_max
 
 
+
 st = time()
 
 # construct sorted leafs
@@ -190,43 +191,63 @@ n = len(leafs)
 print(len(leafs))
 print([l.j for l in  leafs] )
 print([(m.y, m.c, m.d) for m in  mems])
-# T = {} 
+
+
 T = [0 for i in range(2 * n) ]  
-print(len(T))
-# I = [0 for i in range(2 * n)]  
+I = [0 for i in range(2 * n) ]  
 construct_tree(T, leafs, n)
-print(len(T),[ (t.j, t.d) for t in T if type(t) != int]) 
+I_leafs = copy.deepcopy(leafs)
+construct_tree(I, I_leafs, n)
+# print(len(T),[ (t.j, t.d) for t in T if type(t) != int]) 
 # construct_segment_tree(I, leafs_I, n); 
-print("time init RQmax:", time()- st)
+print("time init RQmax I and T:", time()- st)
+
+
 st = time()
 # print(nodes)
-print("remainder", remainder)
+# print("remainder", remainder)
 C = [0]* (len(mems) + 1) #(len(leafs))
 trace_vector = [None]*(len(mems) + 1)
+
+C_tmp = [0]* (len(mems) + 1) #(len(leafs))
+trace_vector_tmp = [None]*(len(mems) + 1)
 
 mem_to_leaf_index = {l.j : i for i,l in enumerate(leafs)}
 
 for j, mem in enumerate(mems):
     print(mem)
-    c = mem.c
     print("vals:", [l.Cj for l in leafs])
-    C_a_max, traceback_index, node_pos  = range_query(T, 0, c, len(leafs)) 
+    
+    c = mem.c
+    C_a_max, j_prime_a, node_pos  = range_query(T, 0, c, len(leafs)) 
     leaf_to_update = mem_to_leaf_index[j]
-    print(C_a_max, traceback_index, node_pos, leaf_to_update )
-    # assert node_pos == leaf_to_update
-    # j = node_pos - remainder - n
-    # print(j, C_a_max, traceback_index, node_pos, leaf_to_update)
-
-    # print(C_a_max, traceback_index )
+    print(C_a_max, j_prime_a, node_pos, leaf_to_update )
     C_a =  C_a_max +  mem.d - mem.c   # add the mem_length to T since disjoint
     update(T, leaf_to_update, C_a, n) # point update 
+
     C[j+1] = C_a
-    if traceback_index < 0: # any of the additional leaf nodes (with negative index) we add to make number of leafs 2^n
+    if j_prime_a < 0: # any of the additional leaf nodes (with negative index) we add to make number of leafs 2^n
         trace_vector[j+1] = 0
     elif C_a_max == 0: # first j (i.e. j=0) 
         trace_vector[j+1]= 0
     else:
-        trace_vector[j+1] = traceback_index +1
+        trace_vector[j+1] = j_prime_a +1
+
+    d = mem.d
+    C_b_max, j_prime_b, node_pos  = range_query(I, 0, d, len(leafs)) 
+    leaf_to_update = mem_to_leaf_index[j]
+    print(C_b_max, j_prime_b, node_pos, leaf_to_update )
+    C_b =  C_b_max +  mem.d - mems[j_prime_b].d   # add the part of the mem that is not overlapping
+    update(I, leaf_to_update, C_b, n) # point update 
+
+    C_tmp[j+1] = C_b
+    if j_prime_b < 0: # any of the additional leaf nodes (with negative index) we add to make number of leafs 2^n
+        trace_vector_tmp[j+1] = 0
+    elif C_b_max == 0: # first j (i.e. j=0) 
+        trace_vector_tmp[j+1]= 0
+    else:
+        trace_vector_tmp[j+1] = j_prime_b +1
+
 
     # trace_vector[]
     # # print(c, d, j_T,  val_T, C_a, l, r)
@@ -235,4 +256,9 @@ for j, mem in enumerate(mems):
 
 print(C)
 print(trace_vector)
+print(C_tmp)
+print(trace_vector_tmp)
+
 print("time querying RQ method 2:", time()- st)  
+
+
