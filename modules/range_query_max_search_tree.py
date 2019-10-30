@@ -33,7 +33,7 @@ def range_query(tree, l, r, n):
         left_child_position = 2*pos
         right_child_position = 2*pos + 1
 #         left_child_index = tree[pos].d # always holds the left most value in subtree
-        if r > tree[right_child_position].d : # 
+        if r >= tree[right_child_position].d : # 
             if pos != 1: # We are not at root
                 left_subtree_root_pos.add(left_child_position)        
             pos = right_child_position 
@@ -44,8 +44,8 @@ def range_query(tree, l, r, n):
         if pos >= n:
             break
 
-    L = pos
-    # left_subtree_root_pos.add(pos)
+    # L = pos
+    left_subtree_root_pos.add(pos)
 
     print("search coord: {0}, node pos:{1}, leaf values:{2}.".format(r, pos, (tree[pos].d, tree[pos].Cj,tree[pos].j ) ))
 
@@ -66,20 +66,28 @@ def range_query(tree, l, r, n):
         if pos >= n:
             break
    
-    R = pos
-    # right_subtree_root_pos.add(pos)
+    L = pos
+    if L == l:
+        right_subtree_root_pos.add(pos)
 
     # left_leaf_node_pos = pos
-    print("right subtrees:", right_subtree_root_pos, "left subtrees:", left_subtree_root_pos)
     print("search coord: {0}, node pos:{1}, leaf values:{2}.".format(l, pos, (tree[pos].d, tree[pos].Cj,tree[pos].j ) ))
+
+    print("right subtrees:", right_subtree_root_pos, "left subtrees:", left_subtree_root_pos)
 
     # We now have the rightmost leaf node
     # now trace back the path back to the root to find maximum value
     # From chapter 3 in GSAD book.
     V_prime = left_subtree_root_pos -  right_subtree_root_pos
-    V_prime.add(L)
-    # if V_prime:
-    vl = max(V_prime, key = lambda x: tree[x].Cj)
+    # V_prime.add(L)
+    # if l == L:
+    #     V_prime.add(L)
+    #     # vl = max([vl,L_pos], key = lambda x: tree[x].Cj)
+
+    if V_prime:
+        vl = max(V_prime, key = lambda x: tree[x].Cj)
+    else:
+        vl = None
     #     if l == L:
     #         vl = max([vl,L_pos], key = lambda x: tree[x].Cj)
     # elif l == L:
@@ -89,9 +97,15 @@ def range_query(tree, l, r, n):
 
 
     V_biss = right_subtree_root_pos - left_subtree_root_pos 
-    V_biss.add(R)
-    # if V_biss:
-    vr = max(V_biss, key = lambda x: tree[x].Cj)
+    # V_biss.add(R)
+    # if r == R:
+    #     V_biss.add(R)
+    
+    if V_biss:
+        vr = max(V_biss, key = lambda x: tree[x].Cj)
+    else:
+        vr = None
+       
     #     if r == R:
     #         vr = max([vr,R_pos], key = lambda x: tree[x].Cj)
     # elif r == R:
@@ -103,9 +117,20 @@ def range_query(tree, l, r, n):
     #     vl = max([vl,L_pos], key = lambda x: tree[x].Cj)
     # if r == R:
     #     vr = max([vr,R_pos], key = lambda x: tree[x].Cj)
+    if vl is not None and vr is not None:
+        v_max_pos = max([vl,vr], key = lambda x: tree[x].Cj)
+        C_max = tree[v_max_pos].Cj
+    elif vl is not None:
+        v_max_pos = vl
+        C_max = tree[vl].Cj
+    elif vr is not None:
+        v_max_pos = vr
+        C_max = tree[vr].Cj
+    else:
+        print("BUG", l,r)
+        print(tree)
+        sys.exit()
 
-    v_max_pos = max([vl,vr], key = lambda x: tree[x].Cj)
-    C_max = tree[v_max_pos].Cj
     # trace down the j index of the leaf that produced the max here
     # while (pos > 1): 
           
@@ -157,6 +182,9 @@ class Node:
 def argmax(iterable):
     return max(enumerate(iterable), key=lambda x: x[1])[0]
 
+def max_both(iterable):
+    return max(enumerate(iterable), key=lambda x: x[1])
+
 
 def reconstruct_solution(mems, C, trace_vector):
     solution_index = argmax(C)
@@ -207,26 +235,28 @@ for i in range(20):
             nodes.append( Node(0, -i - 2, 0, -i - 2) ) # fill up nodes to have leaves a power of 2
         break
 
-leafs = sorted(nodes, key= lambda x: x.d)
+leafs = sorted(copy.deepcopy(nodes), key= lambda x: x.d)
 n = len(leafs)
 print(len(leafs))
 print([l.j for l in  leafs] )
 print([(m.y, m.c, m.d) for m in  mems])
 
 
-T = [0 for i in range(2 * n) ]  
-I = [0 for i in range(2 * n) ]  
-construct_tree(T, leafs, n)
-I_leafs = copy.deepcopy(leafs)
-construct_tree(I, I_leafs, n)
+
 # print(len(T),[ (t.j, t.d) for t in T if type(t) != int]) 
 # construct_segment_tree(I, leafs_I, n); 
-print("time init RQmax I and T:", time()- st)
-
-
-st = time()
 
 mem_to_leaf_index = {l.j : i for i,l in enumerate(leafs)}
+
+
+############  T only stable #############
+#########################################
+
+st = time()
+T = [0 for i in range(2 * n) ]  
+construct_tree(T, leafs, n)
+print("time init RQmax I and T:", time()- st)
+
 C = [0]* (len(mems) + 1) #(len(leafs))
 trace_vector = [None]*(len(mems) + 1)
 
@@ -235,7 +265,7 @@ for j, mem in enumerate(mems):
     print("vals:", [l.Cj for l in leafs])
     
     c = mem.c
-    C_a_max, j_prime_a, node_pos  = range_query(T, 0, c, len(leafs)) 
+    C_a_max, j_prime_a, node_pos  = range_query(T, 0, c - 1, len(leafs)) 
     leaf_to_update = mem_to_leaf_index[j]
     print("C_a:", C_a_max, j_prime_a, node_pos, leaf_to_update )
     C_a =  C_a_max +  mem.d - mem.c + 1  # add the mem_length to T since disjoint
@@ -255,39 +285,69 @@ print(trace_vector)
 print(C_max, [mem.j for mem in solution]) #, solution)
 print()
 print()
+########################################
+########################################
 
 
-C_tmp = [0]* (len(mems) + 1) #(len(leafs))
-trace_vector_tmp = [None]*(len(mems) + 1)
+st = time()
+
+solution, mem_solution_value, unique = colinear_solver.read_coverage(mems)
+print(mem_solution_value, [mem.j for mem in solution])
+print("Total time quadratic method:", time()- st)
+
+
+############  T and I ###################
+#########################################
+T = [0 for i in range(2 * n) ]  
+I = [0 for i in range(2 * n) ]  
+leafs = sorted(copy.deepcopy(nodes), key= lambda x: x.d)
+construct_tree(T, leafs, n)
+I_leafs = copy.deepcopy(leafs)
+construct_tree(I, I_leafs, n)
+
+C = [0]* (len(mems) + 1) #(len(leafs))
+trace_vector = [None]*(len(mems) + 1)
 
 for j, mem in enumerate(mems):
     print(mem)
-    print("vals:", [l.Cj for l in I_leafs])
-    d = mem.d
-    C_b_max, j_prime_b, node_pos  = range_query(I, c, d, len(I_leafs)) 
+    print("vals T:", [l.Cj for l in leafs])
+    print("vals I:", [l.Cj for l in I_leafs])
     leaf_to_update = mem_to_leaf_index[j]
-    print("C_b:", C_b_max, j_prime_b, node_pos, leaf_to_update )
-    print( C_b_max, mem.d, mems[j_prime_b].d, mems[j_prime_b])
-    C_b =  C_b_max +  mem.d - mems[j_prime_b].d   # add the part of the mem that is not overlapping
-    update(I, leaf_to_update, C_b, n) # point update 
 
-    C_tmp[j+1] = C_b
-    if j_prime_b < 0: # any of the additional leaf nodes (with negative index) we add to make number of leafs 2^n
-        trace_vector_tmp[j+1] = 0
-    elif C_b_max == 0: # first j (i.e. j=0) 
-        trace_vector_tmp[j+1]= 0
+    c = mem.c
+    T_max, j_prime_a, node_pos  = range_query(T, 0, c-1, len(leafs)) 
+    print("C_a:", T_max, j_prime_a, node_pos, leaf_to_update )
+    C_a =  T_max +  mem.d - mem.c + 1  # add the mem_length to T since disjoint
+    
+    d = mem.d
+    I_max, j_prime_b, node_pos  = range_query(I, c, d, len(I_leafs)) 
+    print("C_b:", I_max, j_prime_b, node_pos, leaf_to_update )
+    print( I_max, mem.d, mems[j_prime_b].d, mems[j_prime_b])
+    C_b =  I_max +  mem.d - mems[j_prime_b].d   # add the part of the mem that is not overlapping
+
+    index, value = max_both([C_a, C_b])
+    C[j+1] = value
+    if index == 0: # Updating with C_a
+        j_prime = j_prime_a
+    else: # Updating with C_b
+        j_prime = j_prime_b
+
+
+    if j_prime < 0: # any of the additional leaf nodes (with negative index) we add to make number of leafs 2^n
+        trace_vector[j+1] = 0
+    elif value == 0: # first j (i.e. j=0) 
+        trace_vector[j+1]= 0
     else:
-        trace_vector_tmp[j+1] = j_prime_b +1
+        trace_vector[j+1] = j_prime +1
+
+    update(T, leaf_to_update, value, n) # point update 
+    update(I, leaf_to_update, value, n) # point update 
 
 
-    # trace_vector[]
-    # # print(c, d, j_T,  val_T, C_a, l, r)
-    # C[j_T] = C_a
-    # trace_vector[j_T] = l
 
-C_max, solution = reconstruct_solution(mems, C_tmp, trace_vector_tmp)
-print(C_tmp)
-print(trace_vector_tmp)
+C_max, solution = reconstruct_solution(mems, C, trace_vector)
+print(C)
+print(trace_vector)
 print(C_max , [mem.j for mem in solution])
 print()
 print()
@@ -296,6 +356,5 @@ print()
 print("time querying RQ method 2:", time()- st)  
 
 
-solution, mem_solution_value, unique = colinear_solver.read_coverage(mems)
-print(mem_solution_value, [mem.j for mem in solution])
+
 
