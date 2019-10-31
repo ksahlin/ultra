@@ -46,12 +46,10 @@ def range_query(tree, l, r, n):
             break
 
     R = tree[pos].d
-    # left_subtree_root_pos.add(pos)
-    # L = pos
     if R <= r:
         left_subtree_root_pos.add(pos)
 
-    print("search coord: {0}, node pos:{1}, leaf values:{2}.".format(r, pos, (tree[pos].d, tree[pos].Cj,tree[pos].j ) ))
+    # print("search coord: {0}, node pos:{1}, leaf values:{2}.".format(r, pos, (tree[pos].d, tree[pos].Cj,tree[pos].j ) ))
 
     # for left search coord
     pos = 1 # root position
@@ -74,10 +72,9 @@ def range_query(tree, l, r, n):
     if L >= l:
         right_subtree_root_pos.add(pos)
 
-    # left_leaf_node_pos = pos
-    print("search coord: {0}, node pos:{1}, leaf values:{2}.".format(l, pos, (tree[pos].d, tree[pos].Cj,tree[pos].j ) ))
+    # print("search coord: {0}, node pos:{1}, leaf values:{2}.".format(l, pos, (tree[pos].d, tree[pos].Cj,tree[pos].j ) ))
 
-    print("right subtrees:", right_subtree_root_pos, "left subtrees:", left_subtree_root_pos)
+    # print("right subtrees:", right_subtree_root_pos, "left subtrees:", left_subtree_root_pos)
 
     # We now have the rightmost leaf node
     # now trace back the path back to the root to find maximum value
@@ -204,11 +201,10 @@ def reconstruct_solution(mems, C, trace_vector):
     return value, solution[::-1]
 
 
-st = time()
 
 # construct sorted leafs
 
-order_in_ref = [j  for j in range(4)] #[5,1,3,2,4,7,6,8]
+order_in_ref = [j  for j in range(10)] #[5,1,3,2,4,7,6,8]
 choord_range = 10*max(order_in_ref)
 
 mem_lengths = [10]*len(order_in_ref)
@@ -240,8 +236,8 @@ for i in range(20):
 
 leafs = sorted(copy.deepcopy(nodes), key= lambda x: x.d)
 n = len(leafs)
-print(len(leafs))
-print([l.j for l in  leafs] )
+# print(len(leafs))
+# print([l.j for l in  leafs] )
 print([(m.y, m.c, m.d) for m in  mems])
 
 
@@ -258,23 +254,22 @@ mem_to_leaf_index = {l.j : i for i,l in enumerate(leafs)}
 st = time()
 T = [0 for i in range(2 * n) ]  
 construct_tree(T, leafs, n)
-print("time init RQmax I and T:", time()- st)
 
 C = [0]* (len(mems) + 1) #(len(leafs))
 trace_vector = [None]*(len(mems) + 1)
 
-print(mem_to_leaf_index)
+# print(mem_to_leaf_index)
 update(T, 0, 0, n) # point update 
 # sys.exit()
 for j, mem in enumerate(mems):
-    print(mem)
-    print("vals:", [l.Cj for l in leafs])
+    # print(mem)
+    # print("vals:", [l.Cj for l in leafs])
     
     c = mem.c
     C_a_max, j_prime_a, node_pos  = range_query(T, 0, c - 1, len(leafs)) 
     leaf_to_update = mem_to_leaf_index[j]
-    print("TREE:", [(s, zz.j, zz.d, zz.Cj, zz.j_max) for s, zz in enumerate(T) if type(zz) != int])
-    print("C_a:", C_a_max, j_prime_a, node_pos, leaf_to_update )
+    # print("TREE:", [(s, zz.j, zz.d, zz.Cj, zz.j_max) for s, zz in enumerate(T) if type(zz) != int])
+    # print("C_a:", C_a_max, j_prime_a, node_pos, leaf_to_update )
     if C_a_max < 0:
         print("BUG")
         sys.exit()
@@ -290,9 +285,11 @@ for j, mem in enumerate(mems):
         trace_vector[j+1] = j_prime_a +1
 
 C_max, solution = reconstruct_solution(mems, C, trace_vector)
+
 print(C)
 print(trace_vector)
 print(C_max, [mem.j for mem in solution]) #, solution)
+print("Total time RQmax T:", time()- st)
 print()
 print()
 ########################################
@@ -304,10 +301,12 @@ st = time()
 solution, mem_solution_value, unique = colinear_solver.read_coverage(mems)
 print(mem_solution_value, [mem.j for mem in solution])
 print("Total time quadratic method:", time()- st)
-
+print()
+print()
 
 ############  T and I ###################
 #########################################
+st = time()
 T = [0 for i in range(2 * n) ]  
 I = [0 for i in range(2 * n) ]  
 leafs = sorted(copy.deepcopy(nodes), key= lambda x: x.d)
@@ -325,15 +324,15 @@ update(T, 0, 0, n) # point update
 update(I, 0, 0, n) # point update 
 
 for j, mem in enumerate(mems):
-    print(mem)
-    print("vals T:", [l.Cj for l in leafs])
-    print("vals I:", [l.Cj for l in I_leafs])
+    # print(mem)
+    # print("vals T:", [l.Cj for l in leafs])
+    # print("vals I:", [l.Cj for l in I_leafs])
     leaf_to_update = mem_to_leaf_index[j]
 
     c = mem.c
     T_max, j_prime_a, node_pos  = range_query(T, 0, c-1, len(leafs)) 
-    print("C_a:",  T_max +  mem.d - mem.c + 1, j_prime_a, node_pos, leaf_to_update )
-    print("T TREE:", [(s, zz.j, zz.d, zz.Cj, zz.j_max) for s, zz in enumerate(T) if type(zz) != int])
+    # print("C_a:",  T_max +  mem.d - mem.c + 1, j_prime_a, node_pos, leaf_to_update )
+    # print("T TREE:", [(s, zz.j, zz.d, zz.Cj, zz.j_max) for s, zz in enumerate(T) if type(zz) != int])
     C_a =  T_max +  mem.d - mem.c + 1  # add the mem_length to T since disjoint
 
     if T_max < 0:
@@ -343,9 +342,9 @@ for j, mem in enumerate(mems):
     
     d = mem.d
     I_max, j_prime_b, node_pos  = range_query(I, c, d, len(I_leafs))         
-    print("C_b:", I_max +  mem.d, I_max, j_prime_b, node_pos, leaf_to_update )
-    print( I_max, mem.d, mems[j_prime_b].d, mems[j_prime_b])
-    print("I TREE:", [(s, zz.j, zz.d, zz.Cj, zz.j_max) for s, zz in enumerate(I) if type(zz) != int])
+    # print("C_b:", I_max +  mem.d, I_max, j_prime_b, node_pos, leaf_to_update )
+    # print( I_max, mem.d, mems[j_prime_b].d, mems[j_prime_b])
+    # print("I TREE:", [(s, zz.j, zz.d, zz.Cj, zz.j_max) for s, zz in enumerate(I) if type(zz) != int])
     C_b =  I_max +  mem.d #- mems[j_prime_b].d   # add the part of the mem that is not overlapping
 
     # if C_b < 0:
@@ -370,17 +369,16 @@ for j, mem in enumerate(mems):
     update(T, leaf_to_update, value, n) # point update 
     update(I, leaf_to_update, value - mem.d, n) # point update 
 
-print(trace_vector)
+# print(trace_vector)
 
 C_max, solution = reconstruct_solution(mems, C, trace_vector)
 print(C)
 print(trace_vector)
 print(C_max , [mem.j for mem in solution])
-print()
-print()
+print("Total time RQmax I and T:", time()- st)
 
 
-print("time querying RQ method 2:", time()- st)  
+# print("time querying RQ method 2:", time()- st)  
 
 
 
