@@ -22,10 +22,11 @@ def construct_tree(tree, leafs, n):
         # print(i)
         # print(tree)
         min_coord_node = min([tree[2 * i ], tree[2 * i + 1]], key = lambda x: x.d ) # should always be left one though
-        tree_node = Node(min_coord_node.d, min_coord_node.j, 0, min_coord_node.j_max)
+        tree_node = Node(min_coord_node.d, min_coord_node.j, min_coord_node.Cj, min_coord_node.j_max)
         tree[i] = tree_node
                           
 def range_query(tree, l, r, n): 
+    assert l <= r
     # for right search coord
     pos = 1 # root position
     left_subtree_root_pos = set()
@@ -34,7 +35,7 @@ def range_query(tree, l, r, n):
         right_child_position = 2*pos + 1
 #         left_child_index = tree[pos].d # always holds the left most value in subtree
         if r >= tree[right_child_position].d : # 
-            if pos != 1: # We are not at root
+            if pos != 1 and tree[left_child_position].d >= l: # We are not at root
                 left_subtree_root_pos.add(left_child_position)        
             pos = right_child_position 
 
@@ -44,8 +45,11 @@ def range_query(tree, l, r, n):
         if pos >= n:
             break
 
+    R = tree[pos].d
+    # left_subtree_root_pos.add(pos)
     # L = pos
-    left_subtree_root_pos.add(pos)
+    if R <= r:
+        left_subtree_root_pos.add(pos)
 
     print("search coord: {0}, node pos:{1}, leaf values:{2}.".format(r, pos, (tree[pos].d, tree[pos].Cj,tree[pos].j ) ))
 
@@ -59,15 +63,15 @@ def range_query(tree, l, r, n):
         if l > tree[right_child_position].d : # 
             pos = right_child_position         
         else: # tree[left_child_index].d <= c:
-            if pos != 1: # We are not at root    
+            if pos != 1 and tree[right_child_position].d <= r: # We are not at root    
                 right_subtree_root_pos.add(right_child_position)        
             pos = left_child_position     
 
         if pos >= n:
             break
    
-    L = pos
-    if L == l:
+    L = tree[pos].d
+    if L >= l:
         right_subtree_root_pos.add(pos)
 
     # left_leaf_node_pos = pos
@@ -78,7 +82,7 @@ def range_query(tree, l, r, n):
     # We now have the rightmost leaf node
     # now trace back the path back to the root to find maximum value
     # From chapter 3 in GSAD book.
-    V_prime = left_subtree_root_pos -  right_subtree_root_pos
+    V_prime = left_subtree_root_pos #-  right_subtree_root_pos
     # V_prime.add(L)
     # if l == L:
     #     V_prime.add(L)
@@ -96,7 +100,7 @@ def range_query(tree, l, r, n):
     #     print("BUGGGG")
 
 
-    V_biss = right_subtree_root_pos - left_subtree_root_pos 
+    V_biss = right_subtree_root_pos #- left_subtree_root_pos 
     # V_biss.add(R)
     # if r == R:
     #     V_biss.add(R)
@@ -218,12 +222,11 @@ for (ref_index, mem_length) in zip(order_in_ref, mem_lengths):
     mems.append(m)
 
 
-# node = namedtuple('node', ['d', 'j', 'Cj'])
 nodes = []
-nodes.append( Node(0, -1, 0, -1) ) # add an start node in case a search is smaller than any d coord in tree
+nodes.append( Node(0, -1, -2**32, -1) ) # add an start node in case a search is smaller than any d coord in tree
 for i, mem in enumerate(mems):
     # if i > 3: break
-    m = Node(mem.d, mem.j, 0, mem.j)
+    m = Node(mem.d, mem.j, -2**32, mem.j)
     nodes.append(m)
 
 for i in range(20):
@@ -232,7 +235,7 @@ for i in range(20):
     elif 2**i < len(nodes) < 2**(i+1):
         remainder = 2**(i+1) - len(nodes) 
         for i in range(remainder):
-            nodes.append( Node(0, -i - 2, 0, -i - 2) ) # fill up nodes to have leaves a power of 2
+            nodes.append( Node(0, -i - 2, -2**32, -i - 2) ) # fill up nodes to have leaves a power of 2
         break
 
 leafs = sorted(copy.deepcopy(nodes), key= lambda x: x.d)
@@ -260,6 +263,9 @@ print("time init RQmax I and T:", time()- st)
 C = [0]* (len(mems) + 1) #(len(leafs))
 trace_vector = [None]*(len(mems) + 1)
 
+print(mem_to_leaf_index)
+update(T, 0, 0, n) # point update 
+# sys.exit()
 for j, mem in enumerate(mems):
     print(mem)
     print("vals:", [l.Cj for l in leafs])
@@ -267,7 +273,11 @@ for j, mem in enumerate(mems):
     c = mem.c
     C_a_max, j_prime_a, node_pos  = range_query(T, 0, c - 1, len(leafs)) 
     leaf_to_update = mem_to_leaf_index[j]
+    print("TREE:", [(s, zz.j, zz.d, zz.Cj, zz.j_max) for s, zz in enumerate(T) if type(zz) != int])
     print("C_a:", C_a_max, j_prime_a, node_pos, leaf_to_update )
+    if C_a_max < 0:
+        print("BUG")
+        sys.exit()
     C_a =  C_a_max +  mem.d - mem.c + 1  # add the mem_length to T since disjoint
     update(T, leaf_to_update, C_a, n) # point update 
 
@@ -303,10 +313,16 @@ I = [0 for i in range(2 * n) ]
 leafs = sorted(copy.deepcopy(nodes), key= lambda x: x.d)
 construct_tree(T, leafs, n)
 I_leafs = copy.deepcopy(leafs)
+# for leaf in I_leafs:
+#     leaf.Cj -= leaf.d 
+# print([l.Cj for l in I_leafs])
 construct_tree(I, I_leafs, n)
 
 C = [0]* (len(mems) + 1) #(len(leafs))
 trace_vector = [None]*(len(mems) + 1)
+
+update(T, 0, 0, n) # point update 
+update(I, 0, 0, n) # point update 
 
 for j, mem in enumerate(mems):
     print(mem)
@@ -316,14 +332,25 @@ for j, mem in enumerate(mems):
 
     c = mem.c
     T_max, j_prime_a, node_pos  = range_query(T, 0, c-1, len(leafs)) 
-    print("C_a:", T_max, j_prime_a, node_pos, leaf_to_update )
+    print("C_a:",  T_max +  mem.d - mem.c + 1, j_prime_a, node_pos, leaf_to_update )
+    print("T TREE:", [(s, zz.j, zz.d, zz.Cj, zz.j_max) for s, zz in enumerate(T) if type(zz) != int])
     C_a =  T_max +  mem.d - mem.c + 1  # add the mem_length to T since disjoint
+
+    if T_max < 0:
+        print("BUG", T_max)
+        sys.exit()
+
     
     d = mem.d
-    I_max, j_prime_b, node_pos  = range_query(I, c, d, len(I_leafs)) 
-    print("C_b:", I_max, j_prime_b, node_pos, leaf_to_update )
+    I_max, j_prime_b, node_pos  = range_query(I, c, d, len(I_leafs))         
+    print("C_b:", I_max +  mem.d, I_max, j_prime_b, node_pos, leaf_to_update )
     print( I_max, mem.d, mems[j_prime_b].d, mems[j_prime_b])
-    C_b =  I_max +  mem.d - mems[j_prime_b].d   # add the part of the mem that is not overlapping
+    print("I TREE:", [(s, zz.j, zz.d, zz.Cj, zz.j_max) for s, zz in enumerate(I) if type(zz) != int])
+    C_b =  I_max +  mem.d #- mems[j_prime_b].d   # add the part of the mem that is not overlapping
+
+    # if C_b < 0:
+    #     print("BUG")
+    #     sys.exit()
 
     index, value = max_both([C_a, C_b])
     C[j+1] = value
@@ -341,9 +368,9 @@ for j, mem in enumerate(mems):
         trace_vector[j+1] = j_prime +1
 
     update(T, leaf_to_update, value, n) # point update 
-    update(I, leaf_to_update, value, n) # point update 
+    update(I, leaf_to_update, value - mem.d, n) # point update 
 
-
+print(trace_vector)
 
 C_max, solution = reconstruct_solution(mems, C, trace_vector)
 print(C)
