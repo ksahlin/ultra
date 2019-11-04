@@ -9,18 +9,142 @@ import itertools
 import argparse
 import errno
 import math
+import copy
+
 
 from collections import namedtuple
 
-# from modules import help_functions
+
+from modules import range_query_max_search_tree as RMaxQST
 
 
 def argmax(iterable):
     return max(enumerate(iterable), key=lambda x: x[1])[0]
 
-def traceback(index, C):
+def max_both(iterable):
+    return max(enumerate(iterable), key=lambda x: x[1])
 
+def traceback(index, C):
     return 
+
+def is_unique_solution(C):
+    non_unique = [x for x in set(C) if C.count(x) > 1]
+    unique = True
+    if non_unique:
+        return False
+    else:
+        return True
+
+def reconstruct_solution(mems, C, trace_vector):
+    solution_index = argmax(C)
+    value = C[solution_index]
+    # print()
+    solution = []
+    while solution_index > 0:
+        solution.append(mems[solution_index - 1])  # trace vector is shifted on to the right so need to remove 1 from vectore to get j_index 
+        solution_index = trace_vector[solution_index]
+        # print(solution_index)
+        # if solution_index is None:
+        #     break
+    return value, solution[::-1]
+
+
+def make_leafs_power_of_2(mems):
+    nodes = []
+    nodes.append( RMaxQST.Node(-1, -1, -2**32, -1) ) # add an start node in case a search is smaller than any d coord in tree
+    for i, mem in enumerate(mems):
+        # if i > 3: break
+        m = RMaxQST.Node(mem.d, mem.j, -2**32, mem.j)
+        nodes.append(m)
+
+    for i in range(20):
+        if len(nodes) == 2**i or len(nodes) == 2**(i+1):
+            break
+        elif 2**i < len(nodes) < 2**(i+1):
+            remainder = 2**(i+1) - len(nodes) 
+            for i in range(remainder):
+                nodes.append( RMaxQST.Node(-1, -i - 2, -2**32, -i - 2) ) # fill up nodes to have leaves a power of 2
+            break
+
+    leafs = sorted(nodes, key= lambda x: x.d)
+    # n = len(leafs)
+    return leafs
+
+def n_logn_read_coverage(mems):
+    """
+        Algorithm 15.1 in Genome scale algorithmic design, Makinen et al.
+
+        Using Binary search trees for range max queries,
+        so n log n time complexity. Each mem is an Namedtuple. python object
+
+    """
+    assert mems == sorted(mems, key=lambda x: x.y)
+
+
+    leafs = make_leafs_power_of_2(mems)
+    n = len(leafs)
+    T = [0 for i in range(2 * n) ]  
+    I = [0 for i in range(2 * n) ]  
+    T_leafs = copy.deepcopy(leafs)
+    RMaxQST.construct_tree(T, T_leafs, n)
+    I_leafs = copy.deepcopy(leafs)
+    RMaxQST.construct_tree(I, I_leafs, n)
+
+    mem_to_leaf_index = {l.j : i for i,l in enumerate(leafs)}
+
+    C = [0]* (len(mems) + 1) #(len(leafs))
+    trace_vector = [None]*(len(mems) + 1)
+
+    RMaxQST.update(T, 0, 0, n) # point update 
+    RMaxQST.update(I, 0, 0, n) # point update 
+
+    for j, mem in enumerate(mems):
+        leaf_to_update = mem_to_leaf_index[j]
+        c = mem.c
+        T_max, j_prime_a, node_pos  = RMaxQST.range_query(T, -1, c-1, len(leafs)) 
+        # print("C_a:",  T_max +  mem.d - mem.c + 1, j_prime_a, node_pos, leaf_to_update )
+        # print("T TREE:", [(s, zz.j, zz.d, zz.Cj, zz.j_max) for s, zz in enumerate(T) if type(zz) != int])
+        C_a =  T_max +  mem.d - mem.c + 1  # add the mem_length to T since disjoint
+
+        if T_max < 0:
+            print("BUG", T_max)
+            sys.exit()
+
+        
+        d = mem.d
+        I_max, j_prime_b, node_pos  = RMaxQST.range_query(I, c, d, len(I_leafs))         
+        # print("C_b:", I_max +  mem.d, I_max, j_prime_b, node_pos, leaf_to_update )
+        # print( I_max, mem.d, mems[j_prime_b].d, mems[j_prime_b])
+        # print("I TREE:", [(s, zz.j, zz.d, zz.Cj, zz.j_max) for s, zz in enumerate(I) if type(zz) != int])
+        C_b =  I_max +  mem.d #- mems[j_prime_b].d   # add the part of the mem that is not overlapping
+
+        # if C_b < 0:
+        #     print("BUG")
+        #     sys.exit()
+
+        index, value = max_both([C_a, C_b])
+        C[j+1] = value
+        if index == 0: # Updating with C_a
+            j_prime = j_prime_a
+        else: # Updating with C_b
+            j_prime = j_prime_b
+
+
+        if j_prime < 0: # any of the additional leaf nodes (with negative index) we add to make number of leafs 2^n
+            trace_vector[j+1] = 0
+        elif value == 0: # first j (i.e. j=0) 
+            trace_vector[j+1]= 0
+        else:
+            trace_vector[j+1] = j_prime +1
+
+        RMaxQST.update(T, leaf_to_update, value, n) # point update 
+        RMaxQST.update(I, leaf_to_update, value - mem.d, n) # point update 
+
+    # print(trace_vector)
+
+    C_max, solution = reconstruct_solution(mems, C, trace_vector)
+
+    return solution, C_max, is_unique_solution(C)
 
 def read_coverage(mems):
     """
@@ -107,14 +231,10 @@ def read_coverage(mems):
         if solution_index is None:
             break
 
-    non_unique = [x for x in set(C) if C.count(x) > 1]
-    unique = True
-    if non_unique:
-        unique = False
-        # print(traceback_pointers)
+
 
     # print("MEM Solution:", solution[::-1])
-    return solution[::-1], value, unique
+    return solution[::-1], value, is_unique_solution(C)
     # traceback(C, best_solution_index)
 
 

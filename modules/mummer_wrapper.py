@@ -5,7 +5,7 @@ from sys import stdout
 from collections import defaultdict
 from collections import namedtuple
 
-mem = namedtuple('Mem', ['x', 'y', 'c', 'd', 'val', "exon_part_id"])
+mem = namedtuple('Mem', ['x', 'y', 'c', 'd', 'val', 'j', "exon_part_id"])
 globals()[mem.__name__] = mem # Global needed for multiprocessing
 
 def find_mems(outfolder, refs_sequences, read_path, refs_path, mummer_out_path, min_mem):
@@ -57,7 +57,7 @@ def parse_results(mems_path):
             # convert to 0-indexed as python, however last coordinate is inclusive of the hit, not as in python end-indexing
             mem_tuple = mem(int(ref_coord_start) - 1 + mem_ref_exon_part_start - 1, int(ref_coord_start) - 1 + mem_ref_exon_part_start -1 + mem_len - 1,
                             mem_read_start-1, mem_read_start-1 + mem_len - 1, 
-                            mem_len, exon_part_id)
+                            mem_len, None, exon_part_id)
             
             read_mems_tmp[chr_id].append( mem_tuple )
         # print(line)
@@ -74,6 +74,12 @@ def get_mummer_records(mems_path):
             if i == 0:
                 read_acc = line.split()[1].strip()  
             else:
+
+                for chr_id in list(read_mems_tmp.keys()):
+                    coordinate_sorted_tuples = sorted(read_mems_tmp[chr_id], key = lambda x: x[1])
+                    sorted_mems = [ mem(x,y,c,d,val,j,e_id) for j, (x, y, c, d, val, e_id) in enumerate(coordinate_sorted_tuples) ]
+                    read_mems_tmp[chr_id] = sorted_mems
+
                 yield read_acc, read_mems_tmp
                 read_acc = line.split()[1].strip() 
             
@@ -87,11 +93,22 @@ def get_mummer_records(mems_path):
             mem_ref_exon_part_start = int(vals[1])
             mem_read_start = int(vals[2])
             # convert to 0-indexed as python, however last coordinate is inclusive of the hit, not as in python end-indexing
-            mem_tuple = mem(int(ref_coord_start) - 1 + mem_ref_exon_part_start - 1, int(ref_coord_start) - 1 + mem_ref_exon_part_start -1 + mem_len - 1,
+            
+            # mem_tuple = mem(int(ref_coord_start) - 1 + mem_ref_exon_part_start - 1, int(ref_coord_start) - 1 + mem_ref_exon_part_start -1 + mem_len - 1,
+            #                 mem_read_start-1, mem_read_start-1 + mem_len - 1, 
+            #                 mem_len, None, exon_part_id)
+            # read_mems_tmp[chr_id].append( mem_tuple )
+
+            info_tuple = (int(ref_coord_start) - 1 + mem_ref_exon_part_start - 1, int(ref_coord_start) - 1 + mem_ref_exon_part_start -1 + mem_len - 1,
                             mem_read_start-1, mem_read_start-1 + mem_len - 1, 
                             mem_len, exon_part_id)
-            
-            read_mems_tmp[chr_id].append( mem_tuple )
+            read_mems_tmp[chr_id].append( info_tuple )
+
+
+    for chr_id in list(read_mems_tmp.keys()):
+        coordinate_sorted_tuples = sorted(read_mems_tmp[chr_id], key = lambda x: x[1])
+        sorted_mems = [ mem(x,y,c,d,val,j,e_id) for j, (x, y, c, d, val, e_id) in enumerate(coordinate_sorted_tuples) ]
+        read_mems_tmp[chr_id] = sorted_mems
  
     yield read_acc, read_mems_tmp
 
