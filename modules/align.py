@@ -49,10 +49,26 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
         all_chainings = []
         for chr_id, all_mems_to_chromosome in mems.items():
             solution, mem_solution_value, unique = colinear_solver.read_coverage(all_mems_to_chromosome)
+            solution2, mem_solution_value2, unique2 = colinear_solver.n_logn_read_coverage(all_mems_to_chromosome)
+            assert mem_solution_value == mem_solution_value2
+            if solution2 != solution and unique:
+                print("BUG", mem_solution_value, mem_solution_value2)
+                print(solution)
+                print(solution2)
+                sys.exit()
+
             all_chainings.append( (chr_id, solution, mem_solution_value, False) )
         
         for chr_id, all_mems_to_chromosome in mems_rc.items():
             solution, mem_solution_value, unique = colinear_solver.read_coverage(all_mems_to_chromosome)
+            solution2, mem_solution_value2, unique2 = colinear_solver.n_logn_read_coverage(all_mems_to_chromosome)
+            assert mem_solution_value == mem_solution_value2
+            if solution2 != solution and unique:
+                print("BUG")
+                print(solution)
+                print(solution2)
+                sys.exit()
+
             all_chainings.append( (chr_id, solution, mem_solution_value, True) )
 
         is_secondary =  False
