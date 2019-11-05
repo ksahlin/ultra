@@ -81,16 +81,17 @@ def n_logn_read_coverage(mems):
     assert mems == sorted(mems, key=lambda x: x.y)
 
 
-    leafs = make_leafs_power_of_2(mems)
-    n = len(leafs)
+    T_leafs = make_leafs_power_of_2(mems)
+    I_leafs = make_leafs_power_of_2(mems)
+    n = len(T_leafs)
     T = [0 for i in range(2 * n) ]  
     I = [0 for i in range(2 * n) ]  
-    T_leafs = copy.deepcopy(leafs)
+    # T_leafs = copy.deepcopy(leafs)
     RMaxQST.construct_tree(T, T_leafs, n)
-    I_leafs = copy.deepcopy(leafs)
+    # I_leafs = copy.deepcopy(leafs)
     RMaxQST.construct_tree(I, I_leafs, n)
 
-    mem_to_leaf_index = {l.j : i for i,l in enumerate(leafs)}
+    mem_to_leaf_index = {l.j : i for i,l in enumerate(T_leafs)}
 
     C = [0]* (len(mems) + 1) #(len(leafs))
     trace_vector = [None]*(len(mems) + 1)
@@ -101,7 +102,7 @@ def n_logn_read_coverage(mems):
     for j, mem in enumerate(mems):
         leaf_to_update = mem_to_leaf_index[j]
         c = mem.c
-        T_max, j_prime_a, node_pos  = RMaxQST.range_query(T, -1, c-1, len(leafs)) 
+        T_max, j_prime_a, node_pos  = RMaxQST.range_query(T, -1, c-1, len(T_leafs)) 
         # print("C_a:",  T_max +  mem.d - mem.c + 1, j_prime_a, node_pos, leaf_to_update )
         # print("T TREE:", [(s, zz.j, zz.d, zz.Cj, zz.j_max) for s, zz in enumerate(T) if type(zz) != int])
         C_a =  T_max +  mem.d - mem.c + 1  # add the mem_length to T since disjoint
@@ -157,7 +158,9 @@ def read_coverage(mems):
 
     """
     mems = sorted(mems, key = lambda x: x.y )
-    print('MEM',len(mems))
+
+    if len(mems) > 1000:
+        print('MEM',len(mems))
 
     # print("Going in to mem chaining:", mems)
     T = [ (v.d, v.val)  for v in mems]
@@ -251,7 +254,8 @@ def read_coverage_mam_score(mams, overlap_threshold):
 
     """
     mams = sorted(mams, key = lambda x: x.y )
-    print('MAM',len(mams))
+    if len(mams) > 1000:
+        print('MAM',len(mams))
     T = [ (v.d, v.val)  for v in mams]
     I = [ (v.d, v.val)  for v in mams]
     

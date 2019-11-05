@@ -24,7 +24,8 @@ from modules import mummer_wrapper
 def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
     mems_path =  os.path.join( args.outfolder, "mummer_mems.txt" )
     mems_path_rc =  os.path.join( args.outfolder, "mummer_mems_rc.txt" )
-
+    nlog_n_instance_counter = 0
+    quadratic_instance_counter = 0
     if batch_number == -1:
         alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, "torkel.sam"), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
     else:  
@@ -48,26 +49,32 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
         # do the chaining here immediately!
         all_chainings = []
         for chr_id, all_mems_to_chromosome in mems.items():
-            solution, mem_solution_value, unique = colinear_solver.read_coverage(all_mems_to_chromosome)
-            solution2, mem_solution_value2, unique2 = colinear_solver.n_logn_read_coverage(all_mems_to_chromosome)
-            assert mem_solution_value == mem_solution_value2
-            if solution2 != solution and unique:
-                print("BUG", mem_solution_value, mem_solution_value2)
-                print(solution)
-                print(solution2)
-                sys.exit()
+            if len(all_mems_to_chromosome) < 80:
+                solution, mem_solution_value, unique = colinear_solver.read_coverage(all_mems_to_chromosome)
+                quadratic_instance_counter += 1 
+            else:
+                solution, mem_solution_value, unique = colinear_solver.n_logn_read_coverage(all_mems_to_chromosome)
+                nlog_n_instance_counter += 1
+            # assert mem_solution_value == mem_solution_value2
+            # if solution2 != solution and unique:
+            #     print("BUG", mem_solution_value, mem_solution_value2)
+            #     print(solution)
+            #     print(solution2)
+            #     sys.exit()
 
             all_chainings.append( (chr_id, solution, mem_solution_value, False) )
         
         for chr_id, all_mems_to_chromosome in mems_rc.items():
-            solution, mem_solution_value, unique = colinear_solver.read_coverage(all_mems_to_chromosome)
-            solution2, mem_solution_value2, unique2 = colinear_solver.n_logn_read_coverage(all_mems_to_chromosome)
-            assert mem_solution_value == mem_solution_value2
-            if solution2 != solution and unique:
-                print("BUG")
-                print(solution)
-                print(solution2)
-                sys.exit()
+            if len(all_mems_to_chromosome) < 80:
+                solution, mem_solution_value, unique = colinear_solver.read_coverage(all_mems_to_chromosome)
+            else:
+                solution, mem_solution_value, unique = colinear_solver.n_logn_read_coverage(all_mems_to_chromosome)
+            # assert mem_solution_value == mem_solution_value2
+            # if solution2 != solution and unique:
+            #     print("BUG")
+            #     print(solution)
+            #     print(solution2)
+            #     sys.exit()
 
             all_chainings.append( (chr_id, solution, mem_solution_value, True) )
 
@@ -136,6 +143,9 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                     sam_output.main(read_acc, '*', 'unaligned', [], '*', '*', '*', alignment_outfile, is_rc, is_secondary)
 
     alignment_outfile.close()
+
+    print("Number of instances solved with quadratic collinear chainer solution:", quadratic_instance_counter)
+    print("Number of instances solved with n*log n collinear chainer solution:", nlog_n_instance_counter)
     # print(alignment_outfile.filename, dir(alignment_outfile))
     return classifications, alignment_outfile.filename
 
