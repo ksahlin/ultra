@@ -177,8 +177,8 @@ def kmer_counter(ref_part_sequences, kmer_size):
                 count[kmer] += 1
                 it_count += 1
 
-                if it_count % 100000 == 0:
-                    print(it_count, "kmers processed.")
+                if it_count % 10000000 == 0:
+                    print(int(it_count/10000000.0), " million kmers processed.")
                     # clean every 1M kmers
                     if it_count % 20000000 == 0:
                         for kmer in list(count.keys()):
@@ -189,8 +189,11 @@ def kmer_counter(ref_part_sequences, kmer_size):
 
 
 def mask_refs(ref_part_sequences, to_mask, kmer_size):
+    mask_counter = 0
+    tot_counter = 0
     for chr_id  in ref_part_sequences:
         for part, seq in ref_part_sequences[chr_id].items():
+            tot_counter += 1
             read_kmers = [seq[i:i+kmer_size] for i in range(len(seq) - kmer_size + 1 )]
             seq_masked = []
             has_been_modified = False
@@ -211,9 +214,10 @@ def mask_refs(ref_part_sequences, to_mask, kmer_size):
                 
                 if has_been_modified:
                     seq_masked = "".join([s for s in seq_masked])
-                    print("masking", seq, "to", seq_masked) 
+                    # print("masking", seq, "to", seq_masked) 
                     ref_part_sequences[chr_id][part] = seq_masked
-
+                    mask_counter += 1
+    print(mask_counter, "{0} out of {1} sequences has been modified in masking step.".format(mask_counter, tot_counter))
 
 def mask_abundant_kmers(ref_part_sequences, kmer_size, mask_threshold):
     DBG = kmer_counter(ref_part_sequences, kmer_size)
@@ -228,7 +232,7 @@ def mask_abundant_kmers(ref_part_sequences, kmer_size, mask_threshold):
             break
 
     mask_refs(ref_part_sequences, to_mask, kmer_size)
-    print(len(to_mask), "kemrs masked.")
+    # print(len(to_mask), "kemrs masked.")
     # print(sorted([DBG[kmer] for kmer in DBG], reverse=True))
 
 
