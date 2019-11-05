@@ -16,8 +16,7 @@ class Node:
         self.j_max = j_max
 
 
-def construct_tree(tree, leafs, n):  
-      
+def construct_tree(tree, leafs, n):   
     # assign values to leaves of  
     # the segment tree  
     for i in range(n):  
@@ -31,7 +30,8 @@ def construct_tree(tree, leafs, n):
         max_coord_node = max([tree[2 * i ], tree[2 * i + 1]], key = lambda x: x.d ) # should always be left one though
         tree_node = Node(max_coord_node.d, max_coord_node.j, max_coord_node.Cj, max_coord_node.j_max)
         tree[i] = tree_node
-  
+
+
 def range_query(tree, l, r, n):
     assert l <= r
     # search for both at the same time 
@@ -133,129 +133,6 @@ def update(tree, leaf_pos, value, n):
 
 
 
-# def range_query(tree, l, r, n): 
-#     assert l <= r
-#     # for right search coord
-#     pos = 1 # root position
-#     left_subtree_root_pos = set()
-#     while True: # not yet reached a leaf
-#         left_child_position = 2*pos
-#         right_child_position = 2*pos + 1
-# #         left_child_index = tree[pos].d # always holds the left most value in subtree
-#         if r >= tree[left_child_position].d : # 
-#             if pos != 1 and tree[left_child_position].d >= l: # We are not at root and l and r did not end up in the same leaf
-#                 left_subtree_root_pos.add(left_child_position)        
-#             pos = right_child_position 
-
-#         else: # tree[left_child_index].d <= c:
-#             pos = left_child_position         
-
-#         if pos >= n:
-#             break
-
-#     R = tree[pos].d
-#     if R == r:
-#         left_subtree_root_pos.add(pos)
-
-#     # print("search coord: {0}, node pos:{1}, leaf values:{2}.".format(r, pos, (tree[pos].d, tree[pos].Cj,tree[pos].j ) ))
-
-#     # for left search coord
-#     pos = 1 # root position
-#     right_subtree_root_pos = set()
-#     while True: # not yet reached a leaf
-#         left_child_position = 2*pos
-#         right_child_position = 2*pos + 1
-# #         left_child_index = tree[pos].d # always holds the left most value in subtree
-#         if l > tree[right_child_position].d : # 
-#             pos = right_child_position         
-#         else: # tree[left_child_index].d <= c:
-#             if pos != 1 and tree[right_child_position].d <= r: # We are not at root and l and r did not end up in the same leaf
-#                 right_subtree_root_pos.add(right_child_position)        
-#             pos = left_child_position     
-
-#         if pos >= n:
-#             break
-   
-#     L = tree[pos].d
-#     if L == l:
-#         right_subtree_root_pos.add(pos)
-
-#     # print("search coord: {0}, node pos:{1}, leaf values:{2}.".format(l, pos, (tree[pos].d, tree[pos].Cj,tree[pos].j ) ))
-
-#     # print("right subtrees:", right_subtree_root_pos, "left subtrees:", left_subtree_root_pos)
-
-#     # We now have the rightmost leaf node
-#     # now trace back the path back to the root to find maximum value
-#     # From chapter 3 in GSAD book.
-#     V_prime = left_subtree_root_pos #-  right_subtree_root_pos
-#     # V_prime.add(L)
-#     # if l == L:
-#     #     V_prime.add(L)
-#     #     # vl = max([vl,L_pos], key = lambda x: tree[x].Cj)
-
-#     if V_prime:
-#         vl = max(V_prime, key = lambda x: tree[x].Cj)
-#     else:
-#         vl = None
-#     #     if l == L:
-#     #         vl = max([vl,L_pos], key = lambda x: tree[x].Cj)
-#     # elif l == L:
-#     #     vl = L_pos
-#     # else:
-#     #     print("BUGGGG")
-
-
-#     V_biss = right_subtree_root_pos #- left_subtree_root_pos 
-#     # V_biss.add(R)
-#     # if r == R:
-#     #     V_biss.add(R)
- 
-#     if V_biss:
-#         vr = max(V_biss, key = lambda x: tree[x].Cj)
-#     else:
-#         vr = None
-       
-#     #     if r == R:
-#     #         vr = max([vr,R_pos], key = lambda x: tree[x].Cj)
-#     # elif r == R:
-#     #     vr = R_pos
-#     # else:
-#     #     print("BUGGGG")
-
-#     # if l == L:
-#     #     vl = max([vl,L_pos], key = lambda x: tree[x].Cj)
-#     # if r == R:
-#     #     vr = max([vr,R_pos], key = lambda x: tree[x].Cj)
-#     if vl is not None and vr is not None:
-#         v_max_pos = max([vl,vr], key = lambda x: tree[x].Cj)
-#         C_max = tree[v_max_pos].Cj
-#     elif vl is not None:
-#         v_max_pos = vl
-#         C_max = tree[vl].Cj
-#     elif vr is not None:
-#         v_max_pos = vr
-#         C_max = tree[vr].Cj
-#     else:
-#         print("BUG", l,r)
-#         print(tree)
-#         sys.exit()
-
-#     # trace down the j index of the leaf that produced the max here
-#     # while (pos > 1): 
-          
-#     #     # move up one level at a time in the tree  
-#     #     pos >>= 1;  
-#     #     print('tracing max to: ', pos)
-#     #     # update the values in the nodes  
-#     #     # in the next higher level 
-#     #     C_max = max(tree[pos].Cj, C_max)  
-    
-#     # print(l, r, "rq1", V_prime, V_biss, "RQ1",C_max)
-#     return C_max, tree[v_max_pos].j_max, v_max_pos
-
-  
-
-
 
 def argmax(iterable):
     return max(enumerate(iterable), key=lambda x: x[1])[0]
@@ -301,34 +178,30 @@ def make_leafs_power_of_2(mems):
 
 
 
-def generate_mems(nr_mems):
-    mem = namedtuple('Mem', ['x', 'y', 'c', 'd', 'val','j'])
-    mem_choords = []
-    for i in range(nr_mems):
-        ref_start = random.randint(1,1000)
-        mem_length = random.randint(10,10)
-        ref_stop = ref_start + mem_length
-        read_start = random.randint(1,1000)
-        m = (ref_start, ref_stop,  read_start, read_start + mem_length, mem_length)
-        mem_choords.append(m)
-
-
-    mem = namedtuple('Mem', ['x', 'y', 'c', 'd', 'val','j'])
-    mems = []
-    for i, m in enumerate(sorted(mem_choords, key=lambda x: x[1])):
-        m = mem(m[0], m[1],  m[2], m[3], m[4], i)
-        mems.append(m)
-    return mems
-## driver code
-
+## driver code for test if called as external script 
 
 if __name__ == '__main__':
     from collections import namedtuple
-
     import colinear_solver 
 
     # construct sorted leafs
-
+    
+    def generate_mems(nr_mems):
+        mem = namedtuple('Mem', ['x', 'y', 'c', 'd', 'val','j'])
+        mem_choords = []
+        for i in range(nr_mems):
+            ref_start = random.randint(1,1000)
+            mem_length = random.randint(10,10)
+            ref_stop = ref_start + mem_length
+            read_start = random.randint(1,1000)
+            m = (ref_start, ref_stop,  read_start, read_start + mem_length, mem_length)
+            mem_choords.append(m)
+        mem = namedtuple('Mem', ['x', 'y', 'c', 'd', 'val','j'])
+        mems = []
+        for i, m in enumerate(sorted(mem_choords, key=lambda x: x[1])):
+            m = mem(m[0], m[1],  m[2], m[3], m[4], i)
+            mems.append(m)
+        return mems
 
     mems = generate_mems(80)
     

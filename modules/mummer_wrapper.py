@@ -8,7 +8,7 @@ from collections import namedtuple
 mem = namedtuple('Mem', ['x', 'y', 'c', 'd', 'val', 'j', "exon_part_id"])
 globals()[mem.__name__] = mem # Global needed for multiprocessing
 
-def find_mems(outfolder, refs_sequences, read_path, refs_path, mummer_out_path, min_mem):
+def find_mems(outfolder, read_path, refs_path, mummer_out_path, min_mem):
     # mummer_out_path = os.path.join( outfolder, "mummer_mems.txt" )
     with open(mummer_out_path, "w") as output_file:
         # print('Running spoa...', end=' ')
