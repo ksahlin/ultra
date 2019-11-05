@@ -17,7 +17,8 @@ import dill as pickle
 import gffutils
 import pysam
 
-
+import multiprocessing as mp
+from multiprocessing import Pool
 from collections import defaultdict
 
 
@@ -132,6 +133,12 @@ def batch(dictionary, size):
 
 
 def align_reads(args):
+    if args.nr_cores > 1:
+        mp.set_start_method('spawn')
+        print(mp.get_context())
+        print("Environment set:", mp.get_context())
+        print("Using {0} cores.".format(args.nr_cores))
+
     # topological_sorts = help_functions.pickle_load( os.path.join(args.outfolder, 'top_sorts.pickle') )
     # path_covers = help_functions.pickle_load( os.path.join(args.outfolder, 'paths.pickle') )
 
@@ -143,6 +150,15 @@ def align_reads(args):
         for (start,stop), seq  in ref_part_sequences[chr_id].items():
             refs_file.write(">{0}\n{1}\n".format(chr_id + str("_") + str(start) + "_" + str(stop), seq))
     refs_file.close()
+
+    print("Processing reverse complement reads for mummer reads")
+    reads_rc = open(os.path.join(args.outfolder, 'reads_rc.fq'), 'w')
+    for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r')):
+        reads_rc.write('>{0}\n{1}\n'.format(acc, help_functions.reverse_complement(seq)))
+    reads_rc.close()
+    args.reads_rc = reads_rc.name
+
+    print("Finished processing reverse complement reads for mummer reads")
 
     ######### FIND MEMS WITH MUMMER #############
     #############################################
@@ -156,21 +172,7 @@ def align_reads(args):
             print("Running mummer forward")
             mummer_wrapper.find_mems(args.outfolder, args.reads, ref_path, mummer_out_path, args.min_mem)
             print("Completed mummer forward")
-        # print("Parsing mems")
-        # mems = mummer_wrapper.parse_results(mummer_out_path)
-        # print("Completed parsing mems")
 
-        mems_rc = []
-        # if not args.ignore_rc:
-        print("Processing reverse complement reads for mummer reads")
-        reads_rc = open(os.path.join(args.outfolder, 'reads_rc.fq'), 'w')
-        for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r')):
-            reads_rc.write('>{0}\n{1}\n'.format(acc, help_functions.reverse_complement(seq)))
-        reads_rc.close()
-        print("Finished processing reverse complement reads for mummer reads")
-
-        args.reads_rc = reads_rc.name
-        # ref_path = os.path.join(args.outfolder, "refs_sequences_rc.fa")
         mummer_out_path =  os.path.join(args.outfolder, "mummer_mems_rc.txt" )
         if os.path.isfile(mummer_out_path):
             pass
@@ -178,12 +180,19 @@ def align_reads(args):
             print("Starting mummer reverse")
             mummer_wrapper.find_mems(args.outfolder, args.reads_rc, ref_path, mummer_out_path, args.min_mem)
             print("Completed mummer reverse")
-        # print("Parsing rev comp mems")
-        # mems_rc = mummer_wrapper.parse_results(mummer_out_path)
-        # print("Finished parsing rev comp mems")
     else:
-        pass
+        pool = Pool(processes=2)
+        mummer_out_path =  os.path.join( args.outfolder, "mummer_mems.txt" )
+        mummer_out_path_rc =  os.path.join(args.outfolder, "mummer_mems_rc.txt" )
 
+        if os.path.isfile(mummer_out_path) and os.path.isfile(mummer_out_path_rc):
+            pass
+        else:
+            args1 = (args.outfolder, args.reads, ref_path, mummer_out_path, args.min_mem)
+            args2 = (args.outfolder, args.reads_rc, ref_path, mummer_out_path_rc, args.min_mem)
+            results = pool.starmap(mummer_wrapper.find_mems, [args1, args2])
+            pool.close()
+            pool.join() 
     #############################################
     #############################################
     #############################################
@@ -215,14 +224,14 @@ def align_reads(args):
         # then write to separate SAM-files with a batch index, 
         # finally merge sam file by simple cat in terminal 
         
-        batch_size = int(len(reads)/int(args.nr_cores) + 1)
+        batch_size = 100000 #int(len(reads)/int(args.nr_cores) + 1)
         read_batches = batch(reads, batch_size)
         # print(batch_size, len(read_batches))
         # for b in read_batches:
         #     print(len(b), b)
         # sys.exit()
         # read_data = batch([ (acc, reads[acc], mems[acc], mems_rc[acc]) for i, acc in enumerate(mems)], batch_size)
-        print('Nr reads:', len(reads), 'Batch size:', batch_size)
+        print('Nr reads:', len(reads), 'Batch size:', batch_size, "nr batches:", len(read_batches), [len(b) for b in read_batches])
         # del reads
         # del mems
         # del mems_rc
@@ -285,6 +294,7 @@ if __name__ == '__main__':
     pipeline_parser.add_argument('--dropoff', type=float, default=0.7, help='Ignore alignment to hits with read coverage of this fraction less than the best hit.')
     pipeline_parser.add_argument('--ignore_rc', action='store_true', help='Ignore to map to reverse complement.')
     pipeline_parser.add_argument('--disable_infer', action='store_true', help='Makes splice creation step much faster. Thes parameter can be set if gene and transcript name fields are provided in gtf file.')
+    pipeline_parser.add_argument('--mask_threshold', type=int, default=200, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
     pipeline_parser.set_defaults(which='pipeline')
 
 
@@ -320,6 +330,7 @@ if __name__ == '__main__':
     if len(sys.argv)==1:
         parser.print_help()
         sys.exit()
+
 
     if args.which == 'prep_splicing':
         prep_splicing(args)

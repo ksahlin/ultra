@@ -10,7 +10,7 @@ import pysam
 
 import signal
 from multiprocessing import Pool
-import multiprocessing as mp
+
 
 from modules import colinear_solver 
 from modules import help_functions
@@ -169,10 +169,7 @@ def align_parallel(read_data, auxillary_data, refs_lengths, args):
     # pool = Pool(processes=mp.cpu_count())
     original_sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
     signal.signal(signal.SIGINT, original_sigint_handler)
-    mp.set_start_method('spawn')
-    print(mp.get_context())
-    print("Environment set:", mp.get_context())
-    print("Using {0} cores.".format(args.nr_cores))
+
     start_multi = time()
     pool = Pool(processes=int(args.nr_cores))
     # exon_id_to_choordinates, ref_exon_sequences, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations, parts_to_exons = import_data(args)
