@@ -79,6 +79,7 @@ def prep_seqs(args):
     refs = {acc : seq for acc, (seq, _) in help_functions.readfq(open(args.ref,"r"))}
     print(refs.keys())
     ref_part_sequences = augmented_gene.get_part_sequences_from_choordinates(parts_to_exons, refs)
+    augmented_gene.mask_abundant_kmers(ref_part_sequences, args.min_mem, args.mask_threshold)
     ref_exon_sequences = augmented_gene.get_exon_sequences_from_choordinates(exon_id_to_choordinates, exons_to_ref, refs)
 
     help_functions.pickle_dump(args, exon_id_to_choordinates, 'exon_id_to_choordinates.pickle')
@@ -143,38 +144,51 @@ def align_reads(args):
             refs_file.write(">{0}\n{1}\n".format(chr_id + str("_") + str(start) + "_" + str(stop), seq))
     refs_file.close()
 
-    mummer_out_path =  os.path.join( args.outfolder, "mummer_mems.txt" )
-    if os.path.isfile(mummer_out_path):
-        pass
-    else:
-        print("Running mummer forward")
-        mummer_wrapper.find_mems(args.outfolder, ref_part_sequences, args.reads, ref_path, mummer_out_path, args.min_mem)
-        print("Completed mummer forward")
-    # print("Parsing mems")
-    # mems = mummer_wrapper.parse_results(mummer_out_path)
-    # print("Completed parsing mems")
+    ######### FIND MEMS WITH MUMMER #############
+    #############################################
+    #############################################
 
-    mems_rc = []
-    # if not args.ignore_rc:
-    print("Processing reverse complement reads for mummer reads")
-    reads_rc = open(os.path.join(args.outfolder, 'reads_rc.fq'), 'w')
-    for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r')):
-        reads_rc.write('>{0}\n{1}\n'.format(acc, help_functions.reverse_complement(seq)))
-    reads_rc.close()
-    print("Finished processing reverse complement reads for mummer reads")
+    if args.nr_cores == 1:
+        mummer_out_path =  os.path.join( args.outfolder, "mummer_mems.txt" )
+        if os.path.isfile(mummer_out_path):
+            pass
+        else:
+            print("Running mummer forward")
+            mummer_wrapper.find_mems(args.outfolder, args.reads, ref_path, mummer_out_path, args.min_mem)
+            print("Completed mummer forward")
+        # print("Parsing mems")
+        # mems = mummer_wrapper.parse_results(mummer_out_path)
+        # print("Completed parsing mems")
 
-    args.reads_rc = reads_rc.name
-    # ref_path = os.path.join(args.outfolder, "refs_sequences_rc.fa")
-    mummer_out_path =  os.path.join(args.outfolder, "mummer_mems_rc.txt" )
-    if os.path.isfile(mummer_out_path):
-        pass
+        mems_rc = []
+        # if not args.ignore_rc:
+        print("Processing reverse complement reads for mummer reads")
+        reads_rc = open(os.path.join(args.outfolder, 'reads_rc.fq'), 'w')
+        for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r')):
+            reads_rc.write('>{0}\n{1}\n'.format(acc, help_functions.reverse_complement(seq)))
+        reads_rc.close()
+        print("Finished processing reverse complement reads for mummer reads")
+
+        args.reads_rc = reads_rc.name
+        # ref_path = os.path.join(args.outfolder, "refs_sequences_rc.fa")
+        mummer_out_path =  os.path.join(args.outfolder, "mummer_mems_rc.txt" )
+        if os.path.isfile(mummer_out_path):
+            pass
+        else:
+            print("Starting mummer reverse")
+            mummer_wrapper.find_mems(args.outfolder, args.reads_rc, ref_path, mummer_out_path, args.min_mem)
+            print("Completed mummer reverse")
+        # print("Parsing rev comp mems")
+        # mems_rc = mummer_wrapper.parse_results(mummer_out_path)
+        # print("Finished parsing rev comp mems")
     else:
-        print("Starting mummer reverse")
-        mummer_wrapper.find_mems(args.outfolder, ref_part_sequences, args.reads_rc, ref_path, mummer_out_path, args.min_mem)
-        print("Completed mummer reverse")
-    # print("Parsing rev comp mems")
-    # mems_rc = mummer_wrapper.parse_results(mummer_out_path)
-    # print("Finished parsing rev comp mems")
+        pass
+
+    #############################################
+    #############################################
+    #############################################
+
+
 
     print("Read reference")
     refs = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.ref, 'r'))} 
@@ -264,7 +278,7 @@ if __name__ == '__main__':
     pipeline_parser.add_argument('ref', type=str, help='Reference genome (fasta)')
     pipeline_parser.add_argument('reads', type=str, help='Path to fasta/fastq file with reads.')
     pipeline_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
-    pipeline_parser.add_argument('--min_mem', type=int, default=16, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
+    pipeline_parser.add_argument('--min_mem', type=int, default=14, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
     pipeline_parser.add_argument('--overlap_threshold', type=int, default=10, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
     pipeline_parser.add_argument('--t', dest = 'nr_cores', type=int, default=3, help='Number of cores.')
     pipeline_parser.add_argument('--non_covered_cutoff', type=int, default=10, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
@@ -276,13 +290,14 @@ if __name__ == '__main__':
 
     prep_splicing_parser.add_argument('gtf', type=str, help='Path to gtf or gtf file with gene models.')
     prep_splicing_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
-    prep_splicing_parser.add_argument('--min_mem', type=int, default=16, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
+    prep_splicing_parser.add_argument('--min_mem', type=int, default=14, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
     prep_splicing_parser.add_argument('--disable_infer', action='store_true', help='Makes splice creation step much faster. Thes parameter can be set if gene and transcript name fields are provided in gtf file.')
     prep_splicing_parser.set_defaults(which='prep_splicing')
 
     prep_seqs_parser.add_argument('ref', type=str, help='Reference genome (fasta)')
     prep_seqs_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
-    prep_seqs_parser.add_argument('--min_mem', type=int, default=16, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
+    prep_seqs_parser.add_argument('--min_mem', type=int, default=14, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
+    prep_seqs_parser.add_argument('--mask_threshold', type=int, default=200, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
     prep_seqs_parser.set_defaults(which='prep_seqs')
 
 
@@ -294,7 +309,7 @@ if __name__ == '__main__':
     align_reads_parser.add_argument('--non_covered_cutoff', type=int, default=10, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
     align_reads_parser.add_argument('--dropoff', type=float, default=0.7, help='Ignore alignment to hits with read coverage of this fraction less than the best hit.')
     align_reads_parser.add_argument('--ignore_rc', action='store_true', help='Ignore to map to reverse complement.')
-    align_reads_parser.add_argument('--min_mem', type=int, default=16, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
+    align_reads_parser.add_argument('--min_mem', type=int, default=14, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
 
 
     align_reads_parser.set_defaults(which='align_reads')

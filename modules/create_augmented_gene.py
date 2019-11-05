@@ -162,5 +162,76 @@ def get_exon_sequences_from_choordinates(exon_id_to_choordinates, exons_to_ref, 
 
 
 
+# Functions for masking overly abundant kmers 
+
+import itertools
+from collections import defaultdict, deque
+def kmer_counter(ref_part_sequences, kmer_size):
+    count = defaultdict(int)
+    position_count = defaultdict(list)
+    it_count = 0
+    for chr_id  in ref_part_sequences:
+        for part, seq in ref_part_sequences[chr_id].items():
+            read_kmers = deque([seq[i:i+kmer_size] for i in range(len(seq) - kmer_size + 1)])
+            for i, kmer in enumerate(read_kmers):
+                count[kmer] += 1
+                it_count += 1
+
+                if it_count % 100000 == 0:
+                    print(it_count, "kmers processed.")
+                    # clean every 1M kmers
+                    if it_count % 20000000 == 0:
+                        for kmer in list(count.keys()):
+                            if count[kmer] == 1:
+                                del count[kmer]
+                        print(len(count),"kmers stored")
+    return count
+
+
+def mask_refs(ref_part_sequences, to_mask, kmer_size):
+    for chr_id  in ref_part_sequences:
+        for part, seq in ref_part_sequences[chr_id].items():
+            read_kmers = [seq[i:i+kmer_size] for i in range(len(seq) - kmer_size + 1 )]
+            seq_masked = []
+            has_been_modified = False
+            if read_kmers:
+                # separately treat first kmer in every seq
+                if read_kmers[0] in to_mask:
+                    seq_masked.append(read_kmers[0][:-1]+'N')
+                    has_been_modified = True
+                else:
+                    seq_masked.append(read_kmers[0])
+
+                for i, kmer in enumerate(read_kmers[1:]):
+                    if kmer in to_mask:
+                        seq_masked.append("N") # mask the last base
+                        has_been_modified = True
+                    else:
+                        seq_masked.append(kmer[-1]) # add the true last base
+                
+                if has_been_modified:
+                    seq_masked = "".join([s for s in seq_masked])
+                    print("masking", seq, "to", seq_masked) 
+                    ref_part_sequences[chr_id][part] = seq_masked
+
+
+def mask_abundant_kmers(ref_part_sequences, kmer_size, mask_threshold):
+    DBG = kmer_counter(ref_part_sequences, kmer_size)
+    n = float(len(DBG))
+    print(n, "Unique kmers in reference part sequences with abundance > 1")
+    to_mask = set()
+    for i, (kmer, abundance) in enumerate(sorted(DBG.items(), key=lambda x: x[1], reverse=True)):
+        if abundance >= mask_threshold:
+            to_mask.add(kmer) 
+            print(kmer, abundance)
+        else:
+            break
+
+    mask_refs(ref_part_sequences, to_mask, kmer_size)
+    print(len(to_mask), "kemrs masked.")
+    # print(sorted([DBG[kmer] for kmer in DBG], reverse=True))
+
+
+
 
     
