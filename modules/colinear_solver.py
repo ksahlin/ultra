@@ -78,7 +78,7 @@ def n_logn_read_coverage(mems):
         so n log n time complexity. Each mem is an Namedtuple. python object
 
     """
-    assert mems == sorted(mems, key=lambda x: x.y)
+    # assert mems == sorted(mems, key=lambda x: x.y)
 
 
     T_leafs = make_leafs_power_of_2(mems)
@@ -157,7 +157,7 @@ def read_coverage(mems):
         each mem is an Namedtuple. python object
 
     """
-    mems = sorted(mems, key = lambda x: x.y )
+    # assert mems == sorted(mems, key = lambda x: x.y )
 
     if len(mems) > 1000:
         print('MEM',len(mems))
