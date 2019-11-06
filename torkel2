@@ -224,8 +224,9 @@ def align_reads(args):
         # then write to separate SAM-files with a batch index, 
         # finally merge sam file by simple cat in terminal 
         
-        batch_size = 100000 #int(len(reads)/int(args.nr_cores) + 1)
+        batch_size = int(len(reads)/int(args.nr_cores) + 1)
         read_batches = batch(reads, batch_size)
+        # mummer_wrapper.find_file_positions([len(b) for b in read_batches], mummer_out_path, mummer_out_path_rc)
         # print(batch_size, len(read_batches))
         # for b in read_batches:
         #     print(len(b), b)

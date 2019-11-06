@@ -36,7 +36,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
     classifications = defaultdict(str)
     read_accessions_with_mappings = set()
     processed_read_counter = 0
-    for (read_acc, mems), (_, mems_rc) in zip(mummer_wrapper.get_mummer_records(mems_path), mummer_wrapper.get_mummer_records(mems_path_rc)):
+    for (read_acc, mems), (_, mems_rc) in zip(mummer_wrapper.get_mummer_records(mems_path,reads), mummer_wrapper.get_mummer_records(mems_path_rc, reads)):
         if read_acc not in reads: # if parallelization not all reads in mummer file are in read batches
             continue
         else:
