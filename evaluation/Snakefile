@@ -1,0 +1,258 @@
+
+
+"""
+    snakemake --keep-going -j 999999 --cluster "sbatch --exclude={cluster.exclude} --mem {cluster.mem} -c {cluster.cpus-per-task} -N {cluster.Nodes}  -t {cluster.runtime} -J {cluster.jobname} --mail-type={cluster.mail_type} --mail-user={cluster.mail}" --cluster-config cluster.json --configfile experiments.json --latency-wait 100 --verbose -n
+
+    
+    # BIOLOGICAL
+
+    # Subsample reads from original data
+
+
+    # running isONclust/isONclust2
+    1. going from original reads to clusters
+    2. from cluster file to fastq files
+
+
+    ### Running isONcorrect
+    1. From cluster fasta to corrected reads
+    2. Merge all corrected read clusters
+
+    ### Run evaluation looking for read error rate againse reference (and eventually splice site classification)
+
+    # SIMULATED
+
+    ### simulation evalautions
+    4. Basing exon correction plot with error rate
+
+    5. Join everything to table
+
+
+    # target rules:
+
+"""
+
+shell.prefix("set -o pipefail; ")
+# configfile: "experiments.json"
+
+wildcard_constraints:
+    nr_reads="[\d]+",
+
+####################################################
+########## standard python functions ###############
+####################################################
+
+import re
+import os
+import errno
+import shutil
+import glob
+
+def mkdir_p(path):
+    print("creating", path)
+    try:
+        os.makedirs(path)
+    except OSError as exc:  # Python >2.5
+        if exc.errno == errno.EEXIST and os.path.isdir(path):
+            pass
+        else:
+            raise
+
+rule all:
+   input: config["ROOT_OUT"] + "/eval_table.csv", 
+          #config["ROOT_OUT"], "eval_sim_table.csv"),
+          #config["ROOT_OUT"], "controlled.csv")
+
+
+rule biological:
+    input: config["ROOT_OUT"] + "/eval_table.csv"
+
+
+rule simulation:
+    input: config["ROOT_OUT"] + "/eval_sim_table.csv"
+
+
+rule controlled_sim:
+    input:  config["ROOT_OUT"] + "/controlled.csv"
+
+
+rule simulate:
+    input:  fasta = config["ROOT_IN"] + "/data/all_transcripts_ENSEMBL.txt"
+    output: simulated_reads =  config["ROOT_OUT"] + "/data/simulated.fa"
+    run:
+
+        inbase= config["ROOT_IN"]
+        mkdir_p(config["ROOT_OUT"] + "/data/")
+
+        # python simulate_reads.py ../data/all_transcripts_ENSEMBL.txt ~/tmp/ULTRA/sim_reads_test.fa 100
+        shell("python {inbase}/evaluation/simulate_reads.py {input.fasta} {output.simulated_reads} --nr_reads 1000000 --fasta")
+
+
+rule ultra_prep:
+    input:  fastq =  config["ROOT_OUT"] + "/data/{dataset}.fa",
+            ref = config["HG38"],
+            gtf_annotation = config["ANNOTATION"] + "/{dataset}.gtf"
+
+    output: time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/ultra/{dataset}/indexing_time_and_mem.txt",
+            ref_index = config["ROOT_OUT"] + "/alignments/ultra/{dataset}/all_splice_sites_annotations.pickle"
+    run:
+        outfolder = config["ROOT_OUT"] + "/alignments/ultra/{dataset}/".format(wildcards.dataset)
+        shell("{time} torkel2 prep_splicing  {input.gtf_annotation} {outfolder}")
+        shell("{time} torkel2 prep_seqs   {input.ref} {outfolder} --min_mem 14 --mask_threshold 100 ")
+
+rule ultra_align:
+    input:  reads = config["ROOT_OUT"] + "/data/{dataset}.fa"
+            ultra_index = rules.ultra_prep.ref_index,
+            ref = config["HG38"],
+    output: time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/{tool}/{dataset}/aligning_time_and_mem.txt",
+            sam = config["ROOT_OUT"] + "/alignments/{tool}/{dataset}/" 
+    run:
+        time = config["GNUTIME"]
+        mkdir_p(config["ROOT_OUT"] + "/time_and_mem/{0}/{1}/".format(wildcards.dataset, wildcards.nr_reads ) )
+        outfolder = config["ROOT_OUT"] + "/clustering/{0}/{1}/".format(wildcards.dataset, wildcards.nr_reads)
+        mkdir_p(outfolder)
+        # shell("source activate py36")
+        shell("{time} torkel2 align {input.ref} {input.reads}  /Users/kxs624/tmp/ultra_hg38_GRCH38_Bham_run1/ --min_mem 14 --t 62")
+    
+
+rule clusters_to_fastq:
+    input: fastq = rules.isONclust.input.fastq,
+            clusters = rules.isONclust.output.clusters
+    output: flag = config["ROOT_OUT"] + "/clustering/{dataset}/{nr_reads}/rule_complete.txt"  
+             #"/nfs/brubeck.bx.psu.edu/scratch4/ksahlin/isONclust/mouse_ont_min_phred_q6/fastq_clusters/{clusterid}.fastq"
+    run:
+        time = config["GNUTIME"]
+        # shell("source activate py36")
+        outfolder = config["ROOT_OUT"] + "/clustering/{0}/{1}/fastq/".format(wildcards.dataset, wildcards.nr_reads)
+        shell("{time} python /galaxy/home/ksahlin/prefix/source/isONclust/isONclust write_fastq --clusters {input.clusters} --fastq {input.fastq} --outfolder {outfolder} --N 1")
+        shell("touch {output.flag}")
+
+
+rule isoncorrect:
+    input:  rules.clusters_to_fastq.output.flag
+    output:  flag = config["ROOT_OUT"] + "/correction/{dataset}/{nr_reads}/rule_complete.txt" 
+    run: 
+        # outfolder = "/nfs/brubeck.bx.psu.edu/scratch4/ksahlin/isoncorrect/mouse_ont_min_phred_q6/fastq_clusters/{0}".format(wildcards.clusterid)
+        # shell("python /galaxy/home/ksahlin/prefix/source/isONcorrect/isONcorrect --fastq {input.reads}  --outfolder {outfolder} ")
+        # shell("source activate py36")
+        outfolder = config["ROOT_OUT"] + "/correction/{0}/{1}/".format(wildcards.dataset, wildcards.nr_reads)   
+        infolder =  config["ROOT_OUT"] + "/clustering/{0}/{1}/fastq/".format(wildcards.dataset, wildcards.nr_reads) 
+        isoncorrect_dir = config["ROOT_IN"]
+
+        # if wildcards.dataset == "SIRV":
+        #     if wildcards.nr_reads != "200000":
+        #         shell("touch {output.flag}")
+        #     else:
+        #         shell("python {isoncorrect_dir}/run_isoncorrect  --fastq_folder {infolder}  --outfolder {outfolder} --set_w_dynamically --t 4  --xmax 80")
+        # else:
+            # if wildcards.nr_reads == "999":
+            #     shell("python {isoncorrect_dir}/run_isoncorrect  --fastq_folder {infolder}  --outfolder {outfolder} --set_w_dynamically --t 50  --xmax 80 --split_mod 2 --residual 1 ")
+            # else:
+        shell("python {isoncorrect_dir}/run_isoncorrect  --fastq_folder {infolder}  --outfolder {outfolder} --set_w_dynamically --t 62  --xmax 80")
+
+        # shell("python {isoncorrect_dir}/run_isoncorrect  --fastq_folder {infolder}  --outfolder {outfolder} --t 32 --k 7 --w 10 --xmax 80")
+        shell("touch {output.flag}")
+
+
+rule combine_isoncorrect:
+    input: rules.isoncorrect.output.flag
+    output: corrected_reads_fastq =  config["ROOT_OUT"] + "/correction/{dataset}/{nr_reads}/isONcorrect.fq"
+    run:
+        # all_clusters_fastq = expand('/nfs/brubeck.bx.psu.edu/scratch4/ksahlin/isoncorrect/mouse_ont_min_phred_q6/fastq_clusters/{clusterid}/corrected_reads.fastq', clusterid=[str(i) for i in range(0,62747)])
+        shell("> {output.corrected_reads_fastq}")
+        for f in glob.glob(  config["ROOT_OUT"] + '/correction/{0}/{1}/*/corrected_reads.fastq'.format(wildcards.dataset, wildcards.nr_reads)):
+            shell('cat {f} >> {output.corrected_reads_fastq}')
+
+
+rule split_accessions_corr:
+    input: original_reads = rules.combine_isoncorrect.output.corrected_reads_fastq
+    output: original_reads_split_accessions = config["ROOT_OUT"] + "/correction/{dataset}/{nr_reads}/isONcorrect_split_accs.fq" 
+
+    run:
+        eval_dir = config["ROOT_IN"] + "/scripts/"
+        shell("python {eval_dir}/split_accessions.py {input.original_reads} {output.original_reads_split_accessions}")
+
+rule align_corrected_reads_minimap2:
+    input: corrected_reads = rules.split_accessions_corr.output.original_reads_split_accessions
+    output: corrected_reads_aligned = config["ROOT_OUT"] + "/correction/{dataset}/{nr_reads}/isONcorrect.sam"
+    run:
+        if wildcards.dataset == "SIRV":
+            ref = config["SIRV"]
+            shell("/usr/bin/time -v  minimap2 --eqx -t 8 -ax splice -uf --splice-flank=no -k13 -w4 {ref} {input.corrected_reads} >  {output.corrected_reads_aligned} ")          
+        elif wildcards.dataset == "NA12878":
+            ref = config["HG38"]
+            shell("/usr/bin/time -v  minimap2 --eqx -t 8 -ax splice -uf -k13 -w4 {ref} {input.corrected_reads} >  {output.corrected_reads_aligned} ")
+        elif wildcards.dataset == "drosophila":
+            ref = config["drosophila97"]
+            shell("/usr/bin/time -v  minimap2 --eqx -t 8 -ax splice -uf -k13 -w4 {ref} {input.corrected_reads} >  {output.corrected_reads_aligned} ")
+
+
+rule split_accessions_orig:
+    input: original_reads = rules.subsample.output.subsampled_fastq
+    output: original_reads_split_accessions =  config["ROOT_OUT"] + "/data/{dataset}/{nr_reads}_split_accs.fq" 
+
+    run:
+        eval_dir = config["ROOT_IN"] + "/scripts/"
+        shell("python {eval_dir}/split_accessions.py {input.original_reads} {output.original_reads_split_accessions}")
+
+
+rule align_original_reads_minimap2:
+    input: original_reads = rules.split_accessions_orig.output.original_reads_split_accessions
+    output: original_reads_aligned =  config["ROOT_OUT"] + "/data/{dataset}/{nr_reads}.sam"
+    run:
+        if wildcards.dataset == "SIRV":
+            ref = config["SIRV"]
+            shell("/usr/bin/time -v  minimap2 --eqx -t 8 -ax splice -uf --splice-flank=no -k13 -w4 {ref} {input.original_reads} >  {output.original_reads_aligned} ")
+        elif wildcards.dataset == "NA12878":
+            ref = config["HG38"]
+            shell("/usr/bin/time -v  minimap2 --eqx -t 8 -ax splice -uf -k13 -w4 {ref} {input.original_reads} >  {output.original_reads_aligned} ")
+        elif wildcards.dataset == "drosophila":
+            ref = config["drosophila97"]
+            shell("/usr/bin/time -v  minimap2 --eqx -t 8 -ax splice -uf -k13 -w4 {ref} {input.original_reads} >  {output.original_reads_aligned} ")
+
+
+rule evaluate:
+    input: original_reads = rules.subsample.output.subsampled_fastq,
+            corrected_reads = rules.combine_isoncorrect.output.corrected_reads_fastq,
+            original_reads_aligned =  rules.align_original_reads_minimap2.output.original_reads_aligned,
+            corrected_reads_aligned =  rules.align_corrected_reads_minimap2.output.corrected_reads_aligned,
+            clusters_tsv = rules.isONclust.output.clusters,
+            gtf_annotation = config["ANNOTATION"] + "/{dataset}.gtf"  # drosophila v97 gtf annotation
+    output: csv_file =  config["ROOT_OUT"] + "/evaluation_biological/{dataset}/{nr_reads}/results.csv"
+    run:
+        if wildcards.dataset == "SIRV":
+            ref = config["SIRV"]
+        elif wildcards.dataset == "NA12878":
+            ref = config["HG38"]
+        elif wildcards.dataset == "drosophila":
+            ref =  config["drosophila97"]
+
+        eval_dir = config["ROOT_IN"] + "/scripts/"
+        outfolder = config["ROOT_OUT"] + "/evaluation_biological/{0}/{1}/".format(wildcards.dataset, wildcards.nr_reads)  
+        mkdir_p(outfolder) 
+        if wildcards.dataset == "NA12878":
+            shell("python {eval_dir}/evaluate_real_reads.py  {input.original_reads_aligned}  {input.corrected_reads_aligned} {input.original_reads}  \
+                                                        {input.corrected_reads} {ref} {input.clusters_tsv} {input.gtf_annotation} {outfolder} --load_database")
+        elif wildcards.dataset == "drosophila":
+            shell("python {eval_dir}/evaluate_real_reads.py  {input.original_reads_aligned}  {input.corrected_reads_aligned} {input.original_reads}  \
+                                                        {input.corrected_reads} {ref} {input.clusters_tsv} {input.gtf_annotation} {outfolder}")
+        else:
+            shell("python {eval_dir}/evaluate_real_reads.py  {input.original_reads_aligned}  {input.corrected_reads_aligned} {input.original_reads}  \
+                                                        {input.corrected_reads} {ref} {input.clusters_tsv} {input.gtf_annotation} {outfolder} --infer_genes")
+
+
+rule summary:
+    input: all_experiments = expand(rules.evaluate.output.csv_file, dataset=config["DATASETS"], nr_reads=config["NR_READS"])
+    output: summary_table = config["ROOT_OUT"] + "/eval_table.csv"
+    run:
+        shell("> {output.summary_table}")
+        outfile = open(output.summary_table ,"w")
+        for f in input.all_experiments: 
+            nr_reads = f.split('/')[-2]
+            dataset = f.split('/')[-3]
+            for line in open(f, 'r'):
+                outfile.write("{0},{1},{2}\n".format(nr_reads, dataset, ','.join(n for n in line.strip().split(',')) ))
+            
+            #shell('echo -n  {dataset},{nr_reads}, >> {output.summary_table} && cat {f} >> {output.summary_table}')
+
+
