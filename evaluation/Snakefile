@@ -59,9 +59,7 @@ def mkdir_p(path):
             raise
 
 rule all:
-   input: config["ROOT_OUT"] + "/eval_table.csv", 
-          #config["ROOT_OUT"], "eval_sim_table.csv"),
-          #config["ROOT_OUT"], "controlled.csv")
+   input:  config["ROOT_OUT"] + "/evaluation/ont_human/results.csv" 
 
 
 rule biological:
@@ -182,19 +180,5 @@ rule evaluate_sim:
 #             shell("python {eval_dir}/evaluate_real_reads.py  {input.original_reads_aligned}  {input.corrected_reads_aligned} {input.original_reads}  \
 #                                                         {input.corrected_reads} {ref} {input.clusters_tsv} {input.gtf_annotation} {outfolder} --infer_genes")
 
-
-rule summary:
-    input: all_experiments = expand(rules.evaluate.output.csv_file, dataset=config["DATASETS"], nr_reads=config["NR_READS"])
-    output: summary_table = config["ROOT_OUT"] + "/eval_table.csv"
-    run:
-        shell("> {output.summary_table}")
-        outfile = open(output.summary_table ,"w")
-        for f in input.all_experiments: 
-            nr_reads = f.split('/')[-2]
-            dataset = f.split('/')[-3]
-            for line in open(f, 'r'):
-                outfile.write("{0},{1},{2}\n".format(nr_reads, dataset, ','.join(n for n in line.strip().split(',')) ))
-            
-            #shell('echo -n  {dataset},{nr_reads}, >> {output.summary_table} && cat {f} >> {output.summary_table}')
 
 
