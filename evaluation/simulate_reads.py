@@ -114,7 +114,8 @@ def simulate_read(i, transcript_acc, isoform ):
 
     read_seq = "".join([n for n in read])
     qual_seq = "".join([chr(q + 33) for q in qual])
-    acc = str(transcript_acc) + "_" +  str(i) #= (read_seq, qual_seq)
+    err_rate = float(err)/ len(isoform)
+    acc = str(transcript_acc) + "_" +  str(i) + "_" + str(err_rate) #= (read_seq, qual_seq)
     print(err, len(isoform), float(err)/ len(isoform))
     # print(read_seq)
     # print(qual_seq)

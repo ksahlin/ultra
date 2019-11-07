@@ -11,7 +11,7 @@
     "ANNOTATION" : "/nfs/brubeck.bx.psu.edu/scratch4/ksahlin/isoncorrect_eval/gtf_annotations",
 
     "DATA" : "/nfs/brubeck.bx.psu.edu/scratch4/ksahlin/data/",
-    "HG38_MMI" : "/nfs/brubeck.bx.psu.edu/scratch6/ksahlin/data/hg38/hg38.mmi",
+    // "HG38_MMI" : "/nfs/brubeck.bx.psu.edu/scratch6/ksahlin/data/hg38/hg38.mmi",
     "HG38" : "/nfs/brubeck.bx.psu.edu/scratch6/ksahlin/data/HG38/hg38.fa",
     "SIRV" : "/nfs/brubeck.bx.psu.edu/scratch4/ksahlin/isoncorrect_eval/data/SIRV/SIRV_Set1_Lot00141_Sequences_170612a/SIRV_isoforms_multi-fasta_170612a.fasta",
     "drosophila97" : "/nfs/brubeck.bx.psu.edu/scratch4/ksahlin/isoncorrect_eval/data/drosophila/Drosophila_melanogaster.BDGP6.22.dna.toplevel.fa",
