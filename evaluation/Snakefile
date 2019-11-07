@@ -103,7 +103,7 @@ rule ultra_prep:
 
 
 rule ultra_align:
-    input:  reads = config["ROOT_OUT"] + "/data/{dataset}.fa"
+    input:  reads = config["ROOT_OUT"] + "/data/{dataset}.fa",
             ultra_index = rules.ultra_prep.ref_index,
             ref = config["HG38"],
     output: time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/ultra/{dataset}/aligning_time_and_mem.txt",
@@ -149,15 +149,9 @@ rule evaluate_sim:
         eval_dir = config["ROOT_IN"] + "/scripts/"
         outfolder = config["ROOT_OUT"] + "/evaluation_biological/{0}/{1}/".format(wildcards.dataset, wildcards.nr_reads)  
         mkdir_p(outfolder) 
-        if wildcards.dataset == "NA12878":
-            shell("python {eval_dir}/evaluate_real_reads.py  {input.original_reads_aligned}  {input.corrected_reads_aligned} {input.original_reads}  \
-                                                        {input.corrected_reads} {ref} {input.clusters_tsv} {input.gtf_annotation} {outfolder} --load_database")
-        elif wildcards.dataset == "drosophila":
-            shell("python {eval_dir}/evaluate_real_reads.py  {input.original_reads_aligned}  {input.corrected_reads_aligned} {input.original_reads}  \
-                                                        {input.corrected_reads} {ref} {input.clusters_tsv} {input.gtf_annotation} {outfolder}")
-        else:
-            shell("python {eval_dir}/evaluate_real_reads.py  {input.original_reads_aligned}  {input.corrected_reads_aligned} {input.original_reads}  \
-                                                        {input.corrected_reads} {ref} {input.clusters_tsv} {input.gtf_annotation} {outfolder} --infer_genes")
+        shell("python {eval_dir}/evaluate_real_reads.py  {input.original_reads_aligned}  {input.corrected_reads_aligned} {input.reads}  \
+                                                        {ref} {input.gtf_annotation} {outfolder} --load_database")
+
 
 # rule evaluate_real:
 #     input: original_reads = rules.subsample.output.subsampled_fastq,
