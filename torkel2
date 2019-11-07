@@ -4,7 +4,7 @@ from __future__ import print_function
 import os
 import sys
 import os
-
+from time import time
 import itertools
 from itertools import islice, chain
 
@@ -163,7 +163,7 @@ def align_reads(args):
     ######### FIND MEMS WITH MUMMER #############
     #############################################
     #############################################
-
+    mummer_start = time()
     if args.nr_cores == 1:
         mummer_out_path =  os.path.join( args.outfolder, "mummer_mems.txt" )
         if os.path.isfile(mummer_out_path):
@@ -193,6 +193,7 @@ def align_reads(args):
             results = pool.starmap(mummer_wrapper.find_mems, [args1, args2])
             pool.close()
             pool.join() 
+    print("Time for mummer to find mems:{0} seconds.".format(time()-mummer_start))
     #############################################
     #############################################
     #############################################
