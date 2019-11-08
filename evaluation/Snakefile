@@ -124,7 +124,7 @@ rule minimap2_index:
         time_outfolder = config["ROOT_OUT"] + "/time_and_mem/minimap2/{0}/".format(wildcards.dataset)
         mkdir_p(time_outfolder)
 
-        shell("/usr/bin/time -v  minimap2 -d {output.mm_index} {input.ref} 2> {output.time_and_mem}")
+        shell("/usr/bin/time -v  minimap2 -ax splice -uf -k14 -d {output.mm_index} {input.ref} 2> {output.time_and_mem}")
 
 
 rule minimap2_align:
