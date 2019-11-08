@@ -19,7 +19,7 @@
         "cpus-per-task" : "64",
         "Nodes" : 1,
         "mem" : "500G",
-        "runtime" : "1-00:00:00",
+        "runtime" : "2-00:00:00",
         "mail" : "ksahlin@kth.se",
         "mail_type" : "FAIL",
         "exclude" : "c[4,6-7,8-16]"
@@ -31,8 +31,8 @@
         "jobname" : "minimap2",
         "cpus-per-task" : "64",
         "Nodes" : 1,
-        "mem" : "1-00:00:00",
-        "runtime" : "10:00:00",
+        "mem" : "500G",
+        "runtime" : "2-00:00:00",
         "mail" : "ksahlin@kth.se",
         "mail_type" : "FAIL",
         "exclude" : "c[4,6-7,8-16]"
