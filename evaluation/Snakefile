@@ -60,7 +60,7 @@ def mkdir_p(path):
 
 rule all:
    input:  config["ROOT_OUT"] + "/evaluation/ont_human/results.csv",
-            config["ROOT_OUT"] + "/evaluationl/simulated/results.csv"
+            config["ROOT_OUT"] + "/evaluation/simulated/results.csv"
 
 
 rule biological:
@@ -135,7 +135,7 @@ rule evaluate:
             reads =  config["ROOT_OUT"] + "/data/{dataset}.fa",
             ref =  config["HG38"],
             gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"  # drosophila v97 gtf annotation
-    output: csv_file =  config["ROOT_OUT"] + "/evaluationl/{dataset}/results.csv"
+    output: csv_file =  config["ROOT_OUT"] + "/evaluation/{dataset}/results.csv"
     run:
 
         eval_dir = config["ROOT_IN"] + "/scripts/"
