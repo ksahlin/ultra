@@ -118,15 +118,16 @@ def print_detailed_values_to_file(error_rates, annotations_dict, reads, outfile,
             err_rate = "-"
 
         if acc not in read_alignments:
-            chr_id = 'unaligned'
+            reference_name = 'unaligned'
             reference_start = '-'  #read.reference_name, read.reference_start, read.reference_end + 1, read.flag,
             reference_end = '-'
             flag = '-'
+            read_class = ("-","-","-","unaligned","-","-","-") # namedtuple('Annotation', ['tot_splices', 'read_sm_junctions', 'read_nic_junctions', 'annotation', "donor_acceptors", "donor_acceptors_choords", "transcript_fsm_id" ])
         else:
-            read = reads[acc]
+            read = read_alignments[acc]
             reference_name, reference_start, reference_end, flag = read.reference_name, read.reference_start, read.reference_end + 1, read.flag
+            read_class = annotations_dict[acc] 
 
-        read_class = annotations_dict[acc] 
         read_length = len(reads[acc])
         is_unaligned_in_other_method = 1 if acc in reads_unaligned_in_other_method else 0
         info_tuple = (acc, read_type, err_rate, read_length, is_unaligned_in_other_method, *read_class, reference_name, reference_start, reference_end, flag) # 'tot_splices', 'read_sm_junctions', 'read_nic_junctions', 'fsm', 'nic', 'ism', 'nnc', 'no_splices'  )
@@ -490,9 +491,9 @@ def main(args):
     detailed_results_outfile.close()
 
     print()
-    print("Reads successfully aligned (original/corrected):", len(torkel_primary_locations),len(mm2_primary_locations))
+    print("Reads successfully aligned (uLTRA/minimap2):", len(torkel_primary_locations),len(mm2_primary_locations))
     print("Total reads", len(reads))
-    print("READS UNALIGNED (ORIGINAL/CORRECTED):", len(reads_unaligned_in_torkel), len(reads_unaligned_in_mm2) )
+    print("READS UNALIGNED (uLTRA/minimap2):", len(reads_unaligned_in_torkel), len(reads_unaligned_in_mm2) )
 
     ###########################################################################
     ###########################################################################
