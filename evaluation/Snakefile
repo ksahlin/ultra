@@ -59,7 +59,8 @@ def mkdir_p(path):
             raise
 
 rule all:
-   input:  config["ROOT_OUT"] + "/evaluation/ont_human/results.csv" 
+   input:  config["ROOT_OUT"] + "/evaluation/ont_human/results.csv",
+            config["ROOT_OUT"] + "/evaluationl/simulated/results.csv"
 
 
 rule biological:
@@ -102,7 +103,7 @@ rule ultra_prep:
 
 rule ultra_align:
     input:  reads = config["ROOT_OUT"] + "/data/{dataset}.fa",
-            ultra_index = rules.ultra_prep.ref_index,
+            ultra_index = rules.ultra_prep.output.ref_index,
             ref = config["HG38"],
     output: time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/ultra/{dataset}/aligning_time_and_mem.txt",
             sam = config["ROOT_OUT"] + "/alignments/ultra/{dataset}/reads.sam" 
@@ -134,17 +135,11 @@ rule evaluate:
             reads =  config["ROOT_OUT"] + "/data/{dataset}.fa",
             ref =  config["HG38"],
             gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"  # drosophila v97 gtf annotation
-    output: csv_file =  config["ROOT_OUT"] + "/evaluation_biological/{dataset}/{nr_reads}/results.csv"
+    output: csv_file =  config["ROOT_OUT"] + "/evaluationl/{dataset}/results.csv"
     run:
-        if wildcards.dataset == "SIRV":
-            ref = config["SIRV"]
-        elif wildcards.dataset == "NA12878":
-            ref = config["HG38"]
-        elif wildcards.dataset == "drosophila":
-            ref =  config["drosophila97"]
 
         eval_dir = config["ROOT_IN"] + "/scripts/"
-        outfolder = config["ROOT_OUT"] + "/evaluation_biological/{0}/{1}/".format(wildcards.dataset, wildcards.nr_reads)  
+        outfolder = config["ROOT_OUT"] + "/evaluation/{0}/".format(wildcards.dataset)  
         mkdir_p(outfolder) 
         shell("python {eval_dir}/evaluate_alignments.py  {input.ultra}  {input.minimap2} {input.reads}  \
                                                         {input.ref} {input.gtf_annotation} {outfolder} --load_database")
