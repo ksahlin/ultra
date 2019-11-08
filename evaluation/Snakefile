@@ -97,8 +97,11 @@ rule ultra_prep:
     run:
         outfolder = config["ROOT_OUT"] + "/alignments/ultra/{0}/".format(wildcards.dataset)
         mkdir_p(outfolder)
+        time_outfolder = config["ROOT_OUT"] + "/time_and_mem/ultra/{0}/".format(wildcards.dataset)
+        mkdir_p(time_outfolder)
+
         shell("{time} torkel2 prep_splicing  {input.gtf_annotation} {outfolder}")
-        shell("{time} torkel2 prep_seqs   {input.ref} {outfolder} --min_mem 14 --mask_threshold 100 ")
+        shell("{time} torkel2 prep_seqs {input.ref} {outfolder} --min_mem 14 --mask_threshold 100 2> {output.time_and_mem}")
 
 
 rule ultra_align:
@@ -109,16 +112,20 @@ rule ultra_align:
             sam = config["ROOT_OUT"] + "/alignments/ultra/{dataset}/reads.sam" 
     run:
         time = config["GNUTIME"]
-        shell("{time} torkel2 align {input.ref} {input.reads}  {outfolder} --min_mem 14 --t 62")
+        shell("{time} torkel2 align {input.ref} {input.reads}  {outfolder} --min_mem 14 --t 62 2> {output.time_and_mem}")
 
 
 rule minimap2_index:
     input: ref = config["HG38"]
-    output: mm_index =  config["ROOT_OUT"] + "/alignments/minimap2/{dataset}/index.mmi"
+    output: time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/minimap2/{dataset}/indexing_time_and_mem.txt",
+            mm_index =  config["ROOT_OUT"] + "/alignments/minimap2/{dataset}/index.mmi"
     run:
         outfolder = config["ROOT_OUT"] + "/alignments/minimap2/{0}/".format(wildcards.dataset)
         mkdir_p(outfolder)
-        shell("/usr/bin/time -v  minimap2 -d {output.mm_index} {input.ref}")
+        time_outfolder = config["ROOT_OUT"] + "/time_and_mem/minimap2/{0}/".format(wildcards.dataset)
+        mkdir_p(time_outfolder)
+
+        shell("/usr/bin/time -v  minimap2 -d {output.mm_index} {input.ref} 2> {output.time_and_mem}")
 
 
 rule minimap2_align:
@@ -126,7 +133,7 @@ rule minimap2_align:
             index = rules. minimap2_index.output.mm_index
     output: sam =  config["ROOT_OUT"] + "/alignments/minimap2/{dataset}/reads.sam"
     run:
-        shell("/usr/bin/time -v  minimap2 --eqx -t 8 -ax splice -uf -k14 {ref} {input.fastq} >  {output.sam} ")
+        shell("/usr/bin/time -v  minimap2 --eqx -t 8 -ax splice -uf -k14 {ref} {input.fastq} 1>  {output.sam} 2> {output.time_and_mem} ")
 
 
 rule evaluate:
