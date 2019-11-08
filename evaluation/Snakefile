@@ -90,7 +90,7 @@ rule simulate:
 rule ultra_prep:
     input:  fastq =  config["ROOT_OUT"] + "/data/{dataset}.fa",
             ref = config["HG38"],
-            gtf_annotation = config["ANNOTATION"] + "/{dataset}.gtf"
+            gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"
 
     output: time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/ultra/{dataset}/indexing_time_and_mem.txt",
             ref_index = config["ROOT_OUT"] + "/alignments/ultra/{dataset}/all_splice_sites_annotations.pickle"
