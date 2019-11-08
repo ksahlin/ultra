@@ -11,8 +11,8 @@
     "SIRV" : "/nfs/brubeck.bx.psu.edu/scratch4/ksahlin/isoncorrect_eval/data/SIRV/SIRV_Set1_Lot00141_Sequences_170612a/SIRV_isoforms_multi-fasta_170612a.fasta",
     "drosophila97" : "/nfs/brubeck.bx.psu.edu/scratch4/ksahlin/isoncorrect_eval/data/drosophila/Drosophila_melanogaster.BDGP6.22.dna.toplevel.fa",
     "ENSEMBL" : "/nfs/brubeck.bx.psu.edu/scratch4/ksahlin/data/",
-    "TOOLS" :["isoncorrect"],
+    "TOOLS" :["ultra", "minimap2"],
     "GNUTIME" : "/usr/bin/time -v",
-    "SCRIPT_FOLDER" : "/galaxy/home/ksahlin/prefix/source/isONcorrect/scripts/",
+    "SCRIPT_FOLDER" : "/galaxy/home/ksahlin/prefix/source/torkel/scripts/",
     "EXPERIMENT_ID" : "test"
 }

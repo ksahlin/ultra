@@ -100,8 +100,8 @@ rule ultra_prep:
         time_outfolder = config["ROOT_OUT"] + "/time_and_mem/ultra/{0}/".format(wildcards.dataset)
         mkdir_p(time_outfolder)
 
-        shell("/usr/bin/time -v torkel2 prep_splicing  {input.gtf_annotation} {outfolder}")
-        shell("/usr/bin/time -v torkel2 prep_seqs {input.ref} {outfolder} --min_mem 14 --mask_threshold 100 2> {output.time_and_mem}")
+        shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_splicing  {input.gtf_annotation} {outfolder}")
+        shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_seqs {input.ref} {outfolder} --min_mem 14 --mask_threshold 100 2> {output.time_and_mem}")
 
 
 rule ultra_align:
@@ -111,7 +111,7 @@ rule ultra_align:
     output: time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/ultra/{dataset}/aligning_time_and_mem.txt",
             sam = config["ROOT_OUT"] + "/alignments/ultra/{dataset}/reads.sam" 
     run:
-        shell("/usr/bin/time -v torkel2 align {input.ref} {input.reads}  {outfolder} --min_mem 14 --t 62 2> {output.time_and_mem}")
+        shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 align {input.ref} {input.reads}  {outfolder} --min_mem 14 --t 62 2> {output.time_and_mem}")
 
 
 rule minimap2_index:
@@ -132,7 +132,7 @@ rule minimap2_align:
             index = rules. minimap2_index.output.mm_index
     output: sam =  config["ROOT_OUT"] + "/alignments/minimap2/{dataset}/reads.sam"
     run:
-        shell("/usr/bin/time -v  minimap2 --eqx -t 8 -ax splice -uf -k14 {ref} {input.fastq} 1>  {output.sam} 2> {output.time_and_mem} ")
+        shell("/usr/bin/time -v  minimap2 --eqx -t 8 -ax splice -uf -k14 {input.index} {input.fastq} 1>  {output.sam} 2> {output.time_and_mem} ")
 
 
 rule evaluate:
