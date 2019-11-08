@@ -135,7 +135,9 @@ def mkdir_p(path):
 
 
 def main(args):
-    sequence_transcripts = {acc: seq for acc, (seq, _) in readfq(open(args.sequence_material,"r")) }
+    sequence_transcripts = {seq : acc for acc, (seq, _) in readfq(open(args.sequence_material,"r")) }
+    print(len(sequence_transcripts))
+    sequence_transcripts = {acc: seq for seq, acc in sequence_transcripts.items() }
 
     # just generate all numbers at once and draw from this 5x should be enough
     ont_reads = {}
