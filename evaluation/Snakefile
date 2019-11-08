@@ -130,7 +130,8 @@ rule minimap2_index:
 rule minimap2_align:
     input: fastq =  config["ROOT_OUT"] + "/data/{dataset}.fa",
             index = rules. minimap2_index.output.mm_index
-    output: sam =  config["ROOT_OUT"] + "/alignments/minimap2/{dataset}/reads.sam"
+    output: time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/minimap2/{dataset}/aligning_time_and_mem.txt",
+            sam =  config["ROOT_OUT"] + "/alignments/minimap2/{dataset}/reads.sam"
     run:
         shell("/usr/bin/time -v  minimap2 --eqx -t 8 -ax splice -uf -k14 {input.index} {input.fastq} 1>  {output.sam} 2> {output.time_and_mem} ")
 
