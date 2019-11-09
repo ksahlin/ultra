@@ -111,6 +111,7 @@ rule ultra_align:
     output: sam = config["ROOT_OUT"] + "/alignments/ultra/{dataset}/reads.sam",
             # time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/ultra/{dataset}/aligning_time_and_mem.txt"
     run:
+        outfolder = config["ROOT_OUT"] + "/alignments/ultra/{0}/".format(wildcards.dataset)
         shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 align {input.ref} {input.reads}  {outfolder} --min_mem 14 --t 62 ") # 2> {output.time_and_mem}
 
 
