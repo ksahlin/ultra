@@ -140,14 +140,16 @@ def create_graph_from_exon_parts(db, min_mem):
 def get_part_sequences_from_choordinates(parts_to_exons, refs):
     segments = {}
     for chr_id in parts_to_exons:
-        parts_instance = parts_to_exons[chr_id]
-        # chromosome = genes_to_ref[chr_id]
-        segments[chr_id] = {}
-        for part in parts_instance:
-            start,stop = part[0], part[1]
-            seq = refs[chr_id][start : stop] 
-            segments[chr_id][part] = seq
-    # print(segments)
+        if chr_id not in refs:
+            continue
+        else:
+            parts_instance = parts_to_exons[chr_id]
+            # chromosome = genes_to_ref[chr_id]
+            segments[chr_id] = {}
+            for part in parts_instance:
+                start,stop = part[0], part[1]
+                seq = refs[chr_id][start : stop] 
+                segments[chr_id][part] = seq
     return segments
 
 def get_exon_sequences_from_choordinates(exon_id_to_choordinates, exons_to_ref, refs):

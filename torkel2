@@ -78,7 +78,21 @@ def prep_seqs(args):
     print(parts_to_exons.keys())
     # print(genes_to_ref.keys())
     refs = {acc : seq for acc, (seq, _) in help_functions.readfq(open(args.ref,"r"))}
+    modified = help_functions.check_reference_headers(refs)
+    if modified:
+        print("Detected 1,..,22, MT, X, Y as header labels, treating these headers as: chr1,...,chr22, chrM, chrX, chrY")
     print(refs.keys())
+    not_in_ref = set(parts_to_exons.keys()) - set(refs.keys())
+    not_in_annot = set(refs.keys()) - set(parts_to_exons.keys()) 
+    if not_in_ref:
+        print("Warning: Detected sequences that are in annotation but not in reference fasta. Using only sequences present in fasta. The following annotations cannot be detected:\n")
+        for s in not_in_ref:
+            print(s)
+    if not_in_annot:
+        print("Warning: Detected sequences in reference fasta that are not in annotation. Will not be able to infer annotations from alignments on the following refernece sequences:\n")
+        for s in not_in_annot:
+            print(s)
+
     ref_part_sequences = augmented_gene.get_part_sequences_from_choordinates(parts_to_exons, refs)
     augmented_gene.mask_abundant_kmers(ref_part_sequences, args.min_mem, args.mask_threshold)
     ref_exon_sequences = augmented_gene.get_exon_sequences_from_choordinates(exon_id_to_choordinates, exons_to_ref, refs)
@@ -202,6 +216,9 @@ def align_reads(args):
 
     print("Read reference")
     refs = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.ref, 'r'))} 
+    modified = help_functions.check_reference_headers(refs)
+    if modified:
+        print("Detected 1,..,22, MT, X, Y as header labels, treating these headers as: chr1,...,chr22, chrM, chrX, chrY")
     refs_lengths = { acc : len(seq) for acc, seq in refs.items()} 
     del refs
  
