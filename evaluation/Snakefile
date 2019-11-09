@@ -76,7 +76,7 @@ rule controlled_sim:
 
 
 rule simulate:
-    input:  fasta = config["ROOT_IN"] + "/data/all_transcripts_ENSEMBL.txt"
+    input:  fasta = config["TRANSCRIPTOME"]
     output: simulated_reads =  config["ROOT_OUT"] + "/data/simulated.fa"
     run:
 
@@ -100,7 +100,7 @@ rule ultra_prep:
         time_outfolder = config["ROOT_OUT"] + "/time_and_mem/ultra/{0}/".format(wildcards.dataset)
         mkdir_p(time_outfolder)
 
-        shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_splicing  {input.gtf_annotation} {outfolder}")
+        shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_splicing --disable_infer {input.gtf_annotation} {outfolder}")
         shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_seqs {input.ref} {outfolder} --min_mem 14 --mask_threshold 100 2> {output.time_and_mem}")
 
 
