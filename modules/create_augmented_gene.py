@@ -156,9 +156,12 @@ def get_exon_sequences_from_choordinates(exon_id_to_choordinates, exons_to_ref, 
     exon_sequences = defaultdict(dict)
     for exon_id in exon_id_to_choordinates:
         start,stop = exon_id_to_choordinates[exon_id]
-        chromosome = exons_to_ref[exon_id]
-        seq = refs[chromosome][start : stop] 
-        exon_sequences[chromosome][(start,stop)] = seq
+        chr_id = exons_to_ref[exon_id]
+        if chr_id not in refs:
+            continue
+        else:
+            seq = refs[chr_id][start : stop] 
+            exon_sequences[chr_id][(start,stop)] = seq
     # print(segments)
     return exon_sequences
 
