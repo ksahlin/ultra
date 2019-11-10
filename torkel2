@@ -242,7 +242,7 @@ def align_reads(args):
         # batch reads and mems up: divide reads by  nr_cores to get batch size
         # then write to separate SAM-files with a batch index, 
         # finally merge sam file by simple cat in terminal 
-        
+        aligning_start = time()
         batch_size = int(len(reads)/int(args.nr_cores) + 1)
         read_batches = batch(reads, batch_size)
         # mummer_wrapper.find_file_positions([len(b) for b in read_batches], mummer_out_path, mummer_out_path_rc)
@@ -256,17 +256,22 @@ def align_reads(args):
         # del mems
         # del mems_rc
         classifications, alignment_outfiles = align.align_parallel(read_batches, auxillary_data, refs_lengths, args)
+    
+        print("Time to align reads:{0} seconds.".format(time()-aligning_start))
 
         # Combine samfiles produced from each batch
+        combine_start = time()
+
         alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, "torkel.sam"), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
     
         for f in alignment_outfiles:
-            samfile = pysam.AlignmentFile(f, "rb")
+            samfile = pysam.AlignmentFile(f, "r")
             for read in samfile.fetch():
                 alignment_outfile.write(read)
             samfile.close()
 
         alignment_outfile.close()
+        print("Time to merge SAM-files:{0} seconds.".format(time() - combine_start))
 
 
     counts = defaultdict(int)
