@@ -28,9 +28,11 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
     quadratic_instance_counter = 0
     if batch_number == -1:
         alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, "torkel.sam"), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
+        warning_log_file = open(os.path.join(args.outfolder, "torkel.stderr"), "w")
+
     else:  
         alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, "torkel_batch_{0}.sam".format(batch_number)), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
-
+        warning_log_file = open(os.path.join(args.outfolder, "torkel_batch_{0}.stderr".format(batch_number)), "w")
 
     exon_id_to_choordinates, ref_exon_sequences, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations, parts_to_exons = auxillary_data
     classifications = defaultdict(str)
@@ -98,7 +100,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
             else:
                 read_seq = read_seq
             # print("mem solution:", chaining_score, mem_solution)
-            non_covered_regions, mam_value, mam_solution, unique_exon_choordinates =  classify_read_with_mams.main(mem_solution, ref_exon_sequences, parts_to_exons, exon_id_to_choordinates, read_seq, args.overlap_threshold, is_rc)
+            non_covered_regions, mam_value, mam_solution, unique_exon_choordinates =  classify_read_with_mams.main(mem_solution, ref_exon_sequences, parts_to_exons, exon_id_to_choordinates, read_seq, args.overlap_threshold, is_rc, warning_log_file)
             if mam_value > 0:
                 chained_parts_seq = []
                 prev_ref_stop = -1
@@ -107,13 +109,13 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                     predicted_exons.append( (mam.x, mam.y) )
                     seq = ref_exon_sequences[mam.ref_chr_id][(mam.x, mam.y)] 
                     if mam.x < prev_ref_stop:
-                        chained_parts_seq.append(seq[prev_ref_stop - mam.x: ])
-                        help_functions.eprint(read_acc,chr_id, 'mem score:', chaining_score,  best_chaining_score, "mam score:",mam_value)
-                        help_functions.eprint("Overlapping exons in solution!",  mam.x, prev_ref_stop, mam)
-                        help_functions.eprint(mam_solution)
+                        # chained_parts_seq.append(seq[prev_ref_stop - mam.x: ])
+                        warning_log_file.write("Overlapping exons in solution with {0} bases. {1}, {2}, {3}, {4}.\n".format(prev_ref_stop - mam.x, chr_id, mam.x, prev_ref_stop, mam))
+                        warning_log_file.write("{0},{1}, mem score: {2}, best mem score:{3}, mam score:{4}\n".format(read_acc, chr_id, chaining_score,  best_chaining_score, mam_value))
+                        warning_log_file.write(str(mam_solution) + '\n\n')
                         # sys.exit()
-                    else:
-                        chained_parts_seq.append(seq)
+                    # else:
+                    chained_parts_seq.append(seq)
                     prev_ref_stop = mam.y
 
                 created_ref_seq = "".join([part for part in chained_parts_seq])
@@ -143,7 +145,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                     sam_output.main(read_acc, '*', 'unaligned', [], '*', '*', '*', alignment_outfile, is_rc, is_secondary)
 
     alignment_outfile.close()
-
+    warning_log_file.close()
     print("Number of instances solved with quadratic collinear chainer solution:", quadratic_instance_counter)
     print("Number of instances solved with n*log n collinear chainer solution:", nlog_n_instance_counter)
     # print(alignment_outfile.filename, dir(alignment_outfile))

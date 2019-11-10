@@ -144,7 +144,7 @@ def contains(sub, pri):
         else:
             i = found+1
 
-def main(solution, ref_exon_sequences, parts_to_exons, exon_id_to_choordinates, read_seq, overlap_threshold, is_rc):
+def main(solution, ref_exon_sequences, parts_to_exons, exon_id_to_choordinates, read_seq, overlap_threshold, is_rc, warning_log_file):
     # chained_parts_seq = []
     # chained_parts_ids = []
     prev_ref_stop = -1
@@ -180,7 +180,7 @@ def main(solution, ref_exon_sequences, parts_to_exons, exon_id_to_choordinates, 
     # sys.exit()
 
     for (ref_chr_id, e_start, e_stop), all_exon_ids in sorted(unique_exon_choordinates.items(), key=lambda x: x[0][1]):
-        if e_stop - e_start > 10:
+        if e_stop - e_start > 8:
             # if is_rc:
             #     ref_seq = help_functions.reverse_complement(refs[ref_chr_id][e_start: e_stop])
             # else:
@@ -227,7 +227,8 @@ def main(solution, ref_exon_sequences, parts_to_exons, exon_id_to_choordinates, 
                     #     mam_instance.append(mam_tuple)
 
         else:
-            print("not aligning exons smaller than 10bp") # TODO: align these and take all locations
+            # pass
+            warning_log_file.write("not aligning exons smaller than 8bp: {0}, {1}, {2}, {3}.\n".format(ref_chr_id, e_start, e_stop, ref_exon_sequences[ref_chr_id][(e_start, e_stop)])) # TODO: align these and take all locations
 
         if  e_stop - e_start >= 0.8*len(read_seq): # read is potentially contained within exon 
             # print()

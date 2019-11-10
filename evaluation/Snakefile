@@ -113,7 +113,7 @@ rule ultra_align:
     run:
         outfolder = config["ROOT_OUT"] + "/alignments/ultra/{0}/".format(wildcards.dataset)
         shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 align {input.ref} {input.reads}  {outfolder} --min_mem 14 --t 62 ") # 2> {output.time_and_mem}
-
+        shell("mv {outfolder}/torkel.sam {output.sam}")
 
 rule minimap2_index:
     input: ref = config["HG38"]
