@@ -332,7 +332,7 @@ if __name__ == '__main__':
     prep_seqs_parser.add_argument('ref', type=str, help='Reference genome (fasta)')
     prep_seqs_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
     prep_seqs_parser.add_argument('--min_mem', type=int, default=14, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
-    prep_seqs_parser.add_argument('--mask_threshold', type=int, default=200, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
+    prep_seqs_parser.add_argument('--mask_threshold', type=int, default=100, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
     prep_seqs_parser.set_defaults(which='prep_seqs')
 
 
