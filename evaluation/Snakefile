@@ -150,7 +150,7 @@ rule evaluate:
         outfolder = config["ROOT_OUT"] + "/evaluation/{0}/".format(wildcards.dataset)  
         mkdir_p(outfolder) 
         shell("python {eval_dir}/evaluate_alignments.py  {input.ultra}  {input.minimap2} {input.reads}  \
-                                                        {input.ref} {input.gtf_annotation} {outfolder} --load_database")
+                                                        {input.ref} {input.gtf_annotation} {outfolder} --infer_genes")
 
 
 # rule evaluate_real:
