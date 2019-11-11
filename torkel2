@@ -319,7 +319,7 @@ if __name__ == '__main__':
     pipeline_parser.add_argument('--dropoff', type=float, default=0.7, help='Ignore alignment to hits with read coverage of this fraction less than the best hit.')
     pipeline_parser.add_argument('--ignore_rc', action='store_true', help='Ignore to map to reverse complement.')
     pipeline_parser.add_argument('--disable_infer', action='store_true', help='Makes splice creation step much faster. Thes parameter can be set if gene and transcript name fields are provided in gtf file.')
-    pipeline_parser.add_argument('--mask_threshold', type=int, default=200, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
+    pipeline_parser.add_argument('--mask_threshold', type=int, default=100, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
     pipeline_parser.set_defaults(which='pipeline')
 
 

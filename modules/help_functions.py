@@ -5,7 +5,7 @@ import os
 import errno
 
 import parasail
-# import edlib
+import edlib
 import dill as pickle 
 
 def check_reference_headers(refs):
@@ -26,7 +26,7 @@ def check_reference_headers(refs):
             refs[chr_id] = seq
     return modified
 
-    
+
 def pickle_dump(args, data, filename):
     with open(os.path.join(args.outfolder,filename), 'wb') as f:
         # Pickle the 'data' dictionary using the highest protocol available.
@@ -135,12 +135,11 @@ def cigar_to_seq(cigar, query, ref):
     return  "".join([s for s in q_aln]), "".join([s for s in r_aln]), cigar_tuples
 
 
-# def edlib_alignment(read_seq, ref_seq):
-#     result = edlib.align(read_seq, ref_seq, task="path", mode="NW")
-#     cigar_string = result["cigar"]
-#     read_alignment, ref_alignment = cigar_to_seq(cigar_string, read_seq, ref_seq)
-
-#     return read_alignment, ref_alignment
+def edlib_alignment(read_seq, ref_seq):
+    result = edlib.align(read_seq, ref_seq, task="path", mode="NW")
+    cigar_string = result["cigar"]
+    read_alignment, ref_alignment, cigar_tuples = cigar_to_seq(cigar_string, read_seq, ref_seq)
+    return read_alignment, ref_alignment
 
 def mkdir_p(path):
     try:

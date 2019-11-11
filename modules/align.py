@@ -43,6 +43,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
             continue
         else:
             read_seq = reads[read_acc]
+        # print("instance sizes:", [ (chr_id, len(mm)) for chr_id, mm in mems.items()])
         # print(read_acc, len(mems), len(mems_rc))
     # for curr_index, (read_acc, read_seq, mems, mems_rc) in enumerate(read_data):
         processed_read_counter += 1
@@ -79,6 +80,8 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
             #     sys.exit()
 
             all_chainings.append( (chr_id, solution, mem_solution_value, True) )
+        
+        # print("Finished solving colinear_solver fw and rv" )
 
         is_secondary =  False
         is_rc =  False
@@ -101,6 +104,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                 read_seq = read_seq
             # print("mem solution:", chaining_score, mem_solution)
             non_covered_regions, mam_value, mam_solution, unique_exon_choordinates =  classify_read_with_mams.main(mem_solution, ref_exon_sequences, parts_to_exons, exon_id_to_choordinates, read_seq, args.overlap_threshold, is_rc, warning_log_file)
+            # print("finished Mam solution:", mam_solution)
             if mam_value > 0:
                 chained_parts_seq = []
                 prev_ref_stop = -1
@@ -117,11 +121,14 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                     # else:
                     chained_parts_seq.append(seq)
                     prev_ref_stop = mam.y
-
                 created_ref_seq = "".join([part for part in chained_parts_seq])
                 predicted_splices = [ (e1[1],e2[0]) for e1, e2 in zip(predicted_exons[:-1],predicted_exons[1:])]
 
-                read_aln, ref_aln, cigar_string, cigar_tuples = help_functions.parasail_alignment(read_seq, created_ref_seq)
+                if len(created_ref_seq) > 20000 or len(read_seq) > 20000:
+                    print("lenght ref: {0}, length query:{1}".format(len(created_ref_seq), len(read_seq)))
+                    read_aln, ref_aln = help_functions.edlib_alignment(read_seq, created_ref_seq)
+                else:
+                    read_aln, ref_aln, cigar_string, cigar_tuples = help_functions.parasail_alignment(read_seq, created_ref_seq)
                 # print(read_acc, "alignment to:", chr_id, "best solution val mems:", mem_solution, 'best mam value:', mam_value, 'read length:', len(read_seq), "final_alignment_stats:" )
                 # print(read_aln)
                 # print(ref_aln)
