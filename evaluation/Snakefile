@@ -146,7 +146,7 @@ rule evaluate:
     output: csv_file =  config["ROOT_OUT"] + "/evaluation/{dataset}/results.csv"
     run:
 
-        eval_dir = config["ROOT_IN"] + "/scripts/"
+        eval_dir = config["ROOT_IN"] + "/evaluation/"
         outfolder = config["ROOT_OUT"] + "/evaluation/{0}/".format(wildcards.dataset)  
         mkdir_p(outfolder) 
         shell("python {eval_dir}/evaluate_alignments.py  {input.ultra}  {input.minimap2} {input.reads}  \
