@@ -134,7 +134,7 @@ rule minimap2_align:
     output: time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/minimap2/{dataset}/aligning_time_and_mem.txt",
             sam =  config["ROOT_OUT"] + "/alignments/minimap2/{dataset}/reads.sam"
     run:
-        shell("/usr/bin/time -v  minimap2 --eqx -t 8 -ax splice -k14 {input.index} {input.fastq} 1>  {output.sam} 2> {output.time_and_mem} ")
+        shell("/usr/bin/time -v  minimap2 --eqx -t 32 -ax splice -k14 {input.index} {input.fastq} 1>  {output.sam} 2> {output.time_and_mem} ")
 
 
 rule evaluate:
@@ -150,7 +150,7 @@ rule evaluate:
         outfolder = config["ROOT_OUT"] + "/evaluation/{0}/".format(wildcards.dataset)  
         mkdir_p(outfolder) 
         shell("python {eval_dir}/evaluate_alignments.py  {input.ultra}  {input.minimap2} {input.reads}  \
-                                                        {input.ref} {input.gtf_annotation} {outfolder} --infer_genes")
+                                                        {input.ref} {input.gtf_annotation} {outfolder}")
 
 
 # rule evaluate_real:
