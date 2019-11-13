@@ -192,15 +192,14 @@ def get_read_candidate_splice_sites(reads_primary_locations, minimum_annotated_i
                 i += 1
                 read_cigar_tuples.append((int(length), type_ ))  
 
-            if read.reference_name in annotated_splice_coordinates_pairs:
-                annotated_chr_coordinate_pairs = annotated_splice_coordinates_pairs[read.reference_name]
+            mod_ref = modify_ref_header_for_alignment(read.reference_name) # convert 1,..,22,X,Y,MT to chr1, .., chr22, chrX, chrY, chrM
+            if mod_ref in annotated_splice_coordinates_pairs:
+                annotated_chr_coordinate_pairs = annotated_splice_coordinates_pairs[mod_ref]
             else:
                 annotated_chr_coordinate_pairs = set()
 
             read_splice_sites[read.query_name] = {}  
-            read_splice_sites[read.query_name][read.reference_name] = get_splice_sites(read_cigar_tuples, q_start, minimum_annotated_intron, annotated_chr_coordinate_pairs)
-
-        
+            read_splice_sites[read.query_name][mod_ref] = get_splice_sites(read_cigar_tuples, q_start, minimum_annotated_intron, annotated_chr_coordinate_pairs)
 
     return read_splice_sites
 
@@ -434,6 +433,14 @@ def get_error_rates(reads):
         err_rate = acc.split("_")[-1]
         error_rates[acc] = err_rate
     return error_rates
+
+def modify_ref_header_for_alignment(header):
+    if header.isdigit() or header == 'X' or header == 'Y':
+        return 'chr'+ header
+    elif header == 'MT':
+        return 'chrM'
+    else:
+        return header
 
 
 def modify_reference_headers(refs):
