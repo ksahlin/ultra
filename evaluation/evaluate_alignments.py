@@ -435,6 +435,25 @@ def get_error_rates(reads):
         error_rates[acc] = err_rate
     return error_rates
 
+
+def modify_reference_headers(refs):
+    modified = False
+    for header in list(refs.keys()):
+        if header.isdigit() or header == 'X' or header == 'Y':
+            chr_id = 'chr'+ header
+        elif header == 'MT':
+            chr_id = 'chrM'
+        else:
+            chr_id = header
+
+        # we have modified 
+        if chr_id != header:
+            modified = True
+            seq = refs[header]
+            del refs[header]
+            refs[chr_id] = seq
+    return modified
+
 def main(args):
     if args.load_database:
         print()
@@ -472,7 +491,7 @@ def main(args):
     torkel_splice_sites = get_read_candidate_splice_sites(torkel_primary_locations, minimum_annotated_intron, annotated_splice_coordinates_pairs)
 
     refs = { acc.split()[0] : seq for i, (acc, (seq, _)) in enumerate(readfq(open(args.refs, 'r')))}
-
+    modify_reference_headers(refs)
     print('MINIMAP2')
     mm2_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, mm2_splice_sites, refs, mm2_primary_locations)
     print('uLTRA')
