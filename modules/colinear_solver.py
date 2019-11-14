@@ -27,13 +27,13 @@ def max_both(iterable):
 def traceback(index, C):
     return 
 
-def is_unique_solution(C):
-    non_unique = [x for x in set(C) if C.count(x) > 1]
-    unique = True
-    if non_unique:
-        return False
-    else:
-        return True
+# def is_unique_solution(C):
+#     non_unique = [x for x in set(C) if C.count(x) > 1]
+#     unique = True
+#     if non_unique:
+#         return False
+#     else:
+#         return True
 
 def reconstruct_solution(mems, C, trace_vector):
     solution_index = argmax(C)
@@ -145,7 +145,7 @@ def n_logn_read_coverage(mems):
 
     C_max, solution = reconstruct_solution(mems, C, trace_vector)
 
-    return solution, C_max, is_unique_solution(C)
+    return solution, C_max #, is_unique_solution(C)
 
 def read_coverage(mems):
     """
@@ -183,7 +183,7 @@ def read_coverage(mems):
         T_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if  mems[j_prime].d < v.c and j_prime < j]
         if T_values:
             # print(T_values)
-            T_traceback_index, max_c_value_case_a = max(T_values, key=lambda x: x[1])
+            T_traceback_index, max_c_value_case_a = max(reversed(T_values), key=lambda x: x[1])
         else:
             max_c_value_case_a = 0
             T_traceback_index = None
@@ -192,7 +192,7 @@ def read_coverage(mems):
         if I_values:
             # print(I_values)
             I_values_plus_chord_diff = [ (j_prime, c_val + (v.d - mems[j_prime].d)) for j_prime, c_val in I_values]
-            I_traceback_index, max_c_value_case_b = max(I_values_plus_chord_diff, key=lambda x: x[1])
+            I_traceback_index, max_c_value_case_b = max(reversed(I_values_plus_chord_diff), key=lambda x: x[1])
             # I_v_prev_coord = mems[I_traceback_index].d
             # C_b[j] = (v.d - I_v_prev_coord) + max_c_value_case_b # shouldnt it be v.d - v_tmp.d
             C_b[j] = max_c_value_case_b # shouldnt it be v.d - v_tmp.d
@@ -237,7 +237,7 @@ def read_coverage(mems):
 
 
     # print("MEM Solution:", solution[::-1])
-    return solution[::-1], value, is_unique_solution(C)
+    return solution[::-1], value #, is_unique_solution(C)
     # traceback(C, best_solution_index)
 
 
