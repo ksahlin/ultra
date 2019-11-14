@@ -82,14 +82,35 @@ def range_query(tree, l, r, n):
     if L >= l:
         V_prime.add(l_pos)
 
+    # #####
+    # tmp = sorted(V_prime, key = lambda x: tree[x].Cj)
+    # if len(tmp) > 1:
+    #     if tree[ tmp[-1] ].Cj  == tree[ tmp[-2] ].Cj:
+    #         chosen = max(V_prime, key = lambda x: tree[x].Cj)
+    #         all_ = [zz for zz in V_prime if tree[ chosen ].Cj == tree[ zz ].Cj]
+    #         print("LOOOOOL", tree[ chosen ].j_max, [tree[ zz ].j_max for zz in all_])
     
+    # tmp = sorted(V_biss, key = lambda x: tree[x].Cj)
+    # if len(tmp) > 1:
+    #     if tree[ tmp[-1] ].Cj  == tree[ tmp[-2] ].Cj:
+    #         chosen = max(V_biss, key = lambda x: tree[x].Cj)
+    #         all_ = [zz for zz in V_biss if tree[ chosen ].Cj == tree[ zz ].Cj]
+    #         print("LOOOOOL", tree[ chosen ].j_max, [tree[ zz ].j_max for zz in all_])
+    # ########
+
+
     if V_prime:
-        vl = max(V_prime, key = lambda x: tree[x].Cj)
+        # vl = max(V_prime, key = lambda x: tree[x].Cj)
+        # The sorted function guarantees largest j_max is returned to be consistent (i.e., closest mem)
+        vl = max(sorted(V_prime, key = lambda x: tree[x].j_max, reverse = True), key = lambda x: tree[x].Cj)
     else:
         vl = None
 
     if V_biss:
-        vr = max(V_biss, key = lambda x: tree[x].Cj)
+        # vr = max(V_biss, key = lambda x: tree[x].Cj)
+        # The sorted function guarantees largest j_max is returned to be consistent (i.e., closest mem)
+        vr = max(sorted(V_biss, key = lambda x: tree[x].j_max, reverse = True), key = lambda x: tree[x].Cj)
+
     else:
         vr = None
        
@@ -125,7 +146,9 @@ def update(tree, leaf_pos, value, n):
         # print('updating: ', pos)
         # update the values in the nodes  
         # in the next higher level 
-        cur_best = max([tree[2 * pos], tree[2 * pos + 1]], key=lambda x: x.Cj) 
+        cur_best = max([tree[2 * pos], tree[2 * pos + 1]], key=lambda x: x.Cj)
+        # if tree[2 * pos].Cj == tree[2 * pos + 1].Cj:
+        #     print("OMGGGG",cur_best.j_max, tree[2 * pos].j_max, tree[2 * pos + 1].j_max)
         # tree[pos].Cj = max(tree[2 * pos].Cj,  
         #                    tree[2 * pos + 1].Cj)  
         tree[pos].Cj = cur_best.Cj
@@ -168,8 +191,9 @@ def make_leafs_power_of_2(mems):
             break
         elif 2**i < len(nodes) < 2**(i+1):
             remainder = 2**(i+1) - len(nodes) 
-            for i in range(remainder):
-                nodes.append( Node(-1, -i - 2, -2**32, -i - 2) ) # fill up nodes to have leaves a power of 2
+            # print(remainder,  2**(i+1), len(nodes))
+            for j in range(remainder):
+                nodes.append( Node(-j-1, -j - 2, -2**32, -j - 2) ) # fill up nodes to have leaves a power of 2
             break
 
     leafs = sorted(nodes, key= lambda x: x.d)
@@ -190,10 +214,10 @@ if __name__ == '__main__':
         mem = namedtuple('Mem', ['x', 'y', 'c', 'd', 'val','j'])
         mem_choords = []
         for i in range(nr_mems):
-            ref_start = random.randint(1,1000)
+            ref_start = random.randint(1,10000000)
             mem_length = random.randint(10,10)
             ref_stop = ref_start + mem_length
-            read_start = random.randint(1,1000)
+            read_start = random.randint(1,10000000)
             m = (ref_start, ref_stop,  read_start, read_start + mem_length, mem_length)
             mem_choords.append(m)
         mem = namedtuple('Mem', ['x', 'y', 'c', 'd', 'val','j'])
@@ -203,11 +227,11 @@ if __name__ == '__main__':
             mems.append(m)
         return mems
 
-    mems = generate_mems(80)
+    mems = generate_mems(100)
     
     st = time()
-    solution, mem_solution_value, unique = colinear_solver.read_coverage(mems)
-    print(mem_solution_value) #, [mem.j for mem in solution])
+    solution_quadratic, mem_solution_value = colinear_solver.read_coverage(mems)
+    print(mem_solution_value, [mem.j for mem in solution_quadratic])
     print("Total time quadratic method:", time()- st)
     print()
 
@@ -236,9 +260,9 @@ if __name__ == '__main__':
 
     C = [0]* (len(mems) + 1) #(len(leafs))
     trace_vector = [None]*(len(mems) + 1)
-
-    update(T, 0, 0, n) # point update 
-    update(I, 0, 0, n) # point update 
+    # print("leaf index (first mem):",mem_to_leaf_index[0],mem_to_leaf_index[-1],mem_to_leaf_index[1], "total leafs",len(mem_to_leaf_index), "len mems:", len(mems))
+    update(T, mem_to_leaf_index[-1], 0, n) # point update 
+    update(I, mem_to_leaf_index[-1], 0, n) # point update 
 
     for j, mem in enumerate(mems):
         # print(mem)
@@ -267,6 +291,8 @@ if __name__ == '__main__':
         # if C_b < 0:
         #     print("BUG")
         #     sys.exit()
+        if C_a == C_b:
+            print("LOOOOL solve this by taking the j that is largest!")
 
         index, value = max_both([C_a, C_b])
         C[j+1] = value
@@ -293,7 +319,7 @@ if __name__ == '__main__':
     time_find = time()- st
     # print(C)
     # print(trace_vector)
-    print(C_max ) #, [mem.j for mem in solution])
+    print(C_max, [mem.j for mem in solution])
 
     # print([ m2.d >= m1.d for m1, m2 in zip(solution[:-1], solution[1:]) ])
     # print([ m2.y >= m1.y for m1, m2 in zip(solution[:-1], solution[1:]) ])
@@ -302,6 +328,7 @@ if __name__ == '__main__':
     print("Time find nlogn solution:", time_find)
     print("total nlog n", time_construct + time_find)
 
+    assert [mem.j for mem in solution] == [mem.j for mem in solution_quadratic]
     # print("time querying RQ method 2:", time()- st)  
 
 
