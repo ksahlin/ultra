@@ -177,6 +177,17 @@ def reconstruct_solution(mems, C, trace_vector):
         #     break
     return value, solution[::-1]
 
+def reconstruct_all_solutions(mems, all_C_max_indicies, trace_vector):
+    # solution_index = argmax(C)
+    solutions = []
+    for solution_index in all_C_max_indicies:
+        value = C[solution_index]
+        solution = []
+        while solution_index > 0:
+            solution.append(mems[solution_index - 1])  # trace vector is shifted on to the right so need to remove 1 from vectore to get j_index 
+            solution_index = trace_vector[solution_index]
+        solutions.append( solution[::-1] )
+    return value, solutions
 
 def make_leafs_power_of_2(mems):
     nodes = []
@@ -201,6 +212,8 @@ def make_leafs_power_of_2(mems):
     return leafs
 
 
+def all_solutions_c_max_indicies(C, C_max):
+    return [i for i, c in enumerate(C) if c == C_max] 
 
 ## driver code for test if called as external script 
 
@@ -315,6 +328,13 @@ if __name__ == '__main__':
     # print(trace_vector)
 
     C_max, solution = reconstruct_solution(mems, C, trace_vector)
+
+    all_C_max_indicies = all_solutions_c_max_indicies(C,C_max)
+    # print(C, C_max)
+    print("number solutions with the same score:", all_solutions_c_max_indicies(C, C_max))
+    C_max2, solutions = reconstruct_all_solutions(mems, all_C_max_indicies, trace_vector)
+    for sol in solutions:
+        print(C_max2, [mem.j for mem in sol])
 
     time_find = time()- st
     # print(C)
