@@ -120,7 +120,7 @@ def get_genomic_cigar(read_aln, ref_aln, predicted_exons):
 
 
 
-def main(read_id, ref_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, alignment_outfile, is_rc, is_secondary):
+def main(read_id, ref_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, alignment_outfile, is_rc, is_secondary, map_score):
     # print(ref_id, classification, predicted_exons, read_aln, ref_aln, alignment_outfile)
     read_sam_entry = pysam.AlignedSegment(alignment_outfile.header)
     if classification != 'unaligned':
@@ -128,6 +128,8 @@ def main(read_id, ref_id, classification, predicted_exons, read_aln, ref_aln, an
         # print('genomic cigar:', genomic_cigar)
         read_sam_entry.cigarstring = genomic_cigar 
         read_sam_entry.reference_start = predicted_exons[0][0] + start_offset
+        read_sam_entry.mapping_quality = map_score 
+
         # print(predicted_exons[0][0], start_offset)
 
     else:

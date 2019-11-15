@@ -155,7 +155,7 @@ def n_logn_read_coverage(mems):
     solution_index = argmax(C)
     C_max = C[solution_index]
     all_C_max_indicies = all_solutions_c_max_indicies(C, C_max)
-    print("number solutions with the same score:", all_solutions_c_max_indicies(C, C_max))
+    # print("number solutions with the same score:", all_solutions_c_max_indicies(C, C_max))
     C_max, solutions = reconstruct_all_solutions(mems, all_C_max_indicies, trace_vector, C)
 
     return solutions, C_max #, is_unique_solution(C)
@@ -258,7 +258,7 @@ def read_coverage(mems):
     # print(traceback_vector)
     C_max = C[solution_index]
     all_C_max_indicies = all_solutions_c_max_indicies(C, C_max)
-    print("number solutions with the same score:", all_solutions_c_max_indicies(C, C_max))
+    # print("number solutions with the same score:", all_solutions_c_max_indicies(C, C_max))
     C_max, solutions = reconstruct_all_solutions(mems, all_C_max_indicies, traceback_vector, C)
     # solutions = []
     # print("MEM Solution:", solution[::-1])
