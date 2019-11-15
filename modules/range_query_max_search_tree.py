@@ -115,7 +115,8 @@ def range_query(tree, l, r, n):
         vr = None
        
     if vl is not None and vr is not None:
-        v_max_pos = max([vl,vr], key = lambda x: tree[x].Cj)
+        v_max_pos = max(sorted([vl,vr], key = lambda x: tree[x].j_max, reverse = True), key = lambda x: tree[x].Cj)
+        # v_max_pos = max([vl,vr], key = lambda x: tree[x].Cj)
         C_max = tree[v_max_pos].Cj
     elif vl is not None:
         v_max_pos = vl
@@ -146,7 +147,8 @@ def update(tree, leaf_pos, value, n):
         # print('updating: ', pos)
         # update the values in the nodes  
         # in the next higher level 
-        cur_best = max([tree[2 * pos], tree[2 * pos + 1]], key=lambda x: x.Cj)
+        # cur_best = max([tree[2 * pos], tree[2 * pos + 1]], key=lambda x: x.Cj)
+        cur_best = max( sorted([tree[2 * pos], tree[2 * pos + 1]], key = lambda x: x.j_max, reverse = True), key=lambda x: x.Cj)
         # if tree[2 * pos].Cj == tree[2 * pos + 1].Cj:
         #     print("OMGGGG",cur_best.j_max, tree[2 * pos].j_max, tree[2 * pos + 1].j_max)
         # tree[pos].Cj = max(tree[2 * pos].Cj,  
@@ -242,6 +244,11 @@ if __name__ == '__main__':
 
     mems = generate_mems(100)
     
+    mem = namedtuple('Mem', ['x', 'y', 'c', 'd', 'val','j'])
+    mems = [ mem(1, 10,  1, 10, 10, 0), mem(11, 20,  11, 20, 10, 1),
+            mem(21, 30,  1, 10, 10, 2), mem(31, 40,  11, 20, 10, 3)]
+
+    
     st = time()
     solution_quadratic, mem_solution_value = colinear_solver.read_coverage(mems)
     for sol in solution_quadratic:
@@ -305,16 +312,18 @@ if __name__ == '__main__':
         # if C_b < 0:
         #     print("BUG")
         #     sys.exit()
-        if C_a == C_b:
-            print("LOOOOL solve this by taking the j that is largest!")
+        # if C_a == C_b:
+        #     print(j, C_b, "LOOOOL solve this by taking the j that is largest!",j_prime_a, j_prime_b)
+        #     # j_prime = max(j_prime_a, j_prime_b)
 
+        # else:
         index, value = max_both([C_a, C_b])
-        C[j+1] = value
         if index == 0: # Updating with C_a
             j_prime = j_prime_a
         else: # Updating with C_b
             j_prime = j_prime_b
 
+        C[j+1] = value
 
         if j_prime < 0: # any of the additional leaf nodes (with negative index) we add to make number of leafs 2^n
             trace_vector[j+1] = 0
