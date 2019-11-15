@@ -102,8 +102,8 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
             continue
         else:
             read_seq = reads[read_acc]
-        print("instance sizes fw:", [ (chr_id, len(mm)) for chr_id, mm in mems.items()])
-        print("instance sizes rc:", [ (chr_id, len(mm)) for chr_id, mm in mems_rc.items()])
+        # print("instance sizes fw:", [ (chr_id, len(mm)) for chr_id, mm in mems.items()])
+        # print("instance sizes rc:", [ (chr_id, len(mm)) for chr_id, mm in mems_rc.items()])
         upper_bound = annotate_guaranteed_optimal_bound(mems, False)
         upper_bound_rc = annotate_guaranteed_optimal_bound(mems_rc, True)
         # print(upper_bound)
@@ -120,10 +120,10 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
         best_solution_value = 0
         for chr_id, (upper_bound_cov, is_rc, all_mems_to_chromosome) in sorted(list(upper_bound.items()) + list(upper_bound_rc.items()), key = lambda x: x[1][0], reverse = True ): # mems.items():
             if upper_bound_cov < best_solution_value:
-                print("Breaking for", chr_id, is_rc, upper_bound_cov, "best:", best_solution_value, "read length:", len(read_seq))
+                # print("Breaking for", chr_id, is_rc, upper_bound_cov, "best:", best_solution_value, "read length:", len(read_seq))
                 break
             
-            print("Processing", chr_id, is_rc, upper_bound_cov, "best:", best_solution_value, "read length:", len(read_seq))
+            # print("Processing", chr_id, is_rc, upper_bound_cov, "best:", best_solution_value, "read length:", len(read_seq))
             if len(all_mems_to_chromosome) < 80:
                 solutions, mem_solution_value = colinear_solver.read_coverage(all_mems_to_chromosome)
                 quadratic_instance_counter += 1 
