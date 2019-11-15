@@ -10,7 +10,7 @@ import pysam
 
 import signal
 from multiprocessing import Pool
-
+from operator import attrgetter
 
 from modules import colinear_solver 
 from modules import help_functions
@@ -19,8 +19,65 @@ from modules import classify_alignment2
 from modules import sam_output
 from modules import mummer_wrapper
 
+def annotate_guaranteed_optimal_bound(mems, is_rc):
+    # annotate each instance based on total coverage of read
+    upper_bound = {}
 
-# def align_single(read_data, auxillary_data, refs_lengths, args,  batch_number):
+    for chr_id, all_mems_to_chromosome in mems.items():
+        starts = [("start", m.c) for m in all_mems_to_chromosome]
+        stops = [("stop", m.d) for m in all_mems_to_chromosome]
+        all_starts_stops = sorted(list(starts) + list(stops), key = lambda x: x[1])
+        assert all_starts_stops[0][0] == 'start'
+        active_start = all_starts_stops[0][1]
+        nr_actives = 1
+        intervals = []
+        for site, pos in all_starts_stops[1:]:
+            if nr_actives == 0:
+                active_start = pos
+
+            if site == 'stop':
+                nr_actives -= 1
+            else:
+                nr_actives += 1
+
+            if nr_actives == 0:
+                assert site == 'stop'
+                intervals.append( (active_start, pos) )
+
+            assert nr_actives >= 0
+
+        tot_cov = 0
+        for start, stop in intervals:
+            tot_cov += stop - start
+
+        upper_bound[chr_id] = (tot_cov, is_rc, all_mems_to_chromosome)
+
+    # for chr_id, all_mems_to_chromosome in mems.items():
+    #     # sort on first c then d since sorting is stable in python 3
+    #     # mems_read_sorted = sorted(all_mems_to_chromosome, key= lambda x: x.c) 
+
+    #     mems_read_sorted = sorted(all_mems_to_chromosome, key=attrgetter('d', 'c'))
+    #     tot_cov = mems_read_sorted[0].val
+    #     curr_active_min = mems_read_sorted[0].c
+    #     for m1,m2 in zip(mems_read_sorted[:-1], mems_read_sorted[1:]):
+    #         # print(m1.d, m2.d, m2.d - m1.d, curr_active_min)
+    #         # assert m2.d >= m1.d
+    #         if m2.c > m1.d:
+    #             tot_cov += m2.val
+    #             curr_active_min = m2.c
+    #         else:
+    #             if m2.c >= curr_active_min:
+    #                 tot_cov += m2.d - m1.d
+    #             else:
+    #                 tot_cov += m2.d - m1.d
+    #                 tot_cov += curr_active_min - m2.c
+    #                 curr_active_min = m2.c
+
+    #     upper_bound[chr_id] = (tot_cov, is_rc, all_mems_to_chromosome)
+        
+    return upper_bound
+
+
 def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
     mems_path =  os.path.join( args.outfolder, "mummer_mems.txt" )
     mems_path_rc =  os.path.join( args.outfolder, "mummer_mems_rc.txt" )
@@ -38,12 +95,21 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
     classifications = defaultdict(str)
     read_accessions_with_mappings = set()
     processed_read_counter = 0
+
     for (read_acc, mems), (_, mems_rc) in zip(mummer_wrapper.get_mummer_records(mems_path,reads), mummer_wrapper.get_mummer_records(mems_path_rc, reads)):
+        multiple = False
         if read_acc not in reads: # if parallelization not all reads in mummer file are in read batches
             continue
         else:
             read_seq = reads[read_acc]
-        # print("instance sizes:", [ (chr_id, len(mm)) for chr_id, mm in mems.items()])
+        print("instance sizes fw:", [ (chr_id, len(mm)) for chr_id, mm in mems.items()])
+        print("instance sizes rc:", [ (chr_id, len(mm)) for chr_id, mm in mems_rc.items()])
+        upper_bound = annotate_guaranteed_optimal_bound(mems, False)
+        upper_bound_rc = annotate_guaranteed_optimal_bound(mems_rc, True)
+        # print(upper_bound)
+        # print(upper_bound_rc)
+        # TODO: Calculate unsorted mem coverage over the read here! Use this coverage to ignore doing chaining for some chromosomes!
+        
         # print(read_acc, len(mems), len(mems_rc))
     # for curr_index, (read_acc, read_seq, mems, mems_rc) in enumerate(read_data):
         processed_read_counter += 1
@@ -51,46 +117,61 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
             print('Processed {0} reads in batch {1}'.format(processed_read_counter, batch_number))
         # do the chaining here immediately!
         all_chainings = []
-        for chr_id, all_mems_to_chromosome in mems.items():
+        best_solution_value = 0
+        for chr_id, (upper_bound_cov, is_rc, all_mems_to_chromosome) in sorted(list(upper_bound.items()) + list(upper_bound_rc.items()), key = lambda x: x[1][0], reverse = True ): # mems.items():
+            if upper_bound_cov < best_solution_value:
+                print("Breaking for", chr_id, is_rc, upper_bound_cov, "best:", best_solution_value, "read length:", len(read_seq))
+                break
+            
+            print("Processing", chr_id, is_rc, upper_bound_cov, "best:", best_solution_value, "read length:", len(read_seq))
             if len(all_mems_to_chromosome) < 80:
-                solution, mem_solution_value, unique = colinear_solver.read_coverage(all_mems_to_chromosome)
+                solutions, mem_solution_value = colinear_solver.read_coverage(all_mems_to_chromosome)
                 quadratic_instance_counter += 1 
             else:
-                solution, mem_solution_value, unique = colinear_solver.n_logn_read_coverage(all_mems_to_chromosome)
+                solutions, mem_solution_value = colinear_solver.n_logn_read_coverage(all_mems_to_chromosome)
                 nlog_n_instance_counter += 1
-            # assert mem_solution_value == mem_solution_value2
-            # if solution2 != solution and unique:
-            #     print("BUG", mem_solution_value, mem_solution_value2)
-            #     print(solution)
-            #     print(solution2)
-            #     sys.exit()
 
-            all_chainings.append( (chr_id, solution, mem_solution_value, False) )
+            if mem_solution_value > best_solution_value:
+                best_solution_value = mem_solution_value
+                print("best now:", mem_solution_value)
+
+            if len(solutions) > 1:
+                print("More than 1 solution on chromosome")
+                for sol in solutions:
+                    print(mem_solution_value, [ (m.x, m.y) for m in sol])
+                multiple = True
+
+            for sol in solutions:
+                all_chainings.append( (chr_id, sol, mem_solution_value, is_rc) )
+
+        # sys.exit()
+
+        # for chr_id, all_mems_to_chromosome in mems_rc.items():
+        #     if len(all_mems_to_chromosome) < 80:
+        #         solutions, mem_solution_value = colinear_solver.read_coverage(all_mems_to_chromosome)
+        #     else:
+        #         solutions, mem_solution_value = colinear_solver.n_logn_read_coverage(all_mems_to_chromosome)
+
+        #     if len(solutions) > 1:
+        #         print("More than 1 solution on chromosome")
+        #         for sol in solutions:
+        #             print(mem_solution_value, [ (m.x, m.y) for m in sol])
+        #         multiple = True
+
+        #     for sol in solutions:
+        #         all_chainings.append( (chr_id, sol, mem_solution_value, True) )
         
-        for chr_id, all_mems_to_chromosome in mems_rc.items():
-            if len(all_mems_to_chromosome) < 80:
-                solution, mem_solution_value, unique = colinear_solver.read_coverage(all_mems_to_chromosome)
-            else:
-                solution, mem_solution_value, unique = colinear_solver.n_logn_read_coverage(all_mems_to_chromosome)
-            # assert mem_solution_value == mem_solution_value2
-            # if solution2 != solution and unique:
-            #     print("BUG")
-            #     print(solution)
-            #     print(solution2)
-            #     sys.exit()
-
-            all_chainings.append( (chr_id, solution, mem_solution_value, True) )
-        
-        # print("Finished solving colinear_solver fw and rv" )
-
+        # print("Finished solving colinear_solver fw and rv", len(all_mems_to_chromosome) )
+        # sys.exit()
         is_secondary =  False
         is_rc =  False
         if not all_chainings:
-            sam_output.main(read_acc, '*', 'unaligned', [], '*', '*', '*', alignment_outfile, is_rc, is_secondary)
+            sam_output.main(read_acc, '*', 'unaligned', [], '*', '*', '*', alignment_outfile, is_rc, is_secondary, 0)
             continue
 
         all_chainings = sorted(all_chainings, key=lambda x: x[2], reverse=True)
-
+        # if multiple:
+        #     print(all_chainings)
         best_chaining_score = all_chainings[0][2]
         for chr_id, mem_solution, chaining_score, is_rc in all_chainings:
             if chaining_score/float(best_chaining_score) < args.dropoff:
@@ -140,16 +221,20 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
 
 
                 classifications[read_acc] = (classification, mam_value / float(len(read_seq)))
-                if chaining_score < best_chaining_score: 
+                map_score = 60
+                if chaining_score == best_chaining_score and multiple:
+                    map_score  = 0
+                
+                if chaining_score < best_chaining_score:
                     is_secondary =  True
                 else:
                     is_secondary =  False
 
-                sam_output.main(read_acc, chr_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, alignment_outfile, is_rc, is_secondary)
+                sam_output.main(read_acc, chr_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, alignment_outfile, is_rc, is_secondary, map_score)
                 read_accessions_with_mappings.add(read_acc)
             else:
                 if read_acc not in read_accessions_with_mappings:
-                    sam_output.main(read_acc, '*', 'unaligned', [], '*', '*', '*', alignment_outfile, is_rc, is_secondary)
+                    sam_output.main(read_acc, '*', 'unaligned', [], '*', '*', '*', alignment_outfile, is_rc, is_secondary, map_score)
 
     alignment_outfile.close()
     warning_log_file.close()
