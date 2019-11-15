@@ -244,7 +244,8 @@ if __name__ == '__main__':
     
     st = time()
     solution_quadratic, mem_solution_value = colinear_solver.read_coverage(mems)
-    print(mem_solution_value, [mem.j for mem in solution_quadratic])
+    for sol in solution_quadratic:
+        print(mem_solution_value, [mem.j for mem in sol])
     print("Total time quadratic method:", time()- st)
     print()
 
@@ -326,7 +327,8 @@ if __name__ == '__main__':
         update(I, leaf_to_update, value - mem.d, n) # point update 
 
     # print(trace_vector)
-
+    # print(C)
+    # print(trace_vector)
     C_max, solution = reconstruct_solution(mems, C, trace_vector)
 
     all_C_max_indicies = all_solutions_c_max_indicies(C,C_max)
@@ -339,7 +341,7 @@ if __name__ == '__main__':
     time_find = time()- st
     # print(C)
     # print(trace_vector)
-    print(C_max, [mem.j for mem in solution])
+    # print(C_max, [mem.j for mem in solution])
 
     # print([ m2.d >= m1.d for m1, m2 in zip(solution[:-1], solution[1:]) ])
     # print([ m2.y >= m1.y for m1, m2 in zip(solution[:-1], solution[1:]) ])
@@ -347,8 +349,8 @@ if __name__ == '__main__':
     # assert all( m2.y >= m1.y for m1, m2 in zip(solution[:-1], solution[1:]) )
     print("Time find nlogn solution:", time_find)
     print("total nlog n", time_construct + time_find)
-
-    assert [mem.j for mem in solution] == [mem.j for mem in solution_quadratic]
+    for i in range(len(solutions)):
+        assert [mem.j for mem in solutions[i]] == [mem.j for mem in solution_quadratic[i]]
     # print("time querying RQ method 2:", time()- st)  
 
 
