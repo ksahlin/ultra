@@ -27,27 +27,33 @@ def max_both(iterable):
 def traceback(index, C):
     return 
 
-# def is_unique_solution(C):
-#     non_unique = [x for x in set(C) if C.count(x) > 1]
-#     unique = True
-#     if non_unique:
-#         return False
-#     else:
-#         return True
+def all_solutions_c_max_indicies(C, C_max):
+    return [i for i, c in enumerate(C) if c == C_max] 
 
-def reconstruct_solution(mems, C, trace_vector):
-    solution_index = argmax(C)
-    value = C[solution_index]
-    # print()
-    solution = []
-    while solution_index > 0:
-        solution.append(mems[solution_index - 1])  # trace vector is shifted on to the right so need to remove 1 from vectore to get j_index 
-        solution_index = trace_vector[solution_index]
-        # print(solution_index)
-        # if solution_index is None:
-        #     break
-    return value, solution[::-1]
+# def reconstruct_solution(mems, C, trace_vector):
+#     solution_index = argmax(C)
+#     value = C[solution_index]
+#     # print()
+#     solution = []
+#     while solution_index > 0:
+#         solution.append(mems[solution_index - 1])  # trace vector is shifted on to the right so need to remove 1 from vectore to get j_index 
+#         solution_index = trace_vector[solution_index]
+#         # print(solution_index)
+#         # if solution_index is None:
+#         #     break
+#     return value, solution[::-1]
 
+def reconstruct_all_solutions(mems, all_C_max_indicies, trace_vector, C):
+    # solution_index = argmax(C)
+    solutions = []
+    for solution_index in all_C_max_indicies:
+        value = C[solution_index]
+        solution = []
+        while solution_index > 0:
+            solution.append(mems[solution_index - 1])  # trace vector is shifted on to the right so need to remove 1 from vectore to get j_index 
+            solution_index = trace_vector[solution_index]
+        solutions.append( solution[::-1] )
+    return value, solutions
 
 def make_leafs_power_of_2(mems):
     nodes = []
@@ -141,11 +147,18 @@ def n_logn_read_coverage(mems):
         RMaxQST.update(T, leaf_to_update, value, n) # point update 
         RMaxQST.update(I, leaf_to_update, value - mem.d, n) # point update 
 
+
+    # C_max, solution = reconstruct_solution(mems, C, trace_vector)
+    # print("C", C)
     # print(trace_vector)
 
-    C_max, solution = reconstruct_solution(mems, C, trace_vector)
+    solution_index = argmax(C)
+    C_max = C[solution_index]
+    all_C_max_indicies = all_solutions_c_max_indicies(C, C_max)
+    print("number solutions with the same score:", all_solutions_c_max_indicies(C, C_max))
+    C_max, solutions = reconstruct_all_solutions(mems, all_C_max_indicies, trace_vector, C)
 
-    return solution, C_max #, is_unique_solution(C)
+    return solutions, C_max #, is_unique_solution(C)
 
 def read_coverage(mems):
     """
@@ -171,73 +184,85 @@ def read_coverage(mems):
     # I_dict = {mems[i][3] : -10000 for i in range(len(mems))}
     # I_dict[0] = -10000
 
-    C_a = [0]*(len(T))
-    C_b = [0]*(len(T))
-    C = [0]*(len(T))
-    traceback_pointers = [None]*(len(T))
+    # C_a = [0]*(len(T))
+    # C_b = [0]*(len(T))
+    C = [0]*(len(T)+1)
+    traceback_vector = [None]*(len(T)+1)
 
     for j in range(len(T)):
         v =  mems[j]
 
         # linear scan -- replace with range max Q tree
-        T_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if  mems[j_prime].d < v.c and j_prime < j]
+        T_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C[1:]) if  mems[j_prime].d < v.c and j_prime < j]
         if T_values:
             # print(T_values)
             T_traceback_index, max_c_value_case_a = max(reversed(T_values), key=lambda x: x[1])
         else:
             max_c_value_case_a = 0
-            T_traceback_index = None
+            T_traceback_index = -1
 
-        I_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if v.c <= mems[j_prime].d  <= v.d and j_prime < j]
+        I_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C[1:]) if v.c <= mems[j_prime].d  <= v.d and j_prime < j]
         if I_values:
             # print(I_values)
             I_values_plus_chord_diff = [ (j_prime, c_val + (v.d - mems[j_prime].d)) for j_prime, c_val in I_values]
             I_traceback_index, max_c_value_case_b = max(reversed(I_values_plus_chord_diff), key=lambda x: x[1])
             # I_v_prev_coord = mems[I_traceback_index].d
             # C_b[j] = (v.d - I_v_prev_coord) + max_c_value_case_b # shouldnt it be v.d - v_tmp.d
-            C_b[j] = max_c_value_case_b # shouldnt it be v.d - v_tmp.d
+            C_b = max_c_value_case_b # shouldnt it be v.d - v_tmp.d
 
         else:
             I_v_prev_coord = v.c - 1
-            I_traceback_index = None
+            I_traceback_index = -1
             max_c_value_case_b = 0
-            C_b[j] = 0
+            C_b = 0
 
 
-        C_a[j] = (v.d - v.c + 1) +  max_c_value_case_a
-        # C_b[j] = (v.d - I_v_prev_coord) + max_c_value_case_b # shouldnt it be v.d - v_tmp.d
+        C_a = (v.d - v.c + 1) +  max_c_value_case_a
 
-        if C_a[j] >= C_b[j]:
-            traceback_pointers[j] = T_traceback_index
+        index, value = max_both([C_a, C_b])
+        C[j+1] = value
+        if index == 0: # Updating with C_a
+            j_prime = T_traceback_index
+        else: # Updating with C_b
+            j_prime = I_traceback_index
+
+        # C[j+1] = max(C_a, C_b)
+
+        if j_prime < 0: # first j (i.e. j=0) 
+            traceback_vector[j+1]= 0
         else:
-            traceback_pointers[j] = I_traceback_index
+            traceback_vector[j+1]= j_prime + 1
 
-        C[j] = max(C_a[j], C_b[j])
+        # if j_prime == 0: # first j (i.e. j=0) 
+        #     traceback_vector[j+1]= 0
+        # elif C_a >= C_b:
+        #     traceback_vector[j+1] = T_traceback_index + 1
+        # else:
+        #     traceback_vector[j+1] = I_traceback_index + 1
+
         # print(v.c, v.d, v.d -v.c, C_a[j], C_b[j], v.d, I_values, T_values)
 
-    # print('Value vector mem:', C)
-    # print(traceback_pointers)
 
-    # print(argmax(C))
-    # print(traceback_pointers)
+    # solution_index = argmax(C)
+    # value = C[solution_index]
+    # solution = []
+    # while True:
+    #     solution.append(mems[solution_index])
+    #     solution_index = traceback_vector[solution_index]
+    #     if solution_index is None:
+    #         break
+
+
     solution_index = argmax(C)
-    # solution_index = len(C) - argmax(C[::-1]) -1
-    # print()
-    # print(C[solution_index], C)
-    value = C[solution_index]
-    # print()
-    solution = []
-    while True:
-        solution.append(mems[solution_index])
-        solution_index = traceback_pointers[solution_index]
-        # print(solution_index)
-        if solution_index is None:
-            break
-
-
-
+    # print(C)
+    # print(traceback_vector)
+    C_max = C[solution_index]
+    all_C_max_indicies = all_solutions_c_max_indicies(C, C_max)
+    print("number solutions with the same score:", all_solutions_c_max_indicies(C, C_max))
+    C_max, solutions = reconstruct_all_solutions(mems, all_C_max_indicies, traceback_vector, C)
+    # solutions = []
     # print("MEM Solution:", solution[::-1])
-    return solution[::-1], value #, is_unique_solution(C)
+    return solutions, C_max #, is_unique_solution(C)
     # traceback(C, best_solution_index)
 
 
