@@ -74,7 +74,7 @@ def annotate_guaranteed_optimal_bound(mems, is_rc):
     #                 curr_active_min = m2.c
 
     #     upper_bound[chr_id] = (tot_cov, is_rc, all_mems_to_chromosome)
-        
+
     return upper_bound
 
 
@@ -133,12 +133,12 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
 
             if mem_solution_value > best_solution_value:
                 best_solution_value = mem_solution_value
-                print("best now:", mem_solution_value)
+                # print("best now:", mem_solution_value)
 
             if len(solutions) > 1:
-                print("More than 1 solution on chromosome")
-                for sol in solutions:
-                    print(mem_solution_value, [ (m.x, m.y) for m in sol])
+                # print("More than 1 solution on chromosome")
+                # for sol in solutions:
+                #     print(mem_solution_value, [ (m.x, m.y) for m in sol])
                 multiple = True
 
             for sol in solutions:
@@ -234,7 +234,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                 read_accessions_with_mappings.add(read_acc)
             else:
                 if read_acc not in read_accessions_with_mappings:
-                    sam_output.main(read_acc, '*', 'unaligned', [], '*', '*', '*', alignment_outfile, is_rc, is_secondary, map_score)
+                    sam_output.main(read_acc, '*', 'unaligned', [], '*', '*', '*', alignment_outfile, is_rc, is_secondary, 0)
 
     alignment_outfile.close()
     warning_log_file.close()
