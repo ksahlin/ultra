@@ -226,14 +226,34 @@ def get_annotated_splicesites(ref_gff_file, infer_genes, outfolder):
     return ref_isoforms, splice_coordinates, splice_coordinates_pairs, minimum_annotated_intron
 
 
-def get_alignment_classifications(true_exon_sites, aligned_exon_sites):
+def mod_long_acc(acc):
+    if len(acc) > 250:
+        acc = acc.split()[0]
+        if len(acc) > 250: # simulated data
+            #RBBP7|ENSG00000102054|ENST00000380087|16852551;16870038;16849244;16862955;16869076;16857594;16853682;16852046;16852749;16858676;16845828;16844341|16852628;16870414;16849301;16863100;16869220;16857709;16853842;16852122;16852875;16858849;16845938;16845103_4_0.08101157308186883
+            print("here:", acc)
+            tmp1 = acc.split("|")
+            tmp2 = acc.split("_")
+            new_acc = tmp1[:3] +  tmp2[-2:]
+            acc = "|".join(new_acc)
+            print(acc)
+
+    return acc
+
+def get_alignment_classifications(true_exon_sites, aligned_exon_sites, is_ultra = False):
     read_annotations = {}
     for acc in true_exon_sites:
         exons_true = true_exon_sites[acc]
-        if acc not in aligned_exon_sites:
+
+        if is_ultra:
+            acc_mod = mod_long_acc(acc)
+        else:
+            acc_mod = acc
+
+        if acc_mod not in aligned_exon_sites:
             read_annotations[acc] = ('unaligned', len(exons_true), 0, 0)
         else:
-            aln_dict = aligned_exon_sites[acc]
+            aln_dict = aligned_exon_sites[acc_mod]
             exons_aligned = aln_dict.values()[0]
             aln_start, aln_stop = exons_aligned[0][0], exons_aligned[-1][1]
             true_start, true_stop = exons_true[0][0], exons_true[-1][1]
@@ -350,7 +370,7 @@ def main(args):
     print('MINIMAP2')
     mm2_alignment_results = get_alignment_classifications(true_exon_sites, mm2_exon_sites)
     print('uLTRA')
-    torkel_alignment_results = get_alignment_classifications(true_exon_sites, torkel_exon_sites)
+    torkel_alignment_results = get_alignment_classifications(true_exon_sites, torkel_exon_sites, is_ultra = True)
     # reads_to_cluster_size = get_cluster_sizes(args.cluster_file, reads)
 
     reads_unaligned_in_torkel = set(reads.keys()) - set(torkel_primary_locations.keys())
