@@ -181,33 +181,33 @@ def align_reads(args):
     mummer_start = time()
     if args.nr_cores == 1:
         mummer_out_path =  os.path.join( args.outfolder, "mummer_mems.txt" )
-        if os.path.isfile(mummer_out_path):
-            pass
-        else:
-            print("Running mummer forward")
-            mummer_wrapper.find_mems(args.outfolder, args.reads, ref_path, mummer_out_path, args.min_mem)
-            print("Completed mummer forward")
+        # if os.path.isfile(mummer_out_path):
+        #     pass
+        # else:
+        print("Running mummer forward")
+        mummer_wrapper.find_mems(args.outfolder, args.reads, ref_path, mummer_out_path, args.min_mem)
+        print("Completed mummer forward")
 
         mummer_out_path =  os.path.join(args.outfolder, "mummer_mems_rc.txt" )
-        if os.path.isfile(mummer_out_path):
-            pass
-        else:
-            print("Starting mummer reverse")
-            mummer_wrapper.find_mems(args.outfolder, args.reads_rc, ref_path, mummer_out_path, args.min_mem)
-            print("Completed mummer reverse")
+        # if os.path.isfile(mummer_out_path):
+        #     pass
+        # else:
+        print("Starting mummer reverse")
+        mummer_wrapper.find_mems(args.outfolder, args.reads_rc, ref_path, mummer_out_path, args.min_mem)
+        print("Completed mummer reverse")
     else:
         pool = Pool(processes=2)
         mummer_out_path =  os.path.join( args.outfolder, "mummer_mems.txt" )
         mummer_out_path_rc =  os.path.join(args.outfolder, "mummer_mems_rc.txt" )
 
-        if os.path.isfile(mummer_out_path) and os.path.isfile(mummer_out_path_rc):
-            pass
-        else:
-            args1 = (args.outfolder, args.reads, ref_path, mummer_out_path, args.min_mem)
-            args2 = (args.outfolder, args.reads_rc, ref_path, mummer_out_path_rc, args.min_mem)
-            results = pool.starmap(mummer_wrapper.find_mems, [args1, args2])
-            pool.close()
-            pool.join() 
+        # if os.path.isfile(mummer_out_path) and os.path.isfile(mummer_out_path_rc):
+        #     pass
+        # else:
+        args1 = (args.outfolder, args.reads, ref_path, mummer_out_path, args.min_mem)
+        args2 = (args.outfolder, args.reads_rc, ref_path, mummer_out_path_rc, args.min_mem)
+        results = pool.starmap(mummer_wrapper.find_mems, [args1, args2])
+        pool.close()
+        pool.join() 
     print("Time for mummer to find mems:{0} seconds.".format(time()-mummer_start))
     #############################################
     #############################################
