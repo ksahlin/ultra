@@ -149,8 +149,13 @@ rule evaluate:
         eval_dir = config["ROOT_IN"] + "/evaluation/"
         outfolder = config["ROOT_OUT"] + "/evaluation/{0}/".format(wildcards.dataset)  
         mkdir_p(outfolder) 
-        shell("python {eval_dir}/evaluate_alignments.py  {input.ultra}  {input.minimap2} {input.reads}  \
-                                                        {input.ref} {input.gtf_annotation} {outfolder} --load_database")
+
+        if wildcards.dataset == "simulated":
+            shell("python {eval_dir}/evaluate_simulated_reads.py  {input.ultra}  {input.minimap2} {input.reads}  \
+                                                            {input.ref} {input.gtf_annotation} {outfolder} --load_database")   
+        else:
+            shell("python {eval_dir}/evaluate_alignments.py  {input.ultra}  {input.minimap2} {input.reads}  \
+                                                            {input.ref} {input.gtf_annotation} {outfolder} --load_database")
 
 
 # rule evaluate_real:
