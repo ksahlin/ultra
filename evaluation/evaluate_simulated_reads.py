@@ -155,7 +155,7 @@ def get_read_alignment_exon_sites(reads_primary_locations, annotated_splice_coor
     read_exon_sites = {}
     for acc in reads_primary_locations:
         read = reads_primary_locations[acc]
-        assert read.flag == 0 or read.flag == 16:
+        assert read.flag == 0 or read.flag == 16
         q_cigar = read.cigarstring
         q_start = read.reference_start
         q_end = read.reference_end
