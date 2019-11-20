@@ -139,9 +139,40 @@ rule minimap2_align:
         shell("/usr/bin/time -v  minimap2 --eqx -t 32 -ax splice -k14 {input.index} {input.fastq} 1>  {output.sam} 2> {output.time_and_mem} ")
 
 
+rule desalt_annotation_fix:
+    input: gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"
+    output: desalt_gtf_annotation_outfile = config["ROOT_OUT"] + "/alignments/desalt/{dataset}/annotation.info"
+    run:
+        outfolder = config["ROOT_OUT"] + "/alignments/desalt/{0}/".format(wildcards.dataset)
+        mkdir_p(outfolder)
+        shell("python /galaxy/home/ksahlin/prefix/source/deSALT/src/Annotation_Load.py {input.gtf_annotation}  {output.desalt_gtf_annotation_outfile}")
+
+rule desalt_index:
+    input: ref = config["HG38"]
+    output: time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/desalt/{dataset}/indexing_time_and_mem.txt",
+            desalt_index_folder =  config["ROOT_OUT"] + "/alignments/desalt/{dataset}/index"
+    run:
+        outfolder = config["ROOT_OUT"] + "/alignments/desalt/{0}/".format(wildcards.dataset)
+        mkdir_p(outfolder)
+        time_outfolder = config["ROOT_OUT"] + "/time_and_mem/desalt/{0}/".format(wildcards.dataset)
+        mkdir_p(time_outfolder)
+
+        shell("/usr/bin/time -v  deSALT index {input.ref} {output.desalt_index_folder} 2> {output.time_and_mem}")
+
+rule desalt_aln:
+    input: fastq =  config["ROOT_OUT"] + "/data/{dataset}.fa",
+            index = rules.desalt_index.output.desalt_index_folder,
+            desalt_gtf_annotation_outfile = rules.desalt_annotation_fix.output.desalt_gtf_annotation_outfile
+    output: time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/desalt/{dataset}/aligning_time_and_mem.txt",
+            sam =  config["ROOT_OUT"] + "/alignments/desalt/{dataset}/reads.sam"
+    run:
+        shell("/usr/bin/time -v  deSALT aln {input.index} {input.fastq}  -t 32 --gtf {input.desalt_gtf_annotation_outfile} -o {output.sam} 2> {output.time_and_mem} ")
+
+
 rule evaluate:
     input:  ultra = rules.ultra_align.output.sam,
             minimap2 = rules.minimap2_align.output.sam,
+            desalt = rules.desalt_align.output.sam,
             reads =  config["ROOT_OUT"] + "/data/{dataset}.fa",
             ref =  config["HG38"],
             gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"  # drosophila v97 gtf annotation
@@ -154,10 +185,10 @@ rule evaluate:
 
         if wildcards.dataset == "simulated":
             accessions_map = rules.simulate.output.accessions_map
-            shell("python {eval_dir}/evaluate_simulated_reads.py  {input.ultra}  {input.minimap2} {input.reads}  \
+            shell("python {eval_dir}/evaluate_simulated_reads.py  {input.ultra}  {input.minimap2} {input.desalt} {input.reads}  \
                                                             {input.ref} {input.gtf_annotation} {accessions_map} {outfolder} --load_database")   
         else:
-            shell("python {eval_dir}/evaluate_alignments.py  {input.ultra}  {input.minimap2} {input.reads}  \
+            shell("python {eval_dir}/evaluate_splice_annotations.py  {input.ultra}  {input.minimap2} {input.desalt} {input.reads}  \
                                                             {input.ref} {input.gtf_annotation} {outfolder} --load_database")
 
 

@@ -366,11 +366,13 @@ def main(args):
     reads = { acc.split()[0] : seq for i, (acc, (seq, qual)) in enumerate(readfq(open(args.reads, 'r')))}
     torkel_primary_locations = decide_primary_locations(args.torkel_sam, args)
     mm2_primary_locations = decide_primary_locations(args.mm2_sam, args)
+    desalt_primary_locations = decide_primary_locations(args.desalt_sam, args)
     error_rates = get_error_rates(reads)
 
     true_exon_sites = get_true_exon_sites(args.accessions_map)
     mm2_exon_sites = get_read_alignment_exon_sites(mm2_primary_locations, annotated_splice_coordinates_pairs)
     torkel_exon_sites = get_read_alignment_exon_sites(torkel_primary_locations, annotated_splice_coordinates_pairs)
+    desalt_exon_sites = get_read_alignment_exon_sites(desalt_primary_locations, annotated_splice_coordinates_pairs)
 
     refs = { acc.split()[0] : seq for i, (acc, (seq, _)) in enumerate(readfq(open(args.refs, 'r')))}
     modify_reference_headers(refs)
@@ -378,23 +380,28 @@ def main(args):
     mm2_alignment_results = get_alignment_classifications(true_exon_sites, mm2_exon_sites)
     print('uLTRA')
     torkel_alignment_results = get_alignment_classifications(true_exon_sites, torkel_exon_sites, is_ultra = True)
+    print("deSALT")
+    desalt_alignment_results = get_alignment_classifications(true_exon_sites, desalt_exon_sites, is_ultra = True)
+
     # reads_to_cluster_size = get_cluster_sizes(args.cluster_file, reads)
 
     reads_unaligned_in_torkel = set(reads.keys()) - set(torkel_primary_locations.keys())
     reads_unaligned_in_mm2 = set(reads.keys()) - set(mm2_primary_locations.keys()) 
+    reads_unaligned_in_desalt = set(reads.keys()) - set(desalt_primary_locations.keys()) 
 
     detailed_results_outfile = open(os.path.join(args.outfolder, "results_per_read.csv"), "w")
 
     detailed_results_outfile.write("acc,alignment_algorithm,error_rate,read_length,alignment_classification,nr_exons,max_diff\n")
     print_detailed_values_to_file(error_rates, mm2_alignment_results, reads, detailed_results_outfile, "minimap2")    
     print_detailed_values_to_file(error_rates, torkel_alignment_results, reads, detailed_results_outfile, "uLTRA")
+    print_detailed_values_to_file(error_rates, desalt_alignment_results, reads, detailed_results_outfile, "deSALT")
 
     detailed_results_outfile.close()
 
     print()
-    print("Reads successfully aligned (uLTRA/minimap2):", len(torkel_primary_locations),len(mm2_primary_locations))
+    print("Reads successfully aligned (uLTRA/minimap2/deSALT):", len(torkel_primary_locations),len(mm2_primary_locations), len(desalt_primary_locations))
     print("Total reads", len(reads))
-    print("READS UNALIGNED (uLTRA/minimap2):", len(reads_unaligned_in_torkel), len(reads_unaligned_in_mm2) )
+    print("READS UNALIGNED (uLTRA/minimap2/deSALT):", len(reads_unaligned_in_torkel), len(reads_unaligned_in_mm2), len(reads_unaligned_in_desalt) )
 
     ###########################################################################
     ###########################################################################
@@ -412,6 +419,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Evaluate pacbio IsoSeq transcripts.")
     parser.add_argument('torkel_sam', type=str, help='Path to the original read file')
     parser.add_argument('mm2_sam', type=str, help='Path to the corrected read file')
+    parser.add_argument('desalt_sam', type=str, help='Path to the corrected read file')
     parser.add_argument('reads', type=str, help='Path to the read file')
     parser.add_argument('refs', type=str, help='Path to the refs file')
     parser.add_argument('gff_file', type=str, help='Path to the refs file')
