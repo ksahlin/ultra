@@ -159,7 +159,7 @@ rule desalt_index:
 
         shell("/usr/bin/time -v  deSALT index {input.ref} {output.desalt_index_folder} 2> {output.time_and_mem}")
 
-rule desalt_aln:
+rule desalt_align:
     input: fastq =  config["ROOT_OUT"] + "/data/{dataset}.fa",
             index = rules.desalt_index.output.desalt_index_folder,
             desalt_gtf_annotation_outfile = rules.desalt_annotation_fix.output.desalt_gtf_annotation_outfile
