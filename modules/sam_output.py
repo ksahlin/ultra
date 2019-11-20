@@ -136,17 +136,7 @@ def main(read_id, ref_id, classification, predicted_exons, read_aln, ref_aln, an
         read_sam_entry.cigarstring = '*'
         read_sam_entry.reference_start = -1
 
-    if len(read_id) > 250:
-        read_id = read_id.split()[0]
-        if len(read_id) > 250: # simulated data
-            #RBBP7|ENSG00000102054|ENST00000380087|16852551;16870038;16849244;16862955;16869076;16857594;16853682;16852046;16852749;16858676;16845828;16844341|16852628;16870414;16849301;16863100;16869220;16857709;16853842;16852122;16852875;16858849;16845938;16845103_4_0.08101157308186883
-            tmp1 = read_id.split("|")
-            tmp2 = read_id.split("_")
-            new_acc = tmp1[:3] +  tmp2[-2:]
-            read_id = "|".join(new_acc)
-        read_sam_entry.query_name = read_id
-    else:
-        read_sam_entry.query_name = read_id
+    read_sam_entry.query_name = read_id
 
     if is_secondary and is_rc:
         read_sam_entry.flag = 256 + 16 

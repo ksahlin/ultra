@@ -115,12 +115,20 @@ def simulate_read(i, transcript_acc, isoform ):
     read_seq = "".join([n for n in read])
     qual_seq = "".join([chr(q + 33) for q in qual])
     err_rate = float(err)/ len(isoform)
-    acc = str(transcript_acc) + "_" +  str(i) + "_" + str(err_rate) #= (read_seq, qual_seq)
+    
+
+    #Example: RBBP7|ENSG00000102054|ENST00000380087|16852551;16870038;16849244;16862955;16869076;16857594;16853682;16852046;16852749;16858676;16845828;16844341|16852628;16870414;16849301;16863100;16869220;16857709;16853842;16852122;16852875;16858849;16845938;16845103_4_0.08101157308186883
+    tmp1 = transcript_acc.split("|")
+    shortened_read_acc = "|".join(tmp1[:3]) + "_" +  str(i) + "_" + str(err_rate)
+    # transcript_acc = "|".join(new_acc)
+    # shortened_read_acc = transcript_acc
+    # acc = str(transcript_acc) + "_" +  str(i) + "_" + str(err_rate) #= (read_seq, qual_seq)
+    full_read_acc = str(transcript_acc) + "_" +  str(i) + "_" + str(err_rate)
     print(err, len(isoform), float(err)/ len(isoform))
     # print(read_seq)
     # print(qual_seq)
 
-    return acc, read_seq, qual_seq
+    return shortened_read_acc, full_read_acc, read_seq, qual_seq
 
 
 def mkdir_p(path):
@@ -147,8 +155,8 @@ def main(args):
     for i in range(args.read_count):
         acc = random.choice( all_transctript_accessions)
         transcript = sequence_transcripts[acc]
-        read_acc, read, qual = simulate_read(i, acc, transcript)
-        ont_reads[read_acc] = (read, qual)
+        read_acc, full_read_acc,  read, qual = simulate_read(i, acc, transcript)
+        ont_reads[read_acc] = (read, qual, full_read_acc)
         if i % 5000 == 0:
             print(i, "reads simulated.")
 
@@ -170,12 +178,16 @@ def main(args):
     # args.logfile.write("mean error: {0}, sd error:{1}, min_error:{2}, max_error:{3}, median_error:{4}\n".format(mu, sigma, min_error, max_error, median_error))
 
     outfile = open(args.outfile, "w")
+    accsessions_outfile = open(args.full_acc_file, "w")
     if args.fasta:
-        for acc, (read_seq,qual_seq) in sorted(ont_reads.items(), key = lambda x: len(x[1]), reverse = True):
-            outfile.write(">{0}\n{1}\n".format(acc, read_seq))
+        for read_acc, (read_seq,qual_seq, full_read_acc) in sorted(ont_reads.items(), key = lambda x: len(x[1]), reverse = True):
+            outfile.write(">{0}\n{1}\n".format(read_acc, read_seq))
+            accsessions_outfile.write("{0},{1}\n".format(read_acc, full_read_acc))
     else:
-        for acc, (read_seq,qual_seq) in sorted(ont_reads.items(), key = lambda x: len(x[1]), reverse = True):
-            outfile.write("@{0}\n{1}\n{2}\n{3}\n".format(acc, read_seq, "+", qual_seq))
+        for read_acc, (read_seq,qual_seq, full_read_acc) in sorted(ont_reads.items(), key = lambda x: len(x[1]), reverse = True):
+            outfile.write("@{0}\n{1}\n{2}\n{3}\n".format(read_acc, read_seq, "+", qual_seq))
+            accsessions_outfile.write("{0},{1}\n".format(read_acc, full_read_acc))
+
 
 
 if __name__ == '__main__':
@@ -191,4 +203,5 @@ if __name__ == '__main__':
     path_, file_prefix = os.path.split(args.outfile)
     mkdir_p(path_)
     args.logfile = open(os.path.join(path_, file_prefix + ".log"), "w")
+    args.full_acc_file = os.path.join(path_, "accessions_map.csv")
     main(args)

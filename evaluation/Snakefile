@@ -77,7 +77,8 @@ rule controlled_sim:
 
 rule simulate:
     input:  fasta = config["TRANSCRIPTOME"]
-    output: simulated_reads =  config["ROOT_OUT"] + "/data/simulated.fa"
+    output: simulated_reads =  config["ROOT_OUT"] + "/data/simulated.fa",
+            accessions_map =  config["ROOT_OUT"] + "/data/accessions_map.csv"
     run:
 
         inbase= config["ROOT_IN"]
@@ -85,6 +86,7 @@ rule simulate:
 
         # python simulate_reads.py ../data/all_transcripts_ENSEMBL.txt ~/tmp/ULTRA/sim_reads_test.fa 100
         shell("python {inbase}/evaluation/simulate_reads.py {input.fasta} {output.simulated_reads} 1000000 --fasta")
+
 
 
 rule ultra_prep:
@@ -151,8 +153,9 @@ rule evaluate:
         mkdir_p(outfolder) 
 
         if wildcards.dataset == "simulated":
+            accessions_map = rules.simulate.output.accessions_map
             shell("python {eval_dir}/evaluate_simulated_reads.py  {input.ultra}  {input.minimap2} {input.reads}  \
-                                                            {input.ref} {input.gtf_annotation} {outfolder} --load_database")   
+                                                            {input.ref} {input.gtf_annotation} {accessions_map} {outfolder} --load_database")   
         else:
             shell("python {eval_dir}/evaluate_alignments.py  {input.ultra}  {input.minimap2} {input.reads}  \
                                                             {input.ref} {input.gtf_annotation} {outfolder} --load_database")

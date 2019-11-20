@@ -332,11 +332,18 @@ def modify_reference_headers(refs):
             refs[chr_id] = seq
     return modified
 
-def get_true_exon_sites(reads):
+def get_true_exon_sites(accessions_map):
     true_exon_sites = {}
-    for acc in reads:
-        e = sorted([int(pos) for pos in  acc.split("|")[3].split(";")])
+    for line in open(accessions_map, 'r'):
+        acc, full_acc = line.split(',')
+        tmp_acc = full_acc.split("_")[0]
+        exon_starts, exon_stops = tmp_acc.split("|")[3].split(";"), tmp_acc.split("|")[4].split(";") 
+        e = sorted([int(pos) for pos in  exon_starts + exon_stops])
         true_exon_sites[acc] = [(e[i],e[i+1]) for i in range(0, len(e), 2) ]  
+    return true_exon_sites
+    # for acc in reads:
+    #     e = sorted([int(pos) for pos in  acc.split("|")[3].split(";")])
+    #     true_exon_sites[acc] = [(e[i],e[i+1]) for i in range(0, len(e), 2) ]  
 
 def main(args):
 
@@ -361,7 +368,7 @@ def main(args):
     mm2_primary_locations = decide_primary_locations(args.mm2_sam, args)
     error_rates = get_error_rates(reads)
 
-    true_exon_sites = get_true_exon_sites(reads)
+    true_exon_sites = get_true_exon_sites(args.accessions_map)
     mm2_exon_sites = get_read_alignment_exon_sites(mm2_primary_locations, annotated_splice_coordinates_pairs)
     torkel_exon_sites = get_read_alignment_exon_sites(torkel_primary_locations, annotated_splice_coordinates_pairs)
 
@@ -408,6 +415,7 @@ if __name__ == '__main__':
     parser.add_argument('reads', type=str, help='Path to the read file')
     parser.add_argument('refs', type=str, help='Path to the refs file')
     parser.add_argument('gff_file', type=str, help='Path to the refs file')
+    parser.add_argument('accessions_map', type=str, help='Path to accessions mapping file')
     parser.add_argument('outfolder', type=str, help='Output path of results')
     parser.add_argument('--min_intron', type=int, default=15, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
     parser.add_argument('--infer_genes', action= "store_true", help='Include pairwise alignment of original and corrected read.')
