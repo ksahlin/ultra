@@ -481,6 +481,7 @@ def main(args):
     torkel_primary_locations = decide_primary_locations(args.torkel_sam, args)
     mm2_primary_locations = decide_primary_locations(args.mm2_sam, args)
     desalt_primary_locations = decide_primary_locations(args.desalt_sam, args)
+    graphmap2_primary_locations = decide_primary_locations(args.graphmap2_sam, args)
 
     if args.simulated:
         error_rates = get_error_rates(reads)
@@ -498,6 +499,7 @@ def main(args):
     mm2_splice_sites = get_read_candidate_splice_sites(mm2_primary_locations, minimum_annotated_intron, annotated_splice_coordinates_pairs)
     torkel_splice_sites = get_read_candidate_splice_sites(torkel_primary_locations, minimum_annotated_intron, annotated_splice_coordinates_pairs)
     desalt_splice_sites = get_read_candidate_splice_sites(desalt_primary_locations, minimum_annotated_intron, annotated_splice_coordinates_pairs)
+    graphmap2_splice_sites = get_read_candidate_splice_sites(graphmap2_primary_locations, minimum_annotated_intron, annotated_splice_coordinates_pairs)
 
     refs = { acc.split()[0] : seq for i, (acc, (seq, _)) in enumerate(readfq(open(args.refs, 'r')))}
     modify_reference_headers(refs)
@@ -507,12 +509,15 @@ def main(args):
     torkel_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, torkel_splice_sites, refs, torkel_primary_locations)
     print('deSALT')
     desalt_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, desalt_splice_sites, refs, desalt_primary_locations)
+    print('Graphmap2')
+    desalt_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, desalt_splice_sites, refs, graphmap2_primary_locations)
 
     # reads_to_cluster_size = get_cluster_sizes(args.cluster_file, reads)
 
     reads_unaligned_in_torkel = set(reads.keys()) - set(torkel_primary_locations.keys())
     reads_unaligned_in_mm2 = set(reads.keys()) - set(mm2_primary_locations.keys()) 
     reads_unaligned_in_desalt = set(reads.keys()) - set(desalt_primary_locations.keys()) 
+    reads_unaligned_in_graphmap2 = set(reads.keys()) - set(graphmap2_primary_locations.keys()) 
 
     detailed_results_outfile = open(os.path.join(args.outfolder, "results_per_read.csv"), "w")
 
@@ -520,13 +525,14 @@ def main(args):
     print_detailed_values_to_file(error_rates, mm2_splice_results, reads, detailed_results_outfile, "minimap2", mm2_primary_locations)    
     print_detailed_values_to_file(error_rates, torkel_splice_results, reads, detailed_results_outfile, "uLTRA", torkel_primary_locations)
     print_detailed_values_to_file(error_rates, desalt_splice_results, reads, detailed_results_outfile, "deSALT", desalt_primary_locations)
+    print_detailed_values_to_file(error_rates, graphmap2_splice_sites, reads, detailed_results_outfile, "Graphmap2", graphmap2_primary_locations)
 
     detailed_results_outfile.close()
 
     print()
-    print("Reads successfully aligned (uLTRA/minimap2/desalt):", len(torkel_primary_locations),len(mm2_primary_locations), len(desalt_primary_locations))
+    print("Reads successfully aligned (uLTRA/minimap2/desalt/Graphmap2):", len(torkel_primary_locations),len(mm2_primary_locations), len(desalt_primary_locations), len(graphmap2_primary_locations))
     print("Total reads", len(reads))
-    print("READS UNALIGNED (uLTRA/minimap2/desalt):", len(reads_unaligned_in_torkel), len(reads_unaligned_in_mm2), len(reads_unaligned_in_desalt) )
+    print("READS UNALIGNED (uLTRA/minimap2/desalt):", len(reads_unaligned_in_torkel), len(reads_unaligned_in_mm2), len(reads_unaligned_in_desalt), len(reads_unaligned_in_graphmap2) )
 
     ###########################################################################
     ###########################################################################
@@ -545,6 +551,7 @@ if __name__ == '__main__':
     parser.add_argument('torkel_sam', type=str, help='Path to the original read file')
     parser.add_argument('mm2_sam', type=str, help='Path to the corrected read file')
     parser.add_argument('desalt_sam', type=str, help='Path to the corrected read file')
+    parser.add_argument('graphmap2_sam', type=str, help='Path to the corrected read file')
     parser.add_argument('reads', type=str, help='Path to the read file')
     parser.add_argument('refs', type=str, help='Path to the refs file')
     parser.add_argument('gff_file', type=str, help='Path to the refs file')

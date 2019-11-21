@@ -169,10 +169,31 @@ rule desalt_align:
         shell("/usr/bin/time -v  deSALT aln {input.index} {input.fastq}  -t 32 --gtf {input.desalt_gtf_annotation_outfile} -o {output.sam} 2> {output.time_and_mem} ")
 
 
+rule graphmap2_index:
+    input:  ref = config["HG38"],
+            fastq =  config["ROOT_OUT"] + "/data/{dataset}.fa",
+            gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf",
+    output: time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2/{dataset}/aligning_time_and_mem.txt",
+            index =   config["HG38"] + ".gmidx"
+    run:
+        shell("/usr/bin/time -v  graphmap2 align --index-only --gtf {input.gtf_annotation}  -x rnaseq -r {input.ref} -d {input.fastq} -o {output.sam} ")
+
+rule graphmap2:
+    input:  ref = config["HG38"],
+            fastq =  config["ROOT_OUT"] + "/data/{dataset}.fa",
+            index = rules.graphmap2_index.output.index,
+            gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf",
+    output: time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2/{dataset}/aligning_time_and_mem.txt",
+            sam =  config["ROOT_OUT"] + "/alignments/graphmap2/{dataset}/reads.sam"
+    run:
+        shell("/usr/bin/time -v  graphmap2 align --index {input.index} --gtf {input.gtf_annotation}  -x rnaseq -r {input.ref} -d {input.fastq} -o {output.sam} ")
+
+
 rule evaluate:
     input:  ultra = rules.ultra_align.output.sam,
             minimap2 = rules.minimap2_align.output.sam,
             desalt = rules.desalt_align.output.sam,
+            graphmap2 = rules.graphmap2_align.output.sam,
             reads =  config["ROOT_OUT"] + "/data/{dataset}.fa",
             ref =  config["HG38"],
             gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"  # drosophila v97 gtf annotation
@@ -185,10 +206,10 @@ rule evaluate:
 
         if wildcards.dataset == "simulated":
             accessions_map = rules.simulate.output.accessions_map
-            shell("python {eval_dir}/evaluate_simulated_reads.py  {input.ultra}  {input.minimap2} {input.desalt} {input.reads}  \
+            shell("python {eval_dir}/evaluate_simulated_reads.py  {input.ultra} {input.minimap2} {input.desalt} {input.graphmap2}  {input.reads}  \
                                                             {input.ref} {input.gtf_annotation} {accessions_map} {outfolder} --load_database")   
         else:
-            shell("python {eval_dir}/evaluate_splice_annotations.py  {input.ultra}  {input.minimap2} {input.desalt} {input.reads}  \
+            shell("python {eval_dir}/evaluate_splice_annotations.py  {input.ultra} {input.minimap2} {input.desalt} {input.graphmap2} {input.reads}  \
                                                             {input.ref} {input.gtf_annotation} {outfolder} --load_database")
 
 
