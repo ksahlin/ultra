@@ -178,7 +178,7 @@ rule graphmap2_index:
     run:
         shell("/usr/bin/time -v  graphmap2 align --index-only --index {index} --gtf {input.gtf_annotation}  -x rnaseq -r {input.ref} -d {input.fastq} 2> {output.time_and_mem}  ")
 
-rule graphmap2:
+rule graphmap2_align:
     input:  ref = config["HG38"],
             fastq =  config["ROOT_OUT"] + "/data/{dataset}.fa",
             index = rules.graphmap2_index.output.index,
