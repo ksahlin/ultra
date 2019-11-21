@@ -13,7 +13,7 @@
         "exclude" : "c[4,6-7,8-16]"
     },
 
-    "ultra_align" : 
+    "desalt_index" : 
     {
         "jobname" : "ultra",
         "cpus-per-task" : "64",
@@ -36,5 +36,53 @@
         "mail" : "ksahlin@kth.se",
         "mail_type" : "FAIL",
         "exclude" : "c[4,6-7,8-16]"
+    },
+
+    "desalt_index" : 
+    {
+        "jobname" : "desalt_index",
+        "cpus-per-task" : "64",
+        "Nodes" : 1,
+        "mem" : "500G",
+        "runtime" : "2-00:00:00",
+        "mail" : "ksahlin@kth.se",
+        "mail_type" : "FAIL",
+        "exclude" : "c[4,6-7,8-16]"
+    },
+
+    "desalt_align" : 
+    {
+        "jobname" : "desalt_align",
+        "cpus-per-task" : "64",
+        "Nodes" : 1,
+        "mem" : "500G",
+        "runtime" : "2-00:00:00",
+        "mail" : "ksahlin@kth.se",
+        "mail_type" : "FAIL",
+        "exclude" : "c[4,6-7,8-16]"
+    },
+
+    "graphmap2_index" : 
+    {
+        "jobname" : "graphmap2_index",
+        "cpus-per-task" : "64",
+        "Nodes" : 1,
+        "mem" : "500G",
+        "runtime" : "2-00:00:00",
+        "mail" : "ksahlin@kth.se",
+        "mail_type" : "FAIL",
+        "exclude" : "c[4,6-7,8-16]"
+    },
+    "graphmap2_align" : 
+    {
+        "jobname" : "graphmap2_align",
+        "cpus-per-task" : "64",
+        "Nodes" : 1,
+        "mem" : "500G",
+        "runtime" : "2-00:00:00",
+        "mail" : "ksahlin@kth.se",
+        "mail_type" : "FAIL",
+        "exclude" : "c[4,6-7,8-16]"
     }
+
 }

@@ -150,7 +150,7 @@ rule desalt_annotation_fix:
 rule desalt_index:
     input: ref = config["HG38"]
     output: time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/desalt/{dataset}/indexing_time_and_mem.txt",
-            desalt_index_folder =  config["ROOT_OUT"] + "/alignments/desalt/{dataset}/index"
+            desalt_index_folder =  directory(config["ROOT_OUT"] + "/alignments/desalt/{dataset}/index")
     run:
         outfolder = config["ROOT_OUT"] + "/alignments/desalt/{0}/".format(wildcards.dataset)
         mkdir_p(outfolder)
