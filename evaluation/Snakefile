@@ -166,7 +166,7 @@ rule desalt_align:
     output: time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/desalt/{dataset}/aligning_time_and_mem.txt",
             sam =  config["ROOT_OUT"] + "/alignments/desalt/{dataset}/reads.sam"
     run:
-        shell("/usr/bin/time -v  deSALT aln {input.index} {input.fastq}  -t 32 --gtf {input.desalt_gtf_annotation_outfile} -o {output.sam} 2> {output.time_and_mem} ")
+        shell("/usr/bin/time -v  deSALT aln {input.index} {input.fastq}  -t 62 --gtf {input.desalt_gtf_annotation_outfile} -o {output.sam} 2> {output.time_and_mem} ")
 
 
 rule graphmap2_index:
@@ -186,7 +186,7 @@ rule graphmap2:
     output: time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2/{dataset}/aligning_time_and_mem.txt",
             sam =  config["ROOT_OUT"] + "/alignments/graphmap2/{dataset}/reads.sam"
     run:
-        shell("/usr/bin/time -v  graphmap2 align --index {input.index} --gtf {input.gtf_annotation}  -x rnaseq -r {input.ref} -d {input.fastq} -o {output.sam} ")
+        shell("/usr/bin/time -v  graphmap2 align --index {input.index} --gtf {input.gtf_annotation} --threads 62 -x rnaseq -r {input.ref} -d {input.fastq} -o {output.sam} ")
 
 
 rule evaluate:
