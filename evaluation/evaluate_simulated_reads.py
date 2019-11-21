@@ -226,34 +226,34 @@ def get_annotated_splicesites(ref_gff_file, infer_genes, outfolder):
     return ref_isoforms, splice_coordinates, splice_coordinates_pairs, minimum_annotated_intron
 
 
-def mod_long_acc(acc):
-    if len(acc) > 250:
-        acc = acc.split()[0]
-        if len(acc) > 250: # simulated data
-            #RBBP7|ENSG00000102054|ENST00000380087|16852551;16870038;16849244;16862955;16869076;16857594;16853682;16852046;16852749;16858676;16845828;16844341|16852628;16870414;16849301;16863100;16869220;16857709;16853842;16852122;16852875;16858849;16845938;16845103_4_0.08101157308186883
-            print("here:", acc)
-            tmp1 = acc.split("|")
-            tmp2 = acc.split("_")
-            new_acc = tmp1[:3] +  tmp2[-2:]
-            acc = "|".join(new_acc)
-            print(acc)
+# def mod_long_acc(acc):
+#     if len(acc) > 250:
+#         acc = acc.split()[0]
+#         if len(acc) > 250: # simulated data
+#             #RBBP7|ENSG00000102054|ENST00000380087|16852551;16870038;16849244;16862955;16869076;16857594;16853682;16852046;16852749;16858676;16845828;16844341|16852628;16870414;16849301;16863100;16869220;16857709;16853842;16852122;16852875;16858849;16845938;16845103_4_0.08101157308186883
+#             print("here:", acc)
+#             tmp1 = acc.split("|")
+#             tmp2 = acc.split("_")
+#             new_acc = tmp1[:3] +  tmp2[-2:]
+#             acc = "|".join(new_acc)
+#             print(acc)
 
-    return acc
+#     return acc
 
 def get_alignment_classifications(true_exon_sites, aligned_exon_sites, is_ultra = False):
     read_annotations = {}
     for acc in true_exon_sites:
         exons_true = true_exon_sites[acc]
 
-        if is_ultra:
-            acc_mod = mod_long_acc(acc)
-        else:
-            acc_mod = acc
+        # if is_ultra:
+        #     acc_mod = mod_long_acc(acc)
+        # else:
+        #     acc_mod = acc
 
-        if acc_mod not in aligned_exon_sites:
+        if acc not in aligned_exon_sites:
             read_annotations[acc] = ('unaligned', len(exons_true), 0, 0)
         else:
-            aln_dict = aligned_exon_sites[acc_mod]
+            aln_dict = aligned_exon_sites[acc]
             exons_aligned = aln_dict.values()[0]
             aln_start, aln_stop = exons_aligned[0][0], exons_aligned[-1][1]
             true_start, true_stop = exons_true[0][0], exons_true[-1][1]
@@ -367,27 +367,32 @@ def main(args):
     torkel_primary_locations = decide_primary_locations(args.torkel_sam, args)
     mm2_primary_locations = decide_primary_locations(args.mm2_sam, args)
     desalt_primary_locations = decide_primary_locations(args.desalt_sam, args)
+    graphmap2_primary_locations = decide_primary_locations(args.graphmap2_sam, args)
     error_rates = get_error_rates(reads)
 
     true_exon_sites = get_true_exon_sites(args.accessions_map)
     mm2_exon_sites = get_read_alignment_exon_sites(mm2_primary_locations, annotated_splice_coordinates_pairs)
     torkel_exon_sites = get_read_alignment_exon_sites(torkel_primary_locations, annotated_splice_coordinates_pairs)
     desalt_exon_sites = get_read_alignment_exon_sites(desalt_primary_locations, annotated_splice_coordinates_pairs)
+    graphmap2_exon_sites = get_read_alignment_exon_sites(graphmap2_primary_locations, annotated_splice_coordinates_pairs)
 
     refs = { acc.split()[0] : seq for i, (acc, (seq, _)) in enumerate(readfq(open(args.refs, 'r')))}
     modify_reference_headers(refs)
     print('MINIMAP2')
     mm2_alignment_results = get_alignment_classifications(true_exon_sites, mm2_exon_sites)
     print('uLTRA')
-    torkel_alignment_results = get_alignment_classifications(true_exon_sites, torkel_exon_sites, is_ultra = True)
+    torkel_alignment_results = get_alignment_classifications(true_exon_sites, torkel_exon_sites)
     print("deSALT")
-    desalt_alignment_results = get_alignment_classifications(true_exon_sites, desalt_exon_sites, is_ultra = True)
+    desalt_alignment_results = get_alignment_classifications(true_exon_sites, desalt_exon_sites)
+    print("GraphMap2")
+    graphmap2_alignment_results = get_alignment_classifications(true_exon_sites, graphmap2_exon_sites)
 
     # reads_to_cluster_size = get_cluster_sizes(args.cluster_file, reads)
 
     reads_unaligned_in_torkel = set(reads.keys()) - set(torkel_primary_locations.keys())
     reads_unaligned_in_mm2 = set(reads.keys()) - set(mm2_primary_locations.keys()) 
     reads_unaligned_in_desalt = set(reads.keys()) - set(desalt_primary_locations.keys()) 
+    reads_unaligned_in_graphmap2 = set(reads.keys()) - set(graphmap2_primary_locations.keys()) 
 
     detailed_results_outfile = open(os.path.join(args.outfolder, "results_per_read.csv"), "w")
 
@@ -395,13 +400,14 @@ def main(args):
     print_detailed_values_to_file(error_rates, mm2_alignment_results, reads, detailed_results_outfile, "minimap2")    
     print_detailed_values_to_file(error_rates, torkel_alignment_results, reads, detailed_results_outfile, "uLTRA")
     print_detailed_values_to_file(error_rates, desalt_alignment_results, reads, detailed_results_outfile, "deSALT")
+    print_detailed_values_to_file(error_rates, graphmap2_alignment_results, reads, detailed_results_outfile, "Graphmap2")
 
     detailed_results_outfile.close()
 
     print()
-    print("Reads successfully aligned (uLTRA/minimap2/deSALT):", len(torkel_primary_locations),len(mm2_primary_locations), len(desalt_primary_locations))
+    print("Reads successfully aligned (uLTRA/minimap2/deSALT/Graphmap2):", len(torkel_primary_locations),len(mm2_primary_locations), len(desalt_primary_locations), len(graphmap2_primary_locations))
     print("Total reads", len(reads))
-    print("READS UNALIGNED (uLTRA/minimap2/deSALT):", len(reads_unaligned_in_torkel), len(reads_unaligned_in_mm2), len(reads_unaligned_in_desalt) )
+    print("READS UNALIGNED (uLTRA/minimap2/deSALT):", len(reads_unaligned_in_torkel), len(reads_unaligned_in_mm2), len(reads_unaligned_in_desalt), len(reads_unaligned_in_graphmap2) )
 
     ###########################################################################
     ###########################################################################
@@ -420,6 +426,7 @@ if __name__ == '__main__':
     parser.add_argument('torkel_sam', type=str, help='Path to the original read file')
     parser.add_argument('mm2_sam', type=str, help='Path to the corrected read file')
     parser.add_argument('desalt_sam', type=str, help='Path to the corrected read file')
+    parser.add_argument('graphmap2_sam', type=str, help='Path to the corrected read file')
     parser.add_argument('reads', type=str, help='Path to the read file')
     parser.add_argument('refs', type=str, help='Path to the refs file')
     parser.add_argument('gff_file', type=str, help='Path to the refs file')
