@@ -176,7 +176,7 @@ rule graphmap2_index:
     output: time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2/{dataset}/aligning_time_and_mem.txt",
             index =   config["HG38"] + ".gmidx"
     run:
-        shell("/usr/bin/time -v  graphmap2 align --index-only --gtf {input.gtf_annotation}  -x rnaseq -r {input.ref} -d {input.fastq} -o {output.sam} ")
+        shell("/usr/bin/time -v  graphmap2 align --index-only --gtf {input.gtf_annotation}  -x rnaseq -r {input.ref} -d {input.fastq} ")
 
 rule graphmap2:
     input:  ref = config["HG38"],
