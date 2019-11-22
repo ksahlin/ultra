@@ -160,18 +160,18 @@ rule desalt_index:
         shell("/usr/bin/time -v  deSALT index {input.ref} {output.desalt_index_folder} 2> {output.time_and_mem}")
 
 rule desalt_align:
-    input: fastq =  config["ROOT_OUT"] + "/data/{dataset}.fa",
+    input: fastq =  config["ROOT_OUT"] + "/data/{dataset}.fq",
             index = rules.desalt_index.output.desalt_index_folder,
             desalt_gtf_annotation_outfile = rules.desalt_annotation_fix.output.desalt_gtf_annotation_outfile
-    output: time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/desalt/{dataset}/aligning_time_and_mem.txt",
-            sam =  config["ROOT_OUT"] + "/alignments/desalt/{dataset}/reads.sam"
+    output: sam =  config["ROOT_OUT"] + "/alignments/desalt/{dataset}/reads.sam",
+            # time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/desalt/{dataset}/aligning_time_and_mem.txt
     run:
-        shell("/usr/bin/time -v  deSALT aln {input.index} {input.fastq}  -t 62 --gtf {input.desalt_gtf_annotation_outfile} -o {output.sam} 2> {output.time_and_mem} ")
+        shell("/usr/bin/time -v  deSALT aln {input.index} {input.fastq}  -t 62 --gtf {input.desalt_gtf_annotation_outfile} -o {output.sam}") # 2> {output.time_and_mem} ")
 
 
 rule graphmap2_index:
     input:  ref = config["HG38"],
-            fastq =  config["ROOT_OUT"] + "/data/{dataset}.fa",
+            fastq =  config["ROOT_OUT"] + "/data/{dataset}.fq",
             gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf",
     output: time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2/{dataset}/aligning_time_and_mem.txt",
             index =  config["ROOT_OUT"] + "/alignments/graphmap2/{dataset}/index.gmidx"
@@ -180,7 +180,7 @@ rule graphmap2_index:
 
 rule graphmap2_align:
     input:  ref = config["HG38"],
-            fastq =  config["ROOT_OUT"] + "/data/{dataset}.fa",
+            fastq =  config["ROOT_OUT"] + "/data/{dataset}.fq",
             index = rules.graphmap2_index.output.index,
             gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf",
     output: time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2/{dataset}/aligning_time_and_mem.txt",
