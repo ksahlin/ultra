@@ -173,18 +173,18 @@ rule graphmap2_index:
     input:  ref = config["HG38"],
             fastq =  config["ROOT_OUT"] + "/data/{dataset}.fq",
             gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf",
-    output: time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2/{dataset}/aligning_time_and_mem.txt",
-            index =  config["ROOT_OUT"] + "/alignments/graphmap2/{dataset}/index.gmidx"
+    output: index =  config["ROOT_OUT"] + "/alignments/graphmap2/{dataset}/index.gmidx",
+            # time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2/{dataset}/aligning_time_and_mem.txt"
     run:
-        shell("/usr/bin/time -v  graphmap2 align --index-only --index {output.index} --gtf {input.gtf_annotation}  -x rnaseq -r {input.ref} -d {input.fastq} 2> {output.time_and_mem}  ")
+        shell("/usr/bin/time -v  graphmap2 align --index-only --index {output.index} --gtf {input.gtf_annotation}  -x rnaseq -r {input.ref} -d {input.fastq}") # 2> {output.time_and_mem}  ")
 
 rule graphmap2_align:
     input:  ref = config["HG38"],
             fastq =  config["ROOT_OUT"] + "/data/{dataset}.fq",
             index = rules.graphmap2_index.output.index,
             gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf",
-    output: time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2/{dataset}/aligning_time_and_mem.txt",
-            sam =  config["ROOT_OUT"] + "/alignments/graphmap2/{dataset}/reads.sam"
+    output: sam =  config["ROOT_OUT"] + "/alignments/graphmap2/{dataset}/reads.sam",
+            # time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2/{dataset}/aligning_time_and_mem.txt"
     run:
         shell("/usr/bin/time -v  graphmap2 align --index {input.index} --gtf {input.gtf_annotation} --threads 62 -x rnaseq -r {input.ref} -d {input.fastq} -o {output.sam} ")
 
