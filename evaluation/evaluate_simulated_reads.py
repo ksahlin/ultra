@@ -148,7 +148,7 @@ def get_exon_sites(cigar_tuples, first_exon_start, last_exon_end, annotated_chr_
             sys.exit()
 
     exon_sites.append(last_exon_end)
-    exon_sites = [(e[i],e[i+1]) for i in range(0, len(e), 2) ]  
+    exon_sites = [(exon_sites[i],exon_sites[i+1]) for i in range(0, len(exon_sites), 2) ]  
     return exon_sites
 
 def get_read_alignment_exon_sites(reads_primary_locations, annotated_splice_coordinates_pairs):
