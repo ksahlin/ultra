@@ -337,6 +337,7 @@ def get_true_exon_sites(accessions_map):
     for line in open(accessions_map, 'r'):
         acc, full_acc = line.split(',')
         tmp_acc = full_acc.split("_")[0]
+        print(tmp_acc)
         exon_starts, exon_stops = tmp_acc.split("|")[3].split(";"), tmp_acc.split("|")[4].split(";") 
         e = sorted([int(pos) for pos in  exon_starts + exon_stops])
         true_exon_sites[acc] = [(e[i],e[i+1]) for i in range(0, len(e), 2) ]  
