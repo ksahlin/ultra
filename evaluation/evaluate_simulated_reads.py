@@ -127,7 +127,8 @@ def get_exon_sites(cigar_tuples, first_exon_start, last_exon_end, annotated_chr_
     for i, (l,t) in enumerate(cigar_tuples):
         if t == "D":
                 if (ref_pos, ref_pos + l) in annotated_chr_coordinate_pairs:
-                    exon_sites.append( (ref_pos, ref_pos + l) )
+                    exon_sites.append( ref_pos )
+                    exon_sites.append( ref_pos + l )
                     print("HEERE")
                 ref_pos += l
 
