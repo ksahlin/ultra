@@ -148,6 +148,7 @@ def get_exon_sites(cigar_tuples, first_exon_start, last_exon_end, annotated_chr_
             sys.exit()
 
     exon_sites.append(last_exon_end)
+    print(exon_sites)
     exon_sites = [(exon_sites[i],exon_sites[i+1]) for i in range(0, len(exon_sites), 2) ]  
     return exon_sites
 
