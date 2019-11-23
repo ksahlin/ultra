@@ -175,7 +175,7 @@ def get_read_alignment_exon_sites(reads_primary_locations, annotated_splice_coor
             annotated_chr_coordinate_pairs = set()
 
         read_exon_sites[read.query_name] = {}  
-        read_exon_sites[read.query_name][mod_ref] = get_exon_sites(read_cigar_tuples, q_start, annotated_chr_coordinate_pairs)
+        read_exon_sites[read.query_name][mod_ref] = get_exon_sites(read_cigar_tuples, q_start, q_end, annotated_chr_coordinate_pairs)
 
     return read_exon_sites
 
