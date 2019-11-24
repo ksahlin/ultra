@@ -255,8 +255,8 @@ def get_alignment_classifications(true_exon_sites, aligned_exon_sites, is_ultra 
         if acc not in aligned_exon_sites:
             read_annotations[acc] = ('unaligned', len(exons_true), 0, 0)
         else:
-            aln_dict = aligned_exon_sites[acc]
-            exons_aligned = aln_dict.values()[0]
+            chr_, exons_aligned = list(aligned_exon_sites[acc].items())[0]
+            # exons_aligned = list(aln_dict.values())[0]
             aln_start, aln_stop = exons_aligned[0][0], exons_aligned[-1][1]
             true_start, true_stop = exons_true[0][0], exons_true[-1][1]
             if aln_start > true_stop or  aln_stop < true_start:
