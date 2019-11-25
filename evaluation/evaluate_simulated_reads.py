@@ -7,6 +7,7 @@ import errno
 import itertools
 
 import pickle
+import math
 
 from collections import defaultdict
 
@@ -114,7 +115,7 @@ def print_detailed_values_to_file(error_rates, alignment_results, reads, outfile
     for acc in alignment_results:
         aln_class, nr_exons_true, nr_exons_inferred, max_diff = alignment_results[acc]
         err_rate = error_rates[acc]
-        read = read_alignments[acc]
+        # read = read_alignments[acc]
         read_length = len(reads[acc])
         info_tuple = (acc, alignment_algorithm, err_rate, read_length, aln_class, nr_exons_true, nr_exons_inferred, max_diff) 
         outfile.write( ",".join( [str(item) for item in info_tuple] ) + "\n")
