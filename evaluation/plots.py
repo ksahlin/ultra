@@ -194,7 +194,34 @@ def total_error_rate2(input_csv, outfolder):
     plt.savefig(os.path.join(outfolder, "total_error_rate2.pdf"))
     plt.close()
 
+def alignment_accuracy_plot(input_csv, outfolder):
 
+    indata = pd.read_csv(input_csv)
+    # indata['transcript_type'] = indata.apply (lambda row: label_transcript(row), axis=1)
+    # print(len(df))
+    # indata = df.loc[df['q_acc'] == df['r_acc']]
+    # print(len(indata))
+
+    g = sns.catplot(x="alignment_classification", #col="Depth",
+                data=indata,  hue="alignment_algorithm", hue_order= ["uLTRA", "minimap2"],
+                order= ["correct", "site_diff", "diff_exon_count", "diff_location", 'unaligned'], kind="count", aspect=1)
+
+    # g.set(ylim=(0,15))
+    g.set_ylabels("Count")
+    g.set_xlabels("Alignment type")
+    g.set_xticklabels(rotation=20)
+    plt.yscale('log')
+    ax = g.ax
+    for p in ax.patches:
+        # ax.annotate('%{:.1f}'.format(p.get_height()), (p.get_x()+0.1, p.get_height()+50))
+        ax.annotate('{:.2f}%'.format(100*p.get_height()/1000000.0), (p.get_x()+0.15, p.get_height()+1000), rotation=90)
+    # ax = sns.boxplot(x="p", y=y, hue = "type", data=indata)
+    # ax.set_ylim(0,15)
+    # ax.set_ylabel("Error rate %")
+    (g.set_axis_labels("Alignment type", "Count").set_xticklabels(["Correct", "Inexact", "Exon diff", "Incorrect", "Unaligned"]))
+    plt.savefig(os.path.join(outfolder, "alignment_classification.eps"))
+    plt.savefig(os.path.join(outfolder, "alignment_classification.pdf"))
+    plt.close()
 
 
 def main(args):
@@ -205,10 +232,12 @@ def main(args):
 
     # total_error_rate2(args.input_csv, args.outfolder)
     # total_error_rate(args.input_csv, args.outfolder)
-    splice_site_classification_plot(args.input_csv, args.outfolder)
 
-    unique_fsm(args.input_csv, args.outfolder)
-    number_splices_fsm(args.input_csv, args.outfolder)
+    alignment_accuracy_plot(args.input_csv, args.outfolder)
+
+    # splice_site_classification_plot(args.input_csv, args.outfolder)
+    # unique_fsm(args.input_csv, args.outfolder)
+    # number_splices_fsm(args.input_csv, args.outfolder)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Evaluate pacbio IsoSeq transcripts.")
