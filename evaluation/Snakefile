@@ -48,7 +48,7 @@ import errno
 import shutil
 import glob
 
-import tempfile
+
 
 def mkdir_p(path):
     print("creating", path)
@@ -168,6 +168,7 @@ rule desalt_align:
     output: sam =  config["ROOT_OUT"] + "/alignments/desalt/{dataset}/reads.sam",
             # time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/desalt/{dataset}/aligning_time_and_mem.txt
     run:
+        import tempfile
         work_dir = tempfile.mkdtemp()
         tempfile = os.path.join(work_dir, "desalt_temp_prefix")
         shell("/usr/bin/time -v  deSALT aln {input.index} {input.fastq}  -t 32 --gtf {input.desalt_gtf_annotation_outfile} -o {output.sam} -f {tempfile}") # 2> {output.time_and_mem} ")
