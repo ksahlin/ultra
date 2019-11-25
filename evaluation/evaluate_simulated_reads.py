@@ -382,8 +382,8 @@ def main(args):
     refs = { acc.split()[0] : seq for i, (acc, (seq, _)) in enumerate(readfq(open(args.refs, 'r')))}
     modify_reference_headers(refs)
     detailed_results_outfile = open(os.path.join(args.outfolder, "results_per_read.csv"), "w")
-    detailed_results_outfile.write("acc,alignment_algorithm,error_rate,read_length,alignment_classification,nr_exons,max_diff\n")
-
+    detailed_results_outfile.write("acc,alignment_algorithm,error_rate,read_length,alignment_classification,nr_exons_true,nr_exons_inferred,max_diff\n")
+    #acc, alignment_algorithm, err_rate, read_length, aln_class, nr_exons_true, nr_exons_inferred, max_diff
     if args.torkel_sam:
         torkel_primary_locations = decide_primary_locations(args.torkel_sam, args)
         torkel_exon_sites = get_read_alignment_exon_sites(torkel_primary_locations, annotated_splice_coordinates_pairs)
