@@ -263,7 +263,7 @@ def get_alignment_classifications(true_exon_sites, aligned_exon_sites, is_ultra 
             if aln_start > true_stop or  aln_stop < true_start:
                 read_annotations[acc] = ("diff_location", len(exons_true), len(exons_aligned), 0)
 
-            if len(exons_true) != len(exons_aligned):
+            elif len(exons_true) != len(exons_aligned):
                 read_annotations[acc] = ("diff_exon_count", len(exons_true), len(exons_aligned), 0)
             else:
                 max_diff = 0
@@ -273,7 +273,7 @@ def get_alignment_classifications(true_exon_sites, aligned_exon_sites, is_ultra 
                     tmp_diff = max(math.fabs(true_start - aln_start), math.fabs(true_stop - aln_stop) )
                     if tmp_diff > max_diff:
                         max_diff = tmp_diff
-                if max_diff > 10:
+                if max_diff > 15:
                     is_correct = False
                 else:
                     is_correct = True

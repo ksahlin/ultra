@@ -151,15 +151,16 @@ rule desalt_annotation_fix:
 
 rule desalt_index:
     input: ref = config["HG38"]
-    output: time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/desalt/{dataset}/indexing_time_and_mem.txt",
-            desalt_index_folder =  directory(config["ROOT_OUT"] + "/alignments/desalt/{dataset}/index")
+    output: desalt_index_folder =  directory(config["ROOT_OUT"] + "/alignments/desalt/{dataset}/index"),
+            #time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/desalt/{dataset}/indexing_time_and_mem.txt"
     run:
         outfolder = config["ROOT_OUT"] + "/alignments/desalt/{0}/".format(wildcards.dataset)
         mkdir_p(outfolder)
         time_outfolder = config["ROOT_OUT"] + "/time_and_mem/desalt/{0}/".format(wildcards.dataset)
         mkdir_p(time_outfolder)
 
-        shell("/usr/bin/time -v  deSALT index {input.ref} {output.desalt_index_folder} 2> {output.time_and_mem}")
+        shell("/usr/bin/time -v  /galaxy/home/ksahlin/prefix/source/deSALT/src/./deBGA index {input.ref} {output.desalt_index_folder}") # 2> {output.time_and_mem}")
+        # shell("/usr/bin/time -v  deSALT index {input.ref} {output.desalt_index_folder} 2> {output.time_and_mem}")
 
 rule desalt_align:
     input: fastq =  config["ROOT_OUT"] + "/data/{dataset}.fq",
