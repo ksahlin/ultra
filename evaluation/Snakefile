@@ -193,14 +193,15 @@ rule graphmap2_align:
     output: sam =  config["ROOT_OUT"] + "/alignments/graphmap2/{dataset}/reads.sam",
             # time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2/{dataset}/aligning_time_and_mem.txt"
     run:
-        shell("/usr/bin/time -v  graphmap2 align --index {input.index} --gtf {input.gtf_annotation} --threads 32 -x rnaseq -r {input.ref} -d {input.fastq} -o {output.sam} ")
+        shell("/usr/bin/time -v  graphmap2 align --index {input.index}  --threads 32 -x rnaseq -r {input.ref} -d {input.fastq} -o {output.sam} ")
+        # shell("/usr/bin/time -v  graphmap2 align --index {input.index} --gtf {input.gtf_annotation} --threads 32 -x rnaseq -r {input.ref} -d {input.fastq} -o {output.sam} ")
 
 
 rule evaluate:
     input:  ultra = rules.ultra_align.output.sam,
             minimap2 = rules.minimap2_align.output.sam,
             desalt = rules.desalt_align.output.sam,
-            #graphmap2 = rules.graphmap2_align.output.sam,
+            graphmap2 = rules.graphmap2_align.output.sam,
             reads =  config["ROOT_OUT"] + "/data/{dataset}.fa",
             ref =  config["HG38"],
             gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"  # drosophila v97 gtf annotation
@@ -215,13 +216,13 @@ rule evaluate:
             accessions_map = rules.simulate.output.accessions_map
             # shell("python {eval_dir}/evaluate_simulated_reads.py  --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --graphmap2_sam {input.graphmap2}  {input.reads}  \
             #                                                 {input.ref} {input.gtf_annotation} {accessions_map} {outfolder} --load_database")   
-            shell("python {eval_dir}/evaluate_simulated_reads.py  --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} {input.reads}  \
+            shell("python {eval_dir}/evaluate_simulated_reads.py  --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --graphmap2_sam {input.graphmap2}  {input.reads}  \
                                                             {input.ref} {input.gtf_annotation} {accessions_map} {outfolder} --load_database")   
 
         else:
             # shell("python {eval_dir}/evaluate_splice_annotations.py   --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --graphmap2_sam {input.graphmap2}  {input.reads}  \
             #                                                 {input.ref} {input.gtf_annotation} {outfolder} --load_database")
-            shell("python {eval_dir}/evaluate_splice_annotations.py   --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} {input.reads}  \
+            shell("python {eval_dir}/evaluate_splice_annotations.py   --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --graphmap2_sam {input.graphmap2}  {input.reads}  \
                                                             {input.ref} {input.gtf_annotation} {outfolder} --load_database")
 
 

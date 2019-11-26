@@ -208,10 +208,10 @@ def main(solution, ref_exon_sequences, parts_to_exons, exon_id_to_choordinates, 
             
             else: # small exons between 5-9bp needs exact match otherwise too much noise
                 locations, edit_distance = edlib_alignment(ref_seq, read_seq, mode="HW", k = 0 )
-                print("HEEERE", ref_seq, e_start, e_stop,ref_chr_id)
+                # print("HEEERE", ref_seq, e_start, e_stop,ref_chr_id)
                 if edit_distance == 0:
                     print("perfect matches:",ref_seq, locations)
-                    score = (stop - start)
+                    score = len(ref_seq)
                     # calc_complessed_score(read_alignment, ref_alignment, len(read_seq), len(ref_seq))
                     # e_score = calc_evalue(read_alignment, ref_alignment, len(read_seq), len(ref_seq))
                     for exon_id in all_exon_ids: break # only need one of the redundant exon_ids
