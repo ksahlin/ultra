@@ -165,12 +165,13 @@ def parasail_alignment(s1, s2, match_score = 2, mismatch_penalty = -2, opening_p
     else:
         cigar_string = str(result.cigar.decode, 'utf-8')
     s1_alignment, s2_alignment, cigar_tuples = cigar_to_seq(cigar_string, s1, s2)
+    # print(result.score, len(s1), len(s2))
     # print(s1_alignment)
     # print(s2_alignment)
     # print(cigar_string)
     # sys.exit()
 
-    return s1_alignment, s2_alignment, cigar_string, cigar_tuples
+    return s1_alignment, s2_alignment, cigar_string, cigar_tuples, result.score
 
     # # Rolling window of matching blocks
     # match_vector = [ 1 if n1 == n2 else 0 for n1, n2 in zip(s1_alignment, s2_alignment) ]    

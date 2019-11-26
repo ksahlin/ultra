@@ -113,7 +113,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
         # print(read_acc, len(mems), len(mems_rc))
     # for curr_index, (read_acc, read_seq, mems, mems_rc) in enumerate(read_data):
         processed_read_counter += 1
-        if processed_read_counter % 100 == 0:
+        if processed_read_counter % 5000 == 0:
             print('Processed {0} reads in batch {1}'.format(processed_read_counter, batch_number))
         # do the chaining here immediately!
         all_chainings = []
@@ -173,6 +173,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
         # if multiple:
         #     print(all_chainings)
         best_chaining_score = all_chainings[0][2]
+        read_alignments = []
         for chr_id, mem_solution, chaining_score, is_rc in all_chainings:
             if chaining_score/float(best_chaining_score) < args.dropoff:
                 # print(chr_id, chaining_score, best_chaining_score, "NOT CONSIDERED")
@@ -209,7 +210,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                     print("lenght ref: {0}, length query:{1}".format(len(created_ref_seq), len(read_seq)))
                     read_aln, ref_aln = help_functions.edlib_alignment(read_seq, created_ref_seq)
                 else:
-                    read_aln, ref_aln, cigar_string, cigar_tuples = help_functions.parasail_alignment(read_seq, created_ref_seq)
+                    read_aln, ref_aln, cigar_string, cigar_tuples, alignment_score = help_functions.parasail_alignment(read_seq, created_ref_seq)
                 # print(read_acc, "alignment to:", chr_id, "best solution val mems:", mem_solution, 'best mam value:', mam_value, 'read length:', len(read_seq), "final_alignment_stats:" )
                 # print(read_aln)
                 # print(ref_aln)
@@ -218,23 +219,43 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                 # checing for internal (splice site) non covered regions
                 if len(non_covered_regions) >= 3 and (max(non_covered_regions[1:-1]) > args.non_covered_cutoff):
                     classification = 'Unclassified_insufficient_junction_coverage'
-
-
                 classifications[read_acc] = (classification, mam_value / float(len(read_seq)))
-                map_score = 60
-                if chaining_score == best_chaining_score and multiple:
-                    map_score  = 0
-                
-                if chaining_score < best_chaining_score:
-                    is_secondary =  True
-                else:
+
+                read_alignments.append( (alignment_score, read_acc, chr_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, is_rc) )
+
+
+        ##################  Process alignments and decide primary
+        if len(read_alignments) == 0:
+            sam_output.main(read_acc, '*', 'unaligned', [], '*', '*', '*', alignment_outfile, is_rc, is_secondary, 0)
+        else:
+            sorted_wrt_alignement_score = sorted(read_alignments, key = lambda x: x[0], reverse = True)
+            best_aln_sw_score = sorted_wrt_alignement_score[0][0]
+            more_than_one_alignment = True if len(sorted_wrt_alignement_score) > 1 else False
+            # if len(sorted_wrt_alignement_score) > 1:
+            #     if best_aln_sw_score >  sorted_wrt_alignement_score[1][0]:
+            #         map_score = 60
+            #     else:                    
+            #         map_score = 60
+
+            for i, (alignment_score, read_acc, chr_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, is_rc) in enumerate(sorted_wrt_alignement_score):
+                if i == 0:
                     is_secondary =  False
+                    assert alignment_score == best_aln_sw_score
+                    if more_than_one_alignment:
+                        if alignment_score == sorted_wrt_alignement_score[1][0]:
+                            map_score = 0
+                        else:
+                            map_score = 60                           
+                    else:
+                        map_score = 60
+                else:
+                    is_secondary =  True
+                    map_score = 0
+
 
                 sam_output.main(read_acc, chr_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, alignment_outfile, is_rc, is_secondary, map_score)
                 read_accessions_with_mappings.add(read_acc)
-            else:
-                if read_acc not in read_accessions_with_mappings:
-                    sam_output.main(read_acc, '*', 'unaligned', [], '*', '*', '*', alignment_outfile, is_rc, is_secondary, 0)
+
 
     alignment_outfile.close()
     warning_log_file.close()
