@@ -54,50 +54,36 @@ def decide_primary_locations(sam_file, args): # maybe this function is not neede
     SAM_file = pysam.AlignmentFile(sam_file, "r", check_sq=False)
     reads_primary = {}
     reads_multiple_primary = set()
-    reads_tmp = {}
+    # reads_tmp = {}
 
     for read in SAM_file.fetch(until_eof=True):
         if read.flag == 0 or read.flag == 16:
-            ins = sum([length for type_, length in read.cigartuples if type_ == 1])
-            del_ = sum([length for type_, length in read.cigartuples if type_ == 2 and length < args.min_intron ])
-            subs = sum([length for type_, length in read.cigartuples if type_ == 8])
-            matches = sum([length for type_, length in read.cigartuples if type_ == 7])
-            tot_align = ins + del_ + subs + matches
-            identity = matches/float(tot_align)
+            # ins = sum([length for type_, length in read.cigartuples if type_ == 1])
+            # del_ = sum([length for type_, length in read.cigartuples if type_ == 2 and length < args.min_intron ])
+            # subs = sum([length for type_, length in read.cigartuples if type_ == 8])
+            # matches = sum([length for type_, length in read.cigartuples if type_ == 7])
+            # tot_align = ins + del_ + subs + matches
+            # identity = matches/float(tot_align)
 
-            # has_large_del = [length for type_, length in read.cigartuples if type_ == 2 and length >=  args.min_intron ]
-            # if has_large_del:
-            #     print(has_large_del)
             if read.query_name in reads_primary:
                 reads_multiple_primary.add(read.query_name)
-                if identity >= reads_tmp[read.query_name][0] and  matches >= reads_tmp[read.query_name][1]:
-                    reads_primary[read.query_name] = read
-                    reads_tmp[read.query_name] = (identity, matches)
-                elif identity <= reads_tmp[read.query_name][0] and  matches <= reads_tmp[read.query_name][1]:
-                    continue
-                else:
-                    if identity * matches > reads_tmp[read.query_name][0] * reads_tmp[read.query_name][1]:
-                        reads_primary[read.query_name] = read
-                        reads_tmp[read.query_name] = (identity, matches)
-                    else: 
-                        continue
 
-                        
-                    # print( "Ambiguous, prefferred:", round(reads_tmp[read.query_name][0],2), reads_tmp[read.query_name][1], "over", round(identity,2), matches)
+                # if identity >= reads_tmp[read.query_name][0] and  matches >= reads_tmp[read.query_name][1]:
+                #     reads_primary[read.query_name] = read
+                #     reads_tmp[read.query_name] = (identity, matches)
+                # elif identity <= reads_tmp[read.query_name][0] and  matches <= reads_tmp[read.query_name][1]:
+                #     continue
+                # else:
+                #     if identity * matches > reads_tmp[read.query_name][0] * reads_tmp[read.query_name][1]:
+                #         reads_primary[read.query_name] = read
+                #         reads_tmp[read.query_name] = (identity, matches)
+                #     else: 
+                #         continue
 
-                #     if tot_align >= reads_tmp[read.query_name][1]:
-                #         reads_primary[read.query_name] = read
-                #     else:
-                #         continue
-                # elif tot_align >= reads_tmp[read.query_name][1]:
-                #     if identity >= reads_tmp[read.query_name][0]:
-                #         reads_primary[read.query_name] = read
-                #     else:
-                #         continue
 
             else:
                 reads_primary[read.query_name] = read
-                reads_tmp[read.query_name] = (identity, matches)
+                # reads_tmp[read.query_name] = (identity, matches)
     print("TOTAL READS FLAGGED WITH MULTIPLE PRIMARY:", len(reads_multiple_primary))
     return reads_primary     
 
@@ -150,7 +136,6 @@ def get_exon_sites(cigar_tuples, first_exon_start, last_exon_end, annotated_chr_
             sys.exit()
 
     exon_sites.append(last_exon_end)
-    print(exon_sites)
     exon_sites = [(exon_sites[i],exon_sites[i+1]) for i in range(0, len(exon_sites), 2) ]  
     return exon_sites
 
