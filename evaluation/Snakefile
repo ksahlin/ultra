@@ -172,7 +172,8 @@ rule desalt_align:
         import tempfile
         work_dir = tempfile.mkdtemp()
         tempfile = os.path.join(work_dir, "desalt_temp_prefix")
-        shell("/usr/bin/time -v  deSALT aln {input.index} {input.fastq}  -t 32 --gtf {input.desalt_gtf_annotation_outfile} -o {output.sam} -f {tempfile}") # 2> {output.time_and_mem} ")
+        shell("/usr/bin/time -v  deSALT aln {input.index} {input.fastq}  -t 32 -o {output.sam} -f {tempfile}") # 2> {output.time_and_mem} ")
+        # shell("/usr/bin/time -v  deSALT aln {input.index} {input.fastq}  -t 32 --gtf {input.desalt_gtf_annotation_outfile} -o {output.sam} -f {tempfile}") # 2> {output.time_and_mem} ")
 
 
 rule graphmap2_index:
