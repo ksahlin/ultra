@@ -79,8 +79,8 @@ def annotate_guaranteed_optimal_bound(mems, is_rc):
 
 
 def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
-    mems_path =  os.path.join( args.outfolder, "mummer_mems.txt" )
-    mems_path_rc =  os.path.join( args.outfolder, "mummer_mems_rc.txt" )
+    mems_path =  os.path.join( args.outfolder, "mummer_mems_batch_{0}.txt".format(batch_number) )
+    mems_path_rc =  os.path.join( args.outfolder, "mummer_mems_batch_{0}_rc.txt".format(batch_number) )
     nlog_n_instance_counter = 0
     quadratic_instance_counter = 0
     if batch_number == -1:
