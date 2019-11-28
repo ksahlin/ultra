@@ -151,8 +151,9 @@ rule desalt_annotation_fix:
 
 rule desalt_index:
     input: ref = config["HG38"]
-    output: desalt_index_folder =  directory(config["ROOT_OUT"] + "/alignments/desalt/{dataset}/index"),
-            #time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/desalt/{dataset}/indexing_time_and_mem.txt"
+    output: 
+            time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/desalt/{dataset}/indexing_time_and_mem.txt"
+            # desalt_index_folder =  directory(config["ROOT_OUT"] + "/alignments/desalt/{dataset}/index"),
     run:
         outfolder = config["ROOT_OUT"] + "/alignments/desalt/{0}/".format(wildcards.dataset)
         mkdir_p(outfolder)
@@ -160,19 +161,21 @@ rule desalt_index:
         mkdir_p(time_outfolder)
 
         # shell("/usr/bin/time -v  /galaxy/home/ksahlin/prefix/source/deSALT/src/./deBGA index {input.ref} {output.desalt_index_folder}") # 2> {output.time_and_mem}")
-        shell("/usr/bin/time -v  deSALT index {input.ref} {output.desalt_index_folder}") # " 2> {output.time_and_mem}")
+        shell("/usr/bin/time -v  deSALT index {input.ref} {output.desalt_index_folder} 2>&1 | tee {output.time_and_mem} ") # " 2> {output.time_and_mem}")
 
 rule desalt_align:
     input: fastq =  config["ROOT_OUT"] + "/data/{dataset}.fq",
-            index = rules.desalt_index.output.desalt_index_folder,
+            # index = rules.desalt_index.output.desalt_index_folder,
             desalt_gtf_annotation_outfile = rules.desalt_annotation_fix.output.desalt_gtf_annotation_outfile
     output: sam =  config["ROOT_OUT"] + "/alignments/desalt/{dataset}/reads.sam",
             # time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/desalt/{dataset}/aligning_time_and_mem.txt
     run:
+        index = config["ROOT_OUT"] + "/alignments/desalt/{0}/index".format(wildcards.dataset)
         import tempfile
         work_dir = tempfile.mkdtemp()
         tempfile = os.path.join(work_dir, "desalt_temp_prefix")
-        shell("/usr/bin/time -v  deSALT aln {input.index} {input.fastq}  -t 32 -o {output.sam} -f {tempfile}") # 2> {output.time_and_mem} ")
+        shell("/usr/bin/time -v  deSALT aln {index} {input.fastq}  -t 32 -o {output.sam} -f {tempfile}") # 2> {output.time_and_mem} ")
+        # shell("/usr/bin/time -v  deSALT aln {input.index} {input.fastq}  -t 32 -o {output.sam} -f {tempfile}") # 2> {output.time_and_mem} ")
         # shell("/usr/bin/time -v  deSALT aln {input.index} {input.fastq}  -t 32 --gtf {input.desalt_gtf_annotation_outfile} -o {output.sam} -f {tempfile}") # 2> {output.time_and_mem} ")
 
 
@@ -193,8 +196,8 @@ rule graphmap2_align:
     output: sam =  config["ROOT_OUT"] + "/alignments/graphmap2/{dataset}/reads.sam",
             # time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2/{dataset}/aligning_time_and_mem.txt"
     run:
-        shell("/usr/bin/time -v  graphmap2 align --index {input.index}  --threads 32 -x rnaseq -r {input.ref} -d {input.fastq} -o {output.sam} ")
-        # shell("/usr/bin/time -v  graphmap2 align --index {input.index} --gtf {input.gtf_annotation} --threads 32 -x rnaseq -r {input.ref} -d {input.fastq} -o {output.sam} ")
+        # shell("/usr/bin/time -v  graphmap2 align --index {input.index}  --threads 32 -x rnaseq -r {input.ref} -d {input.fastq} -o {output.sam} ")
+        shell("/usr/bin/time -v  graphmap2 align --index {input.index} --gtf {input.gtf_annotation} --threads 32 -x rnaseq -r {input.ref} -d {input.fastq} -o {output.sam} ")
 
 
 rule evaluate:
