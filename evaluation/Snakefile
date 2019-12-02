@@ -172,16 +172,28 @@ rule desalt_align:
             finished_flag = rules.desalt_index.output.finished_flag,
             desalt_gtf_annotation_outfile = rules.desalt_annotation_fix.output.desalt_gtf_annotation_outfile
     output: sam =  config["ROOT_OUT"] + "/alignments/desalt/{dataset}/reads.sam",
-            # time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/desalt/{dataset}/aligning_time_and_mem.txt
+            time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/desalt/{dataset}/aligning_time_and_mem.txt
     run:
         index = config["ROOT_OUT"] + "/alignments/desalt/{0}/index".format(wildcards.dataset)
         import tempfile
         work_dir = tempfile.mkdtemp()
         tempfile = os.path.join(work_dir, "desalt_temp_prefix")
-        # shell("/usr/bin/time -v  deSALT aln {index} {input.fastq}  -t 32 -o {output.sam} -f {tempfile}") # 2> {output.time_and_mem} ")
-        shell("/usr/bin/time -v  deSALT aln {index} {input.fastq} -d 10  -s 2 -l 14  -t 48 --gtf {input.desalt_gtf_annotation_outfile} -o {output.sam} -f {tempfile}") # 2> {output.time_and_mem} ")
-        # shell("/usr/bin/time -v  deSALT aln {input.index} {input.fastq}  -t 32 -o {output.sam} -f {tempfile}") # 2> {output.time_and_mem} ")
-        # shell("/usr/bin/time -v  deSALT aln {input.index} {input.fastq}  -t 32 --gtf {input.desalt_gtf_annotation_outfile} -o {output.sam} -f {tempfile}") # 2> {output.time_and_mem} ")
+        shell("/usr/bin/time -v  deSALT aln {index} {input.fastq} -d 10  -s 2 -l 14  -t 48  -o {output.sam} -f {tempfile} 2>&1 | tee {output.time_and_mem} ") 
+
+
+rule desalt_gtf_align:
+    input: fastq =  config["ROOT_OUT"] + "/data/{dataset}.fq",
+            # index = rules.desalt_index.output.desalt_index_folder,
+            finished_flag = rules.desalt_index.output.finished_flag,
+            desalt_gtf_annotation_outfile = rules.desalt_annotation_fix.output.desalt_gtf_annotation_outfile
+    output: sam =  config["ROOT_OUT"] + "/alignments/desalt_gtf/{dataset}/reads.sam",
+            time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/desalt_gtf/{dataset}/aligning_time_and_mem.txt
+    run:
+        index = config["ROOT_OUT"] + "/alignments/desalt_gtf/{0}/index".format(wildcards.dataset)
+        import tempfile
+        work_dir = tempfile.mkdtemp()
+        tempfile = os.path.join(work_dir, "desalt_gtf_temp_prefix")
+        shell("/usr/bin/time -v  deSALT aln {index} {input.fastq} -d 10  -s 2 -l 14  -t 48 --gtf {input.desalt_gtf_annotation_outfile} -o {output.sam} -f {tempfile}  2>&1 | tee {output.time_and_mem} ") 
 
 
 rule graphmap2_index:
@@ -189,9 +201,20 @@ rule graphmap2_index:
             fastq =  config["ROOT_OUT"] + "/data/{dataset}.fq",
             gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf",
     output: index =  config["ROOT_OUT"] + "/alignments/graphmap2/{dataset}/index.gmidx",
-            # time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2/{dataset}/aligning_time_and_mem.txt"
+            time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2/{dataset}/aligning_time_and_mem.txt"
     run:
-        shell("/usr/bin/time -v  graphmap2 align --index-only --index {output.index} --gtf {input.gtf_annotation}  -x rnaseq -r {input.ref} -d {input.fastq}") # 2> {output.time_and_mem}  ")
+        shell("/usr/bin/time -v  graphmap2 align --index-only --index {output.index}  -x rnaseq -r {input.ref} -d {input.fastq} 2>&1 | tee {output.time_and_mem} ") # 2> {output.time_and_mem}  ")
+
+rule graphmap2_gtf_align:
+    input:  ref = config["HG38"],
+            fastq =  config["ROOT_OUT"] + "/data/{dataset}.fq",
+            index = rules.graphmap2_index.output.index,
+            gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf",
+    output: sam =  config["ROOT_OUT"] + "/alignments/graphmap2_gtf/{dataset}/reads.sam",
+            time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2_gtf/{dataset}/aligning_time_and_mem.txt"
+    run:
+        shell("/usr/bin/time -v  graphmap2 align --index {input.index} --gtf {input.gtf_annotation} --threads 62 -x rnaseq -r {input.ref} -d {input.fastq} -o {output.sam}  2>&1 | tee {output.time_and_mem} ")
+
 
 rule graphmap2_align:
     input:  ref = config["HG38"],
@@ -199,17 +222,18 @@ rule graphmap2_align:
             index = rules.graphmap2_index.output.index,
             gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf",
     output: sam =  config["ROOT_OUT"] + "/alignments/graphmap2/{dataset}/reads.sam",
-            # time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2/{dataset}/aligning_time_and_mem.txt"
+            time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2/{dataset}/aligning_time_and_mem.txt"
     run:
-        # shell("/usr/bin/time -v  graphmap2 align --index {input.index}  --threads 32 -x rnaseq -r {input.ref} -d {input.fastq} -o {output.sam} ")
-        shell("/usr/bin/time -v  graphmap2 align --index {input.index} --gtf {input.gtf_annotation} --threads 62 -x rnaseq -r {input.ref} -d {input.fastq} -o {output.sam} ")
+        shell("/usr/bin/time -v  graphmap2 align --index {input.index} --threads 62 -x rnaseq -r {input.ref} -d {input.fastq} -o {output.sam}  2>&1 | tee {output.time_and_mem} ")
 
 
 rule evaluate:
     input:  ultra = rules.ultra_align.output.sam,
             minimap2 = rules.minimap2_align.output.sam,
             desalt = rules.desalt_align.output.sam,
+            desalt_gtf = rules.desalt_gtf_align.output.sam,
             graphmap2 = rules.graphmap2_align.output.sam,
+            graphmap2_gtf = rules.graphmap2_gtf_align.output.sam,
             reads =  config["ROOT_OUT"] + "/data/{dataset}.fa",
             ref =  config["HG38"],
             gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"  # drosophila v97 gtf annotation
@@ -224,13 +248,15 @@ rule evaluate:
             accessions_map = rules.simulate.output.accessions_map
             # shell("python {eval_dir}/evaluate_simulated_reads.py  --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --graphmap2_sam {input.graphmap2}  {input.reads}  \
             #                                                 {input.ref} {input.gtf_annotation} {accessions_map} {outfolder} --load_database")   
-            shell("python {eval_dir}/evaluate_simulated_reads.py  --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --graphmap2_sam {input.graphmap2}  {input.reads}  \
+            shell("python {eval_dir}/evaluate_simulated_reads.py  --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --desalt_gtf_sam {input.desalt_gtf} \
+                                                                 --graphmap2_sam {input.graphmap2}  --graphmap2_gtf_sam {input.graphmap2_gtf} {input.reads} \
                                                             {input.ref} {input.gtf_annotation} {accessions_map} {outfolder} --load_database")   
 
         else:
             # shell("python {eval_dir}/evaluate_splice_annotations.py   --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --graphmap2_sam {input.graphmap2}  {input.reads}  \
             #                                                 {input.ref} {input.gtf_annotation} {outfolder} --load_database")
-            shell("python {eval_dir}/evaluate_splice_annotations.py   --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --graphmap2_sam {input.graphmap2}  {input.reads}  \
+            shell("python {eval_dir}/evaluate_splice_annotations.py   --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --desalt_gtf_sam {input.desalt_gtf} \
+                                                                    --graphmap2_sam {input.graphmap2} --graphmap2_gtf_sam {input.graphmap2_gtf}  {input.reads}  \
                                                             {input.ref} {input.gtf_annotation} {outfolder} --load_database")
 
 

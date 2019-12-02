@@ -524,6 +524,15 @@ def main(args):
         print("Reads successfully aligned graphmap2:", len(graphmap2_primary_locations))
         print("READS UNALIGNED graphmap2:", len(reads_unaligned_in_graphmap2) )
 
+    if args.graphmap2_gtf_sam:
+        graphmap2_gtf_primary_locations = decide_primary_locations(args.graphmap2_gtf_sam, args)
+        graphmap2_gtf_splice_sites = get_read_candidate_splice_sites(graphmap2_gtf_primary_locations, minimum_annotated_intron, annotated_splice_coordinates_pairs)
+        print('Graphmap2')
+        graphmap2_gtf_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, graphmap2_gtf_splice_sites, refs, graphmap2_gtf_primary_locations)
+        reads_unaligned_in_graphmap2_gtf = set(reads.keys()) - set(graphmap2_gtf_primary_locations.keys()) 
+        print_detailed_values_to_file(error_rates, graphmap2_gtf_splice_sites, reads, detailed_results_outfile, "Graphmap2_GTF", graphmap2_gtf_primary_locations)
+        print("Reads successfully aligned graphmap2:", len(graphmap2_gtf_primary_locations))
+        print("READS UNALIGNED graphmap2:", len(reads_unaligned_in_graphmap2_gtf) )
 
     if args.desalt_sam:
         desalt_primary_locations = decide_primary_locations(args.desalt_sam, args)
@@ -535,6 +544,15 @@ def main(args):
         print("Reads successfully aligned deSALT:", len(desalt_primary_locations))
         print("READS UNALIGNED deSALT:", len(reads_unaligned_in_desalt) )
 
+    if args.desalt_gtf_sam:
+        desalt_gtf_primary_locations = decide_primary_locations(args.desalt_gtf_sam, args)
+        desalt_gtf_splice_sites = get_read_candidate_splice_sites(desalt_gtf_primary_locations, minimum_annotated_intron, annotated_splice_coordinates_pairs)
+        print('deSALT')
+        desalt_gtf_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, desalt_gtf_splice_sites, refs, desalt_gtf_primary_locations)
+        reads_unaligned_in_desalt_gtf = set(reads.keys()) - set(desalt_gtf_primary_locations.keys()) 
+        print_detailed_values_to_file(error_rates, desalt_gtf_splice_results, reads, detailed_results_outfile, "deSALT_GTF", desalt_gtf_primary_locations)
+        print("Reads successfully aligned deSALT:", len(desalt_gtf_primary_locations))
+        print("READS UNALIGNED deSALT:", len(reads_unaligned_in_desalt_gtf) )
 
     detailed_results_outfile.close()
 
@@ -549,7 +567,9 @@ if __name__ == '__main__':
     parser.add_argument('--torkel_sam', type=str, default = '', help='Path to the original read file')
     parser.add_argument('--mm2_sam', type=str, default = '', help='Path to the corrected read file')
     parser.add_argument('--desalt_sam', type=str, default = '', help='Path to the corrected read file')
+    parser.add_argument('--desalt_gtf_sam', type=str, default = '', help='Path to the corrected read file')
     parser.add_argument('--graphmap2_sam', type=str, default = '', help='Path to the corrected read file')
+    parser.add_argument('--graphmap2_gtf_sam', type=str, default = '', help='Path to the corrected read file')
     parser.add_argument('reads', type=str, help='Path to the read file')
     parser.add_argument('refs', type=str, help='Path to the refs file')
     parser.add_argument('gff_file', type=str, help='Path to the refs file')

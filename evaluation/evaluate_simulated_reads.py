@@ -116,7 +116,7 @@ def get_exon_sites(cigar_tuples, first_exon_start, last_exon_end, annotated_chr_
                 if (ref_pos, ref_pos + l) in annotated_chr_coordinate_pairs:
                     exon_sites.append( ref_pos )
                     exon_sites.append( ref_pos + l )
-                    print("HEERE")
+                    # print("HEERE")
                 ref_pos += l
 
         elif t == "=" or t== "M" or t == "X":
@@ -399,6 +399,15 @@ def main(args):
         print("Reads successfully aligned graphmap2:", len(graphmap2_primary_locations))
         print("READS UNALIGNED graphmap2:", len(reads_unaligned_in_graphmap2) )
 
+    if args.graphmap2_gtf_sam:
+        graphmap2_gtf_primary_locations = decide_primary_locations(args.graphmap2_gtf_sam, args)
+        graphmap2_gtf_exon_sites = get_read_alignment_exon_sites(graphmap2_gtf_primary_locations, annotated_splice_coordinates_pairs)
+        print("GraphMap2")
+        graphmap2_gtf_alignment_results = get_alignment_classifications(true_exon_sites, graphmap2_gtf_exon_sites)
+        reads_unaligned_in_graphmap2_gtf = set(reads.keys()) - set(graphmap2_gtf_primary_locations.keys()) 
+        print_detailed_values_to_file(error_rates, graphmap2_gtf_alignment_results, reads, detailed_results_outfile, "Graphmap2_GTF")
+        print("Reads successfully aligned graphmap2:", len(graphmap2_gtf_primary_locations))
+        print("READS UNALIGNED graphmap2:", len(reads_unaligned_in_graphmap2_gtf) )
 
     if args.desalt_sam:
         desalt_primary_locations = decide_primary_locations(args.desalt_sam, args)
@@ -409,6 +418,16 @@ def main(args):
         print_detailed_values_to_file(error_rates, desalt_alignment_results, reads, detailed_results_outfile, "deSALT")
         print("Reads successfully aligned deSALT:", len(desalt_primary_locations))
         print("READS UNALIGNED deSALT:", len(reads_unaligned_in_desalt) )
+
+    if args.desalt_gtf_sam:
+        desalt_gtf_primary_locations = decide_primary_locations(args.desalt_gtf_sam, args)
+        desalt_gtf_exon_sites = get_read_alignment_exon_sites(desalt_gtf_primary_locations, annotated_splice_coordinates_pairs)
+        print("deSALT_gtf")
+        desalt_gtf_alignment_results = get_alignment_classifications(true_exon_sites, desalt_gtf_exon_sites)
+        reads_unaligned_in_desalt_gtf = set(reads.keys()) - set(desalt_gtf_primary_locations.keys()) 
+        print_detailed_values_to_file(error_rates, desalt_gtf_alignment_results, reads, detailed_results_outfile, "deSALT_GTF")
+        print("Reads successfully aligned deSALT_gtf:", len(desalt_gtf_primary_locations))
+        print("READS UNALIGNED deSALT_gtf:", len(reads_unaligned_in_desalt_gtf) )
 
     detailed_results_outfile.close()
 
@@ -431,7 +450,9 @@ if __name__ == '__main__':
     parser.add_argument('--torkel_sam', type=str, default = '', help='Path to the original read file')
     parser.add_argument('--mm2_sam', type=str, default = '', help='Path to the corrected read file')
     parser.add_argument('--desalt_sam', type=str, default = '', help='Path to the corrected read file')
+    parser.add_argument('--desalt_gtf_sam', type=str, default = '', help='Path to the corrected read file')
     parser.add_argument('--graphmap2_sam', type=str, default = '', help='Path to the corrected read file')
+    parser.add_argument('--graphmap2_gtf_sam', type=str, default = '', help='Path to the corrected read file')
     parser.add_argument('reads', type=str, help='Path to the read file')
     parser.add_argument('refs', type=str, help='Path to the refs file')
     parser.add_argument('gff_file', type=str, help='Path to the refs file')
