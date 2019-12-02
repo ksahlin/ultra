@@ -169,8 +169,8 @@ rule desalt_index:
 rule desalt_align:
     input: fastq =  config["ROOT_OUT"] + "/data/{dataset}.fq",
             # index = rules.desalt_index.output.desalt_index_folder,
-            finished_flag = rules.desalt_index.output.finished_flag,
-            desalt_gtf_annotation_outfile = rules.desalt_annotation_fix.output.desalt_gtf_annotation_outfile
+            finished_flag = rules.desalt_index.output.finished_flag
+            # desalt_gtf_annotation_outfile = rules.desalt_annotation_fix.output.desalt_gtf_annotation_outfile
     output: sam =  config["ROOT_OUT"] + "/alignments/desalt/{dataset}/reads.sam",
             time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/desalt/{dataset}/aligning_time_and_mem.txt"
     run:
@@ -189,7 +189,7 @@ rule desalt_gtf_align:
     output: sam =  config["ROOT_OUT"] + "/alignments/desalt_gtf/{dataset}/reads.sam",
             time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/desalt_gtf/{dataset}/aligning_time_and_mem.txt"
     run:
-        index = config["ROOT_OUT"] + "/alignments/desalt_gtf/{0}/index".format(wildcards.dataset)
+        index = config["ROOT_OUT"] + "/alignments/desalt/{0}/index".format(wildcards.dataset)
         import tempfile
         work_dir = tempfile.mkdtemp()
         tempfile = os.path.join(work_dir, "desalt_gtf_temp_prefix")
