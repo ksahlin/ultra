@@ -203,7 +203,7 @@ def alignment_accuracy_plot(input_csv, outfolder):
     # print(len(indata))
 
     g = sns.catplot(x="alignment_classification", #col="Depth",
-                data=indata,  hue="alignment_algorithm", hue_order= ["uLTRA", "minimap2"],
+                data=indata,  hue="alignment_algorithm", hue_order= ["uLTRA", "minimap2", "deSALT"],
                 order= ["correct", "site_diff", "diff_exon_count", "diff_location", 'unaligned'], kind="count", aspect=1)
 
     # g.set(ylim=(0,15))
