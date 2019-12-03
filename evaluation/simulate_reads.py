@@ -6,6 +6,7 @@ import math
 from collections import defaultdict
 import errno
 
+import gffutils
 '''
     Below function taken from https://github.com/lh3/readfq/blob/master/readfq.py
 '''
@@ -142,8 +143,56 @@ def mkdir_p(path):
             raise
 
 
+def generate_nics(db, sequence_material):
+    for gene in db.features_of_type('gene'):
+        # genes_to_ref[gene.id] = str(gene.seqid)
+        print("here", gene.id,  str(gene.seqid))
+        annotated = set()
+        nr_transcripts = 0
+        for transcript in db.children(gene, featuretype='transcript', order_by='start'):  
+            exons = tuple((exon.seqid, exon.start, exon.stop) for exon in db.children(transcript, featuretype='exon', order_by='start'))
+            annotated.add(exons)
+            print(exons)
+            nr_transcripts += 1
+
+        gene_exons = tuple((exon.seqid, exon.start, exon.stop) for exon in db.children(gene, featuretype='exon', order_by='start'))
+        if len(gene_exons) > 2:
+            gene_unique_exons = [ gene_exons[0] ]
+            gene_unique_exons = [e2 for e1,e2 in zip(gene_exons[:-1], gene_exons[1:]) if e1 != e2]
+            # print(gene_exons)
+            print(gene_unique_exons)
+            # if len(exons)> 2:
+            nr_nic +=1
+            while nr_nic < nr_transcripts:
+                pass
+            # print(transcript.id)
+            # print([(exon.id, exon.start, exon.stop) for exon in db.children(transcript, featuretype='exon', order_by='start')])
+    pass
+
 def main(args):
-    sequence_transcripts = {seq : acc for acc, (seq, _) in readfq(open(args.sequence_material,"r")) }
+    if args.nic:
+        database = os.path.join(args.outfolder,'database.db')
+        if os.path.isfile(database):
+            print("Database found in directory using this one.")
+            print("If you want to recreate the database, please remove the file: {0}".format(database))
+            print()
+            db = gffutils.FeatureDB(database, keep_order=True)
+        elif not args.disable_infer:
+            fn = gffutils.example_filename(args.gtf)
+            db = gffutils.create_db(fn, dbfn=database, force=True, keep_order=True, merge_strategy='merge', 
+                                    sort_attribute_values=True)
+            db = gffutils.FeatureDB(database, keep_order=True)
+        else:
+            fn = gffutils.example_filename(args.gtf)
+            db = gffutils.create_db(fn, dbfn=database, force=True, keep_order=True, merge_strategy='merge', 
+                                    sort_attribute_values=True, disable_infer_genes=True, disable_infer_transcripts=True)
+            db = gffutils.FeatureDB(database, keep_order=True)
+
+        nic_transcripts = generate_nics(db, args.sequence_material)
+        sequence_transcripts = {}
+
+    else:
+        sequence_transcripts = {seq : acc for acc, (seq, _) in readfq(open(args.sequence_material,"r")) }
     print(len(sequence_transcripts))
     sequence_transcripts = {acc: seq for seq, acc in sequence_transcripts.items() }
 
@@ -196,6 +245,9 @@ if __name__ == '__main__':
     parser.add_argument('outfile', type=str, help='Output path to fasta file')
     parser.add_argument('read_count', type=int, help='Number of reads to simulate.')
     parser.add_argument('--fasta', action="store_true", help='Output in fasta format')
+    parser.add_argument('--nic', action="store_true", help='Simulate NIC transcripts')
+    parser.add_argument('--gtf', type=str, default = '', help='GTF to simulate NIC from.')
+    parser.add_argument('--disable_infer', action="store_true", help='GTF to simulate NIC from.')
     # parser.add_argument('config', type=str, help='config file')
 
 
@@ -203,5 +255,6 @@ if __name__ == '__main__':
     path_, file_prefix = os.path.split(args.outfile)
     mkdir_p(path_)
     args.logfile = open(os.path.join(path_, file_prefix + ".log"), "w")
+    args.outfolder = path_
     args.full_acc_file = os.path.join(path_, "accessions_map.csv")
     main(args)
