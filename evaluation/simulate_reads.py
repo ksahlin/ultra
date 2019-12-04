@@ -249,25 +249,26 @@ def main(args):
 
     # args.logfile.write("mean error: {0}, sd error:{1}, min_error:{2}, max_error:{3}, median_error:{4}\n".format(mu, sigma, min_error, max_error, median_error))
 
-    outfile = open(args.outfile, "w")
+    outfile_fasta = open(args.outfile_prefix + ".fa", "w")
     accsessions_outfile = open(args.full_acc_file, "w")
-    if args.fasta:
-        for read_acc, (read_seq,qual_seq, full_read_acc) in sorted(ont_reads.items(), key = lambda x: len(x[1]), reverse = True):
-            outfile.write(">{0}\n{1}\n".format(read_acc, read_seq))
-            accsessions_outfile.write("{0},{1}\n".format(read_acc, full_read_acc))
-    else:
-        for read_acc, (read_seq,qual_seq, full_read_acc) in sorted(ont_reads.items(), key = lambda x: len(x[1]), reverse = True):
-            outfile.write("@{0}\n{1}\n{2}\n{3}\n".format(read_acc, read_seq, "+", qual_seq))
-            accsessions_outfile.write("{0},{1}\n".format(read_acc, full_read_acc))
+    # if args.fasta:
+    for read_acc, (read_seq,qual_seq, full_read_acc) in sorted(ont_reads.items(), key = lambda x: len(x[1]), reverse = True):
+        outfile_fasta.write(">{0}\n{1}\n".format(read_acc, read_seq))
+        accsessions_outfile.write("{0},{1}\n".format(read_acc, full_read_acc))
+    # else:
+    outfile_fastq = open(args.outfile_prefix + ".fq", "w")
+    for read_acc, (read_seq,qual_seq, full_read_acc) in sorted(ont_reads.items(), key = lambda x: len(x[1]), reverse = True):
+        outfile_fastq.write("@{0}\n{1}\n{2}\n{3}\n".format(read_acc, read_seq, "+", qual_seq))
+        accsessions_outfile.write("{0},{1}\n".format(read_acc, full_read_acc))
 
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Generate pacbio reads from a set of transcripts.")
     parser.add_argument('sequence_material', type=str, help='The fasta file with sequences to be sequenced.')
-    parser.add_argument('outfile', type=str, help='Output path to fasta file')
+    parser.add_argument('outfile_prefix', type=str, help='Output path to fasta file')
     parser.add_argument('read_count', type=int, help='Number of reads to simulate.')
-    parser.add_argument('--fasta', action="store_true", help='Output in fasta format')
+    # parser.add_argument('--fasta', action="store_true", help='Output in fasta format')
     parser.add_argument('--nic', action="store_true", help='Simulate NIC transcripts')
     parser.add_argument('--gtf', type=str, default = '', help='GTF to simulate NIC from.')
     parser.add_argument('--disable_infer', action="store_true", help='GTF to simulate NIC from.')
@@ -275,7 +276,7 @@ if __name__ == '__main__':
 
 
     args = parser.parse_args()
-    path_, file_prefix = os.path.split(args.outfile)
+    path_, file_prefix = os.path.split(args.outfile_prefix)
     mkdir_p(path_)
     args.logfile = open(os.path.join(path_, file_prefix + ".log"), "w")
     args.outfolder = path_
