@@ -62,7 +62,8 @@ def mkdir_p(path):
 
 rule all:
    input:  config["ROOT_OUT"] + "/evaluation/ont_human/results_per_read.csv",
-            config["ROOT_OUT"] + "/evaluation/simulated/results_per_read.csv"
+            config["ROOT_OUT"] + "/evaluation/simulated/results_per_read.csv",
+            config["ROOT_OUT"] + "/evaluation/simulated_nic/results_per_read.csv"
 
 
 rule biological:
@@ -78,16 +79,23 @@ rule controlled_sim:
 
 
 rule simulate:
-    input:  fasta = config["TRANSCRIPTOME"]
-    output: simulated_reads =  config["ROOT_OUT"] + "/data/simulated.fa",
-            accessions_map =  config["ROOT_OUT"] + "/data/accessions_map.csv"
+    input:  fasta = config["TRANSCRIPTOME"],
+            gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf",
+            ref = config["HG38"]
+    output: simulated_reads =  config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
+            accessions_map =  config["ROOT_OUT"] + "/data/{dataset}/accessions_map.csv"
     run:
 
         inbase= config["ROOT_IN"]
         mkdir_p(config["ROOT_OUT"] + "/data/")
+        
+        if wildcards.dataset == "simulated":
+            shell("python {inbase}/evaluation/simulate_reads.py {input.fasta} {output.simulated_reads} 1000000 --fasta")
 
-        # python simulate_reads.py ../data/all_transcripts_ENSEMBL.txt ~/tmp/ULTRA/sim_reads_test.fa 100
-        shell("python {inbase}/evaluation/simulate_reads.py {input.fasta} {output.simulated_reads} 1000000 --fasta")
+        elif wildcards.dataset == "simulated_nic":
+            shell("python {inbase}/evaluation/simulate_reads.py --nic --gtf {input.gtf_annotation} {input.ref} {output.simulated_reads} 1000000 --fasta")
+
+        # shell("python {inbase}/evaluation/simulate_reads.py {input.fasta} {output.simulated_reads} 1000000 --fasta")
 
 
 
@@ -244,7 +252,7 @@ rule evaluate:
         outfolder = config["ROOT_OUT"] + "/evaluation/{0}/".format(wildcards.dataset)  
         mkdir_p(outfolder) 
 
-        if wildcards.dataset == "simulated":
+        if wildcards.dataset == "simulated" or wildcards.dataset == "simulated_nic":
             accessions_map = rules.simulate.output.accessions_map
             # shell("python {eval_dir}/evaluate_simulated_reads.py  --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --graphmap2_sam {input.graphmap2}  {input.reads}  \
             #                                                 {input.ref} {input.gtf_annotation} {accessions_map} {outfolder} --load_database")   

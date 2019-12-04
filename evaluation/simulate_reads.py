@@ -142,32 +142,55 @@ def mkdir_p(path):
         else:
             raise
 
+from itertools import chain, combinations
+def powerset(iterable):
+    "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
+    s = list(iterable)
+    return chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
 
 def generate_nics(db, sequence_material):
+    refs = {acc : seq for acc, (seq, _) in readfq(open(args.sequence_material,"r"))}
+
+    nic_transcripts = {}
     for gene in db.features_of_type('gene'):
         # genes_to_ref[gene.id] = str(gene.seqid)
         print("here", gene.id,  str(gene.seqid))
+        chr_id = gene.seqid
         annotated = set()
         nr_transcripts = 0
         for transcript in db.children(gene, featuretype='transcript', order_by='start'):  
-            exons = tuple((exon.seqid, exon.start, exon.stop) for exon in db.children(transcript, featuretype='exon', order_by='start'))
+            exons = tuple((exon.seqid, exon.start - 1, exon.stop) for exon in db.children(transcript, featuretype='exon', order_by='start'))
             annotated.add(exons)
-            print(exons)
+            # print(exons)
             nr_transcripts += 1
 
-        gene_exons = tuple((exon.seqid, exon.start, exon.stop) for exon in db.children(gene, featuretype='exon', order_by='start'))
-        if len(gene_exons) > 2:
-            gene_unique_exons = [ gene_exons[0] ]
-            gene_unique_exons = [e2 for e1,e2 in zip(gene_exons[:-1], gene_exons[1:]) if e1 != e2]
-            # print(gene_exons)
-            print(gene_unique_exons)
-            # if len(exons)> 2:
-            nr_nic +=1
-            while nr_nic < nr_transcripts:
-                pass
-            # print(transcript.id)
-            # print([(exon.id, exon.start, exon.stop) for exon in db.children(transcript, featuretype='exon', order_by='start')])
-    pass
+        gene_exons = [(exon.seqid, exon.start - 1, exon.stop) for exon in db.children(gene, featuretype='exon', order_by='start')]
+
+        # randomly select internal exons with p=0.5 and check whether this is already in annotated, if not add to nic
+        if len(gene_exons) > 3:
+            nr_fails = 0
+            nr_nic = 0
+            while nr_nic < len(annotated):
+                new_internal_exons = [ e for e in gene_exons[1:-1] if random.uniform(0, 1) > 0.5]
+                candidate_nic = tuple([gene_exons[0]] + new_internal_exons +  [gene_exons[-1]])
+                if candidate_nic in annotated:
+                    nr_fails +=1
+                else:
+                    print(candidate_nic)
+                    nic_id = "{0}|{1}|{2}|{3}|{4}".format(str(gene.id), str(gene.seqid), nr_nic, ";".join([ str(start) for (s_id, start, stop) in candidate_nic ]), ";".join([str(stop) for (s_id, start, stop) in candidate_nic ]) )
+                    exons_seqs = []
+                    for s_id, start,stop in candidate_nic: 
+                        seq = refs[chr_id][start : stop] 
+                        exons_seqs.append(seq)
+                    nic_seq = "".join([s for s in exons_seqs])
+                    nic_transcripts[nic_id] = nic_seq
+                    nr_nic += 1
+                if nr_fails > 5:
+                    break
+        print(gene.id)
+        print(len(nic_transcripts))
+
+        return nic_transcripts
 
 def main(args):
     if args.nic:
@@ -188,13 +211,13 @@ def main(args):
                                     sort_attribute_values=True, disable_infer_genes=True, disable_infer_transcripts=True)
             db = gffutils.FeatureDB(database, keep_order=True)
 
-        nic_transcripts = generate_nics(db, args.sequence_material)
-        sequence_transcripts = {}
+        sequence_transcripts = generate_nics(db, args.sequence_material)
+        # sequence_transcripts = {}
 
     else:
         sequence_transcripts = {seq : acc for acc, (seq, _) in readfq(open(args.sequence_material,"r")) }
-    print(len(sequence_transcripts))
-    sequence_transcripts = {acc: seq for seq, acc in sequence_transcripts.items() }
+        print(len(sequence_transcripts))
+        sequence_transcripts = {acc: seq for seq, acc in sequence_transcripts.items() }
 
     # just generate all numbers at once and draw from this 5x should be enough
     ont_reads = {}
