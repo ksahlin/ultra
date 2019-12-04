@@ -100,7 +100,7 @@ rule simulate:
 
 
 rule ultra_prep:
-    input:  fastq =  config["ROOT_OUT"] + "/data/{dataset}.fa",
+    input:  fastq =  config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
             ref = config["HG38"],
             gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"
 
@@ -117,7 +117,7 @@ rule ultra_prep:
 
 
 rule ultra_align:
-    input:  reads = config["ROOT_OUT"] + "/data/{dataset}.fa",
+    input:  reads = config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
             ultra_index = rules.ultra_prep.output.ref_index,
             ref = config["HG38"],
     output: sam = config["ROOT_OUT"] + "/alignments/ultra/{dataset}/reads.sam",
@@ -141,7 +141,7 @@ rule minimap2_index:
 
 
 rule minimap2_align:
-    input: fastq =  config["ROOT_OUT"] + "/data/{dataset}.fa",
+    input: fastq =  config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
             index = rules. minimap2_index.output.mm_index
     output: time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/minimap2/{dataset}/aligning_time_and_mem.txt",
             sam =  config["ROOT_OUT"] + "/alignments/minimap2/{dataset}/reads.sam"
@@ -175,7 +175,7 @@ rule desalt_index:
         shell("touch  {output.finished_flag} ")
 
 rule desalt_align:
-    input: fastq =  config["ROOT_OUT"] + "/data/{dataset}.fq",
+    input: fastq =  config["ROOT_OUT"] + "/data/{dataset}/reads.fq",
             # index = rules.desalt_index.output.desalt_index_folder,
             finished_flag = rules.desalt_index.output.finished_flag
             # desalt_gtf_annotation_outfile = rules.desalt_annotation_fix.output.desalt_gtf_annotation_outfile
@@ -190,7 +190,7 @@ rule desalt_align:
 
 
 rule desalt_gtf_align:
-    input: fastq =  config["ROOT_OUT"] + "/data/{dataset}.fq",
+    input: fastq =  config["ROOT_OUT"] + "/data/{dataset}/reads.fq",
             # index = rules.desalt_index.output.desalt_index_folder,
             finished_flag = rules.desalt_index.output.finished_flag,
             desalt_gtf_annotation_outfile = rules.desalt_annotation_fix.output.desalt_gtf_annotation_outfile
@@ -206,7 +206,7 @@ rule desalt_gtf_align:
 
 rule graphmap2_index:
     input:  ref = config["HG38"],
-            fastq =  config["ROOT_OUT"] + "/data/{dataset}.fq",
+            fastq =  config["ROOT_OUT"] + "/data/{dataset}/reads.fq",
             gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf",
     output: index =  config["ROOT_OUT"] + "/alignments/graphmap2/{dataset}/index.gmidx",
             time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2/{dataset}/aligning_time_and_mem.txt"
@@ -215,7 +215,7 @@ rule graphmap2_index:
 
 rule graphmap2_gtf_align:
     input:  ref = config["HG38"],
-            fastq =  config["ROOT_OUT"] + "/data/{dataset}.fq",
+            fastq =  config["ROOT_OUT"] + "/data/{dataset}/reads.fq",
             index = rules.graphmap2_index.output.index,
             gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf",
     output: sam =  config["ROOT_OUT"] + "/alignments/graphmap2_gtf/{dataset}/reads.sam",
@@ -226,7 +226,7 @@ rule graphmap2_gtf_align:
 
 rule graphmap2_align:
     input:  ref = config["HG38"],
-            fastq =  config["ROOT_OUT"] + "/data/{dataset}.fq",
+            fastq =  config["ROOT_OUT"] + "/data/{dataset}/reads.fq",
             index = rules.graphmap2_index.output.index,
             gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf",
     output: sam =  config["ROOT_OUT"] + "/alignments/graphmap2/{dataset}/reads.sam",
@@ -242,7 +242,7 @@ rule evaluate:
             desalt_gtf = rules.desalt_gtf_align.output.sam,
             graphmap2 = rules.graphmap2_align.output.sam,
             graphmap2_gtf = rules.graphmap2_gtf_align.output.sam,
-            reads =  config["ROOT_OUT"] + "/data/{dataset}.fa",
+            reads =  config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
             ref =  config["HG38"],
             gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"  # drosophila v97 gtf annotation
     output: csv_file =  config["ROOT_OUT"] + "/evaluation/{dataset}/results_per_read.csv"
