@@ -154,7 +154,7 @@ def generate_nics(db, sequence_material):
     nic_transcripts = {}
     for gene in db.features_of_type('gene'):
         # genes_to_ref[gene.id] = str(gene.seqid)
-        print("here", gene.id,  str(gene.seqid))
+        # print("here", gene.id,  str(gene.seqid))
         chr_id = gene.seqid
         annotated = set()
         nr_transcripts = 0
@@ -167,7 +167,7 @@ def generate_nics(db, sequence_material):
         gene_exons = [(exon.seqid, exon.start - 1, exon.stop) for exon in db.children(gene, featuretype='exon', order_by='start')]
 
         # randomly select internal exons with p=0.5 and check whether this is already in annotated, if not add to nic
-        print( len(annotated),len(gene_exons))
+        # print( len(annotated),len(gene_exons))
 
         if len(gene_exons) > 3:
             nr_fails = 0
@@ -175,7 +175,7 @@ def generate_nics(db, sequence_material):
             while nr_nic < len(annotated):
                 new_internal_exons = [ e for e in gene_exons[1:-1] if random.uniform(0, 1) > 0.5]
                 candidate_nic = tuple([gene_exons[0]] + new_internal_exons +  [gene_exons[-1]])
-                print( "l", len(candidate_nic))
+                # print( "l", len(candidate_nic))
                 if candidate_nic in annotated:
                     nr_fails +=1
                 else:
