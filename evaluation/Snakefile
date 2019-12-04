@@ -82,7 +82,7 @@ rule simulate:
     input:  fasta = config["TRANSCRIPTOME"],
             gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf",
             ref = config["HG38"]
-    output: simulated_reads =  config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
+    output: simulated_reads_prefix =  config["ROOT_OUT"] + "/data/{dataset}/reads",
             accessions_map =  config["ROOT_OUT"] + "/data/{dataset}/accessions_map.csv"
     run:
 
@@ -90,10 +90,10 @@ rule simulate:
         mkdir_p(config["ROOT_OUT"] + "/data/")
         
         if wildcards.dataset == "simulated":
-            shell("python {inbase}/evaluation/simulate_reads.py {input.fasta} {output.simulated_reads} 1000000 --fasta")
+            shell("python {inbase}/evaluation/simulate_reads.py {input.fasta} {output.simulated_reads_prefix} 1000000")
 
         elif wildcards.dataset == "simulated_nic":
-            shell("python {inbase}/evaluation/simulate_reads.py --nic --gtf {input.gtf_annotation} {input.ref} {output.simulated_reads} 1000000 --fasta")
+            shell("python {inbase}/evaluation/simulate_reads.py --nic --gtf {input.gtf_annotation} {input.ref} {output.simulated_reads_prefix} 1000000")
 
         # shell("python {inbase}/evaluation/simulate_reads.py {input.fasta} {output.simulated_reads} 1000000 --fasta")
 
