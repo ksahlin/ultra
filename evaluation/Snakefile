@@ -82,13 +82,14 @@ rule simulate:
     input:  fasta = config["TRANSCRIPTOME"],
             gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf",
             ref = config["HG38"]
-    output: simulated_reads_prefix =  config["ROOT_OUT"] + "/data/{dataset}/reads",
+    output: simulated_reads =  config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
+            simulated_reads =  config["ROOT_OUT"] + "/data/{dataset}/reads.fq",
             accessions_map =  config["ROOT_OUT"] + "/data/{dataset}/accessions_map.csv"
     run:
 
         inbase= config["ROOT_IN"]
         mkdir_p(config["ROOT_OUT"] + "/data/")
-        
+        simulated_reads_prefix = config["ROOT_OUT"] + "/data/{0}/reads.fq".format(wildcards.dataset)
         if wildcards.dataset == "simulated":
             shell("python {inbase}/evaluation/simulate_reads.py {input.fasta} {output.simulated_reads_prefix} 1000000")
 
