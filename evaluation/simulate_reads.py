@@ -167,16 +167,19 @@ def generate_nics(db, sequence_material):
         gene_exons = [(exon.seqid, exon.start - 1, exon.stop) for exon in db.children(gene, featuretype='exon', order_by='start')]
 
         # randomly select internal exons with p=0.5 and check whether this is already in annotated, if not add to nic
+        print( len(annotated),len(gene_exons))
+
         if len(gene_exons) > 3:
             nr_fails = 0
             nr_nic = 0
             while nr_nic < len(annotated):
                 new_internal_exons = [ e for e in gene_exons[1:-1] if random.uniform(0, 1) > 0.5]
                 candidate_nic = tuple([gene_exons[0]] + new_internal_exons +  [gene_exons[-1]])
+                print( "l", len(candidate_nic))
                 if candidate_nic in annotated:
                     nr_fails +=1
                 else:
-                    print(candidate_nic)
+                    # print(candidate_nic)
                     nic_id = "{0}|{1}|{2}|{3}|{4}".format(str(gene.id), str(gene.seqid), nr_nic, ";".join([ str(start) for (s_id, start, stop) in candidate_nic ]), ";".join([str(stop) for (s_id, start, stop) in candidate_nic ]) )
                     exons_seqs = []
                     for s_id, start,stop in candidate_nic: 
@@ -185,12 +188,12 @@ def generate_nics(db, sequence_material):
                     nic_seq = "".join([s for s in exons_seqs])
                     nic_transcripts[nic_id] = nic_seq
                     nr_nic += 1
+                    nr_fails = 0
                 if nr_fails > 5:
                     break
-        print(gene.id)
-        print(len(nic_transcripts))
+    print(len(nic_transcripts))
 
-        return nic_transcripts
+    return nic_transcripts
 
 def main(args):
     if args.nic:

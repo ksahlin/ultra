@@ -203,7 +203,7 @@ def alignment_accuracy_plot(input_csv, outfolder):
     # print(len(indata))
 
     g = sns.catplot(x="alignment_classification", #col="Depth",
-                data=indata,  hue="alignment_algorithm", hue_order= ["uLTRA", "minimap2", "deSALT"],
+                data=indata,  hue="alignment_algorithm", hue_order= ["uLTRA", "minimap2", "deSALT", "deSALT_GTF", "Graphmap2", "Graphmap2_GTF"],
                 order= ["correct", "site_diff", "diff_exon_count", "diff_location", 'unaligned'], kind="count", aspect=1)
 
     # g.set(ylim=(0,15))
@@ -214,7 +214,7 @@ def alignment_accuracy_plot(input_csv, outfolder):
     ax = g.ax
     for p in ax.patches:
         # ax.annotate('%{:.1f}'.format(p.get_height()), (p.get_x()+0.1, p.get_height()+50))
-        ax.annotate('{:.2f}%'.format(100*p.get_height()/1000000.0), (p.get_x()+0.15, p.get_height()+1000), rotation=90)
+        ax.annotate('{:.2f}%'.format(100*p.get_height()/1000000.0), (p.get_x()+0.01, p.get_height()+1000), rotation=90, fontsize = 'x-small' )
     # ax = sns.boxplot(x="p", y=y, hue = "type", data=indata)
     # ax.set_ylim(0,15)
     # ax.set_ylabel("Error rate %")
