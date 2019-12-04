@@ -82,9 +82,12 @@ rule simulate:
     input:  fasta = config["TRANSCRIPTOME"],
             gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf",
             ref = config["HG38"]
-    output: simulated_reads =  config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
-            simulated_reads =  config["ROOT_OUT"] + "/data/{dataset}/reads.fq",
+    output: simulated_reads_fa =  config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
+            simulated_reads_fq =  config["ROOT_OUT"] + "/data/{dataset}/reads.fq",
             accessions_map =  config["ROOT_OUT"] + "/data/{dataset}/accessions_map.csv"
+    wildcard_constraints:
+        dataset="sim[_\w]+"
+
     run:
 
         inbase= config["ROOT_IN"]
