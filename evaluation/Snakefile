@@ -97,7 +97,7 @@ rule simulate:
             shell("python {inbase}/evaluation/simulate_reads.py {input.fasta} {simulated_reads_prefix} 1000000")
 
         elif wildcards.dataset == "simulated_nic":
-            shell("python {inbase}/evaluation/simulate_reads.py --nic --gtf {input.gtf_annotation} {input.ref} {simulated_reads_prefix} 1000000")
+            shell("python {inbase}/evaluation/simulate_reads.py --disable_infer --nic --gtf {input.gtf_annotation} {input.ref} {simulated_reads_prefix} 1000000")
 
         # shell("python {inbase}/evaluation/simulate_reads.py {input.fasta} {output.simulated_reads} 1000000 --fasta")
 
@@ -108,7 +108,7 @@ rule ultra_prep:
             gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"
 
     output: ref_index = config["ROOT_OUT"] + "/alignments/ultra/{dataset}/all_splice_sites_annotations.pickle",
-            # time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/ultra/{dataset}/indexing_time_and_mem.txt"
+            time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/ultra/{dataset}/indexing_time_and_mem.txt"
     run:
         outfolder = config["ROOT_OUT"] + "/alignments/ultra/{0}/".format(wildcards.dataset)
         mkdir_p(outfolder)
