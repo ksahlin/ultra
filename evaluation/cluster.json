@@ -29,7 +29,7 @@
     "minimap2_align": 
     {
         "jobname" : "minimap2",
-        "cpus-per-task" : "64",
+        "cpus-per-task" : "63",
         "Nodes" : 1,
         "mem" : "500G",
         "runtime" : "2-00:00:00",
@@ -43,7 +43,7 @@
     "ultra_align": 
     {
         "jobname" : "ultra_align",
-        "cpus-per-task" : "64",
+        "cpus-per-task" : "63",
         "Nodes" : 1,
         "mem" : "500G",
         "runtime" : "2-00:00:00",
@@ -56,7 +56,7 @@
     "desalt_align" : 
     {
         "jobname" : "desalt_align",
-        "cpus-per-task" : "64",
+        "cpus-per-task" : "63",
         "Nodes" : 1,
         "mem" : "500G",
         "runtime" : "2-00:00:00",
@@ -68,7 +68,7 @@
     "desalt_gtf_align" : 
     {
         "jobname" : "desalt_align",
-        "cpus-per-task" : "64",
+        "cpus-per-task" : "63",
         "Nodes" : 1,
         "mem" : "500G",
         "runtime" : "2-00:00:00",
@@ -80,7 +80,7 @@
     "graphmap2_index" : 
     {
         "jobname" : "graphmap2_index",
-        "cpus-per-task" : "64",
+        "cpus-per-task" : "63",
         "Nodes" : 1,
         "mem" : "500G",
         "runtime" : "2-00:00:00",
@@ -92,7 +92,7 @@
     "graphmap2_gtf_align" : 
     {
         "jobname" : "graphmap2_align",
-        "cpus-per-task" : "64",
+        "cpus-per-task" : "63",
         "Nodes" : 1,
         "mem" : "500G",
         "runtime" : "2-00:00:00",
@@ -103,7 +103,7 @@
     "graphmap2_align" : 
     {
         "jobname" : "graphmap2_align",
-        "cpus-per-task" : "64",
+        "cpus-per-task" : "63",
         "Nodes" : 1,
         "mem" : "500G",
         "runtime" : "2-00:00:00",
