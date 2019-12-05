@@ -62,36 +62,25 @@ def decide_primary_locations(sam_file, args): # maybe this function is not neede
             subs = sum([length for type_, length in read.cigartuples if type_ == 8])
             matches = sum([length for type_, length in read.cigartuples if type_ == 7])
             tot_align = ins + del_ + subs + matches
-            identity = matches/float(tot_align)
+            try:
+                identity = matches/float(tot_align)
+            except:
+                print(matches, tot_align,ins, del_, subs, read.flag, read.query_name )
+                identity = 0
 
-            # has_large_del = [length for type_, length in read.cigartuples if type_ == 2 and length >=  args.min_intron ]
-            # if has_large_del:
-            #     print(has_large_del)
             if read.query_name in reads_primary:
-                reads_multiple_primary.add(read.query_name)
-                if identity >= reads_tmp[read.query_name][0] and  matches >= reads_tmp[read.query_name][1]:
-                    reads_primary[read.query_name] = read
-                    reads_tmp[read.query_name] = (identity, matches)
-                elif identity <= reads_tmp[read.query_name][0] and  matches <= reads_tmp[read.query_name][1]:
-                    continue
-                else:
-                    if identity * matches > reads_tmp[read.query_name][0] * reads_tmp[read.query_name][1]:
-                        reads_primary[read.query_name] = read
-                        reads_tmp[read.query_name] = (identity, matches)
-                    else: 
-                        continue
-
-                        
-                    # print( "Ambiguous, prefferred:", round(reads_tmp[read.query_name][0],2), reads_tmp[read.query_name][1], "over", round(identity,2), matches)
-
-                #     if tot_align >= reads_tmp[read.query_name][1]:
+                print("BUG multiple primary", read.query_name)
+                # reads_multiple_primary.add(read.query_name)
+                # if identity >= reads_tmp[read.query_name][0] and  matches >= reads_tmp[read.query_name][1]:
+                #     reads_primary[read.query_name] = read
+                #     reads_tmp[read.query_name] = (identity, matches)
+                # elif identity <= reads_tmp[read.query_name][0] and  matches <= reads_tmp[read.query_name][1]:
+                #     continue
+                # else:
+                #     if identity * matches > reads_tmp[read.query_name][0] * reads_tmp[read.query_name][1]:
                 #         reads_primary[read.query_name] = read
-                #     else:
-                #         continue
-                # elif tot_align >= reads_tmp[read.query_name][1]:
-                #     if identity >= reads_tmp[read.query_name][0]:
-                #         reads_primary[read.query_name] = read
-                #     else:
+                #         reads_tmp[read.query_name] = (identity, matches)
+                #     else: 
                 #         continue
 
             else:
