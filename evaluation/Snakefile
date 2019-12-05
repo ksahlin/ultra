@@ -94,10 +94,10 @@ rule simulate:
         mkdir_p(config["ROOT_OUT"] + "/data/")
         simulated_reads_prefix = config["ROOT_OUT"] + "/data/{0}/reads.fq".format(wildcards.dataset)
         if wildcards.dataset == "simulated":
-            shell("python {inbase}/evaluation/simulate_reads.py {input.fasta} {output.simulated_reads_prefix} 1000000")
+            shell("python {inbase}/evaluation/simulate_reads.py {input.fasta} {simulated_reads_prefix} 1000000")
 
         elif wildcards.dataset == "simulated_nic":
-            shell("python {inbase}/evaluation/simulate_reads.py --nic --gtf {input.gtf_annotation} {input.ref} {output.simulated_reads_prefix} 1000000")
+            shell("python {inbase}/evaluation/simulate_reads.py --nic --gtf {input.gtf_annotation} {input.ref} {simulated_reads_prefix} 1000000")
 
         # shell("python {inbase}/evaluation/simulate_reads.py {input.fasta} {output.simulated_reads} 1000000 --fasta")
 
