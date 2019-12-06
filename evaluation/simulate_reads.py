@@ -156,6 +156,9 @@ def generate_nics(db, sequence_material):
         # genes_to_ref[gene.id] = str(gene.seqid)
         # print("here", gene.id,  str(gene.seqid))
         chr_id = gene.seqid
+        if chr_id not in refs:
+            continue
+            
         annotated = set()
         nr_transcripts = 0
         for transcript in db.children(gene, featuretype='transcript', order_by='start'):  
