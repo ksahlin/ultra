@@ -256,7 +256,8 @@ rule evaluate:
         mkdir_p(outfolder) 
 
         if wildcards.dataset == "simulated" or wildcards.dataset == "simulated_nic":
-            accessions_map = rules.simulate.output.accessions_map
+            accessions_map = config["ROOT_OUT"] + "/data/{0}/accessions_map.csv".format(wildcards.dataset) #rules.simulate.output.accessions_map
+
             # shell("python {eval_dir}/evaluate_simulated_reads.py  --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --graphmap2_sam {input.graphmap2}  {input.reads}  \
             #                                                 {input.ref} {input.gtf_annotation} {accessions_map} {outfolder} --load_database")   
             shell("python {eval_dir}/evaluate_simulated_reads.py  --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --desalt_gtf_sam {input.desalt_gtf} \
