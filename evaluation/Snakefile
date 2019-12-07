@@ -92,7 +92,7 @@ rule simulate:
 
         inbase= config["ROOT_IN"]
         mkdir_p(config["ROOT_OUT"] + "/data/")
-        simulated_reads_prefix = config["ROOT_OUT"] + "/data/{0}/reads.fq".format(wildcards.dataset)
+        simulated_reads_prefix = config["ROOT_OUT"] + "/data/{0}/reads".format(wildcards.dataset)
         if wildcards.dataset == "simulated":
             shell("python {inbase}/evaluation/simulate_reads.py {input.fasta} {simulated_reads_prefix} 1000000")
 
