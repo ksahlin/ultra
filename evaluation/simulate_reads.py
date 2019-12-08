@@ -125,7 +125,7 @@ def simulate_read(i, transcript_acc, isoform ):
     # shortened_read_acc = transcript_acc
     # acc = str(transcript_acc) + "_" +  str(i) + "_" + str(err_rate) #= (read_seq, qual_seq)
     full_read_acc = str(transcript_acc) + "_" +  str(i) + "_" + str(err_rate)
-    print(err, len(isoform), float(err)/ len(isoform))
+    # print(err, len(isoform), float(err)/ len(isoform))
     # print(read_seq)
     # print(qual_seq)
 
@@ -158,7 +158,7 @@ def generate_nics(db, sequence_material):
         chr_id = gene.seqid
         if chr_id not in refs:
             continue
-            
+
         annotated = set()
         nr_transcripts = 0
         for transcript in db.children(gene, featuretype='transcript', order_by='start'):  
@@ -168,16 +168,17 @@ def generate_nics(db, sequence_material):
             nr_transcripts += 1
 
         gene_exons = [(exon.seqid, exon.start - 1, exon.stop) for exon in db.children(gene, featuretype='exon', order_by='start')]
-
+        non_overlapping_gene_exons = [ (e_id,start1,stop1) for (e_id,start1,stop1), (e2_id,start2,stop2) in zip(gene_exons[:-1], gene_exons[1:]) if stop1 < start2]
+        # print(len(gene_exons), len(non_overlapping_gene_exons))
         # randomly select internal exons with p=0.5 and check whether this is already in annotated, if not add to nic
         # print( len(annotated),len(gene_exons))
 
-        if len(gene_exons) > 3:
+        if len(non_overlapping_gene_exons) > 3:
             nr_fails = 0
             nr_nic = 0
             while nr_nic < len(annotated):
-                new_internal_exons = [ e for e in gene_exons[1:-1] if random.uniform(0, 1) > 0.5]
-                candidate_nic = tuple([gene_exons[0]] + new_internal_exons +  [gene_exons[-1]])
+                new_internal_exons = [ e for e in non_overlapping_gene_exons[1:-1] if random.uniform(0, 1) > 0.5]
+                candidate_nic = tuple([non_overlapping_gene_exons[0]] + new_internal_exons +  [non_overlapping_gene_exons[-1]])
                 # print( "l", len(candidate_nic))
                 if candidate_nic in annotated:
                     nr_fails +=1
