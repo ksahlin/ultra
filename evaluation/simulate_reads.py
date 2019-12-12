@@ -159,6 +159,7 @@ def generate_nics(db, sequence_material):
         if chr_id not in refs:
             continue
 
+        print("parsing gene:", gene.id )
         annotated = set()
         nr_transcripts = 0
         for transcript in db.children(gene, featuretype='transcript', order_by='start'):  
@@ -196,7 +197,7 @@ def generate_nics(db, sequence_material):
                         nic_transcripts[nic_id] = nic_seq
                         nr_nic += 1
                         nr_fails = 0
-                        
+
                 if nr_fails > 5:
                     break
     print(len(nic_transcripts))
