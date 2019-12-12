@@ -190,9 +190,13 @@ def generate_nics(db, sequence_material):
                         seq = refs[chr_id][start : stop] 
                         exons_seqs.append(seq)
                     nic_seq = "".join([s for s in exons_seqs])
-                    nic_transcripts[nic_id] = nic_seq
-                    nr_nic += 1
-                    nr_fails = 0
+                    if 'N' in nic_seq:
+                        nr_fails +=1
+                    else:
+                        nic_transcripts[nic_id] = nic_seq
+                        nr_nic += 1
+                        nr_fails = 0
+                        
                 if nr_fails > 5:
                     break
     print(len(nic_transcripts))
