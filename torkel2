@@ -57,7 +57,10 @@ def prep_splicing(args):
                                 sort_attribute_values=True, disable_infer_genes=True, disable_infer_transcripts=True)
         db = gffutils.FeatureDB(database, keep_order=True)
 
-    exons_to_ref, parts_to_exons, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations, exon_id_to_choordinates = augmented_gene.create_graph_from_exon_parts(db, args.min_mem )
+    exons_to_ref, parts_to_exons, splices_to_transcripts, \
+    transcripts_to_splices, all_splice_pairs_annotations, \
+    all_splice_sites_annotations, exon_id_to_choordinates, \
+    exon_to_gene, gene_to_small_exons = augmented_gene.create_graph_from_exon_parts(db, args.min_mem )
 
     # dump to pickle here! Both graph and reference seqs
     # help_functions.pickle_dump(args, genes_to_ref, 'genes_to_ref.pickle')
@@ -68,6 +71,8 @@ def prep_splicing(args):
     help_functions.pickle_dump(args, all_splice_pairs_annotations, 'all_splice_pairs_annotations.pickle')
     help_functions.pickle_dump(args, all_splice_sites_annotations, 'all_splice_sites_annotations.pickle')
     help_functions.pickle_dump(args, exon_id_to_choordinates, 'exon_id_to_choordinates.pickle')
+    help_functions.pickle_dump(args, exon_to_gene, 'exon_to_gene.pickle')
+    help_functions.pickle_dump(args, gene_to_small_exons, 'gene_to_small_exons.pickle')
 
 
 def prep_seqs(args):
@@ -118,7 +123,13 @@ def import_data(args):
     all_splice_pairs_annotations = help_functions.pickle_load( os.path.join(args.outfolder, 'all_splice_pairs_annotations.pickle') )
     all_splice_sites_annotations = help_functions.pickle_load( os.path.join(args.outfolder, 'all_splice_sites_annotations.pickle') )
     parts_to_exons = help_functions.pickle_load( os.path.join(args.outfolder, 'parts_to_exons.pickle') )
-    return exon_id_to_choordinates, ref_exon_sequences, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations, parts_to_exons
+    exon_to_gene = help_functions.pickle_load( os.path.join(args.outfolder, 'exon_to_gene.pickle') )
+    gene_to_small_exons = help_functions.pickle_load( os.path.join(args.outfolder, 'gene_to_small_exons.pickle') )
+
+    return exon_id_to_choordinates, ref_exon_sequences, splices_to_transcripts, \
+            transcripts_to_splices, all_splice_pairs_annotations, \
+            all_splice_sites_annotations, parts_to_exons,\
+            exon_to_gene, gene_to_small_exons
 
 
 def batch(dictionary, size, batch_type):
