@@ -20,6 +20,9 @@ def create_graph_from_exon_parts(db, min_mem):
     # print(dir(db))
     # genes_to_ref = {} # gene_id : { (exon_start, exon_stop) : set() }
     exons_to_ref = {} # gene_id : { (exon_start, exon_stop) : set() }
+    exon_to_gene = {} # exon_id : [gene_id ]
+    gene_to_small_exons = {} # gene_id : [exon_id ]
+
     exon_id_to_choordinates = {}
     splices_to_transcripts = defaultdict(dict)
     all_splice_pairs_annotations = defaultdict(dd_set)
@@ -36,6 +39,9 @@ def create_graph_from_exon_parts(db, min_mem):
             chr_id = exon.seqid
 
         exons_to_ref[exon.id] = chr_id
+        # print(dir(exon))
+        # print(exon.attributes["gene_id"])
+        exon_to_gene[exon.id] = exon.attributes["gene_id"]
         exon_id_to_choordinates[exon.id] = (exon.start - 1, exon.stop)
         # creating the augmentation
         if i == 0: # initialization
@@ -69,25 +75,7 @@ def create_graph_from_exon_parts(db, min_mem):
 
     parts_to_exons[chr_id][(active_start, active_stop)] = active_exons
 
-    # print(parts_to_exons["SIRV3"])
-    # sys.exit()
-    # print()
-    # for sid in parts_to_exons:
-    #     print(sid, len(parts_to_exons[sid]))
-    #     print()
 
-    # for transcript in db.features_of_type('transcript'):
-    #     genes_to_ref[transcript.id] = str(transcript.seqid)
-    #     print("here", transcript.id,  str(transcript.seqid))  
-    # for gene in db.features_of_type('gene'):
-    #     genes_to_ref[gene.id] = str(gene.seqid)
-    #     print("here", gene.id,  str(gene.seqid))  
-    # exons_to_parts = reverse_mapping(parts_to_exons)
-    # sys.exit()
-    # ccc = set()
-    # for gene in db.features_of_type('gene'):
-    #     genes_to_ref[gene.id] = str(gene.seqid)
-    #     print("here", gene.id,  str(gene.seqid))
     for transcript in db.features_of_type('transcript', order_by='seqid'): #db.children(gene, featuretype='transcript', order_by='start'):
         if transcript.seqid.isdigit() or transcript.seqid == 'X' or transcript.seqid == 'Y':
             chr_id = 'chr'+ transcript.seqid
@@ -117,23 +105,24 @@ def create_graph_from_exon_parts(db, min_mem):
         all_splice_sites_annotations[str(chr_id)].add(transcript_exons[0][0])
         all_splice_sites_annotations[str(chr_id)].add(transcript_exons[-1][-1])
 
-    # if ccc:
-    #     print(ccc)
-    #     sys.exit()
+
     transcripts_to_splices = reverse_mapping(splices_to_transcripts)
 
-            # print("transcript_parts", tuple(transcript_parts))
-    # print(all_splice_pairs_annotations)
-    # print(all_splice_sites_annotations)
-    # print(splices_to_transcripts)
-    # print(parts_to_exons)
+    for gene in db.features_of_type('gene', order_by='seqid'):
+        gene_to_small_exons[gene.id] = []
+        for exon in  db.children(gene, featuretype='exon', order_by='start'):
+            if exon.stop - exon.start < 50:
+                gene_to_small_exons[gene.id].append(exon.id)
+
+    # print(gene_to_small_exons)
+    # for g in gene_to_small_exons:
+    #     for e in gene_to_small_exons[g]:
+    #         print(exon_id_to_choordinates[e])
     # sys.exit()
-    # for sid in parts_to_exons:
-    #     print(sid, parts_to_exons[sid])
-    #     print()
-    # sys.exit()
-    # print(splices_to_transcripts)
-    return  exons_to_ref, parts_to_exons, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations, exon_id_to_choordinates
+    return  exons_to_ref, parts_to_exons, splices_to_transcripts, \
+            transcripts_to_splices, all_splice_pairs_annotations, \
+            all_splice_sites_annotations, exon_id_to_choordinates, \
+            exon_to_gene, gene_to_small_exons
 
 
 

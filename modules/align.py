@@ -91,7 +91,11 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
         alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, "torkel_batch_{0}.sam".format(batch_number)), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
         warning_log_file = open(os.path.join(args.outfolder, "torkel_batch_{0}.stderr".format(batch_number)), "w")
 
-    exon_id_to_choordinates, ref_exon_sequences, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations, parts_to_exons = auxillary_data
+    exon_id_to_choordinates, ref_exon_sequences, splices_to_transcripts, \
+    transcripts_to_splices, all_splice_pairs_annotations, \
+    all_splice_sites_annotations, parts_to_exons, \
+    exon_to_gene, gene_to_small_exons = auxillary_data
+
     classifications = defaultdict(str)
     read_accessions_with_mappings = set()
     processed_read_counter = 0
@@ -106,12 +110,6 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
         # print("instance sizes rc:", [ (chr_id, len(mm)) for chr_id, mm in mems_rc.items()])
         upper_bound = annotate_guaranteed_optimal_bound(mems, False)
         upper_bound_rc = annotate_guaranteed_optimal_bound(mems_rc, True)
-        # print(upper_bound)
-        # print(upper_bound_rc)
-        # TODO: Calculate unsorted mem coverage over the read here! Use this coverage to ignore doing chaining for some chromosomes!
-        
-        # print(read_acc, len(mems), len(mems_rc))
-    # for curr_index, (read_acc, read_seq, mems, mems_rc) in enumerate(read_data):
         processed_read_counter += 1
         if processed_read_counter % 5000 == 0:
             print('Processed {0} reads in batch {1}'.format(processed_read_counter, batch_number))
@@ -144,25 +142,6 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
             for sol in solutions:
                 all_chainings.append( (chr_id, sol, mem_solution_value, is_rc) )
 
-        # sys.exit()
-
-        # for chr_id, all_mems_to_chromosome in mems_rc.items():
-        #     if len(all_mems_to_chromosome) < 80:
-        #         solutions, mem_solution_value = colinear_solver.read_coverage(all_mems_to_chromosome)
-        #     else:
-        #         solutions, mem_solution_value = colinear_solver.n_logn_read_coverage(all_mems_to_chromosome)
-
-        #     if len(solutions) > 1:
-        #         print("More than 1 solution on chromosome")
-        #         for sol in solutions:
-        #             print(mem_solution_value, [ (m.x, m.y) for m in sol])
-        #         multiple = True
-
-        #     for sol in solutions:
-        #         all_chainings.append( (chr_id, sol, mem_solution_value, True) )
-        
-        # print("Finished solving colinear_solver fw and rv", len(all_mems_to_chromosome) )
-        # sys.exit()
         is_secondary =  False
         is_rc =  False
         if not all_chainings:
@@ -185,7 +164,9 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
             else:
                 read_seq = read_seq
             # print("mem solution:", chaining_score, mem_solution)
-            non_covered_regions, mam_value, mam_solution, unique_exon_choordinates =  classify_read_with_mams.main(mem_solution, ref_exon_sequences, parts_to_exons, exon_id_to_choordinates, read_seq, args.overlap_threshold, is_rc, warning_log_file)
+            non_covered_regions, mam_value, mam_solution, unique_exon_choordinates =  classify_read_with_mams.main(mem_solution, ref_exon_sequences, parts_to_exons, \
+                                                                                                                    exon_id_to_choordinates, exon_to_gene, gene_to_small_exons, \
+                                                                                                                    read_seq, args.overlap_threshold, is_rc, warning_log_file)
             # print("finished Mam solution:", mam_solution)
             if mam_value > 0:
                 chained_parts_seq = []

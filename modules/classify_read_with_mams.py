@@ -144,7 +144,7 @@ def contains(sub, pri):
         else:
             i = found+1
 
-def main(solution, ref_exon_sequences, parts_to_exons, exon_id_to_choordinates, read_seq, overlap_threshold, is_rc, warning_log_file):
+def main(solution, ref_exon_sequences, parts_to_exons, exon_id_to_choordinates, exon_to_gene, gene_to_small_exons, read_seq, overlap_threshold, is_rc, warning_log_file):
     # chained_parts_seq = []
     # chained_parts_ids = []
     prev_ref_stop = -1
@@ -174,6 +174,18 @@ def main(solution, ref_exon_sequences, parts_to_exons, exon_id_to_choordinates, 
         for exon_id in exon_ids:
             e_start, e_stop = exon_id_to_choordinates[exon_id]
             unique_exon_choordinates[ (ref_chr_id, e_start, e_stop) ].add(exon_id)
+
+        # also add all small exons that may be smaller than minimum MEM size
+        unique_genes = set(gene_id for exon_id in exon_ids for gene_id in exon_to_gene[exon_id])
+        small_exons = set(small_exon_id for gene_id in unique_genes for small_exon_id in gene_to_small_exons[gene_id]) 
+        for small_exon_id in small_exons:
+            e_start, e_stop = exon_id_to_choordinates[small_exon_id]
+            if (ref_chr_id,e_start, e_stop) not in unique_exon_choordinates:
+                # print("adding small exon,", e_stop - e_start)
+                unique_exon_choordinates[ (ref_chr_id, e_start, e_stop) ].add(small_exon_id)
+
+
+
     # print()
     # print('unique_exon_choordinates', unique_exon_choordinates)
     # print()
