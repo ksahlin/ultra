@@ -509,7 +509,7 @@ def main(args):
         print('Graphmap2')
         graphmap2_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, graphmap2_splice_sites, refs, graphmap2_primary_locations)
         reads_unaligned_in_graphmap2 = set(reads.keys()) - set(graphmap2_primary_locations.keys()) 
-        print_detailed_values_to_file(error_rates, graphmap2_splice_sites, reads, detailed_results_outfile, "Graphmap2", graphmap2_primary_locations)
+        print_detailed_values_to_file(error_rates, graphmap2_splice_results, reads, detailed_results_outfile, "Graphmap2", graphmap2_primary_locations)
         print("Reads successfully aligned graphmap2:", len(graphmap2_primary_locations))
         print("READS UNALIGNED graphmap2:", len(reads_unaligned_in_graphmap2) )
 
@@ -519,7 +519,7 @@ def main(args):
         print('Graphmap2')
         graphmap2_gtf_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, graphmap2_gtf_splice_sites, refs, graphmap2_gtf_primary_locations)
         reads_unaligned_in_graphmap2_gtf = set(reads.keys()) - set(graphmap2_gtf_primary_locations.keys()) 
-        print_detailed_values_to_file(error_rates, graphmap2_gtf_splice_sites, reads, detailed_results_outfile, "Graphmap2_GTF", graphmap2_gtf_primary_locations)
+        print_detailed_values_to_file(error_rates, graphmap2_gtf_splice_results, reads, detailed_results_outfile, "Graphmap2_GTF", graphmap2_gtf_primary_locations)
         print("Reads successfully aligned graphmap2:", len(graphmap2_gtf_primary_locations))
         print("READS UNALIGNED graphmap2:", len(reads_unaligned_in_graphmap2_gtf) )
 
