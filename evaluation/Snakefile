@@ -63,7 +63,8 @@ def mkdir_p(path):
 rule all:
    input:  config["ROOT_OUT"] + "/evaluation/ont_human/results_per_read.csv",
             config["ROOT_OUT"] + "/evaluation/simulated/results_per_read.csv",
-            config["ROOT_OUT"] + "/evaluation/simulated_nic/results_per_read.csv"
+            config["ROOT_OUT"] + "/evaluation/simulated_nic/results_per_read.csv",
+            config["ROOT_OUT"] + "/evaluation/pacbio_alzheimer/results_per_read.csv"
 
 
 rule biological:
@@ -178,7 +179,7 @@ rule desalt_index:
         shell("touch  {output.finished_flag} ")
 
 rule desalt_align:
-    input: fastq =  config["ROOT_OUT"] + "/data/{dataset}/reads.fq",
+    input: fastq =  config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
             # index = rules.desalt_index.output.desalt_index_folder,
             finished_flag = rules.desalt_index.output.finished_flag
             # desalt_gtf_annotation_outfile = rules.desalt_annotation_fix.output.desalt_gtf_annotation_outfile
@@ -193,7 +194,7 @@ rule desalt_align:
 
 
 rule desalt_gtf_align:
-    input: fastq =  config["ROOT_OUT"] + "/data/{dataset}/reads.fq",
+    input: fastq =  config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
             # index = rules.desalt_index.output.desalt_index_folder,
             finished_flag = rules.desalt_index.output.finished_flag,
             desalt_gtf_annotation_outfile = rules.desalt_annotation_fix.output.desalt_gtf_annotation_outfile
