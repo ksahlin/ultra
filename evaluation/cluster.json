@@ -15,7 +15,7 @@
 
     "desalt_index" : 
     {
-        "jobname" : "ultra",
+        "jobname" : "desalt_index",
         "cpus-per-task" : "64",
         "Nodes" : 1,
         "mem" : "500G",
