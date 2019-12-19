@@ -230,6 +230,9 @@ def get_annotated_splicesites(ref_gff_file, infer_genes, outfolder):
 
 def get_alignment_classifications(true_exon_sites, aligned_exon_sites, is_ultra = False):
     read_annotations = {}
+    total_count_exon_sizes = defaultdict(int)
+    correct_count_exon_sizes = defaultdict(int)
+
     for acc in true_exon_sites:
         exons_true = true_exon_sites[acc]
 
@@ -256,8 +259,13 @@ def get_alignment_classifications(true_exon_sites, aligned_exon_sites, is_ultra 
                     (true_start, true_stop) = exons_true[i]
                     (aln_start, aln_stop) = exons_aligned[i]
                     tmp_diff = max(math.fabs(true_start - aln_start), math.fabs(true_stop - aln_stop) )
+                    
+                    if tmp_diff <= 15:
+                        correct_count_exon_sizes[true_stop-true_start + 1] += 1
+
                     if tmp_diff > max_diff:
                         max_diff = tmp_diff
+
                 if max_diff > 15:
                     is_correct = False
                 else:
@@ -268,7 +276,10 @@ def get_alignment_classifications(true_exon_sites, aligned_exon_sites, is_ultra 
                 else:
                     read_annotations[acc] = ("site_diff", len(exons_true), len(exons_aligned), max_diff)
 
-    return read_annotations
+        for (true_start, true_stop) in exons_true:
+            total_count_exon_sizes[true_stop-true_start + 1] += 1
+
+    return read_annotations, total_count_exon_sizes, correct_count_exon_sizes
 
 
 def pickle_dump(data, filename):
@@ -341,6 +352,16 @@ def get_true_exon_sites(accessions_map):
     #     e = sorted([int(pos) for pos in  acc.split("|")[3].split(";")])
     #     true_exon_sites[acc] = [(e[i],e[i+1]) for i in range(0, len(e), 2) ]  
 
+def print_correctness_per_exon_size(correctness_per_exon_size_outfile, total_count_exon_sizes, correct_count_exon_sizes, alignment_method):
+    for e_size in sorted(list(total_count_exon_sizes.keys())):
+        nr_total = correct_count_exon_sizes[e_size]
+        if e_size in correct_count_exon_sizes:
+            nr_corr = correct_count_exon_sizes[e_size]
+        else:
+            nr_corr = 0
+            correctness_per_exon_size_outfile.write("{0},{1},{2},{3}\n".format(e_size, nr_total, nr_corr, alignment_method))
+
+
 def main(args):
 
     if args.load_database:
@@ -369,11 +390,14 @@ def main(args):
     detailed_results_outfile = open(os.path.join(args.outfolder, "results_per_read.csv"), "w")
     detailed_results_outfile.write("acc,alignment_algorithm,error_rate,read_length,alignment_classification,nr_exons_true,nr_exons_inferred,max_diff\n")
     #acc, alignment_algorithm, err_rate, read_length, aln_class, nr_exons_true, nr_exons_inferred, max_diff
+    correctness_per_exon_size_outfile = open(os.path.join(args.outfolder, "correctness_per_exon_size.csv"), "w")
+
     if args.torkel_sam:
         torkel_primary_locations = decide_primary_locations(args.torkel_sam, args)
         torkel_exon_sites = get_read_alignment_exon_sites(torkel_primary_locations, annotated_splice_coordinates_pairs)
         print('uLTRA')
-        torkel_alignment_results = get_alignment_classifications(true_exon_sites, torkel_exon_sites)
+        torkel_alignment_results, total_count_exon_sizes, correct_count_exon_sizes = get_alignment_classifications(true_exon_sites, torkel_exon_sites)
+        print_correctness_per_exon_size(correctness_per_exon_size_outfile, total_count_exon_sizes, correct_count_exon_sizes, "uLTRA")
         reads_unaligned_in_torkel = set(reads.keys()) - set(torkel_primary_locations.keys())
         print_detailed_values_to_file(error_rates, torkel_alignment_results, reads, detailed_results_outfile, "uLTRA")
         print("Reads successfully aligned uLTRA:", len(torkel_primary_locations))
@@ -383,7 +407,8 @@ def main(args):
         mm2_primary_locations = decide_primary_locations(args.mm2_sam, args)
         mm2_exon_sites = get_read_alignment_exon_sites(mm2_primary_locations, annotated_splice_coordinates_pairs)
         print('MINIMAP2')
-        mm2_alignment_results = get_alignment_classifications(true_exon_sites, mm2_exon_sites)
+        mm2_alignment_results, total_count_exon_sizes, correct_count_exon_sizes = get_alignment_classifications(true_exon_sites, mm2_exon_sites)
+        print_correctness_per_exon_size(correctness_per_exon_size_outfile, total_count_exon_sizes, correct_count_exon_sizes, "minimap2")
         reads_unaligned_in_mm2 = set(reads.keys()) - set(mm2_primary_locations.keys()) 
         print_detailed_values_to_file(error_rates, mm2_alignment_results, reads, detailed_results_outfile, "minimap2")    
         print("Reads successfully aligned mm2:", len(mm2_primary_locations))
@@ -393,7 +418,8 @@ def main(args):
         graphmap2_primary_locations = decide_primary_locations(args.graphmap2_sam, args)
         graphmap2_exon_sites = get_read_alignment_exon_sites(graphmap2_primary_locations, annotated_splice_coordinates_pairs)
         print("GraphMap2")
-        graphmap2_alignment_results = get_alignment_classifications(true_exon_sites, graphmap2_exon_sites)
+        graphmap2_alignment_results, total_count_exon_sizes, correct_count_exon_sizes = get_alignment_classifications(true_exon_sites, graphmap2_exon_sites)
+        print_correctness_per_exon_size(correctness_per_exon_size_outfile, total_count_exon_sizes, correct_count_exon_sizes, "Graphmap2")
         reads_unaligned_in_graphmap2 = set(reads.keys()) - set(graphmap2_primary_locations.keys()) 
         print_detailed_values_to_file(error_rates, graphmap2_alignment_results, reads, detailed_results_outfile, "Graphmap2")
         print("Reads successfully aligned graphmap2:", len(graphmap2_primary_locations))
@@ -402,8 +428,9 @@ def main(args):
     if args.graphmap2_gtf_sam:
         graphmap2_gtf_primary_locations = decide_primary_locations(args.graphmap2_gtf_sam, args)
         graphmap2_gtf_exon_sites = get_read_alignment_exon_sites(graphmap2_gtf_primary_locations, annotated_splice_coordinates_pairs)
-        print("GraphMap2")
-        graphmap2_gtf_alignment_results = get_alignment_classifications(true_exon_sites, graphmap2_gtf_exon_sites)
+        print("GraphMap2_GTF")
+        graphmap2_gtf_alignment_results, total_count_exon_sizes, correct_count_exon_sizes = get_alignment_classifications(true_exon_sites, graphmap2_gtf_exon_sites)
+        print_correctness_per_exon_size(correctness_per_exon_size_outfile, total_count_exon_sizes, correct_count_exon_sizes, "Graphmap2_GTF")
         reads_unaligned_in_graphmap2_gtf = set(reads.keys()) - set(graphmap2_gtf_primary_locations.keys()) 
         print_detailed_values_to_file(error_rates, graphmap2_gtf_alignment_results, reads, detailed_results_outfile, "Graphmap2_GTF")
         print("Reads successfully aligned graphmap2:", len(graphmap2_gtf_primary_locations))
@@ -413,7 +440,8 @@ def main(args):
         desalt_primary_locations = decide_primary_locations(args.desalt_sam, args)
         desalt_exon_sites = get_read_alignment_exon_sites(desalt_primary_locations, annotated_splice_coordinates_pairs)
         print("deSALT")
-        desalt_alignment_results = get_alignment_classifications(true_exon_sites, desalt_exon_sites)
+        desalt_alignment_results, total_count_exon_sizes, correct_count_exon_sizes = get_alignment_classifications(true_exon_sites, desalt_exon_sites)
+        print_correctness_per_exon_size(correctness_per_exon_size_outfile, total_count_exon_sizes, correct_count_exon_sizes, "deSALT")
         reads_unaligned_in_desalt = set(reads.keys()) - set(desalt_primary_locations.keys()) 
         print_detailed_values_to_file(error_rates, desalt_alignment_results, reads, detailed_results_outfile, "deSALT")
         print("Reads successfully aligned deSALT:", len(desalt_primary_locations))
@@ -423,13 +451,15 @@ def main(args):
         desalt_gtf_primary_locations = decide_primary_locations(args.desalt_gtf_sam, args)
         desalt_gtf_exon_sites = get_read_alignment_exon_sites(desalt_gtf_primary_locations, annotated_splice_coordinates_pairs)
         print("deSALT_gtf")
-        desalt_gtf_alignment_results = get_alignment_classifications(true_exon_sites, desalt_gtf_exon_sites)
+        desalt_gtf_alignment_results, total_count_exon_sizes, correct_count_exon_sizes = get_alignment_classifications(true_exon_sites, desalt_gtf_exon_sites)
+        print_correctness_per_exon_size(correctness_per_exon_size_outfile, total_count_exon_sizes, correct_count_exon_sizes, "deSALT_GTF")
         reads_unaligned_in_desalt_gtf = set(reads.keys()) - set(desalt_gtf_primary_locations.keys()) 
         print_detailed_values_to_file(error_rates, desalt_gtf_alignment_results, reads, detailed_results_outfile, "deSALT_GTF")
         print("Reads successfully aligned deSALT_gtf:", len(desalt_gtf_primary_locations))
         print("READS UNALIGNED deSALT_gtf:", len(reads_unaligned_in_desalt_gtf) )
 
     detailed_results_outfile.close()
+    correctness_per_exon_size_outfile.close()
 
 
 
