@@ -222,7 +222,7 @@ def main(solution, ref_exon_sequences, parts_to_exons, exon_id_to_choordinates, 
                 locations, edit_distance = edlib_alignment(ref_seq, read_seq, mode="HW", k = 0 )
                 # print("HEEERE", ref_seq, e_start, e_stop,ref_chr_id)
                 if edit_distance == 0:
-                    print("perfect matches:",ref_seq, locations)
+                    # print("perfect matches:",ref_seq, locations)
                     score = len(ref_seq)
                     # calc_complessed_score(read_alignment, ref_alignment, len(read_seq), len(ref_seq))
                     # e_score = calc_evalue(read_alignment, ref_alignment, len(read_seq), len(ref_seq))
@@ -234,8 +234,8 @@ def main(solution, ref_exon_sequences, parts_to_exons, exon_id_to_choordinates, 
                         mam_instance.append(mam_tuple)
 
         else:
-            # pass
-            warning_log_file.write("not aligning exons smaller than 5bp: {0}, {1}, {2}, {3}.\n".format(ref_chr_id, e_start, e_stop, ref_exon_sequences[ref_chr_id][(e_start, e_stop)])) # TODO: align these and take all locations
+            pass
+            # warning_log_file.write("not aligning exons smaller than 5bp: {0}, {1}, {2}, {3}.\n".format(ref_chr_id, e_start, e_stop, ref_exon_sequences[ref_chr_id][(e_start, e_stop)])) # TODO: align these and take all locations
 
         if  e_stop - e_start >= 0.8*len(read_seq): # read is potentially contained within exon 
             # print()

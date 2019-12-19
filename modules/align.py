@@ -175,11 +175,11 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                 for mam in mam_solution:
                     predicted_exons.append( (mam.x, mam.y) )
                     seq = ref_exon_sequences[mam.ref_chr_id][(mam.x, mam.y)] 
-                    if mam.x < prev_ref_stop:
+                    # if mam.x < prev_ref_stop:
                         # chained_parts_seq.append(seq[prev_ref_stop - mam.x: ])
-                        warning_log_file.write("Overlapping exons in solution with {0} bases. {1}, {2}, {3}, {4}.\n".format(prev_ref_stop - mam.x, chr_id, mam.x, prev_ref_stop, mam))
-                        warning_log_file.write("{0},{1}, mem score: {2}, best mem score:{3}, mam score:{4}\n".format(read_acc, chr_id, chaining_score,  best_chaining_score, mam_value))
-                        warning_log_file.write(str(mam_solution) + '\n\n')
+                        # warning_log_file.write("Overlapping exons in solution with {0} bases. {1}, {2}, {3}, {4}.\n".format(prev_ref_stop - mam.x, chr_id, mam.x, prev_ref_stop, mam))
+                        # warning_log_file.write("{0},{1}, mem score: {2}, best mem score:{3}, mam score:{4}\n".format(read_acc, chr_id, chaining_score,  best_chaining_score, mam_value))
+                        # warning_log_file.write(str(mam_solution) + '\n\n')
                         # sys.exit()
                     # else:
                     chained_parts_seq.append(seq)
