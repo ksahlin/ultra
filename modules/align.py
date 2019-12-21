@@ -168,28 +168,33 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                                                                                                                     exon_id_to_choordinates, exon_to_gene, gene_to_small_exons, \
                                                                                                                     read_seq, args.overlap_threshold, is_rc, warning_log_file)
             # print("finished Mam solution:", mam_solution)
-            if mam_value > 0:
-                chained_parts_seq = []
+            mam_sol_exons_length = sum([ mam.y - mam.x for mam in mam_solution])
+            if mam_value > 0 and 10*len(read_seq) > mam_sol_exons_length:
+                chained_exon_seqs = []
                 prev_ref_stop = -1
                 predicted_exons = []
+                tot_exons_len = 0
                 for mam in mam_solution:
                     predicted_exons.append( (mam.x, mam.y) )
                     seq = ref_exon_sequences[mam.ref_chr_id][(mam.x, mam.y)] 
                     # if mam.x < prev_ref_stop:
-                        # chained_parts_seq.append(seq[prev_ref_stop - mam.x: ])
+                        # chained_exon_seqs.append(seq[prev_ref_stop - mam.x: ])
                         # warning_log_file.write("Overlapping exons in solution with {0} bases. {1}, {2}, {3}, {4}.\n".format(prev_ref_stop - mam.x, chr_id, mam.x, prev_ref_stop, mam))
                         # warning_log_file.write("{0},{1}, mem score: {2}, best mem score:{3}, mam score:{4}\n".format(read_acc, chr_id, chaining_score,  best_chaining_score, mam_value))
                         # warning_log_file.write(str(mam_solution) + '\n\n')
                         # sys.exit()
                     # else:
-                    chained_parts_seq.append(seq)
+                    chained_exon_seqs.append(seq)
                     prev_ref_stop = mam.y
-                created_ref_seq = "".join([part for part in chained_parts_seq])
+                created_ref_seq = "".join([exon for exon in chained_exon_seqs])
                 predicted_splices = [ (e1[1],e2[0]) for e1, e2 in zip(predicted_exons[:-1],predicted_exons[1:])]
 
                 if len(created_ref_seq) > 20000 or len(read_seq) > 20000:
                     print("lenght ref: {0}, length query:{1}".format(len(created_ref_seq), len(read_seq)))
                     read_aln, ref_aln = help_functions.edlib_alignment(read_seq, created_ref_seq)
+                    match_score = sum([2 for n1,n2 in zip(read_aln, ref_aln) if n1 == n2 ])
+                    diff_score = sum([2 for n1,n2 in zip(read_aln, ref_aln) if n1 != n2 ])
+                    alignment_score = match_score - diff_score
                 else:
                     read_aln, ref_aln, cigar_string, cigar_tuples, alignment_score = help_functions.parasail_alignment(read_seq, created_ref_seq)
                 # print(read_acc, "alignment to:", chr_id, "best solution val mems:", mem_solution, 'best mam value:', mam_value, 'read length:', len(read_seq), "final_alignment_stats:" )
