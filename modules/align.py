@@ -164,7 +164,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
             else:
                 read_seq = read_seq
             # print("mem solution:", chaining_score, mem_solution)
-            non_covered_regions, mam_value, mam_solution, unique_exon_choordinates =  classify_read_with_mams.main(mem_solution, ref_exon_sequences, parts_to_exons, \
+            non_covered_regions, mam_value, mam_solution, unique_exon_choordinates = classify_read_with_mams.main(mem_solution, ref_exon_sequences, parts_to_exons, \
                                                                                                                     exon_id_to_choordinates, exon_to_gene, gene_to_small_exons, \
                                                                                                                     read_seq, args.overlap_threshold, is_rc, warning_log_file)
             # print("finished Mam solution:", mam_solution)
@@ -208,7 +208,11 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                 classifications[read_acc] = (classification, mam_value / float(len(read_seq)))
 
                 read_alignments.append( (alignment_score, read_acc, chr_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, is_rc) )
-
+            
+            elif 10*len(read_seq) < mam_sol_exons_length:
+                print("length ref: {0}, length query:{1}".format(len(mam_sol_exons_length), len(read_seq)))
+                print(read_acc, "to chr", chr_id)
+                print(read_seq)
 
         ##################  Process alignments and decide primary
         if len(read_alignments) == 0:

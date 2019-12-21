@@ -198,7 +198,7 @@ def align_reads(args):
 
     mummer_start = time()
     if args.nr_cores == 1:
-        mummer_out_path =  os.path.join( args.outfolder, "mummer_mems.txt" )
+        mummer_out_path =  os.path.join( args.outfolder, "mummer_mems_batch_-1.txt" )
         # if os.path.isfile(mummer_out_path):
         #     pass
         # else:
@@ -214,7 +214,7 @@ def align_reads(args):
         args.reads_rc = reads_rc.name
 
         print("Finished processing reverse complement reads for mummer reads")
-        mummer_out_path =  os.path.join(args.outfolder, "mummer_mems_rc.txt" )
+        mummer_out_path =  os.path.join(args.outfolder, "mummer_mems_batch_-1_rc.txt" )
         # if os.path.isfile(mummer_out_path):
         #     pass
         # else:
@@ -228,43 +228,38 @@ def align_reads(args):
         batch_size = int(total_nt/int(args.nr_cores) + 1)
         print("batch nt:", batch_size, "total_nt:", total_nt)
         read_batches = batch(reads, batch_size, 'nt')
-        batch_args = []
-        for i, read_batch_dict in enumerate(read_batches):
-            print(len(read_batch_dict))
-            read_batch_temp_file = open(os.path.join(args.outfolder, "reads_batch_{0}.fa".format(i)), "w")
-            read_batch_temp_file_rc = open(os.path.join(args.outfolder, "reads_batch_{0}_rc.fa".format(i) ), "w")
-            for acc, seq in read_batch_dict.items():
-                read_batch_temp_file.write('>{0}\n{1}\n'.format(acc, seq))
-            read_batch_temp_file.close()
+        
+        #### TMP remove not to call mummer repeatedly when bugfixing #### 
+        
+        # batch_args = []
+        # for i, read_batch_dict in enumerate(read_batches):
+        #     print(len(read_batch_dict))
+        #     read_batch_temp_file = open(os.path.join(args.outfolder, "reads_batch_{0}.fa".format(i)), "w")
+        #     read_batch_temp_file_rc = open(os.path.join(args.outfolder, "reads_batch_{0}_rc.fa".format(i) ), "w")
+        #     for acc, seq in read_batch_dict.items():
+        #         read_batch_temp_file.write('>{0}\n{1}\n'.format(acc, seq))
+        #     read_batch_temp_file.close()
 
-            for acc, seq in read_batch_dict.items():
-                read_batch_temp_file_rc.write('>{0}\n{1}\n'.format(acc, help_functions.reverse_complement(seq)))
-            read_batch_temp_file_rc.close()
+        #     for acc, seq in read_batch_dict.items():
+        #         read_batch_temp_file_rc.write('>{0}\n{1}\n'.format(acc, help_functions.reverse_complement(seq)))
+        #     read_batch_temp_file_rc.close()
             
-            read_batch = read_batch_temp_file.name
-            read_batch_rc = read_batch_temp_file_rc.name
-            mummer_batch_out_path =  os.path.join( args.outfolder, "mummer_mems_batch_{0}.txt".format(i) )
-            mummer_batch_out_path_rc =  os.path.join(args.outfolder, "mummer_mems_batch_{0}_rc.txt".format(i) )
-            batch_args.append( (args.outfolder, read_batch, ref_path, mummer_batch_out_path, args.min_mem ) )
-            batch_args.append( (args.outfolder, read_batch_rc, ref_path, mummer_batch_out_path_rc, args.min_mem ) )
+        #     read_batch = read_batch_temp_file.name
+        #     read_batch_rc = read_batch_temp_file_rc.name
+        #     mummer_batch_out_path =  os.path.join( args.outfolder, "mummer_mems_batch_{0}.txt".format(i) )
+        #     mummer_batch_out_path_rc =  os.path.join(args.outfolder, "mummer_mems_batch_{0}_rc.txt".format(i) )
+        #     batch_args.append( (args.outfolder, read_batch, ref_path, mummer_batch_out_path, args.min_mem ) )
+        #     batch_args.append( (args.outfolder, read_batch_rc, ref_path, mummer_batch_out_path_rc, args.min_mem ) )
 
-        pool = Pool(processes=int(args.nr_cores))
-        results = pool.starmap(mummer_wrapper.find_mems, batch_args)
-        pool.close()
-        pool.join() 
-        # sys.exit()
-
-        # pool = Pool(processes=2)
-        # mummer_out_path =  os.path.join( args.outfolder, "mummer_mems.txt" )
-        # mummer_out_path_rc =  os.path.join(args.outfolder, "mummer_mems_rc.txt" )
-        # # if os.path.isfile(mummer_out_path) and os.path.isfile(mummer_out_path_rc):
-        # #     pass
-        # # else:
-        # args1 = (args.outfolder, args.reads, ref_path, mummer_out_path, args.min_mem)
-        # args2 = (args.outfolder, args.reads_rc, ref_path, mummer_out_path_rc, args.min_mem)
-        # results = pool.starmap(mummer_wrapper.find_mems, [args1, args2])
+        # pool = Pool(processes=int(args.nr_cores))
+        # results = pool.starmap(mummer_wrapper.find_mems, batch_args)
         # pool.close()
         # pool.join() 
+        
+        ####################################################################
+
+        pass
+
     print("Time for mummer to find mems:{0} seconds.".format(time()-mummer_start))
     #############################################
     #############################################
