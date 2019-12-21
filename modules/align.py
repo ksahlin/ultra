@@ -210,7 +210,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                 read_alignments.append( (alignment_score, read_acc, chr_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, is_rc) )
             
             elif 10*len(read_seq) < mam_sol_exons_length:
-                print("length ref: {0}, length query:{1}".format(len(mam_sol_exons_length), len(read_seq)))
+                print("length ref: {0}, length query:{1}".format(mam_sol_exons_length, len(read_seq)))
                 print(read_acc, "to chr", chr_id)
                 print(read_seq)
 
