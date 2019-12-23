@@ -13,6 +13,19 @@
         "exclude" : "c[4,6-7,8-16]"
     },
 
+
+    "evaluate": 
+    {
+        "jobname" : "evaluate",
+        "cpus-per-task" : "64",
+        "Nodes" : 1,
+        "mem" : "500G",
+        "runtime" : "2-00:00:00",
+        "mail" : "ksahlin@kth.se",
+        "mail_type" : "FAIL",
+        "exclude" : "c[4,6-7,8-16]"
+    },
+
     "desalt_index" : 
     {
         "jobname" : "desalt_index",
@@ -29,7 +42,7 @@
     "minimap2_align": 
     {
         "jobname" : "minimap2",
-        "cpus-per-task" : "63",
+        "cpus-per-task" : "64",
         "Nodes" : 1,
         "mem" : "500G",
         "runtime" : "2-00:00:00",
@@ -43,7 +56,7 @@
     "ultra_align": 
     {
         "jobname" : "ultra_align",
-        "cpus-per-task" : "63",
+        "cpus-per-task" : "64",
         "Nodes" : 1,
         "mem" : "500G",
         "runtime" : "2-00:00:00",
@@ -56,7 +69,7 @@
     "desalt_align" : 
     {
         "jobname" : "desalt_align",
-        "cpus-per-task" : "63",
+        "cpus-per-task" : "64",
         "Nodes" : 1,
         "mem" : "500G",
         "runtime" : "2-00:00:00",
@@ -68,7 +81,7 @@
     "desalt_gtf_align" : 
     {
         "jobname" : "desalt_align",
-        "cpus-per-task" : "63",
+        "cpus-per-task" : "64",
         "Nodes" : 1,
         "mem" : "500G",
         "runtime" : "2-00:00:00",
@@ -80,7 +93,7 @@
     "graphmap2_index" : 
     {
         "jobname" : "graphmap2_index",
-        "cpus-per-task" : "63",
+        "cpus-per-task" : "64",
         "Nodes" : 1,
         "mem" : "500G",
         "runtime" : "2-00:00:00",
@@ -92,7 +105,7 @@
     "graphmap2_gtf_align" : 
     {
         "jobname" : "graphmap2_align",
-        "cpus-per-task" : "63",
+        "cpus-per-task" : "64",
         "Nodes" : 1,
         "mem" : "500G",
         "runtime" : "2-00:00:00",
@@ -103,7 +116,7 @@
     "graphmap2_align" : 
     {
         "jobname" : "graphmap2_align",
-        "cpus-per-task" : "63",
+        "cpus-per-task" : "64",
         "Nodes" : 1,
         "mem" : "500G",
         "runtime" : "2-00:00:00",
