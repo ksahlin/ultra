@@ -487,32 +487,42 @@ def main(args):
         torkel_splice_sites = get_read_candidate_splice_sites(torkel_primary_locations, minimum_annotated_intron, annotated_splice_coordinates_pairs)
         print('uLTRA')
         torkel_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, torkel_splice_sites, refs, torkel_primary_locations)
-        reads_unaligned_in_torkel = set(reads.keys()) - set(torkel_primary_locations.keys())
         print_detailed_values_to_file(error_rates, torkel_splice_results, reads, detailed_results_outfile, "uLTRA", torkel_primary_locations)
         print("Reads successfully aligned uLTRA:", len(torkel_primary_locations))
-        print("READS UNALIGNED uLTRA:", len(reads_unaligned_in_torkel) )
         del torkel_primary_locations
-        del 
+        del torkel_splice_sites
+        del torkel_splice_results
+        reads_unaligned_in_torkel = set(reads.keys()) - set(torkel_primary_locations.keys())
+        print("READS UNALIGNED uLTRA:", len(reads_unaligned_in_torkel) )
+        del reads_unaligned_in_torkel
+
     if args.mm2_sam:
         mm2_primary_locations = decide_primary_locations(args.mm2_sam, args)
         mm2_splice_sites = get_read_candidate_splice_sites(mm2_primary_locations, minimum_annotated_intron, annotated_splice_coordinates_pairs)
         print('MINIMAP2')
         mm2_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, mm2_splice_sites, refs, mm2_primary_locations)
-
-        reads_unaligned_in_mm2 = set(reads.keys()) - set(mm2_primary_locations.keys()) 
         print_detailed_values_to_file(error_rates, mm2_splice_results, reads, detailed_results_outfile, "minimap2", mm2_primary_locations)    
         print("Reads successfully aligned mm2:", len(mm2_primary_locations))
+        del mm2_primary_locations
+        del mm2_splice_sites
+        del mm2_splice_results
+        reads_unaligned_in_mm2 = set(reads.keys()) - set(mm2_primary_locations.keys()) 
         print("READS UNALIGNED mm2:", len(reads_unaligned_in_mm2) )
+        del reads_unaligned_in_mm2
 
     if args.graphmap2_sam:
         graphmap2_primary_locations = decide_primary_locations(args.graphmap2_sam, args)
         graphmap2_splice_sites = get_read_candidate_splice_sites(graphmap2_primary_locations, minimum_annotated_intron, annotated_splice_coordinates_pairs)
         print('Graphmap2')
         graphmap2_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, graphmap2_splice_sites, refs, graphmap2_primary_locations)
-        reads_unaligned_in_graphmap2 = set(reads.keys()) - set(graphmap2_primary_locations.keys()) 
         print_detailed_values_to_file(error_rates, graphmap2_splice_results, reads, detailed_results_outfile, "Graphmap2", graphmap2_primary_locations)
         print("Reads successfully aligned graphmap2:", len(graphmap2_primary_locations))
+        del graphmap2_primary_locations
+        del graphmap2_splice_sites
+        del graphmap2_splice_results
+        reads_unaligned_in_graphmap2 = set(reads.keys()) - set(graphmap2_primary_locations.keys()) 
         print("READS UNALIGNED graphmap2:", len(reads_unaligned_in_graphmap2) )
+        del reads_unaligned_in_graphmap2
 
     if args.graphmap2_gtf_sam:
         graphmap2_gtf_primary_locations = decide_primary_locations(args.graphmap2_gtf_sam, args)
@@ -523,7 +533,11 @@ def main(args):
         print_detailed_values_to_file(error_rates, graphmap2_gtf_splice_results, reads, detailed_results_outfile, "Graphmap2_GTF", graphmap2_gtf_primary_locations)
         print("Reads successfully aligned graphmap2:", len(graphmap2_gtf_primary_locations))
         print("READS UNALIGNED graphmap2:", len(reads_unaligned_in_graphmap2_gtf) )
-
+        del graphmap2_gtf_primary_locations
+        del graphmap2_gtf_splice_sites
+        del graphmap2_gtf_splice_results
+        del reads_unaligned_in_graphmap2_gtf
+        
     if args.desalt_sam:
         desalt_primary_locations = decide_primary_locations(args.desalt_sam, args)
         desalt_splice_sites = get_read_candidate_splice_sites(desalt_primary_locations, minimum_annotated_intron, annotated_splice_coordinates_pairs)
@@ -533,7 +547,10 @@ def main(args):
         print_detailed_values_to_file(error_rates, desalt_splice_results, reads, detailed_results_outfile, "deSALT", desalt_primary_locations)
         print("Reads successfully aligned deSALT:", len(desalt_primary_locations))
         print("READS UNALIGNED deSALT:", len(reads_unaligned_in_desalt) )
-
+        del desalt_primary_locations
+        del desalt_splice_sites
+        del desalt_splice_results
+        del reads_unaligned_in_desalt
     if args.desalt_gtf_sam:
         desalt_gtf_primary_locations = decide_primary_locations(args.desalt_gtf_sam, args)
         desalt_gtf_splice_sites = get_read_candidate_splice_sites(desalt_gtf_primary_locations, minimum_annotated_intron, annotated_splice_coordinates_pairs)
@@ -543,6 +560,10 @@ def main(args):
         print_detailed_values_to_file(error_rates, desalt_gtf_splice_results, reads, detailed_results_outfile, "deSALT_GTF", desalt_gtf_primary_locations)
         print("Reads successfully aligned deSALT:", len(desalt_gtf_primary_locations))
         print("READS UNALIGNED deSALT:", len(reads_unaligned_in_desalt_gtf) )
+        del desalt_gtf_primary_locations
+        del desalt_gtf_splice_sites
+        del desalt_gtf_splice_results
+        del reads_unaligned_in_desalt_gtf
 
     detailed_results_outfile.close()
 
