@@ -468,7 +468,7 @@ def main(args):
 
     reads = { acc.split()[0] : seq for i, (acc, (seq, qual)) in enumerate(readfq(open(args.reads, 'r')))}
     print("Total reads", len(reads))
- 
+    print("here")
     if args.simulated:
         error_rates = get_error_rates(reads)
     else:
@@ -481,7 +481,7 @@ def main(args):
     detailed_results_outfile = open(os.path.join(args.outfolder, "results_per_read.csv"), "w")
     detailed_results_outfile.write("acc,read_type,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag\n")
 
-
+    print("here")
     if args.torkel_sam:
         torkel_primary_locations = decide_primary_locations(args.torkel_sam, args)
         torkel_splice_sites = get_read_candidate_splice_sites(torkel_primary_locations, minimum_annotated_intron, annotated_splice_coordinates_pairs)
@@ -491,7 +491,8 @@ def main(args):
         print_detailed_values_to_file(error_rates, torkel_splice_results, reads, detailed_results_outfile, "uLTRA", torkel_primary_locations)
         print("Reads successfully aligned uLTRA:", len(torkel_primary_locations))
         print("READS UNALIGNED uLTRA:", len(reads_unaligned_in_torkel) )
-
+        del torkel_primary_locations
+        del 
     if args.mm2_sam:
         mm2_primary_locations = decide_primary_locations(args.mm2_sam, args)
         mm2_splice_sites = get_read_candidate_splice_sites(mm2_primary_locations, minimum_annotated_intron, annotated_splice_coordinates_pairs)
