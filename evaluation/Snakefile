@@ -129,12 +129,17 @@ rule ultra_prep:
 rule ultra_align:
     input:  reads = config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
             ultra_index = rules.ultra_prep.output.ref_index,
-            ref = config["HG38"],
+            # ref = config["HG38"],
     output: sam = config["ROOT_OUT"] + "/alignments/ultra/{dataset}/reads.sam",
             time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/ultra/{dataset}/aligning_time_and_mem.txt"
     run:
+        if wildcards.dataset == 'sirv':
+            ref = config["SIRV"]
+        else:
+            ref = config["HG38"]
+
         outfolder = config["ROOT_OUT"] + "/alignments/ultra/{0}/".format(wildcards.dataset)
-        shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 align {input.ref} {input.reads}  {outfolder} --min_mem 14 --t 62  2>&1 | tee {output.time_and_mem} ") # 2> {output.time_and_mem}
+        shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 align {ref} {input.reads}  {outfolder} --min_mem 14 --t 62  2>&1 | tee {output.time_and_mem} ") # 2> {output.time_and_mem}
         shell("mv {outfolder}/torkel.sam {output.sam}")
 
 rule minimap2_index:
