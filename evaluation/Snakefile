@@ -305,9 +305,9 @@ rule evaluate:
         if wildcards.dataset == 'sirv':
             ref = config["SIRV"]
             gtf_annotation = config["ANNOTATION"] + "/SIRV.gtf"
-            shell("python {eval_dir}/evaluate_splice_annotations.py   --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --desalt_gtf_sam {input.desalt_gtf} \
-                                                                        --graphmap2_sam {input.graphmap2} --graphmap2_gtf_sam {input.graphmap2_gtf}  {input.reads}  \
-                                                                {ref} {gtf_annotation} {outfolder} --infer_genes")
+            shell("python {eval_dir}/evaluate_splice_annotations.py   --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} \
+                                                                    {input.reads} {ref} {gtf_annotation} {outfolder} --infer_genes")
+                                                                    #--desalt_gtf_sam {input.desalt_gtf}  --graphmap2_sam {input.graphmap2} --graphmap2_gtf_sam {input.graphmap2_gtf} \
 
         else:
             ref = config["HG38"]
