@@ -271,6 +271,11 @@ rule graphmap2_align:
     output: sam =  config["ROOT_OUT"] + "/alignments/graphmap2/{dataset}/reads.sam",
             time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2/{dataset}/aligning_time_and_mem.txt"
     run:
+        if wildcards.dataset == 'sirv':
+            ref = config["SIRV"]
+        else:
+            ref = config["HG38"]
+
         shell("/usr/bin/time -v  graphmap2 align --index {input.index} --threads 62 -x rnaseq -r {ref} -d {input.fastq} -o {output.sam}  2>&1 | tee {output.time_and_mem} ")
 
 
