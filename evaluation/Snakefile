@@ -113,16 +113,18 @@ rule ultra_prep:
         if wildcards.dataset == 'sirv':
             ref = config["SIRV"]
             gtf_annotation = config["ANNOTATION"] + "/SIRV.gtf"
+            shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_splicing {gtf_annotation} {outfolder}")
+
         else:
             ref = config["HG38"]
             gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"
+            shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_splicing --disable_infer {gtf_annotation} {outfolder}")
 
         outfolder = config["ROOT_OUT"] + "/alignments/ultra/{0}/".format(wildcards.dataset)
         mkdir_p(outfolder)
         time_outfolder = config["ROOT_OUT"] + "/time_and_mem/ultra/{0}/".format(wildcards.dataset)
         mkdir_p(time_outfolder)
 
-        shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_splicing --disable_infer {gtf_annotation} {outfolder}")
         shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_seqs {ref} {outfolder} --min_mem 14 --mask_threshold 100 2>&1 | tee {output.time_and_mem}") #2> {output.time_and_mem}
 
 
@@ -296,32 +298,36 @@ rule evaluate:
             # gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"  # drosophila v97 gtf annotation
     output: csv_file =  config["ROOT_OUT"] + "/evaluation/{dataset}/results_per_read.csv"
     run:
-        if wildcards.dataset == 'sirv':
-            ref = config["SIRV"]
-            gtf_annotation = config["ANNOTATION"] + "/SIRV.gtf"
-        else:
-            ref = config["HG38"]
-            gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"
-
         eval_dir = config["ROOT_IN"] + "/evaluation/"
         outfolder = config["ROOT_OUT"] + "/evaluation/{0}/".format(wildcards.dataset)  
         mkdir_p(outfolder) 
 
-        if wildcards.dataset == "simulated" or wildcards.dataset == "simulated_nic":
-            accessions_map = config["ROOT_OUT"] + "/data/{0}/accessions_map.csv".format(wildcards.dataset) #rules.simulate.output.accessions_map
-
-            # shell("python {eval_dir}/evaluate_simulated_reads.py  --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --graphmap2_sam {input.graphmap2}  {input.reads}  \
-            #                                                 {ref} {gtf_annotation} {accessions_map} {outfolder} --load_database")   
-            shell("python {eval_dir}/evaluate_simulated_reads.py  --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --desalt_gtf_sam {input.desalt_gtf} \
-                                                                 --graphmap2_sam {input.graphmap2}  --graphmap2_gtf_sam {input.graphmap2_gtf} {input.reads} \
-                                                            {ref} {gtf_annotation} {accessions_map} {outfolder} --load_database")   
+        if wildcards.dataset == 'sirv':
+            ref = config["SIRV"]
+            gtf_annotation = config["ANNOTATION"] + "/SIRV.gtf"
+            shell("python {eval_dir}/evaluate_splice_annotations.py   --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --desalt_gtf_sam {input.desalt_gtf} \
+                                                                        --graphmap2_sam {input.graphmap2} --graphmap2_gtf_sam {input.graphmap2_gtf}  {input.reads}  \
+                                                                {ref} {gtf_annotation} {outfolder} --infer_genes")
 
         else:
-            # shell("python {eval_dir}/evaluate_splice_annotations.py   --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --graphmap2_sam {input.graphmap2}  {input.reads}  \
-            #                                                 {ref} {gtf_annotation} {outfolder} --load_database")
-            shell("python {eval_dir}/evaluate_splice_annotations.py   --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --desalt_gtf_sam {input.desalt_gtf} \
-                                                                    --graphmap2_sam {input.graphmap2} --graphmap2_gtf_sam {input.graphmap2_gtf}  {input.reads}  \
-                                                            {ref} {gtf_annotation} {outfolder} --load_database")
+            ref = config["HG38"]
+            gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"
+
+            if wildcards.dataset == "simulated" or wildcards.dataset == "simulated_nic":
+                accessions_map = config["ROOT_OUT"] + "/data/{0}/accessions_map.csv".format(wildcards.dataset) #rules.simulate.output.accessions_map
+
+                # shell("python {eval_dir}/evaluate_simulated_reads.py  --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --graphmap2_sam {input.graphmap2}  {input.reads}  \
+                #                                                 {ref} {gtf_annotation} {accessions_map} {outfolder} --load_database")   
+                shell("python {eval_dir}/evaluate_simulated_reads.py  --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --desalt_gtf_sam {input.desalt_gtf} \
+                                                                     --graphmap2_sam {input.graphmap2}  --graphmap2_gtf_sam {input.graphmap2_gtf} {input.reads} \
+                                                                {ref} {gtf_annotation} {accessions_map} {outfolder} --load_database")   
+
+            else:
+                # shell("python {eval_dir}/evaluate_splice_annotations.py   --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --graphmap2_sam {input.graphmap2}  {input.reads}  \
+                #                                                 {ref} {gtf_annotation} {outfolder} --load_database")
+                shell("python {eval_dir}/evaluate_splice_annotations.py   --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --desalt_gtf_sam {input.desalt_gtf} \
+                                                                        --graphmap2_sam {input.graphmap2} --graphmap2_gtf_sam {input.graphmap2_gtf}  {input.reads}  \
+                                                                {ref} {gtf_annotation} {outfolder} --load_database")
 
 
 # rule evaluate_real:
