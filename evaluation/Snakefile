@@ -110,6 +110,11 @@ rule ultra_prep:
     output: ref_index = config["ROOT_OUT"] + "/alignments/ultra/{dataset}/all_splice_sites_annotations.pickle",
             time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/ultra/{dataset}/indexing_time_and_mem.txt"
     run:
+        outfolder = config["ROOT_OUT"] + "/alignments/ultra/{0}/".format(wildcards.dataset)
+        mkdir_p(outfolder)
+        time_outfolder = config["ROOT_OUT"] + "/time_and_mem/ultra/{0}/".format(wildcards.dataset)
+        mkdir_p(time_outfolder)
+
         if wildcards.dataset == 'sirv':
             ref = config["SIRV"]
             gtf_annotation = config["ANNOTATION"] + "/SIRV.gtf"
@@ -119,11 +124,6 @@ rule ultra_prep:
             ref = config["HG38"]
             gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"
             shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_splicing --disable_infer {gtf_annotation} {outfolder}")
-
-        outfolder = config["ROOT_OUT"] + "/alignments/ultra/{0}/".format(wildcards.dataset)
-        mkdir_p(outfolder)
-        time_outfolder = config["ROOT_OUT"] + "/time_and_mem/ultra/{0}/".format(wildcards.dataset)
-        mkdir_p(time_outfolder)
 
         shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_seqs {ref} {outfolder} --min_mem 14 --mask_threshold 100 2>&1 | tee {output.time_and_mem}") #2> {output.time_and_mem}
 
