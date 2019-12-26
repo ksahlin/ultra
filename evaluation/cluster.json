@@ -80,7 +80,7 @@
 
     "desalt_gtf_align" : 
     {
-        "jobname" : "desalt_align",
+        "jobname" : "desalt_gtf_align",
         "cpus-per-task" : "64",
         "Nodes" : 1,
         "mem" : "500G",
