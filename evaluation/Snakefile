@@ -105,19 +105,24 @@ rule simulate:
 
 
 rule ultra_prep:
-    input:  ref = config["HG38"],
-            gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"
-
+    input:  
     output: ref_index = config["ROOT_OUT"] + "/alignments/ultra/{dataset}/all_splice_sites_annotations.pickle",
             time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/ultra/{dataset}/indexing_time_and_mem.txt"
     run:
+        if wildcards.dataset == 'sirv':
+            ref = config["SIRV"]
+            gtf_annotation = config["ANNOTATION"] + "/SIRV.gtf"
+        else:
+            ref = config["HG38"]
+            gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"
+
         outfolder = config["ROOT_OUT"] + "/alignments/ultra/{0}/".format(wildcards.dataset)
         mkdir_p(outfolder)
         time_outfolder = config["ROOT_OUT"] + "/time_and_mem/ultra/{0}/".format(wildcards.dataset)
         mkdir_p(time_outfolder)
 
-        shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_splicing --disable_infer {input.gtf_annotation} {outfolder}")
-        shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_seqs {input.ref} {outfolder} --min_mem 14 --mask_threshold 100 2>&1 | tee {output.time_and_mem}") #2> {output.time_and_mem}
+        shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_splicing --disable_infer {gtf_annotation} {outfolder}")
+        shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_seqs {ref} {outfolder} --min_mem 14 --mask_threshold 100 2>&1 | tee {output.time_and_mem}") #2> {output.time_and_mem}
 
 
 rule ultra_align:
@@ -132,16 +137,21 @@ rule ultra_align:
         shell("mv {outfolder}/torkel.sam {output.sam}")
 
 rule minimap2_index:
-    input: ref = config["HG38"]
+    input: #ref = config["HG38"]
     output: time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/minimap2/{dataset}/indexing_time_and_mem.txt",
             mm_index =  config["ROOT_OUT"] + "/alignments/minimap2/{dataset}/index.mmi"
     run:
+        if wildcards.dataset == 'sirv':
+            ref = config["SIRV"]
+        else:
+            ref = config["HG38"]
+
         outfolder = config["ROOT_OUT"] + "/alignments/minimap2/{0}/".format(wildcards.dataset)
         mkdir_p(outfolder)
         time_outfolder = config["ROOT_OUT"] + "/time_and_mem/minimap2/{0}/".format(wildcards.dataset)
         mkdir_p(time_outfolder)
 
-        shell("/usr/bin/time -v  minimap2 -ax splice -k14 -d {output.mm_index} {input.ref} 2> {output.time_and_mem}")
+        shell("/usr/bin/time -v  minimap2 -ax splice -k14 -d {output.mm_index} {ref} 2> {output.time_and_mem}")
 
 
 rule minimap2_align:
@@ -154,20 +164,32 @@ rule minimap2_align:
 
 
 rule desalt_annotation_fix:
-    input: gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"
+    input: #gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"
     output: desalt_gtf_annotation_outfile = config["ROOT_OUT"] + "/alignments/desalt/{dataset}/annotation.info"
     run:
+
+        if wildcards.dataset == 'sirv':
+            gtf_annotation = config["ANNOTATION"] + "/SIRV.gtf"
+        else:
+            gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"
+
         outfolder = config["ROOT_OUT"] + "/alignments/desalt/{0}/".format(wildcards.dataset)
         mkdir_p(outfolder)
-        shell("python /galaxy/home/ksahlin/prefix/source/deSALT/src/Annotation_Load.py {input.gtf_annotation}  {output.desalt_gtf_annotation_outfile}")
+        shell("python /galaxy/home/ksahlin/prefix/source/deSALT/src/Annotation_Load.py {gtf_annotation}  {output.desalt_gtf_annotation_outfile}")
+
 
 rule desalt_index:
-    input: ref = config["HG38"]
+    input: #ref = config["HG38"]
     output: 
             time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/desalt/{dataset}/indexing_time_and_mem.txt",
             finished_flag =  config["ROOT_OUT"] + "/time_and_mem/desalt/{dataset}/done.txt"
             # desalt_index_folder =  directory(config["ROOT_OUT"] + "/alignments/desalt/{dataset}/index"),
     run:
+        if wildcards.dataset == 'sirv':
+            ref = config["SIRV"]
+        else:
+            ref = config["HG38"]
+
         outfolder = config["ROOT_OUT"] + "/alignments/desalt/{0}/".format(wildcards.dataset)
         mkdir_p(outfolder)
         time_outfolder = config["ROOT_OUT"] + "/time_and_mem/desalt/{0}/".format(wildcards.dataset)
@@ -175,7 +197,7 @@ rule desalt_index:
         index = config["ROOT_OUT"] + "/alignments/desalt/{0}/index".format(wildcards.dataset)
 
         # shell("/usr/bin/time -v  /galaxy/home/ksahlin/prefix/source/deSALT/src/./deBGA index {input.ref} {output.desalt_index_folder}") # 2> {output.time_and_mem}")
-        shell("/usr/bin/time -v  deSALT index {input.ref} {index} 2>&1 | tee {output.time_and_mem} ") # " 2> {output.time_and_mem}")
+        shell("/usr/bin/time -v  deSALT index {ref} {index} 2>&1 | tee {output.time_and_mem} ") # " 2> {output.time_and_mem}")
         shell("touch  {output.finished_flag} ")
 
 rule desalt_align:
@@ -201,6 +223,7 @@ rule desalt_gtf_align:
     output: sam =  config["ROOT_OUT"] + "/alignments/desalt_gtf/{dataset}/reads.sam",
             time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/desalt_gtf/{dataset}/aligning_time_and_mem.txt"
     run:
+
         index = config["ROOT_OUT"] + "/alignments/desalt/{0}/index".format(wildcards.dataset)
         import tempfile
         work_dir = tempfile.mkdtemp()
@@ -209,34 +232,45 @@ rule desalt_gtf_align:
 
 
 rule graphmap2_index:
-    input:  ref = config["HG38"],
-            fastq =  config["ROOT_OUT"] + "/data/{dataset}/reads.fq",
-            gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf",
+    input:  #ref = config["HG38"],
+            fastq =  config["ROOT_OUT"] + "/data/{dataset}/reads.fq"
     output: index =  config["ROOT_OUT"] + "/alignments/graphmap2/{dataset}/index.gmidx",
             time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2/{dataset}/aligning_time_and_mem.txt"
     run:
-        shell("/usr/bin/time -v  graphmap2 align --index-only --index {output.index}  -x rnaseq -r {input.ref} -d {input.fastq} 2>&1 | tee {output.time_and_mem} ") # 2> {output.time_and_mem}  ")
+
+        if wildcards.dataset == 'sirv':
+            ref = config["SIRV"]
+        else:
+            ref = config["HG38"]
+
+        shell("/usr/bin/time -v  graphmap2 align --index-only --index {output.index}  -x rnaseq -r {ref} -d {input.fastq} 2>&1 | tee {output.time_and_mem} ") # 2> {output.time_and_mem}  ")
 
 rule graphmap2_gtf_align:
-    input:  ref = config["HG38"],
+    input:  #ref = config["HG38"],
             fastq =  config["ROOT_OUT"] + "/data/{dataset}/reads.fq",
             index = rules.graphmap2_index.output.index,
-            gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf",
+            #gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf",
     output: sam =  config["ROOT_OUT"] + "/alignments/graphmap2_gtf/{dataset}/reads.sam",
             time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2_gtf/{dataset}/aligning_time_and_mem.txt"
     run:
-        shell("/usr/bin/time -v  graphmap2 align --index {input.index} --gtf {input.gtf_annotation} --threads 62 -x rnaseq -r {input.ref} -d {input.fastq} -o {output.sam}  2>&1 | tee {output.time_and_mem} ")
+        if wildcards.dataset == 'sirv':
+            ref = config["SIRV"]
+            gtf_annotation = config["ANNOTATION"] + "/SIRV.gtf"
+        else:
+            ref = config["HG38"]
+            gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"
+        
+        shell("/usr/bin/time -v  graphmap2 align --index {input.index} --gtf {gtf_annotation} --threads 62 -x rnaseq -r {ref} -d {input.fastq} -o {output.sam}  2>&1 | tee {output.time_and_mem} ")
 
 
 rule graphmap2_align:
-    input:  ref = config["HG38"],
+    input:  #ref = config["HG38"],
             fastq =  config["ROOT_OUT"] + "/data/{dataset}/reads.fq",
             index = rules.graphmap2_index.output.index,
-            gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf",
     output: sam =  config["ROOT_OUT"] + "/alignments/graphmap2/{dataset}/reads.sam",
             time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2/{dataset}/aligning_time_and_mem.txt"
     run:
-        shell("/usr/bin/time -v  graphmap2 align --index {input.index} --threads 62 -x rnaseq -r {input.ref} -d {input.fastq} -o {output.sam}  2>&1 | tee {output.time_and_mem} ")
+        shell("/usr/bin/time -v  graphmap2 align --index {input.index} --threads 62 -x rnaseq -r {ref} -d {input.fastq} -o {output.sam}  2>&1 | tee {output.time_and_mem} ")
 
 
 rule evaluate:
@@ -247,10 +281,16 @@ rule evaluate:
             graphmap2 = rules.graphmap2_align.output.sam,
             graphmap2_gtf = rules.graphmap2_gtf_align.output.sam,
             reads =  config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
-            ref =  config["HG38"],
-            gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"  # drosophila v97 gtf annotation
+            # ref =  config["HG38"],
+            # gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"  # drosophila v97 gtf annotation
     output: csv_file =  config["ROOT_OUT"] + "/evaluation/{dataset}/results_per_read.csv"
     run:
+        if wildcards.dataset == 'sirv':
+            ref = config["SIRV"]
+            gtf_annotation = config["ANNOTATION"] + "/SIRV.gtf"
+        else:
+            ref = config["HG38"]
+            gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"
 
         eval_dir = config["ROOT_IN"] + "/evaluation/"
         outfolder = config["ROOT_OUT"] + "/evaluation/{0}/".format(wildcards.dataset)  
@@ -260,17 +300,17 @@ rule evaluate:
             accessions_map = config["ROOT_OUT"] + "/data/{0}/accessions_map.csv".format(wildcards.dataset) #rules.simulate.output.accessions_map
 
             # shell("python {eval_dir}/evaluate_simulated_reads.py  --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --graphmap2_sam {input.graphmap2}  {input.reads}  \
-            #                                                 {input.ref} {input.gtf_annotation} {accessions_map} {outfolder} --load_database")   
+            #                                                 {ref} {gtf_annotation} {accessions_map} {outfolder} --load_database")   
             shell("python {eval_dir}/evaluate_simulated_reads.py  --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --desalt_gtf_sam {input.desalt_gtf} \
                                                                  --graphmap2_sam {input.graphmap2}  --graphmap2_gtf_sam {input.graphmap2_gtf} {input.reads} \
-                                                            {input.ref} {input.gtf_annotation} {accessions_map} {outfolder} --load_database")   
+                                                            {ref} {gtf_annotation} {accessions_map} {outfolder} --load_database")   
 
         else:
             # shell("python {eval_dir}/evaluate_splice_annotations.py   --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --graphmap2_sam {input.graphmap2}  {input.reads}  \
-            #                                                 {input.ref} {input.gtf_annotation} {outfolder} --load_database")
+            #                                                 {ref} {gtf_annotation} {outfolder} --load_database")
             shell("python {eval_dir}/evaluate_splice_annotations.py   --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --desalt_gtf_sam {input.desalt_gtf} \
                                                                     --graphmap2_sam {input.graphmap2} --graphmap2_gtf_sam {input.graphmap2_gtf}  {input.reads}  \
-                                                            {input.ref} {input.gtf_annotation} {outfolder} --load_database")
+                                                            {ref} {gtf_annotation} {outfolder} --load_database")
 
 
 # rule evaluate_real:
