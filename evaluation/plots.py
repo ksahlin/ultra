@@ -55,29 +55,6 @@ def label_transcript(row):
    if row['no_splices']  == 1:
       return 'NO_SPLICE'
 
-def splice_site_classification_plot(input_csv, outfolder):
-
-    indata = pd.read_csv(input_csv)
-    # indata['transcript_type'] = indata.apply (lambda row: label_transcript(row), axis=1)
-    # print(len(df))
-    # indata = df.loc[df['q_acc'] == df['r_acc']]
-    # print(len(indata))
-
-    g = sns.catplot(x="annotation", #col="Depth",
-                data=indata,  hue="read_type", hue_order= ["uLTRA", "minimap2"],
-                order= ["FSM", "ISM", "NIC", "NNC", 'NO_SPLICE'], kind="count", aspect=1)
-
-    # g.set(ylim=(0,15))
-    g.set_ylabels("Count")
-    g.set_xlabels("Transcript type")
-
-    # ax = sns.boxplot(x="p", y=y, hue = "type", data=indata)
-    # ax.set_ylim(0,15)
-    # ax.set_ylabel("Error rate %")
-
-    plt.savefig(os.path.join(outfolder, "splice_site_classification.eps"))
-    plt.savefig(os.path.join(outfolder, "splice_site_classification.pdf"))
-    plt.close()
 
 def number_splices_fsm(input_csv, outfolder):
 
@@ -194,6 +171,8 @@ def total_error_rate2(input_csv, outfolder):
     plt.savefig(os.path.join(outfolder, "total_error_rate2.pdf"))
     plt.close()
 
+
+
 def alignment_accuracy_plot(input_csv, outfolder):
 
     indata = pd.read_csv(input_csv)
@@ -219,8 +198,33 @@ def alignment_accuracy_plot(input_csv, outfolder):
     # ax.set_ylim(0,15)
     # ax.set_ylabel("Error rate %")
     (g.set_axis_labels("Alignment type", "Count").set_xticklabels(["Correct", "Inexact", "Exon diff", "Incorrect", "Unaligned"]))
-    plt.savefig(os.path.join(outfolder, "alignment_classification.eps"))
-    plt.savefig(os.path.join(outfolder, "alignment_classification.pdf"))
+    plt.savefig(os.path.join(outfolder, "results.eps"))
+    plt.savefig(os.path.join(outfolder, "results.pdf"))
+    plt.close()
+
+
+def splice_site_classification_plot(input_csv, outfolder):
+
+    indata = pd.read_csv(input_csv)
+    # indata['transcript_type'] = indata.apply (lambda row: label_transcript(row), axis=1)
+    # print(len(df))
+    # indata = df.loc[df['q_acc'] == df['r_acc']]
+    # print(len(indata))
+
+    g = sns.catplot(x="annotation", #col="Depth",
+                data=indata,  hue="read_type", hue_order= ["uLTRA", "minimap2", "deSALT", "deSALT_GTF", "Graphmap2", "Graphmap2_GTF"],
+                order= ["FSM", "ISM", "NIC", "NNC", 'NO_SPLICE'], kind="count", aspect=1)
+
+    # g.set(ylim=(0,15))
+    g.set_ylabels("Count")
+    g.set_xlabels("Transcript type")
+
+    # ax = sns.boxplot(x="p", y=y, hue = "type", data=indata)
+    # ax.set_ylim(0,15)
+    # ax.set_ylabel("Error rate %")
+
+    plt.savefig(os.path.join(outfolder, "results.eps"))
+    plt.savefig(os.path.join(outfolder, "results.pdf"))
     plt.close()
 
 
@@ -232,10 +236,10 @@ def main(args):
 
     # total_error_rate2(args.input_csv, args.outfolder)
     # total_error_rate(args.input_csv, args.outfolder)
-
-    alignment_accuracy_plot(args.input_csv, args.outfolder)
-
-    # splice_site_classification_plot(args.input_csv, args.outfolder)
+    if args.simulated:
+        alignment_accuracy_plot(args.input_csv, args.outfolder)
+    else:
+        splice_site_classification_plot(args.input_csv, args.outfolder)
     # unique_fsm(args.input_csv, args.outfolder)
     # number_splices_fsm(args.input_csv, args.outfolder)
 
@@ -243,6 +247,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Evaluate pacbio IsoSeq transcripts.")
     parser.add_argument('input_csv', type=str, help='Path to all stats file')
     parser.add_argument('outfolder', type=str, help='Path to all stats file')
+    parser.add_argument('--simulated', action="store_true", help='Is simulated data')
+
     args = parser.parse_args()
 
     outfolder = args.outfolder
