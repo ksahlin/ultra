@@ -343,11 +343,11 @@ rule plot:
         mkdir_p(outfolder) 
 
         if wildcards.dataset == "simulated" or wildcards.dataset == "simulated_nic":
-            run("python {eval_dir}/plots.py --simulated {input.csv_file}  {outfolder}")
+            shell("python {eval_dir}/plots.py --simulated {input.csv_file}  {outfolder}")
         elif wildcards.dataset == 'sirv':
-            run("python {eval_dir}/plots.py {input.csv_file}  {outfolder}")
+            shell("python {eval_dir}/plots.py {input.csv_file}  {outfolder}")
         else:
-            run("python {eval_dir}/plots.py {input.csv_file}  {outfolder}")
+            shell("python {eval_dir}/plots.py {input.csv_file}  {outfolder}")
 
 
 
