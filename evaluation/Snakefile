@@ -65,7 +65,12 @@ rule all:
             config["ROOT_OUT"] + "/evaluation/simulated/results_per_read.csv",
             config["ROOT_OUT"] + "/evaluation/simulated_nic/results_per_read.csv",
             config["ROOT_OUT"] + "/evaluation/pacbio_alzheimer/results_per_read.csv",
-            config["ROOT_OUT"] + "/evaluation/sirv/results_per_read.csv"
+            config["ROOT_OUT"] + "/evaluation/sirv/results_per_read.csv",
+            config["ROOT_OUT"] + "/evaluation/ont_human/results.pdf",
+            config["ROOT_OUT"] + "/evaluation/simulated/results.pdf",
+            config["ROOT_OUT"] + "/evaluation/simulated_nic/results.pdf",
+            config["ROOT_OUT"] + "/evaluation/pacbio_alzheimer/results.pdf",
+            config["ROOT_OUT"] + "/evaluation/sirv/results.pdf"
 
 
 rule biological:
@@ -296,7 +301,7 @@ rule evaluate:
             reads =  config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
             # ref =  config["HG38"],
             # gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"  # drosophila v97 gtf annotation
-    output: csv_file =  config["ROOT_OUT"] + "/evaluation/{dataset}/results_per_read.csv"
+    output: csv_file = config["ROOT_OUT"] + "/evaluation/{dataset}/results_per_read.csv"
     run:
         eval_dir = config["ROOT_IN"] + "/evaluation/"
         outfolder = config["ROOT_OUT"] + "/evaluation/{0}/".format(wildcards.dataset)  
@@ -328,6 +333,22 @@ rule evaluate:
                 shell("python {eval_dir}/evaluate_splice_annotations.py   --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --desalt_gtf_sam {input.desalt_gtf} \
                                                                         --graphmap2_sam {input.graphmap2} --graphmap2_gtf_sam {input.graphmap2_gtf}  {input.reads}  \
                                                                 {ref} {gtf_annotation} {outfolder} --load_database")
+
+rule plot:
+    input: csv_file = rules.evaluate.output.csv_file
+    output: pdf = config["ROOT_OUT"] + "/evaluation/{dataset}/results.pdf"
+    run:
+        eval_dir = config["ROOT_IN"] + "/evaluation/"
+        outfolder = config["ROOT_OUT"] + "/evaluation/{0}/".format(wildcards.dataset)  
+        mkdir_p(outfolder) 
+
+        if wildcards.dataset == "simulated" or wildcards.dataset == "simulated_nic":
+            run("python {eval_dir}/plots.py --simulated {input.csv_file}  {outfolder}")
+        elif wildcards.dataset == 'sirv':
+            run("python {eval_dir}/plots.py {input.csv_file}  {outfolder}")
+        else:
+            run("python {eval_dir}/plots.py {input.csv_file}  {outfolder}")
+
 
 
 # rule evaluate_real:
