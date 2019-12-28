@@ -169,7 +169,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                                                                                                                     read_seq, args.overlap_threshold, is_rc, warning_log_file)
             # print("finished Mam solution:", mam_solution)
             mam_sol_exons_length = sum([ mam.y - mam.x for mam in mam_solution])
-            if mam_value > 0 and 10*len(read_seq) > mam_sol_exons_length:
+            if mam_value > 0:
                 chained_exon_seqs = []
                 prev_ref_stop = -1
                 predicted_exons = []
@@ -189,12 +189,15 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                 created_ref_seq = "".join([exon for exon in chained_exon_seqs])
                 predicted_splices = [ (e1[1],e2[0]) for e1, e2 in zip(predicted_exons[:-1],predicted_exons[1:])]
 
-                if len(created_ref_seq) > 20000 or len(read_seq) > 20000:
-                    print("lenght ref: {0}, length query:{1}".format(len(created_ref_seq), len(read_seq)))
-                    read_aln, ref_aln = help_functions.edlib_alignment(read_seq, created_ref_seq)
-                    match_score = sum([2 for n1,n2 in zip(read_aln, ref_aln) if n1 == n2 ])
-                    diff_score = sum([2 for n1,n2 in zip(read_aln, ref_aln) if n1 != n2 ])
-                    alignment_score = match_score - diff_score
+                if len(created_ref_seq) > 20000 or len(read_seq) > 20000 or 10*len(read_seq) < mam_sol_exons_length:
+                    # print("lenght ref: {0}, length query:{1}".format(len(created_ref_seq), len(read_seq)))
+                    read_aln, ref_aln, edit_distance = help_functions.edlib_alignment(read_seq, created_ref_seq, aln_mode = "HW")
+                    match_score = sum([1 for n1,n2 in zip(read_aln, ref_aln) if n1 == n2 ])
+                    # diff_score = sum([2 for n1,n2 in zip(read_aln, ref_aln) if n1 != n2 ])
+                    alignment_score = match_score - edit_distance
+                    # print(read_acc, "to chr", chr_id, match_score, edit_distance,  alignment_score)
+                    # print(read_seq)
+
                 else:
                     read_aln, ref_aln, cigar_string, cigar_tuples, alignment_score = help_functions.parasail_alignment(read_seq, created_ref_seq)
                 # print(read_acc, "alignment to:", chr_id, "best solution val mems:", mem_solution, 'best mam value:', mam_value, 'read length:', len(read_seq), "final_alignment_stats:" )
@@ -206,13 +209,16 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                 if len(non_covered_regions) >= 3 and (max(non_covered_regions[1:-1]) > args.non_covered_cutoff):
                     classification = 'Unclassified_insufficient_junction_coverage'
                 classifications[read_acc] = (classification, mam_value / float(len(read_seq)))
+                # if classification == "NIC_novel":
+                #     print("lenght ref: {0}, length query:{1}, {2}".format(len(created_ref_seq), len(read_seq),alignment_score ))
+
 
                 read_alignments.append( (alignment_score, read_acc, chr_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, is_rc) )
             
-            elif 10*len(read_seq) < mam_sol_exons_length:
-                print("length ref: {0}, length query:{1}".format(mam_sol_exons_length, len(read_seq)))
-                print(read_acc, "to chr", chr_id)
-                print(read_seq)
+            # elif 10*len(read_seq) < mam_sol_exons_length:
+            #     print("length ref: {0}, length query:{1}".format(mam_sol_exons_length, len(read_seq)))
+            #     print(read_acc, "to chr", chr_id)
+            #     print(read_seq)
 
         ##################  Process alignments and decide primary
         if len(read_alignments) == 0:
@@ -243,7 +249,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                     map_score = 0
 
 
-                sam_output.main(read_acc, chr_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, alignment_outfile, is_rc, is_secondary, map_score)
+                sam_output.main(read_acc, chr_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, alignment_outfile, is_rc, is_secondary, map_score, aln_score = alignment_score)
                 read_accessions_with_mappings.add(read_acc)
 
 

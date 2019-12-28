@@ -135,11 +135,18 @@ def cigar_to_seq(cigar, query, ref):
     return  "".join([s for s in q_aln]), "".join([s for s in r_aln]), cigar_tuples
 
 
-def edlib_alignment(read_seq, ref_seq):
-    result = edlib.align(read_seq, ref_seq, task="path", mode="NW")
+def edlib_alignment(read_seq, ref_seq, aln_mode="NW"):
+    result = edlib.align(read_seq, ref_seq, task="path", mode=aln_mode)
     cigar_string = result["cigar"]
-    read_alignment, ref_alignment, cigar_tuples = cigar_to_seq(cigar_string, read_seq, ref_seq)
-    return read_alignment, ref_alignment
+    start, stop = result['locations'][0]
+    read_alignment, ref_alignment, cigar_tuples = cigar_to_seq(cigar_string, read_seq, ref_seq[start: stop])
+    read_alignment = "-"*start + read_alignment + "-"* (len(ref_seq)-stop - 1)
+    ref_alignment = ref_seq[:start] + ref_alignment + ref_seq[stop:]
+    # cigar_tuples.insert(0, (len(ref_seq[:start]),"D"))
+    # cigar_tuples.append((len(ref_seq[stop:]),"D"))
+    # print( len(read_alignment), len(ref_alignment))
+    assert len(read_alignment) == len(ref_alignment)
+    return read_alignment, ref_alignment, result['editDistance']
 
 def mkdir_p(path):
     try:
