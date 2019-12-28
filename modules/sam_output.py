@@ -21,7 +21,7 @@ def get_segments(read_aln, ref_aln, predicted_exons):
 
         if n != '-':
             curr_ref_pos += 1
-
+    # print(curr_ref_pos)
     if n != '-' and curr_ref_pos in ref_seq_break_points: 
         ref_aln_break_points.append(i)
 
@@ -35,7 +35,7 @@ def get_segments(read_aln, ref_aln, predicted_exons):
 
     # print('ref_aln_break_points', ref_aln_break_points)
     # print('ref_aln_break_points_no_consecutive', ref_aln_break_points_no_consecutive)
-
+    # print(len(ref_aln_break_points_no_consecutive))
     e_start = 0
     for i,e_stop in enumerate(ref_aln_break_points_no_consecutive):
         if i == len(ref_aln_break_points_no_consecutive) - 1:
@@ -120,12 +120,17 @@ def get_genomic_cigar(read_aln, ref_aln, predicted_exons):
 
 
 
-def main(read_id, ref_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, alignment_outfile, is_rc, is_secondary, map_score):
+def main(read_id, ref_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, alignment_outfile, is_rc, is_secondary, map_score, aln_score = 0):
     # print(ref_id, classification, predicted_exons, read_aln, ref_aln, alignment_outfile)
     read_sam_entry = pysam.AlignedSegment(alignment_outfile.header)
     if classification != 'unaligned':
         genomic_cigar, start_offset = get_genomic_cigar(read_aln, ref_aln, predicted_exons)
-        # print('genomic cigar:', genomic_cigar)
+        # if genomic_cigar == "":
+        #     print(classification, is_rc, is_secondary, aln_score)
+        #     print('genomic cigar:', genomic_cigar, read_id)
+        #     print(read_aln)
+        #     print(ref_aln)
+        #     print(predicted_exons)
         read_sam_entry.cigarstring = genomic_cigar 
         read_sam_entry.reference_start = predicted_exons[0][0] + start_offset
         read_sam_entry.mapping_quality = map_score 

@@ -207,16 +207,19 @@ def main(solution, ref_exon_sequences, parts_to_exons, exon_id_to_choordinates, 
                 if edit_distance >= 0:
                     # calc_complessed_score(read_alignment, ref_alignment, len(read_seq), len(ref_seq))
                     # e_score = calc_evalue(read_alignment, ref_alignment, len(read_seq), len(ref_seq))
-                    start, stop = locations[0]
-                    min_segment_length = (stop - start)
-                    score = min_segment_length - edit_distance
-                    if (min_segment_length - edit_distance)/float(min_segment_length) > 0.6:
-                        start, stop = locations[0]
-                        covered_regions.append((start,stop, score, exon_id, ref_chr_id))
-                        for exon_id in all_exon_ids: break # only need one of the redundant exon_ids
-                        mam_tuple = mam(e_start, e_stop, start, stop, 
-                                score, min_segment_length,  exon_id, ref_chr_id) 
-                        mam_instance.append(mam_tuple)
+                    # start, stop = locations[0]
+                    # if len(locations) > 1:
+                    #     print("had more", e_stop - e_start, locations)
+
+                    for start, stop in locations:
+                        min_segment_length = (stop - start)
+                        score = min_segment_length - edit_distance
+                        if (min_segment_length - edit_distance)/float(min_segment_length) > 0.6:
+                            for exon_id in all_exon_ids: break # only need one of the redundant exon_ids
+                            covered_regions.append((start,stop, score, exon_id, ref_chr_id))
+                            mam_tuple = mam(e_start, e_stop, start, stop, 
+                                    score, min_segment_length,  exon_id, ref_chr_id) 
+                            mam_instance.append(mam_tuple)
             
             else: # small exons between 5-9bp needs exact match otherwise too much noise
                 locations, edit_distance = edlib_alignment(ref_seq, read_seq, mode="HW", k = 0 )
