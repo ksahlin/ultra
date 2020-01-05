@@ -105,7 +105,7 @@ def get_mummer_records(mems_path, reads):
                 mem_len = int(vals[3])
                 mem_ref_exon_part_start = int(vals[1])
                 mem_read_start = int(vals[2])
-                # convert to 0-indexed as python, however last coordinate is inclusive of the hit, not as in python end-indexing
+                # convert to 0-indexed as python, however last coordinate is inclusive of the hit in MEM solvers, not as in python end-indexing
                 
                 # mem_tuple = mem(int(ref_coord_start) - 1 + mem_ref_exon_part_start - 1, int(ref_coord_start) - 1 + mem_ref_exon_part_start -1 + mem_len - 1,
                 #                 mem_read_start-1, mem_read_start-1 + mem_len - 1, 
