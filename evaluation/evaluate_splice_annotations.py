@@ -58,7 +58,7 @@ def decide_primary_locations(sam_file, args): # maybe this function is not neede
     for read in SAM_file.fetch(until_eof=True):
         if read.flag == 0 or read.flag == 16:
             ins = sum([length for type_, length in read.cigartuples if type_ == 1])
-            del_ = sum([length for type_, length in read.cigartuples if type_ == 2 and length < args.min_intron ])
+            del_ = sum([length for type_, length in read.cigartuples if type_ == 2]) # and length < args.min_intron ])
             subs = sum([length for type_, length in read.cigartuples if type_ == 8])
             matches = sum([length for type_, length in read.cigartuples if type_ == 7])
             tot_align = ins + del_ + subs + matches
@@ -123,7 +123,7 @@ def print_detailed_values_to_file(error_rates, annotations_dict, reads, outfile,
         outfile.write( ",".join( [str(item) for item in info_tuple] ) + "\n")
 
 
-def get_splice_sites(cigar_tuples, first_exon_start, minimum_annotated_intron, annotated_chr_coordinate_pairs):
+def get_splice_sites(cigar_tuples, first_exon_start, annotated_chr_coordinate_pairs):
     splice_sites = []
     ref_pos = first_exon_start
     
@@ -163,7 +163,7 @@ def get_splice_sites(cigar_tuples, first_exon_start, minimum_annotated_intron, a
 
     return splice_sites
 
-def get_read_candidate_splice_sites(reads_primary_locations, minimum_annotated_intron, annotated_splice_coordinates_pairs):
+def get_read_candidate_splice_sites(reads_primary_locations, annotated_splice_coordinates_pairs):
     read_splice_sites = {}
     for acc in reads_primary_locations:
         read = reads_primary_locations[acc]
@@ -188,7 +188,7 @@ def get_read_candidate_splice_sites(reads_primary_locations, minimum_annotated_i
                 annotated_chr_coordinate_pairs = set()
 
             read_splice_sites[read.query_name] = {}  
-            read_splice_sites[read.query_name][mod_ref] = get_splice_sites(read_cigar_tuples, q_start, minimum_annotated_intron, annotated_chr_coordinate_pairs)
+            read_splice_sites[read.query_name][mod_ref] = get_splice_sites(read_cigar_tuples, q_start, annotated_chr_coordinate_pairs)
 
     return read_splice_sites
 
@@ -209,7 +209,7 @@ def get_annotated_splicesites(ref_gff_file, infer_genes, outfolder):
     splice_coordinates = {} # to calc individual fraction of correct sites and NIC
     splice_coordinates_pairs = {} 
     ref_isoforms = {} # To calculate Full splice matches
-    minimum_annotated_intron = 1000000000
+    # minimum_annotated_intron = 1000000000
     for gene in db.features_of_type('gene'):
         chromosome = str(gene.seqid)
         if chromosome not in ref_isoforms:
@@ -223,20 +223,20 @@ def get_annotated_splicesites(ref_gff_file, infer_genes, outfolder):
             # print(dir(transcript))
             consecutive_exons = [exon for exon in db.children(transcript, featuretype='exon', order_by='start')]
             # print('transcript', transcript.id, transcript.start, transcript.stop, [ (exon.start, exon.stop) for exon in db.children(transcript, featuretype='exon', order_by='start')])
+            # for individual sites
+            for e in consecutive_exons:
+                splice_coordinates[chromosome].add(e.stop)
+                splice_coordinates[chromosome].add(e.start -1 )
+
+            # for splice pairs
             tmp_splice_sites = []
             for e1,e2 in zip(consecutive_exons[:-1], consecutive_exons[1:]):
                 tmp_splice_sites.append( (e1.stop, e2.start -1 ))           
-                splice_coordinates[chromosome].add(e1.stop)
-                splice_coordinates[chromosome].add(e2.start -1 )
                 splice_coordinates_pairs[chromosome].add( (e1.stop, e2.start -1 ) )
-
-                if e2.start -1 - e1.stop < minimum_annotated_intron:
-                    minimum_annotated_intron = e2.start -1 - e1.stop
-                # print('exon', exon.id, exon.start, exon.stop)
             
             ref_isoforms[chromosome][tuple(tmp_splice_sites)] = transcript.id
 
-    return ref_isoforms, splice_coordinates, splice_coordinates_pairs, minimum_annotated_intron
+    return ref_isoforms, splice_coordinates, splice_coordinates_pairs
 
 
 from collections import namedtuple
@@ -458,13 +458,13 @@ def main(args):
         annotated_ref_isoforms = pickle_load(os.path.join( args.outfolder, 'annotated_ref_isoforms.pickle') )
         annotated_splice_coordinates = pickle_load(os.path.join( args.outfolder, 'annotated_splice_coordinates.pickle') )
         annotated_splice_coordinates_pairs = pickle_load(os.path.join( args.outfolder, 'annotated_splice_coordinates_pairs.pickle') )
-        minimum_annotated_intron = pickle_load(os.path.join( args.outfolder, 'minimum_annotated_intron.pickle') )
+        # minimum_annotated_intron = pickle_load(os.path.join( args.outfolder, 'minimum_annotated_intron.pickle') )
     else:
-        annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, minimum_annotated_intron = get_annotated_splicesites(args.gff_file, args.infer_genes, args.outfolder)
+        annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs = get_annotated_splicesites(args.gff_file, args.infer_genes, args.outfolder)
         pickle_dump(annotated_ref_isoforms, os.path.join( args.outfolder, 'annotated_ref_isoforms.pickle') )
         pickle_dump(annotated_splice_coordinates, os.path.join( args.outfolder, 'annotated_splice_coordinates.pickle') )
         pickle_dump(annotated_splice_coordinates_pairs, os.path.join( args.outfolder, 'annotated_splice_coordinates_pairs.pickle') )
-        pickle_dump(minimum_annotated_intron, os.path.join( args.outfolder, 'minimum_annotated_intron.pickle') )
+        # pickle_dump(minimum_annotated_intron, os.path.join( args.outfolder, 'minimum_annotated_intron.pickle') )
 
     reads = { acc.split()[0] : seq for i, (acc, (seq, qual)) in enumerate(readfq(open(args.reads, 'r')))}
     print("Total reads", len(reads))
@@ -475,8 +475,8 @@ def main(args):
         error_rates = {}
     refs = { acc.split()[0] : seq for i, (acc, (seq, _)) in enumerate(readfq(open(args.refs, 'r')))}
     modify_reference_headers(refs)
-    print("SHORTEST INTRON:", minimum_annotated_intron)
-    minimum_annotated_intron = max(minimum_annotated_intron,  args.min_intron)
+    # print("SHORTEST INTRON:", minimum_annotated_intron)
+    # minimum_annotated_intron = max(minimum_annotated_intron,  args.min_intron)
 
     detailed_results_outfile = open(os.path.join(args.outfolder, "results_per_read.csv"), "w")
     detailed_results_outfile.write("acc,read_type,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag\n")
@@ -484,7 +484,7 @@ def main(args):
     print("here")
     if args.torkel_sam:
         torkel_primary_locations = decide_primary_locations(args.torkel_sam, args)
-        torkel_splice_sites = get_read_candidate_splice_sites(torkel_primary_locations, minimum_annotated_intron, annotated_splice_coordinates_pairs)
+        torkel_splice_sites = get_read_candidate_splice_sites(torkel_primary_locations, annotated_splice_coordinates_pairs)
         print('uLTRA')
         torkel_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, torkel_splice_sites, refs, torkel_primary_locations)
         print_detailed_values_to_file(error_rates, torkel_splice_results, reads, detailed_results_outfile, "uLTRA", torkel_primary_locations)
@@ -498,7 +498,7 @@ def main(args):
 
     if args.mm2_sam:
         mm2_primary_locations = decide_primary_locations(args.mm2_sam, args)
-        mm2_splice_sites = get_read_candidate_splice_sites(mm2_primary_locations, minimum_annotated_intron, annotated_splice_coordinates_pairs)
+        mm2_splice_sites = get_read_candidate_splice_sites(mm2_primary_locations, annotated_splice_coordinates_pairs)
         print('MINIMAP2')
         mm2_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, mm2_splice_sites, refs, mm2_primary_locations)
         print_detailed_values_to_file(error_rates, mm2_splice_results, reads, detailed_results_outfile, "minimap2", mm2_primary_locations)    
@@ -512,7 +512,7 @@ def main(args):
 
     if args.graphmap2_sam:
         graphmap2_primary_locations = decide_primary_locations(args.graphmap2_sam, args)
-        graphmap2_splice_sites = get_read_candidate_splice_sites(graphmap2_primary_locations, minimum_annotated_intron, annotated_splice_coordinates_pairs)
+        graphmap2_splice_sites = get_read_candidate_splice_sites(graphmap2_primary_locations, annotated_splice_coordinates_pairs)
         print('Graphmap2')
         graphmap2_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, graphmap2_splice_sites, refs, graphmap2_primary_locations)
         print_detailed_values_to_file(error_rates, graphmap2_splice_results, reads, detailed_results_outfile, "Graphmap2", graphmap2_primary_locations)
@@ -526,7 +526,7 @@ def main(args):
 
     if args.graphmap2_gtf_sam:
         graphmap2_gtf_primary_locations = decide_primary_locations(args.graphmap2_gtf_sam, args)
-        graphmap2_gtf_splice_sites = get_read_candidate_splice_sites(graphmap2_gtf_primary_locations, minimum_annotated_intron, annotated_splice_coordinates_pairs)
+        graphmap2_gtf_splice_sites = get_read_candidate_splice_sites(graphmap2_gtf_primary_locations, annotated_splice_coordinates_pairs)
         print('Graphmap2')
         graphmap2_gtf_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, graphmap2_gtf_splice_sites, refs, graphmap2_gtf_primary_locations)
         reads_unaligned_in_graphmap2_gtf = set(reads.keys()) - set(graphmap2_gtf_primary_locations.keys()) 
@@ -540,7 +540,7 @@ def main(args):
         
     if args.desalt_sam:
         desalt_primary_locations = decide_primary_locations(args.desalt_sam, args)
-        desalt_splice_sites = get_read_candidate_splice_sites(desalt_primary_locations, minimum_annotated_intron, annotated_splice_coordinates_pairs)
+        desalt_splice_sites = get_read_candidate_splice_sites(desalt_primary_locations, annotated_splice_coordinates_pairs)
         print('deSALT')
         desalt_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, desalt_splice_sites, refs, desalt_primary_locations)
         reads_unaligned_in_desalt = set(reads.keys()) - set(desalt_primary_locations.keys()) 
@@ -553,7 +553,7 @@ def main(args):
         del reads_unaligned_in_desalt
     if args.desalt_gtf_sam:
         desalt_gtf_primary_locations = decide_primary_locations(args.desalt_gtf_sam, args)
-        desalt_gtf_splice_sites = get_read_candidate_splice_sites(desalt_gtf_primary_locations, minimum_annotated_intron, annotated_splice_coordinates_pairs)
+        desalt_gtf_splice_sites = get_read_candidate_splice_sites(desalt_gtf_primary_locations, annotated_splice_coordinates_pairs)
         print('deSALT')
         desalt_gtf_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, desalt_gtf_splice_sites, refs, desalt_gtf_primary_locations)
         reads_unaligned_in_desalt_gtf = set(reads.keys()) - set(desalt_gtf_primary_locations.keys()) 
@@ -585,7 +585,7 @@ if __name__ == '__main__':
     parser.add_argument('refs', type=str, help='Path to the refs file')
     parser.add_argument('gff_file', type=str, help='Path to the refs file')
     parser.add_argument('outfolder', type=str, help='Output path of results')
-    parser.add_argument('--min_intron', type=int, default=15, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
+    # parser.add_argument('--min_intron', type=int, default=15, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
     parser.add_argument('--infer_genes', action= "store_true", help='Include pairwise alignment of original and corrected read.')
     parser.add_argument('--load_database', action= "store_true", help='Load already computed splice junctions and transcript annotations instead of constructing a new database.')
     parser.add_argument('--simulated', action= "store_true", help='Adds extra analysis that can be done for simulated data since known true locations.')
