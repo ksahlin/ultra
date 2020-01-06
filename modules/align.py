@@ -166,7 +166,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
             # print("mem solution:", chaining_score, mem_solution)
             non_covered_regions, mam_value, mam_solution, unique_exon_choordinates = classify_read_with_mams.main(mem_solution, ref_exon_sequences, parts_to_exons, \
                                                                                                                     exon_id_to_choordinates, exon_to_gene, gene_to_small_exons, \
-                                                                                                                    read_seq, args.overlap_threshold, is_rc, warning_log_file)
+                                                                                                                    read_seq, is_rc, warning_log_file)
             # print("finished Mam solution:",mam_value, mam_solution)
             mam_sol_exons_length = sum([ mam.y - mam.x for mam in mam_solution])
             if mam_value > 0:
@@ -195,7 +195,6 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                     match_score = sum([2 for n1,n2 in zip(read_aln, ref_aln) if n1 == n2 ])
                     # diff_score = sum([2 for n1,n2 in zip(read_aln, ref_aln) if n1 != n2 ])
                     alignment_score = match_score - 2*edit_distance
-                    # print(read_acc, "to chr", chr_id, match_score, edit_distance,  alignment_score)
                     # print(read_seq)
 
                 else:
@@ -207,10 +206,15 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                 # substitutions = sum([1 for n1,n2 in zip(read_aln, ref_aln) if n1 != n2 and n1 != "-" and n2 != "-" ])
                 # deletions = sum([1 for n1,n2 in zip(read_aln, ref_aln) if n1 == "-" ])
                 # insertions = sum([1 for n1,n2 in zip(read_aln, ref_aln) if n2 == "-" ])
-                
+
                 # print(read_acc, "alignment to:", chr_id, "best solution val mems:", mem_solution, 'best mam value:', mam_value, 'read length:', len(read_seq), "final_alignment_stats:" )
                 # print(read_aln)
                 # print(ref_aln)
+                # print("to chr", chr_id,  alignment_score, 2*args.alignment_threshold*len(read_seq))
+                if alignment_score < 2*args.alignment_threshold*len(read_seq):
+                    # print()
+                    # print("skipping")
+                    continue
                 classification, annotated_to_transcript_id = classify_alignment2.main(chr_id, predicted_splices, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations)
 
                 # checing for internal (splice site) non covered regions

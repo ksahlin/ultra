@@ -268,7 +268,7 @@ def read_coverage(mems):
 
 
 
-def read_coverage_mam_score(mams, overlap_threshold):
+def read_coverage_mam_score(mams):
     """
         Algorithm 15.1 in Genome scale algorithmic design, Makinen et al.
 
