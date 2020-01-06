@@ -66,11 +66,13 @@ rule all:
             config["ROOT_OUT"] + "/evaluation/simulated_nic/results_per_read.csv",
             config["ROOT_OUT"] + "/evaluation/pacbio_alzheimer/results_per_read.csv",
             config["ROOT_OUT"] + "/evaluation/sirv/results_per_read.csv",
+            config["ROOT_OUT"] + "/evaluation/simulated_ens/results_per_read.csv",
             config["ROOT_OUT"] + "/evaluation/ont_human/results.pdf",
             config["ROOT_OUT"] + "/evaluation/simulated/results.pdf",
             config["ROOT_OUT"] + "/evaluation/simulated_nic/results.pdf",
             config["ROOT_OUT"] + "/evaluation/pacbio_alzheimer/results.pdf",
             config["ROOT_OUT"] + "/evaluation/sirv/results.pdf",
+            config["ROOT_OUT"] + "/evaluation/simulated_ens/results.pdf",
             config["ROOT_IN"] + "/data/results/plots.zip"
 
 
@@ -106,6 +108,9 @@ rule simulate:
 
         elif wildcards.dataset == "simulated_nic":
             shell("python {inbase}/evaluation/simulate_reads.py --disable_infer --nic --gtf {input.gtf_annotation} {input.ref} {simulated_reads_prefix} 1000000")
+
+        elif wildcards.dataset == "simulated_ens":
+            shell("python {inbase}/evaluation/simulate_reads.py --disable_infer --ens --gtf {input.gtf_annotation} {input.ref} {simulated_reads_prefix} 1000000")
 
         # shell("python {inbase}/evaluation/simulate_reads.py {input.fasta} {output.simulated_reads} 1000000 --fasta")
 
@@ -319,7 +324,7 @@ rule evaluate:
             ref = config["HG38"]
             gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"
 
-            if wildcards.dataset == "simulated" or wildcards.dataset == "simulated_nic":
+            if wildcards.dataset == "simulated" or wildcards.dataset == "simulated_nic" or wildcards.dataset == "simulated_ens":
                 accessions_map = config["ROOT_OUT"] + "/data/{0}/accessions_map.csv".format(wildcards.dataset) #rules.simulate.output.accessions_map
 
                 # shell("python {eval_dir}/evaluate_simulated_reads.py  --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --graphmap2_sam {input.graphmap2}  {input.reads}  \
