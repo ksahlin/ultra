@@ -243,7 +243,8 @@ def main(args):
             tmp1 = transcript_acc.split("|")
             read_acc = "|".join(tmp1[:3]) + "_" +  str(i) + "_" + str(0.0)
             full_read_acc = str(transcript_acc) + "_" +  str(i) + "_" + str(0.0)
-            sim_reads[read_acc] = (read, qual, full_read_acc)
+            qual = "".join([chr(73) for n in transcript])
+            sim_reads[read_acc] = (transcript, qual, full_read_acc)
             if i % 5000 == 0:
                 print(i, "reads simulated.")
     else:
