@@ -231,18 +231,29 @@ def main(args):
         print(len(sequence_transcripts))
         sequence_transcripts = {acc: seq for seq, acc in sequence_transcripts.items() }
 
-    # just generate all numbers at once and draw from this 5x should be enough
-    ont_reads = {}
+
+    sim_reads = {}
     reads_generated_log = defaultdict(int)
     errors = []
     all_transctript_accessions = list(sequence_transcripts.keys())
-    for i in range(args.read_count):
-        acc = random.choice( all_transctript_accessions)
-        transcript = sequence_transcripts[acc]
-        read_acc, full_read_acc,  read, qual = simulate_read(i, acc, transcript)
-        ont_reads[read_acc] = (read, qual, full_read_acc)
-        if i % 5000 == 0:
-            print(i, "reads simulated.")
+    if args.ens:
+        for i, transcript_acc in enumerate(all_transctript_accessions):
+            transcript = sequence_transcripts[transcript_acc]
+            # read_acc, full_read_acc,  read, qual = simulate_read(i, acc, transcript)
+            tmp1 = transcript_acc.split("|")
+            read_acc = "|".join(tmp1[:3]) + "_" +  str(i) + "_" + str(0.0)
+            full_read_acc = str(transcript_acc) + "_" +  str(i) + "_" + str(0.0)
+            sim_reads[read_acc] = (read, qual, full_read_acc)
+            if i % 5000 == 0:
+                print(i, "reads simulated.")
+    else:
+        for i in range(args.read_count):
+            acc = random.choice( all_transctript_accessions)
+            transcript = sequence_transcripts[acc]
+            read_acc, full_read_acc,  read, qual = simulate_read(i, acc, transcript)
+            sim_reads[read_acc] = (read, qual, full_read_acc)
+            if i % 5000 == 0:
+                print(i, "reads simulated.")
 
 
     # for acc, abundance in misc_functions.iteritems(reads_generated_log):
@@ -264,12 +275,12 @@ def main(args):
     outfile_fasta = open(args.outfile_prefix + ".fa", "w")
     accsessions_outfile = open(args.full_acc_file, "w")
     # if args.fasta:
-    for read_acc, (read_seq,qual_seq, full_read_acc) in sorted(ont_reads.items(), key = lambda x: len(x[1]), reverse = True):
+    for read_acc, (read_seq,qual_seq, full_read_acc) in sorted(sim_reads.items(), key = lambda x: len(x[1]), reverse = True):
         outfile_fasta.write(">{0}\n{1}\n".format(read_acc, read_seq))
         accsessions_outfile.write("{0},{1}\n".format(read_acc, full_read_acc))
     # else:
     outfile_fastq = open(args.outfile_prefix + ".fq", "w")
-    for read_acc, (read_seq,qual_seq, full_read_acc) in sorted(ont_reads.items(), key = lambda x: len(x[1]), reverse = True):
+    for read_acc, (read_seq,qual_seq, full_read_acc) in sorted(sim_reads.items(), key = lambda x: len(x[1]), reverse = True):
         outfile_fastq.write("@{0}\n{1}\n{2}\n{3}\n".format(read_acc, read_seq, "+", qual_seq))
         accsessions_outfile.write("{0},{1}\n".format(read_acc, full_read_acc))
 
@@ -282,6 +293,7 @@ if __name__ == '__main__':
     parser.add_argument('read_count', type=int, help='Number of reads to simulate.')
     # parser.add_argument('--fasta', action="store_true", help='Output in fasta format')
     parser.add_argument('--nic', action="store_true", help='Simulate NIC transcripts')
+    parser.add_argument('--ens', action="store_true", help='Just simulate the original transcript no errors')
     parser.add_argument('--gtf', type=str, default = '', help='GTF to simulate NIC from.')
     parser.add_argument('--disable_infer', action="store_true", help='GTF to simulate NIC from.')
     # parser.add_argument('config', type=str, help='config file')
