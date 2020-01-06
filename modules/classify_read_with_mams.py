@@ -164,7 +164,7 @@ def contains(sub, pri):
         else:
             i = found+1
 
-def main(solution, ref_exon_sequences, parts_to_exons, exon_id_to_choordinates, exon_to_gene, gene_to_small_exons, read_seq, overlap_threshold, is_rc, warning_log_file):
+def main(solution, ref_exon_sequences, parts_to_exons, exon_id_to_choordinates, exon_to_gene, gene_to_small_exons, read_seq, is_rc, warning_log_file):
     # chained_parts_seq = []
     # chained_parts_ids = []
     prev_ref_stop = -1
@@ -298,7 +298,7 @@ def main(solution, ref_exon_sequences, parts_to_exons, exon_id_to_choordinates, 
     ###################################################################################################
     # print(mam_instance)
     if mam_instance:
-        mam_solution, value, unique = colinear_solver.read_coverage_mam_score(mam_instance, overlap_threshold)
+        mam_solution, value, unique = colinear_solver.read_coverage_mam_score(mam_instance)
     else:
         return [], -1, [], []
     # print(mam_solution)
