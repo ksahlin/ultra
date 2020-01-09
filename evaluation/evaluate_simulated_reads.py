@@ -359,7 +359,7 @@ def print_correctness_per_exon_size(correctness_per_exon_size_outfile, total_cou
             nr_corr = correct_count_exon_sizes[e_size]
         else:
             nr_corr = 0
-            correctness_per_exon_size_outfile.write("{0},{1},{2},{3}\n".format(e_size, nr_total, nr_corr, alignment_method))
+        correctness_per_exon_size_outfile.write("{0},{1},{2},{3}\n".format(e_size, nr_total, nr_corr, alignment_method))
 
 
 def main(args):
