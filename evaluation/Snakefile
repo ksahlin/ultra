@@ -89,7 +89,7 @@ rule controlled_sim:
 
 
 rule simulate:
-    input:  fasta = config["TRANSCRIPTOME"],
+    input:  ref_transcripts = config["TRANSCRIPTOME"],
             gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf",
             ref = config["HG38"]
     output: simulated_reads_fa =  config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
@@ -104,13 +104,13 @@ rule simulate:
         mkdir_p(config["ROOT_OUT"] + "/data/")
         simulated_reads_prefix = config["ROOT_OUT"] + "/data/{0}/reads".format(wildcards.dataset)
         if wildcards.dataset == "simulated":
-            shell("python {inbase}/evaluation/simulate_reads.py {input.fasta} {simulated_reads_prefix} 1000000")
+            shell("python {inbase}/evaluation/simulate_reads.py {input.ref_transcripts} {simulated_reads_prefix} 1000000")
 
         elif wildcards.dataset == "simulated_nic":
             shell("python {inbase}/evaluation/simulate_reads.py --disable_infer --nic --gtf {input.gtf_annotation} {input.ref} {simulated_reads_prefix} 1000000")
 
         elif wildcards.dataset == "simulated_ens":
-            shell("python {inbase}/evaluation/simulate_reads.py --disable_infer --ens --gtf {input.gtf_annotation} {input.ref} {simulated_reads_prefix} 1000000")
+            shell("python {inbase}/evaluation/simulate_reads.py --ens {input.ref_transcripts} {simulated_reads_prefix} 1000000")
 
         # shell("python {inbase}/evaluation/simulate_reads.py {input.fasta} {output.simulated_reads} 1000000 --fasta")
 
