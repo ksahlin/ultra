@@ -354,7 +354,7 @@ def get_true_exon_sites(accessions_map):
 
 def print_correctness_per_exon_size(correctness_per_exon_size_outfile, total_count_exon_sizes, correct_count_exon_sizes, alignment_method):
     for e_size in sorted(list(total_count_exon_sizes.keys())):
-        nr_total = correct_count_exon_sizes[e_size]
+        nr_total = total_count_exon_sizes[e_size]
         if e_size in correct_count_exon_sizes:
             nr_corr = correct_count_exon_sizes[e_size]
         else:
