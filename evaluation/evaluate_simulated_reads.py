@@ -359,7 +359,7 @@ def print_correctness_per_exon_size(correctness_per_exon_size_outfile, total_cou
             nr_corr = correct_count_exon_sizes[e_size]
         else:
             nr_corr = 0
-        correctness_per_exon_size_outfile.write("{0},{1},{2},{3}\n".format(e_size, nr_total, nr_corr, alignment_method))
+        correctness_per_exon_size_outfile.write("{0},{1},{2},{3},{4}\n".format(e_size, nr_total, nr_corr, float(nr_corr)/nr_total, alignment_method))
 
 
 def main(args):
@@ -391,7 +391,7 @@ def main(args):
     detailed_results_outfile.write("acc,alignment_algorithm,error_rate,read_length,alignment_classification,nr_exons_true,nr_exons_inferred,max_diff\n")
     #acc, alignment_algorithm, err_rate, read_length, aln_class, nr_exons_true, nr_exons_inferred, max_diff
     correctness_per_exon_size_outfile = open(os.path.join(args.outfolder, "correctness_per_exon_size.csv"), "w")
-    correctness_per_exon_size_outfile.write("exon_size,nr_total,nr_corr,alignment_algorithm\n")
+    correctness_per_exon_size_outfile.write("exon_size,nr_total,nr_corr,fraction_correct,alignment_algorithm\n")
 
     if args.torkel_sam:
         torkel_primary_locations = decide_primary_locations(args.torkel_sam, args)

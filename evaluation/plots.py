@@ -178,7 +178,7 @@ def alignment_accuracy_plot(input_csv, outfolder):
     indata = pd.read_csv(input_csv)
     # indata['transcript_type'] = indata.apply (lambda row: label_transcript(row), axis=1)
     # print(len(df))
-    # indata = df.loc[df['q_acc'] == df['r_acc']]
+    nr_reads = float(len(indata.loc[indata['alignment_algorithm'] == 'uLTRA'])) # count the reads in a given dataset
     # print(len(indata))
 
     g = sns.catplot(x="alignment_classification", #col="Depth",
@@ -193,7 +193,7 @@ def alignment_accuracy_plot(input_csv, outfolder):
     ax = g.ax
     for p in ax.patches:
         # ax.annotate('%{:.1f}'.format(p.get_height()), (p.get_x()+0.1, p.get_height()+50))
-        ax.annotate('{:.2f}%'.format(100*p.get_height()/1000000.0), (p.get_x()+0.01, p.get_height()+1000), rotation=90, fontsize = 'x-small' )
+        ax.annotate('{:.2f}%'.format(100*p.get_height()/nr_reads), (p.get_x()+0.01, p.get_height()+1000), rotation=90, fontsize = 'x-small' )
     # ax = sns.boxplot(x="p", y=y, hue = "type", data=indata)
     # ax.set_ylim(0,15)
     # ax.set_ylabel("Error rate %")
