@@ -32,7 +32,7 @@ def correctness_per_exon_size(input_csv, outfolder):
     # g.set_ylabels("Count")
     # g.set_xlabels("Alignment type")
     # g.set_xticklabels(rotation=20)
-    # plt.yscale('log')
+    plt.xscale('log')
     # ax = g.ax
     # for p in ax.patches:
     #     # ax.annotate('%{:.1f}'.format(p.get_height()), (p.get_x()+0.1, p.get_height()+50))
