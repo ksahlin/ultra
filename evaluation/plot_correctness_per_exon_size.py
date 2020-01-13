@@ -42,8 +42,8 @@ def correctness_per_exon_size(input_csv, outfolder):
     ax.set_ylabel("Fraction correct")
     ax.set_xlabel("Exon size")
     # (g.set_axis_labels("Alignment type", "Count").set_xticklabels(["Correct", "Inexact", "Exon diff", "Incorrect", "Unaligned"]))
-    plt.savefig(os.path.join(outfolder, "correct_per_exon_size.eps"))
-    plt.savefig(os.path.join(outfolder, "correct_per_exon_size.pdf"))
+    plt.savefig(os.path.join(outfolder, "correctness_per_exon_size.eps"))
+    plt.savefig(os.path.join(outfolder, "correctness_per_exon_size.pdf"))
     plt.close()
 
 
