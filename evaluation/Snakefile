@@ -376,8 +376,8 @@ rule evaluate_biological_cigar:
             # ref =  config["HG38"],
             # gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"  # drosophila v97 gtf annotation
     output: csv_file = config["ROOT_OUT"] + "/evaluation/{dataset}/results_per_read_cigar.csv"
-    wildcard_constraints:
-        dataset="^((?!sim).)*$"
+    #wildcard_constraints:
+    #    dataset="^((?!sim).)*$"
     run:
         eval_dir = config["ROOT_IN"] + "/evaluation/"
         outfolder = config["ROOT_OUT"] + "/evaluation/{0}/".format(wildcards.dataset)  
