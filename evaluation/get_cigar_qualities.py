@@ -92,7 +92,7 @@ def cigar_to_seq(cigar, query, ref):
 
     return  "".join([s for s in q_aln]), "".join([s for s in r_aln]), cigar_tuples
 
-def get_error_profiles(sam_file, reads, refs, sargs): # maybe this function is not needed if only one primary alignment from minimap2
+def get_error_profiles(sam_file, reads, refs, args): # maybe this function is not needed if only one primary alignment from minimap2
     SAM_file = pysam.AlignmentFile(sam_file, "r", check_sq=False)
     reads_primary = {}
     reads_multiple_primary = set()
@@ -168,6 +168,7 @@ def print_detailed_values_to_file(reads, outfile, read_type, read_alignments):
         info_tuple = (acc, read_type, err_rate, read_length, *read_error_profile, reference_name, reference_start, reference_end, flag) # 'tot_splices', 'read_sm_junctions', 'read_nic_junctions', 'fsm', 'nic', 'ism', 'nnc', 'no_splices'  )
         outfile.write( ",".join( [str(item) for item in info_tuple] ) + "\n")
 
+    print("sum_ins", "sum_subs", "sum_dels", "sum_softs", "sum_unaln", "sum_matches")
     print(sum_ins, sum_subs, sum_dels, sum_softs, sum_unaln, sum_matches)
 
 def get_splice_sites(cigar_tuples, first_exon_start, annotated_chr_coordinate_pairs):
@@ -529,23 +530,23 @@ def main(args):
         print_detailed_values_to_file(reads, detailed_results_outfile, "uLTRA", torkel_primary_locations)
 
     if args.mm2_sam:
-        mm2_primary_locations = get_error_profiles(args.mm2_sam, args)
+        mm2_primary_locations = get_error_profiles(args.mm2_sam, reads, refs, args)
         print_detailed_values_to_file(reads, detailed_results_outfile, "minimap2", mm2_primary_locations)    
 
     if args.graphmap2_sam:
-        graphmap2_primary_locations = get_error_profiles(args.graphmap2_sam, args)
+        graphmap2_primary_locations = get_error_profiles(args.graphmap2_sam, reads, refs, args)
         print_detailed_values_to_file(reads, detailed_results_outfile, "Graphmap2", graphmap2_primary_locations)
 
     if args.graphmap2_gtf_sam:
-        graphmap2_gtf_primary_locations = get_error_profiles(args.graphmap2_gtf_sam, args)
+        graphmap2_gtf_primary_locations = get_error_profiles(args.graphmap2_gtf_sam, reads, refs, args)
         print_detailed_values_to_file(reads, detailed_results_outfile, "Graphmap2_GTF", graphmap2_gtf_primary_locations)
         
     if args.desalt_sam:
-        desalt_primary_locations = get_error_profiles(args.desalt_sam, args)
+        desalt_primary_locations = get_error_profiles(args.desalt_sam, reads, refs, args)
         print_detailed_values_to_file(reads, detailed_results_outfile, "deSALT", desalt_primary_locations)
 
     if args.desalt_gtf_sam:
-        desalt_gtf_primary_locations = get_error_profiles(args.desalt_gtf_sam, args)
+        desalt_gtf_primary_locations = get_error_profiles(args.desalt_gtf_sam, reads, refs, args)
         print_detailed_values_to_file(reads, detailed_results_outfile, "deSALT_GTF", desalt_gtf_primary_locations)
 
     detailed_results_outfile.close()
