@@ -156,7 +156,7 @@ def print_detailed_values_to_file(reads, outfile, read_type, read_alignments):
             sum_unaln += read_length
         else:
             (ins, del_, subs, softclipped, matches, read) = read_alignments[acc]
-            read_error_profile = (ins, del_, subs, softclipped, matches)
+            read_error_profile = (matches, ins, del_, subs, softclipped)
             try: 
                 err_rate = (ins + del_ + subs + softclipped)/float(ins + del_ + subs + softclipped + matches)
             except ZeroDivisionError:
@@ -176,7 +176,7 @@ def print_detailed_values_to_file(reads, outfile, read_type, read_alignments):
             sum_softs += softclipped
             sum_matches += matches
         # is_unaligned_in_other_method = 1 if acc in reads_unaligned_in_other_method else 0
-        info_tuple = (acc, read_type, err_rate, read_length, *read_error_profile, reference_name, reference_start, reference_end, flag) # 'tot_splices', 'read_sm_junctions', 'read_nic_junctions', 'fsm', 'nic', 'ism', 'nnc', 'no_splices'  )
+        info_tuple = (acc, read_type, read_length, err_rate, *read_error_profile, reference_name, reference_start, reference_end, flag) # 'tot_splices', 'read_sm_junctions', 'read_nic_junctions', 'fsm', 'nic', 'ism', 'nnc', 'no_splices'  )
         outfile.write( ",".join( [str(item) for item in info_tuple] ) + "\n")
 
     print("sum_ins", "sum_subs", "sum_dels", "sum_softs", "sum_unaln", "sum_matches")
@@ -534,7 +534,7 @@ def main(args):
     # minimum_annotated_intron = max(minimum_annotated_intron,  args.min_intron)
 
     detailed_results_outfile = open(os.path.join(args.outfolder, "results_per_read_cigar.csv"), "w")
-    detailed_results_outfile.write("acc,read_type,read_length,error_rate,ins,del,softclipped,matches,chr_id,reference_start,reference_end,sam_flag\n")
+    detailed_results_outfile.write("acc,read_type,read_length,error_rate,matches,ins,del,softclipped,chr_id,reference_start,reference_end,sam_flag\n")
     print("here")
     if args.torkel_sam:
         torkel_primary_locations = get_error_profiles(args.torkel_sam, reads, refs, args)
