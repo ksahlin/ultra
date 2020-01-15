@@ -218,7 +218,7 @@ def splice_site_classification_plot(input_csv, outfolder):
     # g.set(ylim=(0,15))
     g.set_ylabels("Count")
     g.set_xlabels("Transcript type")
-
+    g.set_xticklabels(rotation=20)
     # ax = sns.boxplot(x="p", y=y, hue = "type", data=indata)
     # ax.set_ylim(0,15)
     # ax.set_ylabel("Error rate %")
