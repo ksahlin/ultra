@@ -157,7 +157,7 @@ def print_detailed_values_to_file(reads, outfile, read_type, read_alignments):
         else:
             (ins, del_, subs, softclipped, matches, read) = read_alignments[acc]
             read_error_profile = (ins, del_, subs, softclipped, matches)
-            try 
+            try: 
                 err_rate = (ins + del_ + subs + softclipped)/float(ins + del_ + subs + softclipped + matches)
             except ZeroDivisionError:
                 print(ins, del_ , subs, softclipped, matches, acc, read_length)
