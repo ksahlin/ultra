@@ -157,7 +157,18 @@ def print_detailed_values_to_file(reads, outfile, read_type, read_alignments):
         else:
             (ins, del_, subs, softclipped, matches, read) = read_alignments[acc]
             read_error_profile = (ins, del_, subs, softclipped, matches)
-            err_rate = (ins + del_ + subs + softclipped)/float(ins + del_ + subs + softclipped + matches)
+            try 
+                err_rate = (ins + del_ + subs + softclipped)/float(ins + del_ + subs + softclipped + matches)
+            except ZeroDivisionError:
+                print(ins, del_ , subs, softclipped, matches, acc, read_length)
+                reference_name = 'unaligned'
+                reference_start = '-'  #read.reference_name, read.reference_start, read.reference_end + 1, read.flag,
+                reference_end = '-'
+                flag = '-'
+                err_rate = '-'
+                read_error_profile = ("-","-","-","-") 
+                sum_unaln += read_length
+
             reference_name, reference_start, reference_end, flag = read.reference_name, read.reference_start, read.reference_end + 1, read.flag
             sum_ins += ins
             sum_dels += del_
