@@ -14,9 +14,21 @@
     },
 
 
-    "evaluate": 
+    "evaluate_biological": 
     {
-        "jobname" : "evaluate",
+        "jobname" : "evaluate_biological",
+        "cpus-per-task" : "64",
+        "Nodes" : 1,
+        "mem" : "500G",
+        "runtime" : "2-00:00:00",
+        "mail" : "ksahlin@kth.se",
+        "mail_type" : "FAIL",
+        "exclude" : "c[4,6-7,8-16]"
+    },
+    
+    "evaluate_biological_cigar": 
+    {
+        "jobname" : "evaluate_biological_cigar",
         "cpus-per-task" : "64",
         "Nodes" : 1,
         "mem" : "500G",

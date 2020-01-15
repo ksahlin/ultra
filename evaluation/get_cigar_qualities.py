@@ -521,7 +521,7 @@ def main(args):
     # print("SHORTEST INTRON:", minimum_annotated_intron)
     # minimum_annotated_intron = max(minimum_annotated_intron,  args.min_intron)
 
-    detailed_results_outfile = open(os.path.join(args.outfolder, "results_per_read.csv"), "w")
+    detailed_results_outfile = open(os.path.join(args.outfolder, "results_per_read_cigar.csv"), "w")
     detailed_results_outfile.write("acc,read_type,read_length,error_rate,ins,del,softclipped,matches,chr_id,reference_start,reference_end,sam_flag\n")
     print("here")
     if args.torkel_sam:
