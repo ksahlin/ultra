@@ -109,8 +109,8 @@ def get_error_profiles(sam_file, reads, refs, args): # maybe this function is no
             softclipped = sum([length for type_, length in read.cigartuples if type_ == 4])
 
             subs = sum([length for type_, length in read.cigartuples if type_ == 8])
-            matches = sum([length for type_, length in read.cigartuples if type_ == 7])
-            # matches = sum([length for type_, length in read.cigartuples if type_ == 0 or type_ == 7 or type_ == 8 ])
+            # matches = sum([length for type_, length in read.cigartuples if type_ == 7])
+            matches = sum([length for type_, length in read.cigartuples if type_ == 0 or type_ == 7 or type_ == 8 ])
 
             # tot_align = ins + del_ + subs + matches
             # try:
