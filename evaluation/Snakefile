@@ -61,11 +61,11 @@ def mkdir_p(path):
             raise
 
 rule all:
-   input:  config["ROOT_OUT"] + "/evaluation/ont_human/results_per_read.csv",
+   input:  #config["ROOT_OUT"] + "/evaluation/ont_human/results_per_read.csv",
             config["ROOT_OUT"] + "/evaluation/simulated/results_per_read.csv",
             config["ROOT_OUT"] + "/evaluation/simulated_nic/results_per_read.csv",
-            config["ROOT_OUT"] + "/evaluation/pacbio_alzheimer/results_per_read.csv",
-            config["ROOT_OUT"] + "/evaluation/sirv/results_per_read.csv",
+           #config["ROOT_OUT"] + "/evaluation/pacbio_alzheimer/results_per_read.csv",
+           #config["ROOT_OUT"] + "/evaluation/sirv/results_per_read.csv",
             config["ROOT_OUT"] + "/evaluation/simulated_ens/results_per_read.csv",
             config["ROOT_OUT"] + "/evaluation/ont_human/results.pdf",
             config["ROOT_OUT"] + "/evaluation/simulated/results.pdf",
