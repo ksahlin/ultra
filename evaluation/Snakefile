@@ -407,8 +407,8 @@ rule evaluate_biological:
 rule plot_biological:
     input: csv_file = rules.evaluate_biological.output.csv_file
     output: pdf = config["ROOT_OUT"] + "/evaluation/{dataset}/results.pdf"
-    wildcard_constraints:
-        dataset="^((?!sim).)*$"
+    # wildcard_constraints:
+    #     dataset="^((?!sim).)*$"
     run:
         eval_dir = config["ROOT_IN"] + "/evaluation/"
         outfolder = config["ROOT_OUT"] + "/evaluation/{0}/".format(wildcards.dataset)  
@@ -418,16 +418,16 @@ rule plot_biological:
         else:
             shell("python {eval_dir}/plots.py --simulated {input.csv_file}  {outfolder}")
 
-rule plot_sim:
-    input: csv_file = rules.evaluate_sim.output.csv_file
-    output: pdf = config["ROOT_OUT"] + "/evaluation/{dataset}/results.pdf"
-    wildcard_constraints:
-        dataset="sim[_\w]+"
-    run:
-        eval_dir = config["ROOT_IN"] + "/evaluation/"
-        outfolder = config["ROOT_OUT"] + "/evaluation/{0}/".format(wildcards.dataset)  
-        mkdir_p(outfolder) 
-        shell("python {eval_dir}/plots.py --simulated {input.csv_file}  {outfolder}")
+# rule plot_sim:
+#     input: csv_file = rules.evaluate_sim.output.csv_file
+#     output: pdf = config["ROOT_OUT"] + "/evaluation/{dataset}/results.pdf"
+#     wildcard_constraints:
+#         dataset="sim[_\w]+"
+#     run:
+#         eval_dir = config["ROOT_IN"] + "/evaluation/"
+#         outfolder = config["ROOT_OUT"] + "/evaluation/{0}/".format(wildcards.dataset)  
+#         mkdir_p(outfolder) 
+#         shell("python {eval_dir}/plots.py --simulated {input.csv_file}  {outfolder}")
 
 
 rule gzip:
