@@ -79,8 +79,8 @@ rule all:
             config["ROOT_IN"] + "/data/results/plots.zip",
             config["ROOT_IN"] + "/data/results/plots_exon_size.zip",
 
-            config["ROOT_OUT"] + "/evaluation/ont_human/results_per_read_cigar.csv",
-            config["ROOT_OUT"] + "/evaluation/pacbio_alzheimer/results_per_read_cigar.csv"
+            # config["ROOT_OUT"] + "/evaluation/ont_human/results_per_read_cigar.csv",
+            # config["ROOT_OUT"] + "/evaluation/pacbio_alzheimer/results_per_read_cigar.csv"
 
 
 rule biological:
@@ -371,37 +371,37 @@ rule evaluate_biological:
                                                             {ref} {gtf_annotation} {outfolder} --load_database")
 
 
-rule evaluate_biological_cigar:
-    input:  ultra = rules.ultra_align.output.sam,
-            minimap2 = rules.minimap2_align.output.sam,
-            desalt = rules.desalt_align.output.sam,
-            desalt_gtf = rules.desalt_gtf_align.output.sam,
-            graphmap2 = rules.graphmap2_align.output.sam,
-            graphmap2_gtf = rules.graphmap2_gtf_align.output.sam,
-            reads =  config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
-            # ref =  config["HG38"],
-            # gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"  # drosophila v97 gtf annotation
-    output: csv_file = config["ROOT_OUT"] + "/evaluation/{dataset}/results_per_read_cigar.csv"
-    #wildcard_constraints:
-    #    dataset="^((?!sim).)*$"
-    run:
-        eval_dir = config["ROOT_IN"] + "/evaluation/"
-        outfolder = config["ROOT_OUT"] + "/evaluation/{0}/".format(wildcards.dataset)  
-        mkdir_p(outfolder) 
+# rule evaluate_biological_cigar:
+#     input:  ultra = rules.ultra_align.output.sam,
+#             minimap2 = rules.minimap2_align.output.sam,
+#             desalt = rules.desalt_align.output.sam,
+#             desalt_gtf = rules.desalt_gtf_align.output.sam,
+#             graphmap2 = rules.graphmap2_align.output.sam,
+#             graphmap2_gtf = rules.graphmap2_gtf_align.output.sam,
+#             reads =  config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
+#             # ref =  config["HG38"],
+#             # gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"  # drosophila v97 gtf annotation
+#     output: csv_file = config["ROOT_OUT"] + "/evaluation/{dataset}/results_per_read_cigar.csv"
+#     #wildcard_constraints:
+#     #    dataset="^((?!sim).)*$"
+#     run:
+#         eval_dir = config["ROOT_IN"] + "/evaluation/"
+#         outfolder = config["ROOT_OUT"] + "/evaluation/{0}/".format(wildcards.dataset)  
+#         mkdir_p(outfolder) 
 
-        if wildcards.dataset == 'sirv':
-            ref = config["SIRV"]
-            gtf_annotation = config["ANNOTATION"] + "/SIRV.gtf"
-            shell("python {eval_dir}/get_cigar_qualities.py   --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} \
-                                                                    {input.reads} {ref} {gtf_annotation} {outfolder} --infer_genes")
-                                                                    #--desalt_gtf_sam {input.desalt_gtf}  --graphmap2_sam {input.graphmap2} --graphmap2_gtf_sam {input.graphmap2_gtf} \
+#         if wildcards.dataset == 'sirv':
+#             ref = config["SIRV"]
+#             gtf_annotation = config["ANNOTATION"] + "/SIRV.gtf"
+#             shell("python {eval_dir}/get_cigar_qualities.py   --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} \
+#                                                                     {input.reads} {ref} {gtf_annotation} {outfolder} --infer_genes")
+#                                                                     #--desalt_gtf_sam {input.desalt_gtf}  --graphmap2_sam {input.graphmap2} --graphmap2_gtf_sam {input.graphmap2_gtf} \
 
-        else:
-            ref = config["HG38"]
-            gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"
-            shell("python {eval_dir}/get_cigar_qualities.py   --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --desalt_gtf_sam {input.desalt_gtf} \
-                                                                    --graphmap2_sam {input.graphmap2} --graphmap2_gtf_sam {input.graphmap2_gtf}  {input.reads}  \
-                                                            {ref} {gtf_annotation} {outfolder} --load_database")
+#         else:
+#             ref = config["HG38"]
+#             gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"
+#             shell("python {eval_dir}/get_cigar_qualities.py   --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --desalt_gtf_sam {input.desalt_gtf} \
+#                                                                     --graphmap2_sam {input.graphmap2} --graphmap2_gtf_sam {input.graphmap2_gtf}  {input.reads}  \
+#                                                             {ref} {gtf_annotation} {outfolder} --load_database")
 
 
 rule plot_biological:
