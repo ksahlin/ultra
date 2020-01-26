@@ -352,18 +352,21 @@ rule evaluate_biological:
         if wildcards.dataset == 'sirv':
             ref = config["SIRV"]
             gtf_annotation = config["ANNOTATION"] + "/SIRV.gtf"
-            shell("python {eval_dir}/evaluate_splice_annotations.py   --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} \
+            # shell("python {eval_dir}/evaluate_splice_annotations.py   --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} \
+            #                                                         {input.reads} {ref} {gtf_annotation} {outfolder} --infer_genes")
+            #                                                         #--desalt_gtf_sam {input.desalt_gtf}  --graphmap2_sam {input.graphmap2} --graphmap2_gtf_sam {input.graphmap2_gtf} \
+            shell("python {eval_dir}/evaluate_real_reads.py   --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} \
                                                                     {input.reads} {ref} {gtf_annotation} {outfolder} --infer_genes")
-                                                                    #--desalt_gtf_sam {input.desalt_gtf}  --graphmap2_sam {input.graphmap2} --graphmap2_gtf_sam {input.graphmap2_gtf} \
-
         else:
             ref = config["HG38"]
             gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"
-            # shell("python {eval_dir}/evaluate_splice_annotations.py   --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --graphmap2_sam {input.graphmap2}  {input.reads}  \
+            # shell("python {eval_dir}/evaluate_splice_annotations.py   --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --desalt_gtf_sam {input.desalt_gtf} \
+            #                                                         --graphmap2_sam {input.graphmap2} --graphmap2_gtf_sam {input.graphmap2_gtf}  {input.reads}  \
             #                                                 {ref} {gtf_annotation} {outfolder} --load_database")
-            shell("python {eval_dir}/evaluate_splice_annotations.py   --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --desalt_gtf_sam {input.desalt_gtf} \
+            shell("python {eval_dir}/evaluate_real_reads.py   --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --desalt_gtf_sam {input.desalt_gtf} \
                                                                     --graphmap2_sam {input.graphmap2} --graphmap2_gtf_sam {input.graphmap2_gtf}  {input.reads}  \
                                                             {ref} {gtf_annotation} {outfolder} --load_database")
+
 
 rule evaluate_biological_cigar:
     input:  ultra = rules.ultra_align.output.sam,
@@ -413,7 +416,7 @@ rule plot_biological:
             shell("python {eval_dir}/plots.py {input.csv_file}  {outfolder}")
 
 rule plot_sim:
-    input: csv_file = rules.evaluate_biological.output.csv_file
+    input: csv_file = rules.evaluate_sim.output.csv_file
     output: pdf = config["ROOT_OUT"] + "/evaluation/{dataset}/results.pdf"
     wildcard_constraints:
         dataset="sim[_\w]+"
