@@ -61,11 +61,11 @@ def mkdir_p(path):
             raise
 
 rule all:
-   input:  config["ROOT_OUT"] + "/evaluation/ont_human/results_per_read_biological.csv",
+   input:  config["ROOT_OUT"] + "/evaluation/ont_human/results_per_read.csv",
             config["ROOT_OUT"] + "/evaluation/simulated/results_per_read.csv",
             config["ROOT_OUT"] + "/evaluation/simulated_nic/results_per_read.csv",
-            config["ROOT_OUT"] + "/evaluation/pacbio_alzheimer/results_per_read_biological.csv",
-            config["ROOT_OUT"] + "/evaluation/sirv/results_per_read_biological.csv",
+            config["ROOT_OUT"] + "/evaluation/pacbio_alzheimer/results_per_read.csv",
+            config["ROOT_OUT"] + "/evaluation/sirv/results_per_read.csv",
             config["ROOT_OUT"] + "/evaluation/simulated_ens/results_per_read.csv",
             config["ROOT_OUT"] + "/evaluation/ont_human/results.pdf",
             config["ROOT_OUT"] + "/evaluation/simulated/results.pdf",
@@ -341,7 +341,7 @@ rule evaluate_biological:
             reads =  config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
             # ref =  config["HG38"],
             # gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"  # drosophila v97 gtf annotation
-    output: csv_file = config["ROOT_OUT"] + "/evaluation/{dataset}/results_per_read_biological.csv"
+    output: csv_file = config["ROOT_OUT"] + "/evaluation/{dataset}/results_per_read.csv"
     wildcard_constraints:
         dataset="^((?!sim).)*$"
     run:
