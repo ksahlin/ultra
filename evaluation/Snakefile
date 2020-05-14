@@ -61,8 +61,8 @@ def mkdir_p(path):
             raise
 
 rule all:
-   input:   [config["ROOT_OUT"] + "/evaluation/{dataset}/results_per_read.csv".format(dataset=dataset) for dataset in ["ont_human", "pacbio_alzheimer", "sirv", "simulated", "simulated_nic", "simulated_ens"]],
-            [config["ROOT_OUT"] + "/evaluation/{dataset}/results.pdf".format(dataset=dataset) for dataset in ["ont_human", "pacbio_alzheimer", "sirv", "simulated", "simulated_nic", "simulated_ens"]],            
+   input:   #[config["ROOT_OUT"] + "/evaluation/{dataset}/results_per_read.csv".format(dataset=dataset) for dataset in ["ont_human", "pacbio_alzheimer", "sirv", "simulated", "simulated_nic", "simulated_ens"]],
+            #[config["ROOT_OUT"] + "/evaluation/{dataset}/results.pdf".format(dataset=dataset) for dataset in ["ont_human", "pacbio_alzheimer", "sirv", "simulated", "simulated_nic", "simulated_ens"]],            
 
             # config["ROOT_OUT"] + "/evaluation/ont_human/results_per_read.csv",
             # config["ROOT_OUT"] + "/evaluation/simulated/results_per_read.csv",
@@ -77,7 +77,7 @@ rule all:
             # config["ROOT_OUT"] + "/evaluation/sirv/results.pdf",
             # config["ROOT_OUT"] + "/evaluation/simulated_ens/results.pdf",
             config["ROOT_IN"] + "/data/results/plots.zip",
-            config["ROOT_IN"] + "/data/results/plots_exon_size.zip",
+            config["ROOT_IN"] + "/data/results/plots_exon_size.zip"
 
             # config["ROOT_OUT"] + "/evaluation/ont_human/results_per_read_cigar.csv",
             # config["ROOT_OUT"] + "/evaluation/pacbio_alzheimer/results_per_read_cigar.csv"
@@ -428,6 +428,20 @@ rule plot_sim:
         outfolder = config["ROOT_OUT"] + "/evaluation/{0}/".format(wildcards.dataset)  
         mkdir_p(outfolder) 
         shell("python {eval_dir}/plots.py --simulated {input.csv_file}  {outfolder}")
+
+
+# rule plot_accuracy:
+#     input: csv_files_sim = rules.evaluate_sim.output.csv_file,
+#             csv_files_bio = rules.evaluate_biological.output.csv_file
+#     output: pdf = config["ROOT_OUT"] + "/evaluation/{dataset}/results.pdf"
+#     run:
+#         eval_dir = config["ROOT_IN"] + "/evaluation/"
+#         outfolder = config["ROOT_OUT"] + "/evaluation/{0}/".format(wildcards.dataset)  
+#         mkdir_p(outfolder) 
+
+#         for f in csv_files_sim:
+#             shell("python {eval_dir}/plots.py --simulated {input.csv_file}  {outfolder}")
+
 
 
 rule gzip:
