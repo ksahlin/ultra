@@ -445,14 +445,6 @@ rule plot_sim:
 #             shell("python {eval_dir}/plots.py --simulated {input.csv_file}  {outfolder}")
 
 
-
-rule gzip:
-    input: sim_pdfs = expand(rules.plot_sim.output.pdf, dataset=["simulated","simulated_nic", "simulated_ens"]),
-            bio_pdfs = expand(rules.plot_biological.output.pdf, dataset=["ont_human", "pacbio_alzheimer", "sirv"]) #pdfs = expand(config["ROOT_OUT"] + "/evaluation/{dataset}/results.pdf", dataset=["ont_human", "pacbio_alzheimer", "sirv","simulated","simulated_nic", "simulated_ens"])
-    output: zip_file = config["ROOT_IN"] + "/data/results/plots.zip"
-    run:
-        shell("zip {output.zip_file}  /nfs/brubeck.bx.psu.edu/scratch4/ksahlin/ultra_eval/evaluation/*/results.pdf")
-
 rule plot_exon_size:
     input: csv_exon_size_file = rules.evaluate_sim.output.csv_exon_size_file 
     output: pdf = config["ROOT_OUT"] + "/evaluation/{dataset}/correctness_per_exon_size.pdf"
@@ -470,6 +462,14 @@ rule gzip_exon_size:
     output: zip_file = config["ROOT_IN"] + "/data/results/plots_exon_size.zip"
     run:
         shell("zip {output.zip_file}  /nfs/brubeck.bx.psu.edu/scratch4/ksahlin/ultra_eval/evaluation/*/correctness_per_exon_size.pdf")
+
+rule gzip:
+    input: sim_pdfs = expand(rules.plot_sim.output.pdf, dataset=["simulated","simulated_nic", "simulated_ens"]),
+            bio_pdfs = expand(rules.plot_biological.output.pdf, dataset=["ont_human", "pacbio_alzheimer", "sirv"]) #pdfs = expand(config["ROOT_OUT"] + "/evaluation/{dataset}/results.pdf", dataset=["ont_human", "pacbio_alzheimer", "sirv","simulated","simulated_nic", "simulated_ens"])
+    output: zip_file = config["ROOT_IN"] + "/data/results/plots.zip"
+    run:
+        shell("zip {output.zip_file}  /nfs/brubeck.bx.psu.edu/scratch4/ksahlin/ultra_eval/evaluation/*/results.pdf")
+
 
 # rule evaluate_real:
 #     input: original_reads = rules.subsample.output.subsampled_fastq,
