@@ -45,7 +45,52 @@ def correctness_per_exon_size(input_csv, outfolder):
     # (g.set_axis_labels("Alignment type", "Count").set_xticklabels(["Correct", "Inexact", "Exon diff", "Incorrect", "Unaligned"]))
     plt.savefig(os.path.join(outfolder, "correctness_per_exon_size.eps"))
     plt.savefig(os.path.join(outfolder, "correctness_per_exon_size.pdf"))
+    plt.clf()
     plt.close()
+
+def correctness_per_exon_size_binned(input_csv, outfolder):
+    # sns.plt.clf()
+    data = pd.read_csv(input_csv)
+    with sns.plotting_context("paper", font_scale=1.2):
+        plt.rc('text', usetex=False)
+        plt.rc('font', family='serif')
+        plt.rc('xtick', labelsize=10)
+        plt.rc('ytick', labelsize=12)
+        exon_sizes = [0,10,20,50,100,200,500,1000,5000,25000]
+        bins = [i for i in exon_sizes ]
+        labels = [ '{0}-{1}'.format(i+1,j) for i,j in zip(exon_sizes[:-1], exon_sizes[1:]) ] 
+        # print(bins)
+        # print(labels)
+        exon_sizes_bins = pd.cut(data['exon_size'], bins, labels = labels )
+        data["exon_bins"] = pd.Series(exon_sizes_bins, index=data.index)
+        data_grouped = data.groupby('exon_bins')['nr_total', 'nr_corr'].sum()
+        print(data.groupby('exon_bins')['nr_total', 'nr_corr'].sum())
+        data_grouped['fraction_correct'] = data_grouped['nr_corr']/data_grouped['nr_total']
+
+        print(data_grouped)
+
+        # data_grouped = data.groupby(["exon_bins"])
+        # data_grouped.describe()
+        # print(data_grouped.groupby(['exon_bins']).sum())
+        # for key, item in data_grouped:
+        #     print(data_grouped.get_group(key), "\n\n")
+        # print(data.groupby(["exon_bins"]))
+        # print(data.groupby(["exon_bins"])['nr_corr'].value_counts(normalize=True).mul(100))
+        data_tmp = data.groupby(["exon_bins"])['nr_corr'].value_counts(normalize=True).mul(100)
+        full_supp_data = [ {"exon_bins" : index[0], "percentage" : float(val)} for index, val in data_tmp.iteritems() if index[1] == "yes"]
+        full_supp = pd.DataFrame(full_supp_data)
+
+        g = sns.barplot(x="exon_bins", y="percentage", data=full_supp)
+
+        plt.xlabel('exon_size ($10^{-x}$)', fontsize=14)
+        plt.ylabel('Transcripts with full illumina support (%)',fontsize=16)
+        plt.ylim(0, 100)
+        plt.savefig(os.path.join(outfolder, "correctness_per_exon_size_binned.eps"))
+        plt.savefig(os.path.join(outfolder, "correctness_per_exon_size_binned.pdf"))
+
+        plt.clf()
+        plt.close()
+
 
 
 
@@ -55,6 +100,7 @@ def main(args):
     flatui = ["#2ecc71", "#e74c3c"] # https://chrisalbon.com/python/data_visualization/seaborn_color_palettes/
     sns.set_palette(flatui)    # total_error_rate(args.input_csv, args.outfolder)
     correctness_per_exon_size(args.input_csv, args.outfolder)
+    correctness_per_exon_size_binned(args.input_csv, args.outfolder)
 
 
 if __name__ == '__main__':
