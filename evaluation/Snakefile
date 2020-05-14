@@ -346,7 +346,7 @@ rule evaluate_biological:
             # gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"  # drosophila v97 gtf annotation
     output: csv_file = config["ROOT_OUT"] + "/evaluation/{dataset}/results_per_read.csv"
     wildcard_constraints:
-        dataset="^((?!sim).)*$"
+        dataset="^(?!sim).*$"
     run:
         eval_dir = config["ROOT_IN"] + "/evaluation/"
         outfolder = config["ROOT_OUT"] + "/evaluation/{0}/".format(wildcards.dataset)  
@@ -408,7 +408,7 @@ rule plot_biological:
     input: csv_file = rules.evaluate_biological.output.csv_file
     output: pdf = config["ROOT_OUT"] + "/evaluation/{dataset}/results.pdf"
     wildcard_constraints:
-        dataset="^((?!sim).)*$"
+        dataset="^(?!sim).*$"
     run:
         eval_dir = config["ROOT_IN"] + "/evaluation/"
         outfolder = config["ROOT_OUT"] + "/evaluation/{0}/".format(wildcards.dataset)  
