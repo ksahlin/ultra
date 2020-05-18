@@ -63,8 +63,12 @@ def correctness_per_exon_size_binned(input_csv, outfolder):
         # print(labels)
         exon_sizes_bins = pd.cut(data['exon_size'], bins, labels = labels )
         data["exon_bins"] = pd.Series(exon_sizes_bins, index=data.index)
-        data_grouped = data.groupby('exon_bins')['nr_total', 'nr_corr'].sum()
-        print(data.groupby('exon_bins')['nr_total', 'nr_corr'].sum())
+        print(data)
+
+        # data_grouped = data.groupby('exon_bins', 'alignment_algorithm')['nr_total', 'nr_corr'].sum()
+        data_grouped = data.groupby(['exon_bins', 'alignment_algorithm'], as_index=False).agg({'nr_total':'sum', 'nr_corr' : 'sum' })
+        print(data_grouped)
+        # print(data.groupby('exon_bins')['nr_total', 'nr_corr','alignment_algorithm'].sum())
         data_grouped['fraction_correct'] = data_grouped['nr_corr']/data_grouped['nr_total']
 
         print(data_grouped)
@@ -76,15 +80,17 @@ def correctness_per_exon_size_binned(input_csv, outfolder):
         #     print(data_grouped.get_group(key), "\n\n")
         # print(data.groupby(["exon_bins"]))
         # print(data.groupby(["exon_bins"])['nr_corr'].value_counts(normalize=True).mul(100))
-        data_tmp = data.groupby(["exon_bins"])['nr_corr'].value_counts(normalize=True).mul(100)
-        full_supp_data = [ {"exon_bins" : index[0], "percentage" : float(val)} for index, val in data_tmp.iteritems() if index[1] == "yes"]
-        full_supp = pd.DataFrame(full_supp_data)
+        # data_tmp = data.groupby(["exon_bins"])['nr_corr'].value_counts(normalize=True).mul(100)
+        # full_supp_data = [ {"exon_bins" : index[0], "percentage" : float(val)} for index, val in data_tmp.iteritems() if index[1] == "yes"]
+        # full_supp = pd.DataFrame(full_supp_data)
 
-        g = sns.barplot(x="exon_bins", y="percentage", data=full_supp)
+        g = sns.barplot(x="exon_bins", y="fraction_correct", hue = 'alignment_algorithm', data=data_grouped)
 
-        plt.xlabel('exon_size ($10^{-x}$)', fontsize=14)
-        plt.ylabel('Transcripts with full illumina support (%)',fontsize=16)
-        plt.ylim(0, 100)
+        plt.xlabel('exon_size', fontsize=14)
+        plt.ylabel('Correct alignment',fontsize=16)
+        plt.tick_params(rotation=20)
+        plt.ylim(0, 1)
+        g.legend(loc=4)
         plt.savefig(os.path.join(outfolder, "correctness_per_exon_size_binned.eps"))
         plt.savefig(os.path.join(outfolder, "correctness_per_exon_size_binned.pdf"))
 
