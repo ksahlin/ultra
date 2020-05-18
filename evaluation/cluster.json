@@ -10,7 +10,7 @@
         "jobname" : "pipeline",
         "mail" : "ksahlin@kth.se",
         "mail_type" : "FAIL",
-        "exclude" : "c[4,6-7,8-16]"
+        "exclude" : "c[8-11,15-16]"
     },
 
 
@@ -23,7 +23,7 @@
         "runtime" : "2-00:00:00",
         "mail" : "ksahlin@kth.se",
         "mail_type" : "FAIL",
-        "exclude" : "c[4,6-7,8-16]"
+        "exclude" : "c[8-11,15-16]"
     },
     
     "evaluate_biological_cigar": 
@@ -35,7 +35,7 @@
         "runtime" : "2-00:00:00",
         "mail" : "ksahlin@kth.se",
         "mail_type" : "FAIL",
-        "exclude" : "c[4,6-7,8-16]"
+        "exclude" : "c[8-11,15-16]"
     },
 
     "desalt_index" : 
@@ -47,7 +47,7 @@
         "runtime" : "2-00:00:00",
         "mail" : "ksahlin@kth.se",
         "mail_type" : "FAIL",
-        "exclude" : "c[4,6-7,8-16]"
+        "exclude" : "c[8-11,15-16]"
     },
 
 
@@ -60,7 +60,7 @@
         "runtime" : "2-00:00:00",
         "mail" : "ksahlin@kth.se",
         "mail_type" : "FAIL",
-        "exclude" : "c[4,6-7,8-16]"
+        "exclude" : "c[8-11,15-16]"
     },
 
 
@@ -74,7 +74,7 @@
         "runtime" : "2-00:00:00",
         "mail" : "ksahlin@kth.se",
         "mail_type" : "FAIL",
-        "exclude" : "c[4,6-7,8-16]"
+        "exclude" : "c[8-11,15-16]"
     },
 
 
@@ -87,7 +87,7 @@
         "runtime" : "2-00:00:00",
         "mail" : "ksahlin@kth.se",
         "mail_type" : "FAIL",
-        "exclude" : "c[4,6-7,8-16]"
+        "exclude" : "c[8-11,15-16]"
     },
 
     "desalt_gtf_align" : 
@@ -99,7 +99,7 @@
         "runtime" : "2-00:00:00",
         "mail" : "ksahlin@kth.se",
         "mail_type" : "FAIL",
-        "exclude" : "c[4,6-7,8-16]"
+        "exclude" : "c[8-11,15-16]"
     },
 
     "graphmap2_index" : 
@@ -111,7 +111,7 @@
         "runtime" : "2-00:00:00",
         "mail" : "ksahlin@kth.se",
         "mail_type" : "FAIL",
-        "exclude" : "c[4,6-7,8-16]"
+        "exclude" : "c[8-11,15-16]"
     },
 
     "graphmap2_gtf_align" : 
@@ -123,7 +123,7 @@
         "runtime" : "2-00:00:00",
         "mail" : "ksahlin@kth.se",
         "mail_type" : "FAIL",
-        "exclude" : "c[4,6-7,8-16]"
+        "exclude" : "c[8-11,15-16]"
     },
     "graphmap2_align" : 
     {
@@ -134,7 +134,7 @@
         "runtime" : "2-00:00:00",
         "mail" : "ksahlin@kth.se",
         "mail_type" : "FAIL",
-        "exclude" : "c[4,6-7,8-16]"
+        "exclude" : "c[8-11,15-16]"
     }
 
 }
