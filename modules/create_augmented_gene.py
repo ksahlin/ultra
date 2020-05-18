@@ -232,4 +232,4 @@ def mask_abundant_kmers(ref_part_sequences, kmer_size, mask_threshold):
 
 
 
-    
+
