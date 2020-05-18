@@ -301,7 +301,7 @@ rule graphmap2_gtf_align:
     output: sam =  config["ROOT_OUT"] + "/alignments/graphmap2_gtf/{dataset}/reads.sam",
             time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2_gtf/{dataset}/aligning_time_and_mem.txt"
     run:
-         if wildcards.dataset == "sirv":
+        if wildcards.dataset == "sirv":
             ref = config["SIRV"]
             gtf_annotation = config["ANNOTATION"] + "/SIRV_with_transcripts.gtf"
         elif wildcards.dataset == "NA12878":
