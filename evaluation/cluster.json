@@ -13,6 +13,18 @@
         "exclude" : "c[8-11,15-16]"
     },
 
+    "simulate" : 
+    {
+        "account" : "",
+        "cpus-per-task" : "8",
+        "mem" : "128G",
+        "Nodes" : 1,
+        "runtime" : "3-00:00:00",
+        "jobname" : "simulate",
+        "mail" : "ksahlin@kth.se",
+        "mail_type" : "FAIL",
+        "exclude" : "c[8-11,15-16]"
+    },
 
     "evaluate_biological": 
     {
@@ -25,7 +37,8 @@
         "mail_type" : "FAIL",
         "exclude" : "c[8-11,15-16]"
     },
-    
+
+
     "evaluate_biological_cigar": 
     {
         "jobname" : "evaluate_biological_cigar",
@@ -64,6 +77,17 @@
     },
 
 
+    "ultra_prep": 
+    {
+        "jobname" : "ultra_prep",
+        "cpus-per-task" : "64",
+        "Nodes" : 1,
+        "mem" : "500G",
+        "runtime" : "2-00:00:00",
+        "mail" : "ksahlin@kth.se",
+        "mail_type" : "FAIL",
+        "exclude" : "c[8-11,15-16]"
+    },
 
     "ultra_align": 
     {
@@ -135,6 +159,30 @@
         "mail" : "ksahlin@kth.se",
         "mail_type" : "FAIL",
         "exclude" : "c[8-11,15-16]"
+    },
+
+    "plot_biological" : 
+    {
+        "account" : "",
+        "cpus-per-task" : "2",
+        "mem" : "16G",
+        "Nodes" : 1,
+        "runtime" : "3-00:00:00",
+        "jobname" : "plot_biological",
+        "mail" : "ksahlin@kth.se",
+        "mail_type" : "FAIL"
+    },
+
+    "plot_sim" : 
+    {
+        "account" : "",
+        "cpus-per-task" : "2",
+        "mem" : "16G",
+        "Nodes" : 1,
+        "runtime" : "3-00:00:00",
+        "jobname" : "plot_sim",
+        "mail" : "ksahlin@kth.se",
+        "mail_type" : "FAIL"
     }
 
 }
