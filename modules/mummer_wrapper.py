@@ -50,7 +50,7 @@ def parse_results(mems_path):
         else:
             vals =  line.split() #11404_11606           1     11405       202
             exon_part_id = vals[0]
-            chr_id, ref_coord_start, ref_coord_end = exon_part_id.split('_')
+            chr_id, ref_coord_start, ref_coord_end = exon_part_id.split('^')
             mem_len = int(vals[3])
             mem_ref_exon_part_start = int(vals[1])
             mem_read_start = int(vals[2])
@@ -101,7 +101,7 @@ def get_mummer_records(mems_path, reads):
         elif relevant:
                 vals =  line.split() #11404_11606           1     11405       202
                 exon_part_id = vals[0]
-                chr_id, ref_coord_start, ref_coord_end = exon_part_id.split('_')
+                chr_id, ref_coord_start, ref_coord_end = exon_part_id.split('^')
                 mem_len = int(vals[3])
                 mem_ref_exon_part_start = int(vals[1])
                 mem_read_start = int(vals[2])
