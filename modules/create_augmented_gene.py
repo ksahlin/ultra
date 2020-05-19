@@ -77,12 +77,12 @@ def create_graph_from_exon_parts(db, min_mem):
 
 
     for transcript in db.features_of_type('transcript', order_by='seqid'): #db.children(gene, featuretype='transcript', order_by='start'):
-        if transcript.seqid.isdigit() or transcript.seqid == 'X' or transcript.seqid == 'Y':
-            chr_id = 'chr'+ transcript.seqid
-        elif transcript.seqid == 'MT':
-            chr_id = 'chrM'
-        else:
-            chr_id = transcript.seqid
+        # if transcript.seqid.isdigit() or transcript.seqid == 'X' or transcript.seqid == 'Y':
+        #     chr_id = 'chr'+ transcript.seqid
+        # elif transcript.seqid == 'MT':
+        #     chr_id = 'chrM'
+        # else:
+        chr_id = transcript.seqid
 
         # print("here", transcript.id,  str(chr_id))  
         transcript_exons = []
