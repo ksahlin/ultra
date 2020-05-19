@@ -174,7 +174,7 @@ def main(solution, ref_exon_sequences, parts_to_exons, exon_id_to_choordinates, 
     mam_instance = []
     unique_part_locations = set()
     for mem in solution:
-        ref_chr_id, ref_start, ref_stop =  mem.exon_part_id.split('_')
+        ref_chr_id, ref_start, ref_stop =  mem.exon_part_id.split('^')
         ref_start, ref_stop = int(ref_start), int(ref_stop)
         # get all exons associated with the part
         # print(parts_to_exons)
