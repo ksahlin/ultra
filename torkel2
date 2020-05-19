@@ -187,7 +187,7 @@ def align_reads(args):
     refs_file = open(ref_path, 'w') #open(os.path.join(outfolder, "refs_sequences_tmp.fa"), "w")
     for chr_id  in ref_part_sequences:
         for (start,stop), seq  in ref_part_sequences[chr_id].items():
-            refs_file.write(">{0}\n{1}\n".format(chr_id + str("_") + str(start) + "_" + str(stop), seq))
+            refs_file.write(">{0}\n{1}\n".format(chr_id + str("^") + str(start) + "^" + str(stop), seq))
     refs_file.close()
 
 
