@@ -63,8 +63,9 @@ def parse_differing_location_reads(csv_file):
     reads_isonalign = {}
     reads_minimap2 = {}
     reads_desalt = {}
-    for line in csv_file:
-        acc,algorithm,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag = line.strip().split()
+    for line in open(csv_file,'r'):
+        #print(line)
+        acc,algorithm,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag = line.strip().split(",")
         if algorithm == 'uLTRA':
             reads_isonalign[acc] =  (acc,algorithm,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag) 
         if algorithm == 'minimap2':
@@ -95,7 +96,7 @@ def parse_differing_location_reads(csv_file):
 
 def main(args):
 
-    diff_mapped = parse_differing_location_reads(args.csv_file)
+    diff_mapped = parse_differing_location_reads(args.csvfile)
     reads = { acc.split()[0] : (seq, qual) for i, (acc, (seq, qual)) in enumerate(readfq(open(args.reads, 'r')))}
     print("Total reads", len(reads))
 
