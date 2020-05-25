@@ -79,9 +79,11 @@ def parse_differing_location_reads(csv_file):
         ds_chr, ds_start, ds_stop = reads_desalt[acc][11], reads_desalt[acc][12], reads_desalt[acc][13]
         ia_chr, ia_start, ia_stop = reads_isonalign[acc][11], reads_isonalign[acc][12], reads_isonalign[acc][13]
         if mm2_chr != 'unaligned' and  ds_chr != 'unaligned':
-            if mm2_chr == ds_chr and ( ( int(ds_start) <= int(mm2_start) <= int(ds_stop) )  or ( int(ds_start) <= int(mm2_stop) <= int(ds_stop) ) ): # they are overlapping
+            if ia_chr == 'unaligned':
+                differing_reads[acc].add( ( "unaligned_ultra", mm2_chr, ds_start, ds_stop, mm2_start, mm2_stop,  reads_isonalign[acc]) )
+            elif mm2_chr == ds_chr and ( ( int(ds_start) <= int(mm2_start) <= int(ds_stop) )  or ( int(ds_start) <= int(mm2_stop) <= int(ds_stop) ) ): # they are overlapping
                 if ia_chr != mm2_chr and not ( ( int(ds_start) <= int(ia_start) <= int(ds_stop) )  or ( int(ds_start) <= int(ia_stop) <= int(ds_stop) ) ): # not overlapping with isONalign
-                    differing_reads[acc].add( ( "differing", mm2_chr, ds_start, ds_stop, mm2_start, mm2_stop,  reads_isonalign[acc]) )
+                    differing_reads[acc].add( ( "differing_pos", mm2_chr, ds_start, ds_stop, mm2_start, mm2_stop,  reads_isonalign[acc]) )
         else:
             if mm2_chr == 'unaligned' and  ds_chr == 'unaligned': 
                 differing_reads[acc].add( ("unaligned_both", "-",  "-",  "-",  "-",  "-", reads_isonalign[acc]) )
