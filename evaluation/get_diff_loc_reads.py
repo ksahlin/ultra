@@ -82,7 +82,7 @@ def parse_differing_location_reads(csv_file):
             if ia_chr == 'unaligned':
                 differing_reads[acc].add( ( "unaligned_ultra", mm2_chr, ds_start, ds_stop, mm2_start, mm2_stop,  reads_isonalign[acc]) )
             elif mm2_chr == ds_chr and ( ( int(ds_start) <= int(mm2_start) <= int(ds_stop) )  or ( int(ds_start) <= int(mm2_stop) <= int(ds_stop) ) ): # they are overlapping
-                if ia_chr != mm2_chr and not ( ( int(ds_start) <= int(ia_start) <= int(ds_stop) )  or ( int(ds_start) <= int(ia_stop) <= int(ds_stop) ) ): # not overlapping with isONalign
+                if ia_chr != mm2_chr or not ( ( int(ds_start) <= int(ia_start) <= int(ds_stop) )  or ( int(ds_start) <= int(ia_stop) <= int(ds_stop) ) ): # not overlapping with isONalign
                     differing_reads[acc].add( ( "differing_pos", mm2_chr, ds_start, ds_stop, mm2_start, mm2_stop,  reads_isonalign[acc]) )
         else:
             if mm2_chr == 'unaligned' and  ds_chr == 'unaligned': 
@@ -105,8 +105,8 @@ def main(args):
 
     fq_outfile = open(os.path.join(args.outfolder, "diff_mapped.fq"), "w")
     info_outfile = open(os.path.join(args.outfolder, "diff_mapped.csv"), "w")
-    for acc in differing_reads:
-        info = differing_reads[acc]
+    for acc in diff_mapped:
+        info = diff_mapped[acc]
         info_outfile.write(acc + "," + ",".join([str(i) for i in  info]) + "\n") 
         (seq, qual) = reads[acc]   
         fq_outfile.write("@{0}\n{1}\n{2}\n{3}\n".format(acc, seq, "+", qual))    
