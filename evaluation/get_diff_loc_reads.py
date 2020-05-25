@@ -75,22 +75,22 @@ def parse_differing_location_reads(csv_file):
 
     differing_reads = defaultdict(set)
     for acc in reads_isonalign:
-        if acc in reads_minimap2 and acc in reads_desalt:
-            mm2_chr, mm2_start, mm2_stop = reads_minimap2[acc][11], reads_minimap2[acc][12], reads_minimap2[acc][13]
-            ds_chr, ds_start, ds_stop = reads_desalt[acc][11], reads_desalt[acc][12], reads_desalt[acc][13]
-            ia_chr, ia_start, ia_stop = reads_isonalign[acc][11], reads_isonalign[acc][12], reads_isonalign[acc][13]
+        mm2_chr, mm2_start, mm2_stop = reads_minimap2[acc][11], reads_minimap2[acc][12], reads_minimap2[acc][13]
+        ds_chr, ds_start, ds_stop = reads_desalt[acc][11], reads_desalt[acc][12], reads_desalt[acc][13]
+        ia_chr, ia_start, ia_stop = reads_isonalign[acc][11], reads_isonalign[acc][12], reads_isonalign[acc][13]
+        if mm2_chr != 'unaligned' and  ds_chr != 'unaligned':
             if mm2_chr == ds_chr and ( ( int(ds_start) <= int(mm2_start) <= int(ds_stop) )  or ( int(ds_start) <= int(mm2_stop) <= int(ds_stop) ) ): # they are overlapping
                 if ia_chr != mm2_chr and not ( ( int(ds_start) <= int(ia_start) <= int(ds_stop) )  or ( int(ds_start) <= int(ia_stop) <= int(ds_stop) ) ): # not overlapping with isONalign
                     differing_reads[acc].add( ( "differing", mm2_chr, ds_start, ds_stop, mm2_start, mm2_stop,  reads_isonalign[acc]) )
         else:
-            if acc not in reads_minimap2 and acc not in reads_desalt: 
+            if mm2_chr == 'unaligned' and  ds_chr == 'unaligned': 
                 differing_reads[acc].add( ("unaligned_both", "-",  "-",  "-",  "-",  "-", reads_isonalign[acc]) )
-            elif acc not in reads_minimap2:
+            elif mm2_chr == 'unaligned':
                 ds_chr, ds_start, ds_stop = reads_desalt[acc][11], reads_desalt[acc][12], reads_desalt[acc][13]
-                differing_reads[acc].add( ("unaligned_mm2",mm2_chr, ds_start, ds_stop, "-", "-",  reads_isonalign[acc]) )
-            elif acc not in reads_minimap2:
+                differing_reads[acc].add( ("unaligned_mm2",ds_chr, ds_start, ds_stop, "-", "-",  reads_isonalign[acc]) )
+            elif ds_chr == 'unaligned':
                 mm2_chr, mm2_start, mm2_stop = reads_minimap2[acc][11], reads_minimap2[acc][12], reads_minimap2[acc][13]
-                differing_reads[acc].add( ("unaligned_ds",mm2_chr,  "-", "-", mm2_start, mm2_stop,  reads_isonalign[acc]) )
+                differing_reads[acc].add( ("unaligned_ds", mm2_chr, "-", "-", mm2_start, mm2_stop,  reads_isonalign[acc]) )
     return differing_reads
 
 
