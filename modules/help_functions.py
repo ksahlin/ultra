@@ -8,23 +8,23 @@ import parasail
 import edlib
 import dill as pickle 
 
-def check_reference_headers(refs):
-    modified = False
-    for header in list(refs.keys()):
-        if header.isdigit() or header == 'X' or header == 'Y':
-            chr_id = 'chr'+ header
-        elif header == 'MT':
-            chr_id = 'chrM'
-        else:
-            chr_id = header
+# def check_reference_headers(refs):
+#     modified = False
+#     for header in list(refs.keys()):
+#         if header.isdigit() or header == 'X' or header == 'Y':
+#             chr_id = 'chr'+ header
+#         elif header == 'MT':
+#             chr_id = 'chrM'
+#         else:
+#             chr_id = header
 
-        # we have modified 
-        if chr_id != header:
-            modified = True
-            seq = refs[header]
-            del refs[header]
-            refs[chr_id] = seq
-    return modified
+#         # we have modified 
+#         if chr_id != header:
+#             modified = True
+#             seq = refs[header]
+#             del refs[header]
+#             refs[chr_id] = seq
+#     return modified
 
 
 def pickle_dump(args, data, filename):

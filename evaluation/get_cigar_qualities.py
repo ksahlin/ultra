@@ -240,7 +240,7 @@ def get_read_candidate_splice_sites(reads_primary_locations, annotated_splice_co
                 i += 1
                 read_cigar_tuples.append((int(length), type_ ))  
 
-            mod_ref = modify_ref_header_for_alignment(read.reference_name) # convert 1,..,22,X,Y,MT to chr1, .., chr22, chrX, chrY, chrM
+            mod_ref = read.reference_name #modify_ref_header_for_alignment(read.reference_name) # convert 1,..,22,X,Y,MT to chr1, .., chr22, chrX, chrY, chrM
             if mod_ref in annotated_splice_coordinates_pairs:
                 annotated_chr_coordinate_pairs = annotated_splice_coordinates_pairs[mod_ref]
             else:
@@ -482,32 +482,32 @@ def get_error_rates(reads):
         error_rates[acc] = err_rate
     return error_rates
 
-def modify_ref_header_for_alignment(header):
-    if header.isdigit() or header == 'X' or header == 'Y':
-        return 'chr'+ header
-    elif header == 'MT':
-        return 'chrM'
-    else:
-        return header
+# def modify_ref_header_for_alignment(header):
+#     if header.isdigit() or header == 'X' or header == 'Y':
+#         return 'chr'+ header
+#     elif header == 'MT':
+#         return 'chrM'
+#     else:
+#         return header
 
 
-def modify_reference_headers(refs):
-    modified = False
-    for header in list(refs.keys()):
-        if header.isdigit() or header == 'X' or header == 'Y':
-            chr_id = 'chr'+ header
-        elif header == 'MT':
-            chr_id = 'chrM'
-        else:
-            chr_id = header
+# def modify_reference_headers(refs):
+#     modified = False
+#     for header in list(refs.keys()):
+#         if header.isdigit() or header == 'X' or header == 'Y':
+#             chr_id = 'chr'+ header
+#         elif header == 'MT':
+#             chr_id = 'chrM'
+#         else:
+#             chr_id = header
 
-        # we have modified 
-        if chr_id != header:
-            modified = True
-            seq = refs[header]
-            del refs[header]
-            refs[chr_id] = seq
-    return modified
+#         # we have modified 
+#         if chr_id != header:
+#             modified = True
+#             seq = refs[header]
+#             del refs[header]
+#             refs[chr_id] = seq
+#     return modified
 
 def main(args):
     if args.load_database:
@@ -529,7 +529,7 @@ def main(args):
     print("Total reads", len(reads))
     print("here")
     refs = { acc.split()[0] : seq for i, (acc, (seq, _)) in enumerate(readfq(open(args.refs, 'r')))}
-    modify_reference_headers(refs)
+    # modify_reference_headers(refs)
     # print("SHORTEST INTRON:", minimum_annotated_intron)
     # minimum_annotated_intron = max(minimum_annotated_intron,  args.min_intron)
 

@@ -59,6 +59,10 @@ def reverse_complement(string):
     return(rev_comp)
 
 
+def is_overlapping(a_start,a_stop, b_start,b_stop):
+    return (int(a_start) <= int(b_start) <= int(a_stop) )  or (int(a_start) <= int(b_stop) <= int(a_stop)) or (int(b_start) <= int(a_start) <= int(a_stop) <= int(b_stop) )
+
+
 def parse_differing_location_reads(csv_file):
     reads_isonalign = {}
     reads_minimap2 = {}
@@ -81,11 +85,11 @@ def parse_differing_location_reads(csv_file):
         if mm2_chr != 'unaligned' and  ds_chr != 'unaligned':
             if ia_chr == 'unaligned':
                 differing_reads[acc].add( ( "unaligned_ultra", mm2_chr, ds_start, ds_stop, mm2_start, mm2_stop,  reads_isonalign[acc]) )
-            elif mm2_chr == ds_chr and ( ( int(ds_start) <= int(mm2_start) <= int(ds_stop) )  or ( int(ds_start) <= int(mm2_stop) <= int(ds_stop) ) ): # they are overlapping
-                if ia_chr != mm2_chr or not ( ( int(ds_start) <= int(ia_start) <= int(ds_stop) )  or ( int(ds_start) <= int(ia_stop) <= int(ds_stop) ) ): # not overlapping with isONalign
+            elif mm2_chr == ds_chr and is_overlapping(ds_start, ds_stop, mm2_start, mm2_stop): # they are overlapping
+                if ia_chr != mm2_chr or not is_overlapping(ia_start, ia_stop, mm2_start, mm2_stop): # not overlapping with isONalign
                     differing_reads[acc].add( ( "differing_pos", mm2_chr, ds_start, ds_stop, mm2_start, mm2_stop,  reads_isonalign[acc]) )
         else:
-            if mm2_chr == 'unaligned' and  ds_chr == 'unaligned': 
+            if mm2_chr == 'unaligned' and  ds_chr == 'unaligned' and ia_chr != 'unaligned': 
                 differing_reads[acc].add( ("unaligned_both", "-",  "-",  "-",  "-",  "-", reads_isonalign[acc]) )
             elif mm2_chr == 'unaligned':
                 ds_chr, ds_start, ds_stop = reads_desalt[acc][11], reads_desalt[acc][12], reads_desalt[acc][13]

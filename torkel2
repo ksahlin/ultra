@@ -269,9 +269,9 @@ def align_reads(args):
 
     print("Read reference")
     refs = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.ref, 'r'))} 
-    modified = help_functions.check_reference_headers(refs)
-    if modified:
-        print("Detected 1,..,22, MT, X, Y as header labels, treating these headers as: chr1,...,chr22, chrM, chrX, chrY")
+    # modified = help_functions.check_reference_headers(refs)
+    # if modified:
+    #     print("Detected 1,..,22, MT, X, Y as header labels, treating these headers as: chr1,...,chr22, chrM, chrX, chrY")
     refs_lengths = { acc : len(seq) for acc, seq in refs.items()} 
     del refs
  

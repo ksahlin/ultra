@@ -31,12 +31,12 @@ def create_graph_from_exon_parts(db, min_mem):
 
     parts_to_exons = defaultdict(dd_set)
     for i, exon in enumerate(db.features_of_type('exon', order_by='seqid')):
-        if exon.seqid.isdigit() or exon.seqid == 'X' or exon.seqid == 'Y':
-            chr_id = 'chr'+ exon.seqid
-        elif exon.seqid == 'MT':
-            chr_id = 'chrM'
-        else:
-            chr_id = exon.seqid
+        # if exon.seqid.isdigit() or exon.seqid == 'X' or exon.seqid == 'Y':
+        #     chr_id = 'chr'+ exon.seqid
+        # elif exon.seqid == 'MT':
+        #     chr_id = 'chrM'
+        # else:
+        chr_id = exon.seqid
 
         exons_to_ref[exon.id] = chr_id
         # print(dir(exon))
