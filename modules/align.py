@@ -163,10 +163,10 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                 read_seq = help_functions.reverse_complement(read_seq)
             else:
                 read_seq = read_seq
-            # print("mem solution:", chaining_score, mem_solution)
+            # print("mem solution:", is_rc, chaining_score, mem_solution)
             non_covered_regions, mam_value, mam_solution, unique_exon_choordinates = classify_read_with_mams.main(mem_solution, ref_exon_sequences, parts_to_exons, \
                                                                                                                     exon_id_to_choordinates, exon_to_gene, gene_to_small_exons, \
-                                                                                                                    read_seq, is_rc, warning_log_file)
+                                                                                                                    read_seq, warning_log_file)
             # print("finished Mam solution:",mam_value, mam_solution)
             mam_sol_exons_length = sum([ mam.y - mam.x for mam in mam_solution])
             if mam_value > 0:
@@ -211,6 +211,12 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                 # print(read_aln)
                 # print(ref_aln)
                 # print("to chr", chr_id,  alignment_score, 2*args.alignment_threshold*len(read_seq))
+                # print("lenght ref: {0}, length query:{1}".format(len(created_ref_seq), len(read_seq)))
+                # print(created_ref_seq)
+                # print(read_seq)
+                # print()
+                # print(read_aln)
+                # print(ref_aln)
                 if alignment_score < 2*args.alignment_threshold*len(read_seq):
                     # print()
                     # print("skipping")

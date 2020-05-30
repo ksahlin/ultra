@@ -102,9 +102,12 @@ def create_graph_from_exon_parts(db, min_mem):
             all_splice_sites_annotations[str(chr_id)].add(site2)
         
         # add start and end splice to all_splice_sites_annotations 
-        all_splice_sites_annotations[str(chr_id)].add(transcript_exons[0][0])
-        all_splice_sites_annotations[str(chr_id)].add(transcript_exons[-1][-1])
-
+        if transcript_exons:
+            all_splice_sites_annotations[str(chr_id)].add(transcript_exons[0][0])
+            all_splice_sites_annotations[str(chr_id)].add(transcript_exons[-1][-1])
+        else:
+            print("Something is wrong with transcript annotation: {0} on gene: {1}, and could not be added. Check that the gene ID and transcript ID is not the same!".format(transcript.id, transcript.seqid))
+            # sys.exit()
 
     transcripts_to_splices = reverse_mapping(splices_to_transcripts)
 

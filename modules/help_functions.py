@@ -177,7 +177,9 @@ def parasail_alignment(s1, s2, match_score = 2, mismatch_penalty = -2, opening_p
     # print(s2_alignment)
     # print(cigar_string)
     # sys.exit()
-
+    # print(dir(result))
+    # print(result.end_query, result.end_ref, result.len_query, result.len_ref, result.length, result.matches)
+    # print()
     return s1_alignment, s2_alignment, cigar_string, cigar_tuples, result.score
 
     # # Rolling window of matching blocks
@@ -206,3 +208,46 @@ def parasail_alignment(s1, s2, match_score = 2, mismatch_penalty = -2, opening_p
     # alignment_ratio = sum(aligned_region)/float(len(s1))
     # return (s1, s2, (s1_alignment, s2_alignment, alignment_ratio))
 
+def ssw_alignment(s1, s2, match_score = 2, mismatch_penalty = -2, opening_penalty = 3, gap_ext = 1):
+    user_matrix = parasail.matrix_create("ACGT", match_score, mismatch_penalty)
+    result = parasail.ssw(s1, s2, opening_penalty, gap_ext, user_matrix)
+    print(result, type(result), dir(result))
+    print(dir(result))
+    for attr, value in result.__dict__.items():
+        print(attr, value)
+    # print(result.ref_begin1, result.ref_end1, result.read_begin1, result.read_end1)
+    # print()
+    return s1_alignment, s2_alignment, cigar_string, cigar_tuples, result.score
+
+def parasail_local(s1, s2, match_score = 2, mismatch_penalty = -2, opening_penalty = 3, gap_ext = 1):
+    user_matrix = parasail.matrix_create("ACGT", match_score, mismatch_penalty)
+    result = parasail.sw_trace_scan_16(s1, s2, opening_penalty, gap_ext, user_matrix)
+    if result.saturated:
+        print("SATURATED!",len(s1), len(s2))
+        result = parasail.sg_trace_scan_32(s1, s2, opening_penalty, gap_ext, user_matrix)
+        print("computed 32 bit instead")
+
+    # difference in how to obtain string from parasail between python v2 and v3... 
+    if sys.version_info[0] < 3:
+        cigar_string = str(result.cigar.decode).decode('utf-8')
+    else:
+        cigar_string = str(result.cigar.decode, 'utf-8')
+    s1_alignment, s2_alignment, cigar_tuples = cigar_to_seq(cigar_string, s1[result.cigar.beg_query:result.end_query], s2[result.cigar.beg_ref: result.end_ref])
+    # print(result.traceback.ref)
+    # print(result.traceback.comp)
+    # print(result.traceback.query)
+    # print(result.score, len(s1), len(s2))
+    print("read",s1_alignment)
+    print("Rref",s2_alignment)
+    print(result.cigar.beg_query,result.end_query)
+    print(result.cigar.beg_ref, result.end_ref)
+    print(cigar_string)
+    # print(result.cigar.seq)
+
+    # sys.exit()
+    # print(dir(result))  
+    # for attr, value in result.__dict__.items():
+    #     print(attr, value)
+    # print(result.end_query, result.end_ref, result.len_query, result.len_ref, result.length, result.matches)
+    # print()
+    return s1_alignment, s2_alignment, cigar_string, cigar_tuples, result.score
