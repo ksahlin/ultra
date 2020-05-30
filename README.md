@@ -74,6 +74,7 @@ pip install uLTRA
 Make sure the below listed dependencies are installed (installation links below). Versions in parenthesis are suggested as uLTRA has not been tested with earlier versions of these libraries. However, uLTRA may also work with earliear versions of these libaries.
 * [parasail](https://github.com/jeffdaily/parasail-python)
 * [pysam](http://pysam.readthedocs.io/en/latest/installation.html) (>= v0.11)
+* dill
 
 
 With these dependencies installed. Run

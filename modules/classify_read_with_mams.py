@@ -79,36 +79,30 @@ def cigar_to_accuracy(cigar_string):
             aln_length += length_
     return matches / float(aln_length)
 
-def edlib_alignment(query, target, mode = "HW", task = 'path', k=-1):
+
+
+def edlib_alignment(query, target, mode = "HW", task = 'locations', k=-1):
     result = edlib.align(query, target, task=task, mode=mode, k=k)
     if result['editDistance'] == -1:
         return [0,0], -1, 0
     
-    if task == 'path':
+    if task == 'locations':
+        locations = result['locations']
+        ref_start, ref_stop = locations[0][0], locations[0][1]
+        accuracy = ((ref_stop - ref_start) - result['editDistance'])/ (ref_stop - ref_start)
+    elif task == 'path':
         locations = result['locations']
         ref_start, ref_stop = locations[0][0], locations[0][1]
         cigar_string = result["cigar"]
         accuracy = cigar_to_accuracy(cigar_string)
+        # print(accuracy, ( (ref_stop - ref_start) - result['editDistance'])/ (ref_stop - ref_start))
         # print(cigar_string, result['editDistance'], locations, accuracy)
-        # query_alignment, target_alignment, cigar_tuples = cigar_to_seq(cigar_string, query, target[ref_start: ref_stop+1 ])
-        
-    # print(locations)
-    # print(query_alignment)
-    # print(target_alignment)
-    # print(result['editDistance'])
-
-    # query_rc = reverse_complement(query)
-    # target_rc = reverse_complement(target)
-    # result = edlib.align(query_rc, target_rc, task="path", mode="NW")
-    # cigar_string = result["cigar"]
-    # locations = result['locations']
-    # query_rc_alignment, target_rc_alignment, cigar_tuples = cigar_to_seq(cigar_string, query_rc, target_rc)
-    # print(locations)
-    # print(query_rc_alignment)
-    # print(target_rc_alignment)
-    # print(result['editDistance'])
+        query_alignment, target_alignment, cigar_tuples = cigar_to_seq(cigar_string, query, target[ref_start: ref_stop+1 ])
+        # print(query_alignment)
+        # print(target_alignment)
 
     return result['locations'], result['editDistance'], accuracy #, query_alignment, target_alignment
+
 
 
 def calc_complessed_score(read_alignment, ref_alignment, m, n):
@@ -164,36 +158,54 @@ def contains(sub, pri):
         else:
             i = found+1
 
-def main(solution, ref_exon_sequences, parts_to_exons, exon_id_to_choordinates, exon_to_gene, gene_to_small_exons, read_seq, is_rc, warning_log_file):
-    # chained_parts_seq = []
-    # chained_parts_ids = []
-    prev_ref_stop = -1
-    predicted_transcript = []
-    predicted_exons = []
-    covered_regions = []
-    mam_instance = []
+def get_unique_part_locations(solution):
     unique_part_locations = set()
+    # start_part_offset, part_pos_max = 0, 2**32
+    # prev_part = ""
+    approximate_hit_locations = { } # { part_id : (ref_start, ref_stop, read_start, read_stop) }
+    # print(solution)
     for mem in solution:
         ref_chr_id, ref_start, ref_stop =  mem.exon_part_id.split('^')
         ref_start, ref_stop = int(ref_start), int(ref_stop)
         # get all exons associated with the part
         # print(parts_to_exons)
+        # if mem.exon_part_id != prev_part:
+        #     start_mem_choord = mem.x
         unique_part_locations.add((ref_chr_id, ref_start, ref_stop))
-    # print()
-    # print(unique_part_locations)
-    # print()
+        if (ref_chr_id, ref_start, ref_stop) in approximate_hit_locations:
+            # increase the end coordinates on the same part reference
+            approximate_hit_locations[(ref_chr_id, ref_start, ref_stop)][1] = mem.y
+            approximate_hit_locations[(ref_chr_id, ref_start, ref_stop)][3] = mem.d
+        else:
+            approximate_hit_locations[(ref_chr_id, ref_start, ref_stop)] = [mem.x, mem.y, mem.c, mem.d]
+    # print(approximate_hit_locations)
+    return unique_part_locations, approximate_hit_locations
 
 
-    ### FASTER METHOD COMPARED TO OLD VERSION: ONLY ALIGN TO READ ONCE PER UNIQUE EXON LOCATION #####
-    ###################################################################################################
-
+def get_unique_exon_choordinates(unique_part_locations, parts_to_exons, approximate_hit_locations, exon_id_to_choordinates, exon_to_gene, gene_to_small_exons):
     # compress unique exons to only do alignment once 
-    unique_exon_choordinates =  defaultdict(set)
+    unique_exon_choordinates = defaultdict(set)
+    unique_exon_choordinates_segments = defaultdict(set)
     for (ref_chr_id, ref_start, ref_stop) in unique_part_locations:
         exon_ids = parts_to_exons[ref_chr_id][(ref_start, ref_stop)]
+        # print(exon_ids)
+        segm_ref_start, segm_ref_stop, segm_read_start, segm_read_stop = approximate_hit_locations[(ref_chr_id, ref_start, ref_stop)]
         for exon_id in exon_ids:
             e_start, e_stop = exon_id_to_choordinates[exon_id]
             unique_exon_choordinates[ (ref_chr_id, e_start, e_stop) ].add(exon_id)
+
+            # also add subsegments of exons if significant sub hits that does not span the entire exon (mostly occuring in start and ends exons)
+
+            # case read starts     read:     [ > 0.3*e_len]   ----------------------------...
+            # within start exon    exon: --------------------------------
+            if (segm_ref_start - ref_start) > 0.3*(e_stop - e_start):
+                unique_exon_choordinates_segments[(ref_chr_id, segm_ref_start, segm_ref_stop) ] =  (ref_chr_id, e_start, e_stop)
+
+            # case read ends       read:  ...----------------------------   [ > 0.3*e_len]   
+            # within end exon      exon:                      ---------------------------------
+            if (ref_stop - segm_ref_stop ) > 0.3*(e_stop - e_start):
+                unique_exon_choordinates_segments[(ref_chr_id, segm_ref_start, segm_ref_stop) ] =  (ref_chr_id, e_start, e_stop)
+
 
         # also add all small exons that may be smaller than minimum MEM size
         unique_genes = set(gene_id for exon_id in exon_ids for gene_id in exon_to_gene[exon_id])
@@ -205,7 +217,128 @@ def main(solution, ref_exon_sequences, parts_to_exons, exon_id_to_choordinates, 
                 unique_exon_choordinates[ (ref_chr_id, e_start, e_stop) ].add(small_exon_id)
 
 
+    # print("unique_exon_choordinates_segments", unique_exon_choordinates_segments)
+    return unique_exon_choordinates, unique_exon_choordinates_segments
 
+
+# def get_segments_of_exons(approximate_hit_locations, unique_exon_choordinates):
+
+#     for (part_chr_id, part_start, part_stop) in approximate_hit_locations:
+#         segm_ref_start, segm_ref_stop, segm_read_start, segm_read_stop = approximate_hit_locations[(part_chr_id, part_start, part_stop)]
+
+#     return
+
+def add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, mam_instance):
+    if e_stop - e_start >= 5:
+        # exon_seq = ref_exon_sequences[ref_chr_id][(e_start, e_stop)]
+        # print((e_start, e_stop))
+        # print(exon_seq == ref_seq2)
+        # assert exon_seq == ref_seq2
+        # print(exon_id, e_stop - e_start)
+        # align them to the read and get the best approxinate match
+        if e_stop - e_start >= 9:
+            locations, edit_distance, accuracy = edlib_alignment(exon_seq, read_seq, mode="HW", k = 0.4*min(len(read_seq), len(exon_seq)) ) 
+            # print((e_start, e_stop), locations, edit_distance, accuracy )
+            if edit_distance >= 0:
+                # calc_complessed_score(read_alignment, ref_alignment, len(read_seq), len(exon_seq))
+                # e_score = calc_evalue(read_alignment, ref_alignment, len(read_seq), len(exon_seq))
+                # start, stop = locations[0]
+                # if len(locations) > 1:
+                #     print("had more", e_stop - e_start, locations)
+
+                for start, stop in locations:
+                    min_segment_length = stop - start #e_stop - e_start #stop - start
+                    score = accuracy*min_segment_length #- edit_distance
+                    if (min_segment_length - edit_distance)/float(min_segment_length) > 0.6:
+                        # for exon_id in all_exon_ids: break # only need one of the redundant exon_ids
+                        # exon_id = all_exon_ids.pop()
+                        # covered_regions.append((start,stop, score, exon_id, ref_chr_id))
+                        mam_tuple = mam(e_start, e_stop, start, stop, 
+                                score, min_segment_length,  exon_id, ref_chr_id) 
+                        mam_instance.append(mam_tuple)
+            # else:
+            #     if len(read_seq) + len(exon_seq) < 40000:
+            #         read_aln, ref_aln, cigar_string, cigar_tuples, alignment_score = help_functions.parasail_local(read_seq, exon_seq)
+            #         locations, edit_distance, accuracy = edlib_alignment(exon_seq, read_seq, mode="HW", k = 0.4*min(len(read_seq), len(exon_seq)) )
+            #         print('read',read_seq)
+            #         print('Rref',exon_seq)
+            #         print(locations, edit_distance, accuracy)
+            #         # print(read_aln)
+            #         # print(ref_aln)
+        
+        else: # small exons between 5-9bp needs exact match otherwise too much noise
+            locations, edit_distance, accuracy = edlib_alignment(exon_seq, read_seq, mode="HW", k = 0 )
+            # print("HEEERE", exon_seq, e_start, e_stop,ref_chr_id)
+            if edit_distance == 0:
+                # print("perfect matches:",exon_seq, locations)
+                score = len(exon_seq)
+                # calc_complessed_score(read_alignment, ref_alignment, len(read_seq), len(exon_seq))
+                # e_score = calc_evalue(read_alignment, ref_alignment, len(read_seq), len(exon_seq))
+                # for exon_id in all_exon_ids: break # only need one of the redundant exon_ids
+                # exon_id = all_exon_ids.pop()
+
+                for start, stop in locations:
+                    # covered_regions.append((start,stop, score, exon_id, ref_chr_id))
+                    mam_tuple = mam(e_start, e_stop, start, stop, 
+                            score, score,  exon_id, ref_chr_id) 
+                    mam_instance.append(mam_tuple)
+
+    else:
+        pass
+        # warning_log_file.write("not aligning exons smaller than 5bp: {0}, {1}, {2}, {3}.\n".format(ref_chr_id, e_start, e_stop, ref_exon_sequences[ref_chr_id][(e_start, e_stop)])) # TODO: align these and take all locations
+
+    if  e_stop - e_start >= 0.8*len(read_seq): # read is potentially contained within exon 
+        # print()
+        # print("aligning read to exon")
+        locations, edit_distance, accuracy = edlib_alignment(read_seq, exon_seq, mode="HW", k = 0.4*min(len(read_seq), len(exon_seq)) )
+        # print(exon_seq)
+        # print((e_start, e_stop), len(exon_seq), len(read_seq), locations,  edit_distance, accuracy)
+        # print()
+        if edit_distance >= 0:
+            # min_segment_length = min( len(exon_seq) ,len(read_seq) )
+            # score = min_segment_length - edit_distance #/len(read_seq)
+            
+            start, stop = locations[0]
+            min_segment_length = stop - start
+            score = accuracy*min_segment_length #-  edit_distance #/len(read_seq)
+            # print("LOOK:", min_segment_length, edit_distance, score, locations)
+            # if e_score < 1.0:
+            if (min_segment_length -  edit_distance)/float(min_segment_length) > 0.6:
+                start, stop = 0, len(read_seq) - 1
+                # covered_regions.append((start,stop, score, exon_id, ref_chr_id))
+                # for exon_id in all_exon_ids:
+                #     mam_tuple = mam(e_start, e_stop, start, stop, 
+                #             score, min_segment_length,  exon_id, ref_chr_id)
+                #     mam_instance.append(mam_tuple)
+                
+                # for exon_id in all_exon_ids: break
+                # exon_id = all_exon_ids.pop()
+                mam_tuple = mam(e_start, e_stop, start, stop, 
+                        score, min_segment_length,  exon_id, ref_chr_id)
+                mam_instance.append(mam_tuple)
+    
+
+
+def main(solution, ref_exon_sequences, parts_to_exons, exon_id_to_choordinates, exon_to_gene, gene_to_small_exons, read_seq, warning_log_file):
+    """
+        NOTE: if paramerer task = 'path' is given to edlib_alignment function calls below, it will give exact accuracy of the aligmnent but the program will be ~40% slower.
+            Now we are approxmating accuracy by dividing by start and end of the reference coordinates of the alignment. This is not good approw if there is a large instertion
+            in the exon w.r.t. the read.
+    """
+    # chained_parts_seq = []
+    # chained_parts_ids = []
+    # prev_ref_stop = -1
+    # predicted_transcript = []
+    # predicted_exons = []
+    # covered_regions = []
+
+    unique_part_locations, approximate_hit_locations = get_unique_part_locations(solution)
+    # print()
+    # print(unique_part_locations)
+    # print()
+
+    unique_exon_choordinates, unique_exon_choordinates_segments = get_unique_exon_choordinates(unique_part_locations, parts_to_exons, approximate_hit_locations, \
+                                                                                                exon_id_to_choordinates, exon_to_gene, gene_to_small_exons)
     # print()
     # print('unique_exon_choordinates', unique_exon_choordinates)
     # for t in sorted(unique_exon_choordinates):
@@ -213,86 +346,30 @@ def main(solution, ref_exon_sequences, parts_to_exons, exon_id_to_choordinates, 
     # print()
     # sys.exit()
 
+    # unique_exon_segments = get_segments_of_exons(approximate_hit_locations, unique_exon_choordinates)
+    # all_potential_hits = unique_exon_choordinates + unique_exon_segments
+
     # In the chainer solvers, start and end cordinates are always inclusive, i.e. 1,10 means that the mem
     # spans and includes bases 1,2,...,10. In python indexing of strings we would slice out this interval
     # as [1:11], therefore we subtract 1 from the end of the interval before adding it to MAM instance
+    mam_instance = []
     for (ref_chr_id, e_start, e_stop), all_exon_ids in sorted(unique_exon_choordinates.items(), key=lambda x: x[0][1]):
-        if e_stop - e_start >= 5:
-            # if is_rc:
-            #     ref_seq = help_functions.reverse_complement(refs[ref_chr_id][e_start: e_stop])
-            # else:
-            # ref_seq = refs[ref_chr_id][e_start: e_stop]
-            ref_seq = ref_exon_sequences[ref_chr_id][(e_start, e_stop)]
-            # print((e_start, e_stop))
-            # print(ref_seq == ref_seq2)
-            # assert ref_seq == ref_seq2
-            # print(exon_id, e_stop - e_start)
-            # align them to the read and get the best approxinate match
-            if e_stop - e_start >= 9:
-                locations, edit_distance, accuracy = edlib_alignment(ref_seq, read_seq, mode="HW", k = 0.4*min(len(read_seq), len(ref_seq)) )
-                if edit_distance >= 0:
-                    # calc_complessed_score(read_alignment, ref_alignment, len(read_seq), len(ref_seq))
-                    # e_score = calc_evalue(read_alignment, ref_alignment, len(read_seq), len(ref_seq))
-                    # start, stop = locations[0]
-                    # if len(locations) > 1:
-                    #     print("had more", e_stop - e_start, locations)
+        exon_seq = ref_exon_sequences[ref_chr_id][(e_start, e_stop)]
+        exon_id = all_exon_ids.pop()
+        add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, mam_instance)
 
-                    for start, stop in locations:
-                        min_segment_length = stop - start #e_stop - e_start #stop - start
-                        score = accuracy*min_segment_length #- edit_distance
-                        if (min_segment_length - edit_distance)/float(min_segment_length) > 0.6:
-                            for exon_id in all_exon_ids: break # only need one of the redundant exon_ids
+    for (ref_chr_id, s_start, s_stop) in unique_exon_choordinates_segments:
+        ref_chr_id, e_start, e_stop = unique_exon_choordinates_segments[(ref_chr_id, s_start, s_stop)]
+        exon_seq = ref_exon_sequences[ref_chr_id][(e_start, e_stop)]
+        # print(len(exon_seq), s_start - e_start, len(exon_seq) - (e_stop - s_stop +1))
+        segment_seq = exon_seq[s_start - e_start: len(exon_seq) - (e_stop - s_stop +1)]
+        # print("adding:", segment_seq )
+        if len(segment_seq) > 5:
+            # prev_len_mam_instance = len(mam_instance)
+            add_exon_to_mam(read_seq, ref_chr_id, segment_seq, e_start, e_stop, exon_id, mam_instance)
+            # if len(mam_instance) > prev_len_mam_instance:
+            #     print("added:", exon_id, "to mam instance")
 
-                            covered_regions.append((start,stop, score, exon_id, ref_chr_id))
-                            mam_tuple = mam(e_start, e_stop, start, stop, 
-                                    score, min_segment_length,  exon_id, ref_chr_id) 
-                            mam_instance.append(mam_tuple)
-            
-            else: # small exons between 5-9bp needs exact match otherwise too much noise
-                locations, edit_distance, accuracy = edlib_alignment(ref_seq, read_seq, mode="HW", k = 0 )
-                # print("HEEERE", ref_seq, e_start, e_stop,ref_chr_id)
-                if edit_distance == 0:
-                    # print("perfect matches:",ref_seq, locations)
-                    score = len(ref_seq)
-                    # calc_complessed_score(read_alignment, ref_alignment, len(read_seq), len(ref_seq))
-                    # e_score = calc_evalue(read_alignment, ref_alignment, len(read_seq), len(ref_seq))
-                    for exon_id in all_exon_ids: break # only need one of the redundant exon_ids
-                    for start, stop in locations:
-                        covered_regions.append((start,stop, score, exon_id, ref_chr_id))
-                        mam_tuple = mam(e_start, e_stop, start, stop, 
-                                score, score,  exon_id, ref_chr_id) 
-                        mam_instance.append(mam_tuple)
-
-        else:
-            pass
-            # warning_log_file.write("not aligning exons smaller than 5bp: {0}, {1}, {2}, {3}.\n".format(ref_chr_id, e_start, e_stop, ref_exon_sequences[ref_chr_id][(e_start, e_stop)])) # TODO: align these and take all locations
-
-        if  e_stop - e_start >= 0.8*len(read_seq): # read is potentially contained within exon 
-            # print()
-            # print("aligning read to exon")
-            locations, edit_distance, accuracy = edlib_alignment(read_seq, ref_seq, mode="HW", k = 0.4*min(len(read_seq), len(ref_seq)) )
-            # print(exon_id, e_start, e_stop, len(ref_seq), len(read_seq),edit_distance)
-            # print()
-            if edit_distance >= 0:
-                # min_segment_length = min( len(ref_seq) ,len(read_seq) )
-                # score = min_segment_length - edit_distance #/len(read_seq)
-                
-                start, stop = locations[0]
-                min_segment_length = stop - start
-                score = accuracy*min_segment_length #-  edit_distance #/len(read_seq)
-                # print("LOOK:", min_segment_length, edit_distance, score, locations)
-                # if e_score < 1.0:
-                if (min_segment_length -  edit_distance)/float(min_segment_length) > 0.6:
-                    start, stop = 0, len(read_seq) - 1
-                    covered_regions.append((start,stop, score, exon_id, ref_chr_id))
-                    # for exon_id in all_exon_ids:
-                    #     mam_tuple = mam(e_start, e_stop, start, stop, 
-                    #             score, min_segment_length,  exon_id, ref_chr_id)
-                    #     mam_instance.append(mam_tuple)
-                    for exon_id in all_exon_ids: break
-                    mam_tuple = mam(e_start, e_stop, start, stop, 
-                            score, min_segment_length,  exon_id, ref_chr_id)
-                    mam_instance.append(mam_tuple)
     ###################################################################################################
     ###################################################################################################
     ###################################################################################################
