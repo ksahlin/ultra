@@ -24,7 +24,7 @@ def create_graph_from_exon_parts(db, min_mem):
     gene_to_small_exons = {} # gene_id : [exon_id ]
 
     exon_id_to_choordinates = {}
-    splices_to_transcripts = defaultdict(dict)
+    splices_to_transcripts = defaultdict(dd_set)
     all_splice_pairs_annotations = defaultdict(dd_set)
     all_splice_sites_annotations = defaultdict(set)
     # annotated_transcripts = defaultdict(set)
@@ -91,7 +91,7 @@ def create_graph_from_exon_parts(db, min_mem):
         internal_transcript_splices = [ (e1[1],e2[0]) for e1, e2 in zip(transcript_exons[:-1],transcript_exons[1:])]
         
         # internal transcript splices
-        splices_to_transcripts[chr_id][ tuple(internal_transcript_splices)] = transcript.id
+        splices_to_transcripts[chr_id][ tuple(internal_transcript_splices)].add(transcript.id)
         for site1, site2 in internal_transcript_splices:
             all_splice_pairs_annotations[str(chr_id)][(site1, site2)].add( transcript.id )
             # if site2 == 3105:
@@ -109,7 +109,13 @@ def create_graph_from_exon_parts(db, min_mem):
             print("Something is wrong with transcript annotation: {0} on gene: {1}, and could not be added. Check that the gene ID and transcript ID is not the same!".format(transcript.id, transcript.seqid))
             # sys.exit()
 
-    transcripts_to_splices = reverse_mapping(splices_to_transcripts)
+    # transcripts_to_splices = reverse_mapping(splices_to_transcripts)
+    transcripts_to_splices = defaultdict(dict)
+    for chr_id, chr_sp_sites_dict in splices_to_transcripts.items():
+        for unique_sp_sites, tr_ids in chr_sp_sites_dict.items():
+            for tr_id in tr_ids:
+                transcripts_to_splices[chr_id][tr_id] = unique_sp_sites
+
 
     for gene in db.features_of_type('gene', order_by='seqid'):
         gene_to_small_exons[gene.id] = []
