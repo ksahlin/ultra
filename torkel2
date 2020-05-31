@@ -355,7 +355,7 @@ if __name__ == '__main__':
     pipeline_parser.add_argument('ref', type=str, help='Reference genome (fasta)')
     pipeline_parser.add_argument('reads', type=str, help='Path to fasta/fastq file with reads.')
     pipeline_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
-    pipeline_parser.add_argument('--min_mem', type=int, default=14, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
+    pipeline_parser.add_argument('--min_mem', type=int, default=14, help='Threshold for minimum mem size considered.')
     pipeline_parser.add_argument('--alignment_threshold', type=int, default=0.3, help='Lower threshold for considering an alignment. \
                                                                                         Counted as the difference between total match score and total mismatch penalty. \
                                                                                         If a read has 35\% errors (under edit distance scoring), the difference between \
@@ -366,20 +366,20 @@ if __name__ == '__main__':
     pipeline_parser.add_argument('--dropoff', type=float, default=0.7, help='Ignore alignment to hits with read coverage of this fraction less than the best hit.')
     pipeline_parser.add_argument('--ignore_rc', action='store_true', help='Ignore to map to reverse complement.')
     pipeline_parser.add_argument('--disable_infer', action='store_true', help='Makes splice creation step much faster. Thes parameter can be set if gene and transcript name fields are provided in gtf file.')
-    pipeline_parser.add_argument('--mask_threshold', type=int, default=100, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
+    pipeline_parser.add_argument('--mask_threshold', type=int, default=100, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
     pipeline_parser.set_defaults(which='pipeline')
 
 
     prep_splicing_parser.add_argument('gtf', type=str, help='Path to gtf or gtf file with gene models.')
     prep_splicing_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
-    prep_splicing_parser.add_argument('--min_mem', type=int, default=14, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
+    prep_splicing_parser.add_argument('--min_mem', type=int, default=14, help='Threshold for minimum mem size considered.')
     prep_splicing_parser.add_argument('--disable_infer', action='store_true', help='Makes splice creation step much faster. Thes parameter can be set if gene and transcript name fields are provided in gtf file.')
     prep_splicing_parser.set_defaults(which='prep_splicing')
 
     prep_seqs_parser.add_argument('ref', type=str, help='Reference genome (fasta)')
     prep_seqs_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
-    prep_seqs_parser.add_argument('--min_mem', type=int, default=14, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
-    prep_seqs_parser.add_argument('--mask_threshold', type=int, default=100, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
+    prep_seqs_parser.add_argument('--min_mem', type=int, default=14, help='Threshold for minimum mem size considered.')
+    prep_seqs_parser.add_argument('--mask_threshold', type=int, default=100, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
     prep_seqs_parser.set_defaults(which='prep_seqs')
 
 
