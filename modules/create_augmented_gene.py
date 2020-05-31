@@ -13,7 +13,7 @@ def reverse_mapping(d):
 def dd_set(): # top level function declaration needed for multiprocessing
     return defaultdict(set)
 
-def create_graph_from_exon_parts(db, min_mem): 
+def create_graph_from_exon_parts(db, min_mem, flank_size): 
     """
         We need to link parts --> exons and exons --> transcripts
     """
@@ -21,7 +21,6 @@ def create_graph_from_exon_parts(db, min_mem):
     # genes_to_ref = {} # gene_id : { (exon_start, exon_stop) : set() }
     exons_to_ref = {} # gene_id : { (exon_start, exon_stop) : set() }
     exon_to_gene = {} # exon_id : [gene_id ]
-    gene_to_small_exons = {} # gene_id : [exon_id ]
 
     exon_id_to_choordinates = {}
     splices_to_transcripts = defaultdict(dd_set)
@@ -116,12 +115,21 @@ def create_graph_from_exon_parts(db, min_mem):
             for tr_id in tr_ids:
                 transcripts_to_splices[chr_id][tr_id] = unique_sp_sites
 
-
+    flanks_to_gene = defaultdict(dict)   
+    gene_to_small_exons = {} # gene_id : [exon_id ]
     for gene in db.features_of_type('gene', order_by='seqid'):
         gene_to_small_exons[gene.id] = []
-        for exon in  db.children(gene, featuretype='exon', order_by='start'):
-            if exon.stop - exon.start < 50:
-                gene_to_small_exons[gene.id].append(exon.id)
+        exons_list = [exon for exon in  db.children(gene, featuretype='exon', order_by='start')]
+        chr_id = gene.seqid
+        if exons_list:
+            flanks_to_gene[chr_id][(max(0, exons_list[0].start - flank_size), exons_list[0].start - 1)] = gene.id
+            flanks_to_gene[chr_id][(exons_list[-1].stop, exons_list[-1].stop + flank_size)] = gene.id
+            for exon in exons_list:
+                if exon.stop - exon.start < 50:
+                    gene_to_small_exons[gene.id].append(exon.id)
+
+    for chr_id in flanks_to_gene:
+        print(chr_id, flanks_to_gene[chr_id])
 
     # print(gene_to_small_exons)
     # for g in gene_to_small_exons:
@@ -131,12 +139,15 @@ def create_graph_from_exon_parts(db, min_mem):
     return  exons_to_ref, parts_to_exons, splices_to_transcripts, \
             transcripts_to_splices, all_splice_pairs_annotations, \
             all_splice_sites_annotations, exon_id_to_choordinates, \
-            exon_to_gene, gene_to_small_exons
+            exon_to_gene, gene_to_small_exons, flanks_to_gene
 
 
 
-def get_part_sequences_from_choordinates(parts_to_exons, refs):
+def get_part_sequences_from_choordinates(parts_to_exons, flanks_to_gene, refs):
     segments = {}
+    tot_flanks = 0
+    tot_parts = 0
+
     for chr_id in parts_to_exons:
         if chr_id not in refs:
             continue
@@ -148,7 +159,20 @@ def get_part_sequences_from_choordinates(parts_to_exons, refs):
                 start,stop = part[0], part[1]
                 seq = refs[chr_id][start : stop] 
                 segments[chr_id][part] = seq
+                tot_parts += stop - start
+
+            flank_instances = flanks_to_gene[chr_id]
+            for flank in flank_instances:
+                start,stop = flank[0], flank[1]
+                seq = refs[chr_id][start : stop] 
+                segments[chr_id][flank] = seq
+                tot_flanks += stop - start
+
+    print("Total parts size:", tot_parts)
+    print("Total flanks size:", tot_flanks)
+
     return segments
+
 
 def get_exon_sequences_from_choordinates(exon_id_to_choordinates, exons_to_ref, refs):
     exon_sequences = defaultdict(dict)
@@ -163,6 +187,21 @@ def get_exon_sequences_from_choordinates(exon_id_to_choordinates, exons_to_ref, 
     # print(segments)
     return exon_sequences
 
+
+def get_flank_sequences_from_choordinates(flanks_to_gene, refs):
+    flank_sequences = {}
+
+    for chr_id in flanks_to_gene:
+        if chr_id not in refs:
+            continue
+        else:
+            flank_sequences[chr_id] = {}
+            for flank in flanks_to_gene[chr_id]:
+                start, stop = flank[0], flank[1]
+                seq = refs[chr_id][start : stop] 
+                flank_sequences[chr_id][flank] = seq
+
+    return flank_sequences
 
 
 # Functions for masking overly abundant kmers 

@@ -182,43 +182,61 @@ def get_unique_part_locations(solution):
     return unique_part_locations, approximate_hit_locations
 
 
-def get_unique_exon_choordinates(unique_part_locations, parts_to_exons, approximate_hit_locations, exon_id_to_choordinates, exon_to_gene, gene_to_small_exons):
+def get_unique_exon_and_flank_choordinates(unique_part_locations, parts_to_exons, approximate_hit_locations, exon_id_to_choordinates, exon_to_gene, gene_to_small_exons):
     # compress unique exons to only do alignment once 
     unique_exon_choordinates = defaultdict(set)
     unique_exon_choordinates_segments = defaultdict(set)
+    unique_flank_choordinates = defaultdict(set)
+    unique_flank_choordinates_segments = defaultdict(set)
     for (ref_chr_id, ref_start, ref_stop) in unique_part_locations:
         exon_ids = parts_to_exons[ref_chr_id][(ref_start, ref_stop)]
-        # print(exon_ids)
         segm_ref_start, segm_ref_stop, segm_read_start, segm_read_stop = approximate_hit_locations[(ref_chr_id, ref_start, ref_stop)]
-        for exon_id in exon_ids:
-            e_start, e_stop = exon_id_to_choordinates[exon_id]
-            unique_exon_choordinates[ (ref_chr_id, e_start, e_stop) ].add(exon_id)
 
-            # also add subsegments of exons if significant sub hits that does not span the entire exon (mostly occuring in start and ends exons)
-
-            # case read starts     read:     [ > 0.3*e_len]   ----------------------------...
+        # print((ref_start, ref_stop), exon_ids)
+        if not exon_ids: # is a flank
+            unique_flank_choordinates[ (ref_chr_id, ref_start, ref_stop) ] = set()
+            # case read starts     read:     [ > 0.2*e_len]   ----------------------------...
             # within start exon    exon: --------------------------------
-            if (segm_ref_start - ref_start) > 0.3*(e_stop - e_start):
-                unique_exon_choordinates_segments[(ref_chr_id, segm_ref_start, segm_ref_stop) ] =  (ref_chr_id, e_start, e_stop)
+            if (segm_ref_start - ref_start) > 0.2*(ref_stop - ref_start):
+                unique_flank_choordinates_segments[(ref_chr_id, segm_ref_start, segm_ref_stop) ] =  (ref_chr_id, ref_start, ref_stop)
 
-            # case read ends       read:  ...----------------------------   [ > 0.3*e_len]   
+            # case read ends       read:  ...----------------------------   [ > 0.2*e_len]   
             # within end exon      exon:                      ---------------------------------
-            if (ref_stop - segm_ref_stop ) > 0.3*(e_stop - e_start):
-                unique_exon_choordinates_segments[(ref_chr_id, segm_ref_start, segm_ref_stop) ] =  (ref_chr_id, e_start, e_stop)
+            if (ref_stop - segm_ref_stop ) > 0.2*(ref_stop - ref_start):
+                unique_flank_choordinates_segments[(ref_chr_id, segm_ref_start, segm_ref_stop) ] =  (ref_chr_id, ref_start, ref_stop)
+
+        else: # has exon id, hence its an exon sequence exon
+            for exon_id in exon_ids:
+                e_start, e_stop = exon_id_to_choordinates[exon_id]
+                unique_exon_choordinates[ (ref_chr_id, e_start, e_stop) ].add(exon_id)
+
+                # also add subsegments of exons if significant sub hits that does not span the entire exon (mostly occuring in start and ends exons)
+
+                # case read starts     read:     [ > 0.2*e_len]   ----------------------------...
+                # within start exon    exon: --------------------------------
+                if (segm_ref_start - ref_start) > 0.2*(e_stop - e_start):
+                    unique_exon_choordinates_segments[(ref_chr_id, segm_ref_start, segm_ref_stop) ] =  (ref_chr_id, e_start, e_stop, exon_id)
+
+                # case read ends       read:  ...----------------------------   [ > 0.2*e_len]   
+                # within end exon      exon:                      ---------------------------------
+                if (ref_stop - segm_ref_stop ) > 0.2*(e_stop - e_start):
+                    unique_exon_choordinates_segments[(ref_chr_id, segm_ref_start, segm_ref_stop) ] =  (ref_chr_id, e_start, e_stop, exon_id)
 
 
-        # also add all small exons that may be smaller than minimum MEM size
-        unique_genes = set(gene_id for exon_id in exon_ids for gene_id in exon_to_gene[exon_id])
-        small_exons = set(small_exon_id for gene_id in unique_genes for small_exon_id in gene_to_small_exons[gene_id]) 
-        for small_exon_id in small_exons:
-            e_start, e_stop = exon_id_to_choordinates[small_exon_id]
-            if (ref_chr_id,e_start, e_stop) not in unique_exon_choordinates:
-                # print("adding small exon,", e_stop - e_start)
-                unique_exon_choordinates[ (ref_chr_id, e_start, e_stop) ].add(small_exon_id)
+            # also add all small exons that may be smaller than minimum MEM size
+            unique_genes = set(gene_id for exon_id in exon_ids for gene_id in exon_to_gene[exon_id])
+            small_exons = set(small_exon_id for gene_id in unique_genes for small_exon_id in gene_to_small_exons[gene_id]) 
+            for small_exon_id in small_exons:
+                e_start, e_stop = exon_id_to_choordinates[small_exon_id]
+                if (ref_chr_id,e_start, e_stop) not in unique_exon_choordinates:
+                    # print("adding small exon,", e_stop - e_start)
+                    unique_exon_choordinates[ (ref_chr_id, e_start, e_stop) ].add(small_exon_id)
 
 
     # print("unique_exon_choordinates_segments", unique_exon_choordinates_segments)
-    return unique_exon_choordinates, unique_exon_choordinates_segments
+    print("unique_flank_choordinates", unique_flank_choordinates)
+    print("unique_flank_choordinates_segments", unique_flank_choordinates_segments)
+    return unique_exon_choordinates, unique_exon_choordinates_segments, unique_flank_choordinates, unique_flank_choordinates_segments
 
 
 # def get_segments_of_exons(approximate_hit_locations, unique_exon_choordinates):
@@ -238,7 +256,8 @@ def add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, ma
         # align them to the read and get the best approxinate match
         if e_stop - e_start >= 9:
             locations, edit_distance, accuracy = edlib_alignment(exon_seq, read_seq, mode="HW", k = 0.4*min(len(read_seq), len(exon_seq)) ) 
-            # print((e_start, e_stop), locations, edit_distance, accuracy )
+            # if 'flank' in exon_id:
+            print((e_start, e_stop), locations, edit_distance, accuracy )
             if edit_distance >= 0:
                 # calc_complessed_score(read_alignment, ref_alignment, len(read_seq), len(exon_seq))
                 # e_score = calc_evalue(read_alignment, ref_alignment, len(read_seq), len(exon_seq))
@@ -319,7 +338,7 @@ def add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, ma
     
 
 
-def main(solution, ref_exon_sequences, parts_to_exons, exon_id_to_choordinates, exon_to_gene, gene_to_small_exons, read_seq, warning_log_file):
+def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon_id_to_choordinates, exon_to_gene, gene_to_small_exons, read_seq, warning_log_file):
     """
         NOTE: if paramerer task = 'path' is given to edlib_alignment function calls below, it will give exact accuracy of the aligmnent but the program will be ~40% slower.
             Now we are approxmating accuracy by dividing by start and end of the reference coordinates of the alignment. This is not good approw if there is a large instertion
@@ -337,7 +356,8 @@ def main(solution, ref_exon_sequences, parts_to_exons, exon_id_to_choordinates, 
     # print(unique_part_locations)
     # print()
 
-    unique_exon_choordinates, unique_exon_choordinates_segments = get_unique_exon_choordinates(unique_part_locations, parts_to_exons, approximate_hit_locations, \
+    unique_exon_choordinates, unique_exon_choordinates_segments, \
+    unique_flank_choordinates, unique_flank_choordinates_segments = get_unique_exon_and_flank_choordinates(unique_part_locations, parts_to_exons, approximate_hit_locations, \
                                                                                                 exon_id_to_choordinates, exon_to_gene, gene_to_small_exons)
     # print()
     # print('unique_exon_choordinates', unique_exon_choordinates)
@@ -356,17 +376,40 @@ def main(solution, ref_exon_sequences, parts_to_exons, exon_id_to_choordinates, 
     for (ref_chr_id, e_start, e_stop), all_exon_ids in sorted(unique_exon_choordinates.items(), key=lambda x: x[0][1]):
         exon_seq = ref_exon_sequences[ref_chr_id][(e_start, e_stop)]
         exon_id = all_exon_ids.pop()
+        print(exon_seq)
         add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, mam_instance)
 
     for (ref_chr_id, s_start, s_stop) in unique_exon_choordinates_segments:
-        ref_chr_id, e_start, e_stop = unique_exon_choordinates_segments[(ref_chr_id, s_start, s_stop)]
+        ref_chr_id, e_start, e_stop, exon_id = unique_exon_choordinates_segments[(ref_chr_id, s_start, s_stop)]
         exon_seq = ref_exon_sequences[ref_chr_id][(e_start, e_stop)]
         # print(len(exon_seq), s_start - e_start, len(exon_seq) - (e_stop - s_stop +1))
         segment_seq = exon_seq[s_start - e_start: len(exon_seq) - (e_stop - s_stop +1)]
-        # print("adding:", segment_seq )
+        print("adding:", segment_seq )
         if len(segment_seq) > 5:
             # prev_len_mam_instance = len(mam_instance)
             add_exon_to_mam(read_seq, ref_chr_id, segment_seq, e_start, e_stop, exon_id, mam_instance)
+            # if len(mam_instance) > prev_len_mam_instance:
+            #     print("added:", exon_id, "to mam instance")
+
+
+    # finally add the flanks if any in the solution
+    for (ref_chr_id, f_start, f_stop), _ in sorted(unique_flank_choordinates.items(), key=lambda x: x[0][1]):
+        flank_seq = ref_flank_sequences[ref_chr_id][(f_start, f_stop)]
+        flank_id = "flank_{0}_{1}".format(f_start, f_stop)
+        print("adding full flank:", flank_seq )
+        add_exon_to_mam(read_seq, ref_chr_id, flank_seq, f_start, f_stop, flank_id, mam_instance)
+
+    for (ref_chr_id, s_start, s_stop) in unique_flank_choordinates_segments:
+        ref_chr_id, f_start, f_stop = unique_flank_choordinates_segments[(ref_chr_id, s_start, s_stop)]
+        flank_seq = ref_flank_sequences[ref_chr_id][(f_start, f_stop)]
+        # print(len(flank_seq), s_start - f_start, len(flank_seq) - (f_stop - s_stop +1))
+        segment_seq = flank_seq[s_start - f_start: len(flank_seq) - (f_stop - s_stop +1)]
+        flank_id = "flank_{0}_{1}".format(f_start, f_stop)
+        # choordinate offset bug here starts at 09 while flank starts at 10
+        print("adding flank segment:", segment_seq )
+        if len(segment_seq) > 5:
+            # prev_len_mam_instance = len(mam_instance)
+            add_exon_to_mam(read_seq, ref_chr_id, segment_seq, f_start, f_stop, flank_id, mam_instance)
             # if len(mam_instance) > prev_len_mam_instance:
             #     print("added:", exon_id, "to mam instance")
 
@@ -394,6 +437,6 @@ def main(solution, ref_exon_sequences, parts_to_exons, exon_id_to_choordinates, 
     else:
         non_covered_regions = []
     # print(non_covered_regions)
-    return non_covered_regions, value, mam_solution, unique_exon_choordinates
+    return non_covered_regions, value, mam_solution
 
 
