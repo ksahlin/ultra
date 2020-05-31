@@ -32,40 +32,40 @@ def find_mems(outfolder, read_path, refs_path, mummer_out_path, min_mem):
     # return consensus
 
 
-def parse_results(mems_path):
-    # file = open(os.path.join(mems_folder, "mummer_mems.txt"), 'r')
-    mems_db = {}
-    # read_mems_tmp = {}
+# def parse_results(mems_path):
+#     # file = open(os.path.join(mems_folder, "mummer_mems.txt"), 'r')
+#     mems_db = {}
+#     # read_mems_tmp = {}
 
-    for i, line in enumerate(open(mems_path, 'r')):
-        if line[0] == '>':
-            if i == 0:
-                read_acc = line.split()[1].strip()  # mems_db[line.split()[1].strip)()] = [] 
-            else:
-                mems_db[read_acc] = read_mems_tmp 
-                read_acc = line.split()[1].strip() 
+#     for i, line in enumerate(open(mems_path, 'r')):
+#         if line[0] == '>':
+#             if i == 0:
+#                 read_acc = line.split()[1].strip()  # mems_db[line.split()[1].strip)()] = [] 
+#             else:
+#                 mems_db[read_acc] = read_mems_tmp 
+#                 read_acc = line.split()[1].strip() 
             
-            read_mems_tmp = defaultdict(list)
+#             read_mems_tmp = defaultdict(list)
 
-        else:
-            vals =  line.split() #11404_11606           1     11405       202
-            exon_part_id = vals[0]
-            chr_id, ref_coord_start, ref_coord_end = exon_part_id.split('^')
-            mem_len = int(vals[3])
-            mem_ref_exon_part_start = int(vals[1])
-            mem_read_start = int(vals[2])
-            # convert to 0-indexed as python, however last coordinate is inclusive of the hit, not as in python end-indexing
-            mem_tuple = mem(int(ref_coord_start) - 1 + mem_ref_exon_part_start - 1, int(ref_coord_start) - 1 + mem_ref_exon_part_start -1 + mem_len - 1,
-                            mem_read_start-1, mem_read_start-1 + mem_len - 1, 
-                            mem_len, None, exon_part_id)
+#         else:
+#             vals =  line.split() #11404_11606           1     11405       202
+#             exon_part_id = vals[0]
+#             chr_id, ref_coord_start, ref_coord_end = exon_part_id.split('^')
+#             mem_len = int(vals[3])
+#             mem_ref_exon_part_start = int(vals[1])
+#             mem_read_start = int(vals[2])
+#             # convert to 0-indexed as python, however last coordinate is inclusive of the hit, not as in python end-indexing
+#             mem_tuple = mem(int(ref_coord_start) + mem_ref_exon_part_start - 1, int(ref_coord_start) + mem_ref_exon_part_start -1 + mem_len - 1,
+#                             mem_read_start-1, mem_read_start-1 + mem_len - 1, 
+#                             mem_len, None, exon_part_id)
             
-            read_mems_tmp[chr_id].append( mem_tuple )
-        # print(line)
-    # add last read
-    mems_db[read_acc] = read_mems_tmp 
+#             read_mems_tmp[chr_id].append( mem_tuple )
+#         # print(line)
+#     # add last read
+#     mems_db[read_acc] = read_mems_tmp 
 
 
-    return mems_db
+#     return mems_db
 
 
 def get_mummer_records(mems_path, reads):
@@ -112,7 +112,7 @@ def get_mummer_records(mems_path, reads):
                 #                 mem_len, None, exon_part_id)
                 # read_mems_tmp[chr_id].append( mem_tuple )
 
-                info_tuple = (int(ref_coord_start) - 1 + mem_ref_exon_part_start - 1, int(ref_coord_start) - 1 + mem_ref_exon_part_start -1 + mem_len - 1,
+                info_tuple = (int(ref_coord_start) + mem_ref_exon_part_start - 1, int(ref_coord_start) + mem_ref_exon_part_start -1 + mem_len - 1,
                                 mem_read_start-1, mem_read_start-1 + mem_len - 1, 
                                 mem_len, exon_part_id)
                 read_mems_tmp[chr_id].append( info_tuple )

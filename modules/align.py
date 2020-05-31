@@ -91,7 +91,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
         alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, "torkel_batch_{0}.sam".format(batch_number)), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
         warning_log_file = open(os.path.join(args.outfolder, "torkel_batch_{0}.stderr".format(batch_number)), "w")
 
-    exon_id_to_choordinates, ref_exon_sequences, splices_to_transcripts, \
+    exon_id_to_choordinates, ref_exon_sequences, ref_flank_sequences, splices_to_transcripts, \
     transcripts_to_splices, all_splice_pairs_annotations, \
     all_splice_sites_annotations, parts_to_exons, \
     exon_to_gene, gene_to_small_exons = auxillary_data
@@ -122,6 +122,10 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                 break
             
             # print("Processing", chr_id, is_rc, upper_bound_cov, "best:", best_solution_value, "read length:", len(read_seq))
+            for mem in all_mems_to_chromosome:
+                print(mem.x, mem.y, '\t', mem.val)
+            # print(all_mems_to_chromosome)
+
             if len(all_mems_to_chromosome) < 80:
                 solutions, mem_solution_value = colinear_solver.read_coverage(all_mems_to_chromosome)
                 quadratic_instance_counter += 1 
@@ -163,20 +167,33 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                 read_seq = help_functions.reverse_complement(read_seq)
             else:
                 read_seq = read_seq
-            # print("mem solution:", is_rc, chaining_score, mem_solution)
-            non_covered_regions, mam_value, mam_solution, unique_exon_choordinates = classify_read_with_mams.main(mem_solution, ref_exon_sequences, parts_to_exons, \
+            print("mem solution:", is_rc, chaining_score, mem_solution)
+            non_covered_regions, mam_value, mam_solution = classify_read_with_mams.main(mem_solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, \
                                                                                                                     exon_id_to_choordinates, exon_to_gene, gene_to_small_exons, \
                                                                                                                     read_seq, warning_log_file)
-            # print("finished Mam solution:",mam_value, mam_solution)
+            print("finished Mam solution:",mam_value, mam_solution)
             mam_sol_exons_length = sum([ mam.y - mam.x for mam in mam_solution])
             if mam_value > 0:
                 chained_exon_seqs = []
                 prev_ref_stop = -1
                 predicted_exons = []
                 tot_exons_len = 0
+                prev_y_coord = 0
                 for mam in mam_solution:
-                    predicted_exons.append( (mam.x, mam.y) )
-                    seq = ref_exon_sequences[mam.ref_chr_id][(mam.x, mam.y)] 
+                    if (mam.x, mam.y) in ref_exon_sequences[mam.ref_chr_id]:
+                        seq = ref_exon_sequences[mam.ref_chr_id][(mam.x, mam.y)] 
+                    elif (mam.x, mam.y) in ref_flank_sequences[mam.ref_chr_id]:
+                        seq = ref_flank_sequences[mam.ref_chr_id][(mam.x, mam.y)] 
+
+                    else:
+                        print("Bug encountered", mam_solution)
+                        sys.exit(1)
+
+                    if prev_y_coord == mam.x: #adjacent segments meands its a flank and we should not add an new exon (i.e., intron split)
+                        predicted_exons[-1] = (predicted_exons[-1][0], mam.y)  # update the last exon
+                    else:
+                        predicted_exons.append( (mam.x, mam.y) )
+                    prev_y_coord = mam.y
                     # if mam.x < prev_ref_stop:
                         # chained_exon_seqs.append(seq[prev_ref_stop - mam.x: ])
                         # warning_log_file.write("Overlapping exons in solution with {0} bases. {1}, {2}, {3}, {4}.\n".format(prev_ref_stop - mam.x, chr_id, mam.x, prev_ref_stop, mam))
@@ -199,8 +216,8 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
 
                 else:
                     read_aln, ref_aln, cigar_string, cigar_tuples, alignment_score = help_functions.parasail_alignment(read_seq, created_ref_seq)
-                    # print(read_aln)
-                    # print(ref_aln)
+                    print(read_aln)
+                    print(ref_aln)
 
                 # matches = sum([1 for n1,n2 in zip(read_aln, ref_aln) if n1 == n2 ])
                 # substitutions = sum([1 for n1,n2 in zip(read_aln, ref_aln) if n1 != n2 and n1 != "-" and n2 != "-" ])
