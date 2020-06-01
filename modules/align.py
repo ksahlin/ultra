@@ -186,8 +186,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                         seq = ref_flank_sequences[mam.ref_chr_id][(mam.x, mam.y)] 
 
                     else:
-                        print("Bug encountered", mam_solution)
-                        sys.exit(1)
+                        print("Bug encountered, {0} is not in {1}".format((mam.x, mam.y), mam_solution))
 
                     if prev_y_coord == mam.x: #adjacent segments meands its a flank and we should not add an new exon (i.e., intron split)
                         predicted_exons[-1] = (predicted_exons[-1][0], mam.y)  # update the last exon

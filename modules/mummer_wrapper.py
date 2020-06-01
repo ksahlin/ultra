@@ -103,17 +103,20 @@ def get_mummer_records(mems_path, reads):
                 exon_part_id = vals[0]
                 chr_id, ref_coord_start, ref_coord_end = exon_part_id.split('^')
                 mem_len = int(vals[3])
-                mem_ref_exon_part_start = int(vals[1])
-                mem_read_start = int(vals[2])
-                # convert to 0-indexed as python, however last coordinate is inclusive of the hit in MEM solvers, not as in python end-indexing
+                # convert to 0-indexed reference as in python
+                # however, for MEM length last coordinate is inclusive of the hit in MEM solvers, not as in python end-indexing
+                mem_ref_exon_part_start = int(vals[1]) - 1
+                mem_read_start = int(vals[2]) - 1
+                ref_coord_start = int(ref_coord_start) # has already been 0-indexed when constructing parts
+                mem_genome_start = ref_coord_start + mem_ref_exon_part_start
+                
                 
                 # mem_tuple = mem(int(ref_coord_start) - 1 + mem_ref_exon_part_start - 1, int(ref_coord_start) - 1 + mem_ref_exon_part_start -1 + mem_len - 1,
                 #                 mem_read_start-1, mem_read_start-1 + mem_len - 1, 
                 #                 mem_len, None, exon_part_id)
                 # read_mems_tmp[chr_id].append( mem_tuple )
-
-                info_tuple = (int(ref_coord_start) + mem_ref_exon_part_start - 1, int(ref_coord_start) + mem_ref_exon_part_start -1 + mem_len - 1,
-                                mem_read_start-1, mem_read_start-1 + mem_len - 1, 
+                info_tuple = ( mem_genome_start, mem_genome_start + mem_len - 1,
+                                mem_read_start, mem_read_start + mem_len - 1, 
                                 mem_len, exon_part_id)
                 read_mems_tmp[chr_id].append( info_tuple )
 
