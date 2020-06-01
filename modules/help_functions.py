@@ -158,7 +158,7 @@ def mkdir_p(path):
         else:
             raise
 
-def parasail_alignment(s1, s2, match_score = 2, mismatch_penalty = -2, opening_penalty = 3, gap_ext = 1):
+def parasail_alignment(s1, s2, match_score = 8, mismatch_penalty = -8, opening_penalty = 12, gap_ext = 1):
     user_matrix = parasail.matrix_create("ACGT", match_score, mismatch_penalty)
     result = parasail.sg_trace_scan_16(s1, s2, opening_penalty, gap_ext, user_matrix)
     if result.saturated:

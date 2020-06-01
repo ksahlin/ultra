@@ -372,15 +372,15 @@ def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon
     for (ref_chr_id, e_start, e_stop), all_exon_ids in sorted(unique_exon_choordinates.items(), key=lambda x: x[0][1]):
         exon_seq = ref_exon_sequences[ref_chr_id][(e_start, e_stop)]
         exon_id = all_exon_ids.pop()
-        print(exon_seq)
+        # print(exon_seq)
         add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, mam_instance)
 
     for (ref_chr_id, s_start, s_stop) in unique_exon_choordinates_segments:
         ref_chr_id, e_start, e_stop, exon_id = unique_exon_choordinates_segments[(ref_chr_id, s_start, s_stop)]
         exon_seq = ref_exon_sequences[ref_chr_id][(e_start, e_stop)]        
-        print(len(exon_seq), s_start,s_stop, e_start, e_stop, len(exon_seq), s_start - e_start, len(exon_seq) - (e_stop - s_stop +1))
+        # print(len(exon_seq), s_start,s_stop, e_start, e_stop, len(exon_seq), s_start - e_start, len(exon_seq) - (e_stop - s_stop +1))
         segment_seq = exon_seq[s_start - e_start: len(exon_seq) - (e_stop - (s_stop + 1)) ]  # segment is MEM coordinated i.e. inclusive, so we subtract one here
-        print("adding:", segment_seq )
+        # print("adding:", segment_seq )
         if len(segment_seq) > 5:
             # prev_len_mam_instance = len(mam_instance)
             add_exon_to_mam(read_seq, ref_chr_id, segment_seq, e_start, e_stop, exon_id, mam_instance)
@@ -392,7 +392,7 @@ def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon
     for (ref_chr_id, f_start, f_stop), _ in sorted(unique_flank_choordinates.items(), key=lambda x: x[0][1]):
         flank_seq = ref_flank_sequences[ref_chr_id][(f_start, f_stop)]
         flank_id = "flank_{0}_{1}".format(f_start, f_stop)
-        print("adding full flank:", flank_seq )
+        # print("adding full flank:", flank_seq )
         add_exon_to_mam(read_seq, ref_chr_id, flank_seq, f_start, f_stop, flank_id, mam_instance)
 
     for (ref_chr_id, s_start, s_stop) in unique_flank_choordinates_segments:

@@ -242,13 +242,11 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                 # checing for internal (splice site) non covered regions
                 if len(non_covered_regions) >= 3 and (max(non_covered_regions[1:-1]) > args.non_covered_cutoff):
                     classification = 'Unclassified_insufficient_junction_coverage'
-                classifications[read_acc] = (classification, mam_value / float(len(read_seq)))
-                # if classification == "NIC_novel":
-                # print(classification,"lenght ref: {0}, length query:{1}, aln score: {2}, {3}".format(len(created_ref_seq), len(read_seq),alignment_score, float(alignment_score)/len(read_seq) ))
+                coverage = mam_value / float(len(read_seq)) 
+                read_alignments.append( (alignment_score, read_acc, chr_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, is_rc, coverage) )
+                
 
 
-                read_alignments.append( (alignment_score, read_acc, chr_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, is_rc) )
-            
             # elif 10*len(read_seq) < mam_sol_exons_length:
             #     print("length ref: {0}, length query:{1}".format(mam_sol_exons_length, len(read_seq)))
             #     print(read_acc, "to chr", chr_id)
@@ -267,7 +265,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
             #     else:                    
             #         map_score = 60
 
-            for i, (alignment_score, read_acc, chr_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, is_rc) in enumerate(sorted_wrt_alignement_score):
+            for i, (alignment_score, read_acc, chr_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, is_rc, coverage) in enumerate(sorted_wrt_alignement_score):
                 if i == 0:
                     is_secondary =  False
                     assert alignment_score == best_aln_sw_score
@@ -278,6 +276,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                             map_score = 60                           
                     else:
                         map_score = 60
+                    classifications[read_acc] = (classification, coverage )
                 else:
                     is_secondary =  True
                     map_score = 0
