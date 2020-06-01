@@ -188,8 +188,13 @@ def get_unique_exon_and_flank_choordinates(unique_part_locations, parts_to_exons
     unique_exon_choordinates_segments = defaultdict(set)
     unique_flank_choordinates = defaultdict(set)
     unique_flank_choordinates_segments = defaultdict(set)
+
+    # sometimes a mem may hit the part sequence outside of the (true) exon simply because there is a 1/4 chance that the next read nucleotide matches the part outside the exon (even if not belonging to the part)
+    # This thresholds allows such a wiggle overlap in hitting mems outside of exom boundaries, the chance that the hit is 6nt or larger is a probablitiy of p=1/(4^6) \approx 0.0002
+    wiggle_overlap = 5 
     for (ref_chr_id, ref_start, ref_stop) in unique_part_locations:
         exon_ids = parts_to_exons[ref_chr_id][(ref_start, ref_stop)]
+
         segm_ref_start, segm_ref_stop, segm_read_start, segm_read_stop = approximate_hit_locations[(ref_chr_id, ref_start, ref_stop)]
 
         # print((ref_start, ref_stop), exon_ids)
@@ -206,6 +211,8 @@ def get_unique_exon_and_flank_choordinates(unique_part_locations, parts_to_exons
                 unique_flank_choordinates_segments[(ref_chr_id, segm_ref_start, segm_ref_stop) ] =  (ref_chr_id, ref_start, ref_stop)
 
         else: # has exon id, hence its an exon sequence exon
+            exon_closest_to_segment = False
+            exon_min_dist = 100000000
             for exon_id in exon_ids:
                 e_start, e_stop = exon_id_to_choordinates[exon_id]
                 unique_exon_choordinates[ (ref_chr_id, e_start, e_stop) ].add(exon_id)
@@ -213,13 +220,13 @@ def get_unique_exon_and_flank_choordinates(unique_part_locations, parts_to_exons
                 # also add subsegments of exons if significant sub hits that does not span the entire exon (mostly occuring in start and ends exons)
 
                 # only add the segment of the closest exon spanning the segment hit
-                exon_closest_to_segment = False
-                exon_min_dist = 100000000
+                # print(e_start,e_stop, segm_ref_start, segm_ref_stop, )
                 # exon has to contain the segment (segments come from parts)
-                if e_start <= segm_ref_start <= segm_ref_stop <= e_stop:
+                if e_start - wiggle_overlap <= segm_ref_start <= segm_ref_stop <= e_stop + wiggle_overlap:
                     # get exon closest approximating the hit
                     e_id =  (ref_chr_id, e_start, e_stop)
-                    e_diff = (segm_ref_start - e_start) +  (e_stop -  segm_ref_stop)
+                    e_diff = math.fabs((segm_ref_start - e_start)) + math.fabs((e_stop -  segm_ref_stop))
+                    # print("ediff:",e_diff, e_start, e_stop)
                     if e_diff < exon_min_dist:
                         exon_min_dist = e_diff
                         exon_closest_to_segment = e_id
@@ -227,6 +234,7 @@ def get_unique_exon_and_flank_choordinates(unique_part_locations, parts_to_exons
             # if we found such an exon continaing the segment
             if exon_closest_to_segment:
                 ref_chr_id, e_start, e_stop = exon_closest_to_segment
+                # print("ADDING SEGMENT:", e_start, e_stop)
                 # case read starts     read:     [ > 0.2*e_len]   ----------------------------...
                 # within start exon    exon: --------------------------------
                 # segment has large enough hanging end and starts before read and ends before read
