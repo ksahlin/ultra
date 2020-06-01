@@ -174,7 +174,7 @@ def get_unique_part_locations(solution):
         unique_part_locations.add((ref_chr_id, ref_start, ref_stop))
         if (ref_chr_id, ref_start, ref_stop) in approximate_hit_locations:
             # increase the end coordinates on the same part reference
-            approximate_hit_locations[(ref_chr_id, ref_start, ref_stop)][1] = mem.y
+            approximate_hit_locations[(ref_chr_id, ref_start, ref_stop)][1] = mem.y 
             approximate_hit_locations[(ref_chr_id, ref_start, ref_stop)][3] = mem.d
         else:
             approximate_hit_locations[(ref_chr_id, ref_start, ref_stop)] = [mem.x, mem.y, mem.c, mem.d]
@@ -212,15 +212,18 @@ def get_unique_exon_and_flank_choordinates(unique_part_locations, parts_to_exons
 
                 # also add subsegments of exons if significant sub hits that does not span the entire exon (mostly occuring in start and ends exons)
 
-                # case read starts     read:     [ > 0.2*e_len]   ----------------------------...
-                # within start exon    exon: --------------------------------
-                if (segm_ref_start - ref_start) > 0.2*(e_stop - e_start):
-                    unique_exon_choordinates_segments[(ref_chr_id, segm_ref_start, segm_ref_stop) ] =  (ref_chr_id, e_start, e_stop, exon_id)
+                # exon has to contain the segment (segments come from parts)
 
-                # case read ends       read:  ...----------------------------   [ > 0.2*e_len]   
-                # within end exon      exon:                      ---------------------------------
-                if (ref_stop - segm_ref_stop ) > 0.2*(e_stop - e_start):
-                    unique_exon_choordinates_segments[(ref_chr_id, segm_ref_start, segm_ref_stop) ] =  (ref_chr_id, e_start, e_stop, exon_id)
+                if e_start <= segm_ref_start <= segm_ref_stop <= e_stop:
+                    # case read starts     read:     [ > 0.2*e_len]   ----------------------------...
+                    # within start exon    exon: --------------------------------
+                    if (segm_ref_start - ref_start) > 0.2*(e_stop - e_start):
+                        unique_exon_choordinates_segments[(ref_chr_id, segm_ref_start, segm_ref_stop) ] =  (ref_chr_id, e_start, e_stop, exon_id)
+
+                    # case read ends       read:  ...----------------------------   [ > 0.2*e_len]   
+                    # within end exon      exon:                      ---------------------------------
+                    if (ref_stop - segm_ref_stop ) > 0.2*(e_stop - e_start):
+                        unique_exon_choordinates_segments[(ref_chr_id, segm_ref_start, segm_ref_stop) ] =  (ref_chr_id, e_start, e_stop, exon_id)
 
 
             # also add all small exons that may be smaller than minimum MEM size
@@ -238,13 +241,6 @@ def get_unique_exon_and_flank_choordinates(unique_part_locations, parts_to_exons
     print("unique_flank_choordinates_segments", unique_flank_choordinates_segments)
     return unique_exon_choordinates, unique_exon_choordinates_segments, unique_flank_choordinates, unique_flank_choordinates_segments
 
-
-# def get_segments_of_exons(approximate_hit_locations, unique_exon_choordinates):
-
-#     for (part_chr_id, part_start, part_stop) in approximate_hit_locations:
-#         segm_ref_start, segm_ref_stop, segm_read_start, segm_read_stop = approximate_hit_locations[(part_chr_id, part_start, part_stop)]
-
-#     return
 
 def add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, mam_instance):
     if e_stop - e_start >= 5:
@@ -266,7 +262,7 @@ def add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, ma
                 #     print("had more", e_stop - e_start, locations)
 
                 for start, stop in locations:
-                    min_segment_length = stop - start #e_stop - e_start #stop - start
+                    min_segment_length = stop - start + 1 #Edlib end location is inclusive
                     score = accuracy*min_segment_length #- edit_distance
                     if (min_segment_length - edit_distance)/float(min_segment_length) > 0.6:
                         # for exon_id in all_exon_ids: break # only need one of the redundant exon_ids
@@ -318,7 +314,7 @@ def add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, ma
             # score = min_segment_length - edit_distance #/len(read_seq)
             
             start, stop = locations[0]
-            min_segment_length = stop - start
+            min_segment_length = stop - start + 1 #Edlib end location is inclusive
             score = accuracy*min_segment_length #-  edit_distance #/len(read_seq)
             # print("LOOK:", min_segment_length, edit_distance, score, locations)
             # if e_score < 1.0:
@@ -381,9 +377,9 @@ def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon
 
     for (ref_chr_id, s_start, s_stop) in unique_exon_choordinates_segments:
         ref_chr_id, e_start, e_stop, exon_id = unique_exon_choordinates_segments[(ref_chr_id, s_start, s_stop)]
-        exon_seq = ref_exon_sequences[ref_chr_id][(e_start, e_stop)]
-        # print(len(exon_seq), s_start - e_start, len(exon_seq) - (e_stop - s_stop +1))
-        segment_seq = exon_seq[s_start - e_start: len(exon_seq) - (e_stop - s_stop +1)]
+        exon_seq = ref_exon_sequences[ref_chr_id][(e_start, e_stop)]        
+        print(len(exon_seq), s_start,s_stop, e_start, e_stop, len(exon_seq), s_start - e_start, len(exon_seq) - (e_stop - s_stop +1))
+        segment_seq = exon_seq[s_start - e_start: len(exon_seq) - (e_stop - (s_stop + 1)) ]  # segment is MEM coordinated i.e. inclusive, so we subtract one here
         print("adding:", segment_seq )
         if len(segment_seq) > 5:
             # prev_len_mam_instance = len(mam_instance)
@@ -403,7 +399,7 @@ def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon
         ref_chr_id, f_start, f_stop = unique_flank_choordinates_segments[(ref_chr_id, s_start, s_stop)]
         flank_seq = ref_flank_sequences[ref_chr_id][(f_start, f_stop)]
         # print(len(flank_seq), s_start - f_start, len(flank_seq) - (f_stop - s_stop +1))
-        segment_seq = flank_seq[s_start - f_start: len(flank_seq) - (f_stop - s_stop +1)]
+        segment_seq = flank_seq[s_start - f_start: len(flank_seq) - (f_stop - (s_stop + 1)) ]  # segment is MEM coordinated i.e. inclusive, so we subtract one here
         flank_id = "flank_{0}_{1}".format(f_start, f_stop)
         # choordinate offset bug here starts at 09 while flank starts at 10
         print("adding flank segment:", segment_seq )
