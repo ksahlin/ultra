@@ -122,8 +122,8 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                 break
             
             # print("Processing", chr_id, is_rc, upper_bound_cov, "best:", best_solution_value, "read length:", len(read_seq))
-            for mem in all_mems_to_chromosome:
-                print(mem.x, mem.y, '\t', mem.val)
+            # for mem in all_mems_to_chromosome:
+            #     print(mem.exon_part_id, mem.x, mem.y, '\t', mem.val)
             # print(all_mems_to_chromosome)
 
             if len(all_mems_to_chromosome) < 80:
@@ -167,11 +167,11 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                 read_seq = help_functions.reverse_complement(read_seq)
             else:
                 read_seq = read_seq
-            print("mem solution:", is_rc, chaining_score, mem_solution)
+            # print("mem solution:", is_rc, chaining_score, mem_solution)
             non_covered_regions, mam_value, mam_solution = classify_read_with_mams.main(mem_solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, \
                                                                                                                     exon_id_to_choordinates, exon_to_gene, gene_to_small_exons, \
                                                                                                                     read_seq, warning_log_file)
-            print("finished Mam solution:",mam_value, mam_solution)
+            # print("finished Mam solution:",mam_value, mam_solution)
             mam_sol_exons_length = sum([ mam.y - mam.x for mam in mam_solution])
             if mam_value > 0:
                 chained_exon_seqs = []
@@ -215,8 +215,8 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
 
                 else:
                     read_aln, ref_aln, cigar_string, cigar_tuples, alignment_score = help_functions.parasail_alignment(read_seq, created_ref_seq)
-                    print(read_aln)
-                    print(ref_aln)
+                    # print(read_aln)
+                    # print(ref_aln)
 
                 # matches = sum([1 for n1,n2 in zip(read_aln, ref_aln) if n1 == n2 ])
                 # substitutions = sum([1 for n1,n2 in zip(read_aln, ref_aln) if n1 != n2 and n1 != "-" and n2 != "-" ])
