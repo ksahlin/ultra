@@ -212,18 +212,31 @@ def get_unique_exon_and_flank_choordinates(unique_part_locations, parts_to_exons
 
                 # also add subsegments of exons if significant sub hits that does not span the entire exon (mostly occuring in start and ends exons)
 
+                # only add the segment of the closest exon spanning the segment hit
+                exon_closest_to_segment = False
+                exon_min_dist = 100000000
                 # exon has to contain the segment (segments come from parts)
-
                 if e_start <= segm_ref_start <= segm_ref_stop <= e_stop:
-                    # case read starts     read:     [ > 0.2*e_len]   ----------------------------...
-                    # within start exon    exon: --------------------------------
-                    if (segm_ref_start - ref_start) > 0.2*(e_stop - e_start):
-                        unique_exon_choordinates_segments[(ref_chr_id, segm_ref_start, segm_ref_stop) ] =  (ref_chr_id, e_start, e_stop, exon_id)
+                    # get exon closest approximating the hit
+                    e_id =  (ref_chr_id, e_start, e_stop)
+                    e_diff = (segm_ref_start - e_start) +  (e_stop -  segm_ref_stop)
+                    if e_diff < exon_min_dist:
+                        exon_min_dist = e_diff
+                        exon_closest_to_segment = e_id
 
-                    # case read ends       read:  ...----------------------------   [ > 0.2*e_len]   
-                    # within end exon      exon:                      ---------------------------------
-                    if (ref_stop - segm_ref_stop ) > 0.2*(e_stop - e_start):
-                        unique_exon_choordinates_segments[(ref_chr_id, segm_ref_start, segm_ref_stop) ] =  (ref_chr_id, e_start, e_stop, exon_id)
+            # if we found such an exon continaing the segment
+            if exon_closest_to_segment:
+                ref_chr_id, e_start, e_stop = exon_closest_to_segment
+                # case read starts     read:     [ > 0.2*e_len]   ----------------------------...
+                # within start exon    exon: --------------------------------
+                # segment has large enough hanging end and starts before read and ends before read
+                if (segm_ref_start - ref_start) > 0.2*(e_stop - e_start):
+                    unique_exon_choordinates_segments[(ref_chr_id, segm_ref_start, segm_ref_stop) ] =  (ref_chr_id, e_start, e_stop, exon_id)
+
+                # case read ends       read:  ...----------------------------   [ > 0.2*e_len]   
+                # within end exon      exon:                      ---------------------------------
+                if (ref_stop - segm_ref_stop ) > 0.2*(e_stop - e_start):
+                    unique_exon_choordinates_segments[(ref_chr_id, segm_ref_start, segm_ref_stop) ] =  (ref_chr_id, e_start, e_stop, exon_id)
 
 
             # also add all small exons that may be smaller than minimum MEM size
@@ -375,19 +388,25 @@ def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon
         # print(exon_seq)
         add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, mam_instance)
 
-    # Do not allow segments of internal exons yet (ONLY FLANKS FOR NOW) because these can generate spurious optimal alignments.
+    # Do not allow segments of internal exons yet (ONLY START and END EXON FOR NOW) because these can generate spurious optimal alignments.
+    # flank_choords = set()
+    # for (ref_chr_id, f_start, f_stop) in unique_flank_choordinates:
+    #     flank_choords.add(f_start)
+    #     flank_choords.add(f_stop)
+    # print("flank_choords", flank_choords)
+    for (ref_chr_id, s_start, s_stop) in unique_exon_choordinates_segments:
+        ref_chr_id, e_start, e_stop, exon_id = unique_exon_choordinates_segments[(ref_chr_id, s_start, s_stop)]
+        # is first or last hit exon only
+        # print(e_start, e_stop, flank_choords)
 
-    # for (ref_chr_id, s_start, s_stop) in unique_exon_choordinates_segments:
-    #     ref_chr_id, e_start, e_stop, exon_id = unique_exon_choordinates_segments[(ref_chr_id, s_start, s_stop)]
-    #     exon_seq = ref_exon_sequences[ref_chr_id][(e_start, e_stop)]        
-    #     # print(len(exon_seq), s_start,s_stop, e_start, e_stop, len(exon_seq), s_start - e_start, len(exon_seq) - (e_stop - s_stop +1))
-    #     segment_seq = exon_seq[s_start - e_start: len(exon_seq) - (e_stop - (s_stop + 1)) ]  # segment is MEM coordinated i.e. inclusive, so we subtract one here
-    #     print("adding:", segment_seq )
-    #     if len(segment_seq) > 5:
-    #         # prev_len_mam_instance = len(mam_instance)
-    #         add_exon_to_mam(read_seq, ref_chr_id, segment_seq, e_start, e_stop, exon_id, mam_instance)
-    #         # if len(mam_instance) > prev_len_mam_instance:
-    #         #     print("added:", exon_id, "to mam instance")
+        # if e_start in flank_choords or e_stop in flank_choords:
+        #     print("is here")
+        exon_seq = ref_exon_sequences[ref_chr_id][(e_start, e_stop)]        
+        # print(len(exon_seq), s_start,s_stop, e_start, e_stop, len(exon_seq), s_start - e_start, len(exon_seq) - (e_stop - s_stop +1))
+        segment_seq = exon_seq[s_start - e_start: len(exon_seq) - (e_stop - (s_stop + 1)) ]  # segment is MEM coordinated i.e. inclusive, so we subtract one here
+        # print("adding:", segment_seq )
+        if len(segment_seq) > 5:
+            add_exon_to_mam(read_seq, ref_chr_id, segment_seq, e_start, e_stop, exon_id, mam_instance)
 
 
     # add the flanks if any in the solution
@@ -397,7 +416,7 @@ def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon
         # print("adding full flank:", flank_seq )
         add_exon_to_mam(read_seq, ref_chr_id, flank_seq, f_start, f_stop, flank_id, mam_instance)
 
-    # finally add eventuall segments of the flanks if any in the solution
+    # finally add eventual segments of the flanks if any in the solution
     for (ref_chr_id, s_start, s_stop) in unique_flank_choordinates_segments:
         ref_chr_id, f_start, f_stop = unique_flank_choordinates_segments[(ref_chr_id, s_start, s_stop)]
         flank_seq = ref_flank_sequences[ref_chr_id][(f_start, f_stop)]
