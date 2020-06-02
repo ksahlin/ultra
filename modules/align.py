@@ -178,7 +178,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                 prev_ref_stop = -1
                 predicted_exons = []
                 tot_exons_len = 0
-                prev_y_coord = 0
+                prev_y_coord = -1
                 for mam in mam_solution:
                     if (mam.x, mam.y) in ref_exon_sequences[mam.ref_chr_id]:
                         seq = ref_exon_sequences[mam.ref_chr_id][(mam.x, mam.y)] 
