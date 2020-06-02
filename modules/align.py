@@ -188,7 +188,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                     else:
                         print("Bug encountered, {0} is not in {1}".format((mam.x, mam.y), mam_solution))
 
-                    if prev_y_coord == mam.x: #adjacent segments meands its a flank and we should not add an new exon (i.e., intron split)
+                    if prev_y_coord == mam.x: #adjacent segments means its a flank and we should not add an new exon (i.e., intron split)
                         predicted_exons[-1] = (predicted_exons[-1][0], mam.y)  # update the last exon
                     else:
                         predicted_exons.append( (mam.x, mam.y) )
