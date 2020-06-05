@@ -416,7 +416,7 @@ def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon
     for (ref_chr_id, f_start, f_stop), _ in sorted(unique_flank_choordinates.items(), key=lambda x: x[0][1]):
         flank_seq = ref_flank_sequences[ref_chr_id][(f_start, f_stop)]
         flank_id = "flank_{0}_{1}".format(f_start, f_stop)
-        print("adding full flank:", f_start, f_stop, flank_seq )
+        # print("adding full flank:", f_start, f_stop, flank_seq )
         add_exon_to_mam(read_seq, ref_chr_id, flank_seq, f_start, f_stop, flank_id, mam_instance)
 
     # finally add eventual segments of the flanks if any in the solution
@@ -427,7 +427,7 @@ def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon
         segment_seq = flank_seq[s_start - f_start: len(flank_seq) - (f_stop - (s_stop + 1)) ]  # segment is MEM coordinated i.e. inclusive, so we subtract one here
         flank_id = "flank_{0}_{1}".format(f_start, f_stop)
         # choordinate offset bug here starts at 09 while flank starts at 10
-        print("adding flank segment:", s_start, s_stop, segment_seq )
+        # print("adding flank segment:", s_start, s_stop, segment_seq )
         if len(segment_seq) > 5:
             # prev_len_mam_instance = len(mam_instance)
             add_exon_to_mam(read_seq, ref_chr_id, segment_seq, f_start, f_stop, flank_id, mam_instance)
