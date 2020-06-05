@@ -90,8 +90,8 @@ def annotate_guaranteed_optimal_bound(mems, is_rc, max_intron):
             tot_cov += stop - start
 
         upper_bound[(chr_id, chr_instance_index)] = (tot_cov, is_rc, all_mems_to_solution)
-    for i in upper_bound:
-        print("sols:", i, upper_bound[i][0], len(upper_bound[i][2]))
+    # for i in upper_bound:
+    #     print("sols:", i, upper_bound[i][0], len(upper_bound[i][2]))
 
     return upper_bound
 
@@ -169,6 +169,8 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
 
             for sol in solutions:
                 all_chainings.append( (chr_id, sol, mem_solution_value, is_rc) )
+                # for zzz in sol:
+                #     print(zzz)
             # print(all_chainings)
         is_secondary =  False
         is_rc =  False
@@ -196,6 +198,8 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                                                                                                                     exon_id_to_choordinates, exon_to_gene, gene_to_small_exons, \
                                                                                                                     read_seq, warning_log_file)
             # print("finished Mam solution:",mam_value, mam_solution)
+            # for zzz2 in mam_solution:
+            #     print(zzz2)
             mam_sol_exons_length = sum([ mam.y - mam.x for mam in mam_solution])
             if mam_value > 0:
                 chained_exon_seqs = []
