@@ -159,7 +159,7 @@ def contains(sub, pri):
             i = found+1
 
 def get_unique_part_locations(solution):
-    unique_part_locations = set()
+    unique_part_locations = []
     # start_part_offset, part_pos_max = 0, 2**32
     # prev_part = ""
     approximate_hit_locations = { } # { part_id : (ref_start, ref_stop, read_start, read_stop) }
@@ -171,7 +171,7 @@ def get_unique_part_locations(solution):
         # print(parts_to_exons)
         # if mem.exon_part_id != prev_part:
         #     start_mem_choord = mem.x
-        unique_part_locations.add((ref_chr_id, ref_start, ref_stop))
+        unique_part_locations.append((ref_chr_id, ref_start, ref_stop))
         if (ref_chr_id, ref_start, ref_stop) in approximate_hit_locations:
             # increase the end coordinates on the same part reference
             approximate_hit_locations[(ref_chr_id, ref_start, ref_stop)][1] = mem.y 
@@ -397,31 +397,26 @@ def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon
         add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, mam_instance)
 
     # Do not allow segments of internal exons yet (ONLY START and END EXON FOR NOW) because these can generate spurious optimal alignments.
-    # flank_choords = set()
-    # for (ref_chr_id, f_start, f_stop) in unique_flank_choordinates:
-    #     flank_choords.add(f_start)
-    #     flank_choords.add(f_stop)
-    # print("flank_choords", flank_choords)
     for (ref_chr_id, s_start, s_stop) in unique_exon_choordinates_segments:
         ref_chr_id, e_start, e_stop, exon_id = unique_exon_choordinates_segments[(ref_chr_id, s_start, s_stop)]
         # is first or last hit exon only
-        # print(e_start, e_stop, flank_choords)
-
-        # if e_start in flank_choords or e_stop in flank_choords:
-        #     print("is here")
-        exon_seq = ref_exon_sequences[ref_chr_id][(e_start, e_stop)]        
-        # print(len(exon_seq), s_start,s_stop, e_start, e_stop, len(exon_seq), s_start - e_start, len(exon_seq) - (e_stop - s_stop +1))
-        segment_seq = exon_seq[s_start - e_start: len(exon_seq) - (e_stop - (s_stop + 1)) ]  # segment is MEM coordinated i.e. inclusive, so we subtract one here
-        # print("adding:", segment_seq )
-        if len(segment_seq) > 5:
-            add_exon_to_mam(read_seq, ref_chr_id, segment_seq, e_start, e_stop, exon_id, mam_instance)
+        # print(e_stop, unique_part_locations[0][2], unique_part_locations[-1][1], e_start)
+        if e_stop <= unique_part_locations[0][2] or  unique_part_locations[-1][1] <= e_start: # is start exon or is end_exon
+            exon_seq = ref_exon_sequences[ref_chr_id][(e_start, e_stop)]        
+            # print(len(exon_seq), s_start,s_stop, e_start, e_stop, len(exon_seq), s_start - e_start, len(exon_seq) - (e_stop - s_stop +1))
+            segment_seq = exon_seq[s_start - e_start: len(exon_seq) - (e_stop - (s_stop + 1)) ]  # segment is MEM coordinated i.e. inclusive, so we subtract one here
+            # print("adding:", e_start, e_stop, segment_seq )
+            if len(segment_seq) > 5:
+                add_exon_to_mam(read_seq, ref_chr_id, segment_seq, e_start, e_stop, exon_id, mam_instance)
+        # else:
+        #     print("Segment is in internal exon!")
 
 
     # add the flanks if any in the solution
     for (ref_chr_id, f_start, f_stop), _ in sorted(unique_flank_choordinates.items(), key=lambda x: x[0][1]):
         flank_seq = ref_flank_sequences[ref_chr_id][(f_start, f_stop)]
         flank_id = "flank_{0}_{1}".format(f_start, f_stop)
-        # print("adding full flank:", flank_seq )
+        print("adding full flank:", f_start, f_stop, flank_seq )
         add_exon_to_mam(read_seq, ref_chr_id, flank_seq, f_start, f_stop, flank_id, mam_instance)
 
     # finally add eventual segments of the flanks if any in the solution
@@ -432,7 +427,7 @@ def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon
         segment_seq = flank_seq[s_start - f_start: len(flank_seq) - (f_stop - (s_stop + 1)) ]  # segment is MEM coordinated i.e. inclusive, so we subtract one here
         flank_id = "flank_{0}_{1}".format(f_start, f_stop)
         # choordinate offset bug here starts at 09 while flank starts at 10
-        # print("adding flank segment:", segment_seq )
+        print("adding flank segment:", s_start, s_stop, segment_seq )
         if len(segment_seq) > 5:
             # prev_len_mam_instance = len(mam_instance)
             add_exon_to_mam(read_seq, ref_chr_id, segment_seq, f_start, f_stop, flank_id, mam_instance)
