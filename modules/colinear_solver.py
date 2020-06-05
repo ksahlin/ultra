@@ -160,7 +160,7 @@ def n_logn_read_coverage(mems):
 
     return solutions, C_max #, is_unique_solution(C)
 
-def read_coverage(mems):
+def read_coverage(mems, max_intron):
     """
         Algorithm 15.1 in Genome scale algorithmic design, Makinen et al.
 
@@ -193,7 +193,7 @@ def read_coverage(mems):
         v =  mems[j]
 
         # linear scan -- replace with range max Q tree
-        T_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C[1:]) if  mems[j_prime].d < v.c and j_prime < j]
+        T_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C[1:]) if  mems[j_prime].d < v.c and j_prime < j and v.y - mems[j_prime].y < max_intron ]
         if T_values:
             # print(T_values)
             T_traceback_index, max_c_value_case_a = max(reversed(T_values), key=lambda x: x[1])
@@ -201,7 +201,7 @@ def read_coverage(mems):
             max_c_value_case_a = 0
             T_traceback_index = -1
 
-        I_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C[1:]) if v.c <= mems[j_prime].d  <= v.d and j_prime < j]
+        I_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C[1:]) if v.c <= mems[j_prime].d  <= v.d and j_prime < j and v.y - mems[j_prime].y < max_intron ]
         if I_values:
             # print(I_values)
             I_values_plus_chord_diff = [ (j_prime, c_val + (v.d - mems[j_prime].d)) for j_prime, c_val in I_values]

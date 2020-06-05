@@ -80,7 +80,7 @@ def parse_differing_location_reads(csv_file):
     differing_reads = defaultdict(set)
     for acc in reads_isonalign:
         mm2_annot, mm2_chr, mm2_start, mm2_stop = reads_minimap2[acc][7], reads_minimap2[acc][11], reads_minimap2[acc][12], reads_minimap2[acc][13]
-        ds_annot, ds_chr, ds_start, ds_stop = reads_desalt[acc][7], reads_desalt[acc][11], reads_desalt[acc][12], reads_desalt[acc][13]
+        ds_annot, ds_chr, ds_start, ds_stop = reads_desalt[acc][7], reads_desalt[sacc][11], reads_desalt[acc][12], reads_desalt[acc][13]
         ia_annot, ia_chr, ia_start, ia_stop = reads_isonalign[acc][7], reads_isonalign[acc][11], reads_isonalign[acc][12], reads_isonalign[acc][13]
         if mm2_chr != 'unaligned' and  ds_chr != 'unaligned':
             if ia_chr == 'unaligned':

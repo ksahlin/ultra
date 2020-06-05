@@ -272,7 +272,7 @@ def add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, ma
         # print(exon_id, e_stop - e_start)
         # align them to the read and get the best approxinate match
         if e_stop - e_start >= 9:
-            locations, edit_distance, accuracy = edlib_alignment(exon_seq, read_seq, mode="HW", k = 0.4*min(len(read_seq), len(exon_seq)) ) 
+            locations, edit_distance, accuracy = edlib_alignment(exon_seq, read_seq, mode="HW", task = 'path', k = 0.4*min(len(read_seq), len(exon_seq)) ) 
             # if 'flank' in exon_id:
             # print((e_start, e_stop), locations, edit_distance, accuracy )
             if edit_distance >= 0:
@@ -295,7 +295,7 @@ def add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, ma
             # else:
             #     if len(read_seq) + len(exon_seq) < 40000:
             #         read_aln, ref_aln, cigar_string, cigar_tuples, alignment_score = help_functions.parasail_local(read_seq, exon_seq)
-            #         locations, edit_distance, accuracy = edlib_alignment(exon_seq, read_seq, mode="HW", k = 0.4*min(len(read_seq), len(exon_seq)) )
+            #         locations, edit_distance, accuracy = edlib_alignment(exon_seq, read_seq, mode="HW", task = 'path', k = 0.4*min(len(read_seq), len(exon_seq)) )
             #         print('read',read_seq)
             #         print('Rref',exon_seq)
             #         print(locations, edit_distance, accuracy)
@@ -303,7 +303,7 @@ def add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, ma
             #         # print(ref_aln)
         
         else: # small exons between 5-9bp needs exact match otherwise too much noise
-            locations, edit_distance, accuracy = edlib_alignment(exon_seq, read_seq, mode="HW", k = 0 )
+            locations, edit_distance, accuracy = edlib_alignment(exon_seq, read_seq, mode="HW", task = 'path', k = 0 )
             # print("HEEERE", exon_seq, e_start, e_stop,ref_chr_id)
             if edit_distance == 0:
                 # print("perfect matches:",exon_seq, locations)
@@ -326,7 +326,7 @@ def add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, ma
     if  e_stop - e_start >= 0.8*len(read_seq): # read is potentially contained within exon 
         # print()
         # print("aligning read to exon")
-        locations, edit_distance, accuracy = edlib_alignment(read_seq, exon_seq, mode="HW", k = 0.4*min(len(read_seq), len(exon_seq)) )
+        locations, edit_distance, accuracy = edlib_alignment(read_seq, exon_seq, mode="HW", task = 'path', k = 0.4*min(len(read_seq), len(exon_seq)) )
         # print(exon_seq)
         # print((e_start, e_stop), len(exon_seq), len(read_seq), locations,  edit_distance, accuracy)
         # print()
@@ -357,7 +357,7 @@ def add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, ma
 
 def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon_id_to_choordinates, exon_to_gene, gene_to_small_exons, read_seq, warning_log_file):
     """
-        NOTE: if paramerer task = 'path' is given to edlib_alignment function calls below, it will give exact accuracy of the aligmnent but the program will be ~40% slower.
+        NOTE: if paramerer task = 'path' is given to edlib_alignment function calls below, it will give exact accuracy of the aligmnent but the program will be ~40% slower to calling task = 'locations'
             Now we are approxmating accuracy by dividing by start and end of the reference coordinates of the alignment. This is not good approw if there is a large instertion
             in the exon w.r.t. the read.
     """
