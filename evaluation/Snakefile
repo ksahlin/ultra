@@ -139,16 +139,19 @@ rule ultra_prep:
             ref = config["SIRV"]
             gtf_annotation = config["ANNOTATION"] + "/SIRV.gtf"
             shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_splicing {gtf_annotation} {outfolder}")
+            shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_seqs {ref} {outfolder} --min_mem 14 --mask_threshold 1000 2>&1 | tee {output.time_and_mem}") #2> {output.time_and_mem}
+
         elif wildcards.dataset == "drosophila":
             ref =  config["drosophila97"]
             gtf_annotation = config["ANNOTATION"] + "/drosophila.gtf"
             shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_splicing --disable_infer {gtf_annotation} {outfolder}")
+            shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_seqs {ref} {outfolder} --min_mem 14 --mask_threshold 1000 2>&1 | tee {output.time_and_mem}") #2> {output.time_and_mem}
+
         else:
             ref = config["HG38"]
             gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"
             shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_splicing --disable_infer {gtf_annotation} {outfolder}")
-
-        shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_seqs {ref} {outfolder} --min_mem 14 --mask_threshold 100 2>&1 | tee {output.time_and_mem}") #2> {output.time_and_mem}
+            shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_seqs {ref} {outfolder} --min_mem 14 --mask_threshold 100 2>&1 | tee {output.time_and_mem}") #2> {output.time_and_mem}
 
 
 rule ultra_align:

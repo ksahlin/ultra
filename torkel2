@@ -362,6 +362,7 @@ if __name__ == '__main__':
     pipeline_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
     pipeline_parser.add_argument('--min_mem', type=int, default=14, help='Threshold for minimum mem size considered.')
     pipeline_parser.add_argument('--flank_size', type=int, default=200, help='Size of genomic regions surrounding genes.')
+    pipeline_parser.add_argument('--max_intron', type=int, default=500000, help='Maximum size between mems considered in chaining solution.')
     pipeline_parser.add_argument('--alignment_threshold', type=int, default=0.3, help='Lower threshold for considering an alignment. \
                                                                                         Counted as the difference between total match score and total mismatch penalty. \
                                                                                         If a read has 35\% errors (under edit distance scoring), the difference between \
@@ -395,6 +396,7 @@ if __name__ == '__main__':
     align_reads_parser.add_argument('reads', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
     align_reads_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')   
     align_reads_parser.add_argument('--t', dest = 'nr_cores', type=int, default=3, help='Number of cores.')
+    align_reads_parser.add_argument('--max_intron', type=int, default=500000, help='Maximum size between mems considered in chaining solution.')
     align_reads_parser.add_argument('--alignment_threshold', type=int, default=0.3, help='Lower threchold for considering an alignment. \
                                                                                         Counted as the difference between total match score and total mismatch penalty. \
                                                                                         If a read has 35\% errors (under edit distance scoring), the difference between \

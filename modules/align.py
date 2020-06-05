@@ -19,13 +19,52 @@ from modules import classify_alignment2
 from modules import sam_output
 from modules import mummer_wrapper
 
-def annotate_guaranteed_optimal_bound(mems, is_rc):
-    # annotate each instance based on total coverage of read
+def annotate_guaranteed_optimal_bound(mems, is_rc, max_intron):
+    """
+        Calculate the maximum coverage (mem-score) that a read can get per chromosome
+        and annotate this value to each instance. We can use this annotation to avoid expensive MAM calculation 
+        because we can basically continue to next read if the theoretically possibel maximum chaining value 
+        for a chromosome is smaller than a solution already computed
+    """
+
+    # split mems into separate instances if there is more than max_intron nt between two consecutive hits!
+    # need to reindex j based on splitting the solution per chromosome..
+    all_mem_sols = {} 
+    for chr_id, all_mems_to_chromosome in mems.items():
+        chr_instance_index = 0
+        j_reindex = 0
+        if len(all_mems_to_chromosome) > 1:
+            m1 = all_mems_to_chromosome[0]
+            m1 = m1._replace(j = j_reindex)
+            # m1.j = j_reindex 
+            curr_instance = [m1]
+            for m1,m2 in zip(all_mems_to_chromosome[:-1], all_mems_to_chromosome[1:]):
+                if m2.x - m1.y > max_intron:
+                    all_mem_sols[(chr_id, chr_instance_index)] = curr_instance
+                    chr_instance_index  += 1 
+                    j_reindex = 0
+                    m2 = m2._replace(j = j_reindex)
+                    curr_instance = [m2]
+
+                else:
+                    j_reindex += 1 
+                    # print(m2)
+                    m2 = m2._replace(j = j_reindex)
+                    # print(m2)
+                    # print()
+                    curr_instance.append(m2)
+            all_mem_sols[(chr_id, chr_instance_index)] = curr_instance
+                       
+        else:
+            all_mem_sols[(chr_id, chr_instance_index)] = all_mems_to_chromosome
+
+
+    # Annotate maximum possible solution to each instance
     upper_bound = {}
 
-    for chr_id, all_mems_to_chromosome in mems.items():
-        starts = [("start", m.c) for m in all_mems_to_chromosome]
-        stops = [("stop", m.d) for m in all_mems_to_chromosome]
+    for (chr_id, chr_instance_index), all_mems_to_solution in all_mem_sols.items():
+        starts = [("start", m.c) for m in all_mems_to_solution]
+        stops = [("stop", m.d) for m in all_mems_to_solution]
         all_starts_stops = sorted(list(starts) + list(stops), key = lambda x: x[1])
         assert all_starts_stops[0][0] == 'start'
         active_start = all_starts_stops[0][1]
@@ -50,30 +89,9 @@ def annotate_guaranteed_optimal_bound(mems, is_rc):
         for start, stop in intervals:
             tot_cov += stop - start
 
-        upper_bound[chr_id] = (tot_cov, is_rc, all_mems_to_chromosome)
-
-    # for chr_id, all_mems_to_chromosome in mems.items():
-    #     # sort on first c then d since sorting is stable in python 3
-    #     # mems_read_sorted = sorted(all_mems_to_chromosome, key= lambda x: x.c) 
-
-    #     mems_read_sorted = sorted(all_mems_to_chromosome, key=attrgetter('d', 'c'))
-    #     tot_cov = mems_read_sorted[0].val
-    #     curr_active_min = mems_read_sorted[0].c
-    #     for m1,m2 in zip(mems_read_sorted[:-1], mems_read_sorted[1:]):
-    #         # print(m1.d, m2.d, m2.d - m1.d, curr_active_min)
-    #         # assert m2.d >= m1.d
-    #         if m2.c > m1.d:
-    #             tot_cov += m2.val
-    #             curr_active_min = m2.c
-    #         else:
-    #             if m2.c >= curr_active_min:
-    #                 tot_cov += m2.d - m1.d
-    #             else:
-    #                 tot_cov += m2.d - m1.d
-    #                 tot_cov += curr_active_min - m2.c
-    #                 curr_active_min = m2.c
-
-    #     upper_bound[chr_id] = (tot_cov, is_rc, all_mems_to_chromosome)
+        upper_bound[(chr_id, chr_instance_index)] = (tot_cov, is_rc, all_mems_to_solution)
+    for i in upper_bound:
+        print("sols:", i, upper_bound[i][0], len(upper_bound[i][2]))
 
     return upper_bound
 
@@ -83,6 +101,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
     mems_path_rc =  os.path.join( args.outfolder, "mummer_mems_batch_{0}_rc.txt".format(batch_number) )
     nlog_n_instance_counter = 0
     quadratic_instance_counter = 0
+    max_intron = args.max_intron
     if batch_number == -1:
         alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, "torkel.sam"), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
         warning_log_file = open(os.path.join(args.outfolder, "torkel.stderr"), "w")
@@ -101,24 +120,27 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
     processed_read_counter = 0
 
     for (read_acc, mems), (_, mems_rc) in zip(mummer_wrapper.get_mummer_records(mems_path,reads), mummer_wrapper.get_mummer_records(mems_path_rc, reads)):
-        multiple = False
+        # multiple = False
         if read_acc not in reads: # if parallelization not all reads in mummer file are in read batches
             continue
         else:
             read_seq = reads[read_acc]
         # print("instance sizes fw:", [ (chr_id, len(mm)) for chr_id, mm in mems.items()])
         # print("instance sizes rc:", [ (chr_id, len(mm)) for chr_id, mm in mems_rc.items()])
-        upper_bound = annotate_guaranteed_optimal_bound(mems, False)
-        upper_bound_rc = annotate_guaranteed_optimal_bound(mems_rc, True)
+        # print(read_acc)
+        upper_bound = annotate_guaranteed_optimal_bound(mems, False, max_intron)
+        upper_bound_rc = annotate_guaranteed_optimal_bound(mems_rc, True, max_intron)
+        # print()
         processed_read_counter += 1
         if processed_read_counter % 5000 == 0:
             print('Processed {0} reads in batch {1}'.format(processed_read_counter, batch_number))
         # do the chaining here immediately!
         all_chainings = []
         best_solution_value = 0
-        for chr_id, (upper_bound_cov, is_rc, all_mems_to_chromosome) in sorted(list(upper_bound.items()) + list(upper_bound_rc.items()), key = lambda x: x[1][0], reverse = True ): # mems.items():
+        for (chr_id, chr_instance_index) , (upper_bound_cov, is_rc, all_mems_to_chromosome) in sorted(list(upper_bound.items()) + list(upper_bound_rc.items()), key = lambda x: x[1][0], reverse = True ): # mems.items():
+            # print((chr_id, chr_instance_index), upper_bound_cov, all_mems_to_chromosome)
             if upper_bound_cov < best_solution_value:
-                # print("Breaking for", chr_id, is_rc, upper_bound_cov, "best:", best_solution_value, "read length:", len(read_seq))
+                print("Breaking for", chr_id, is_rc, upper_bound_cov, "best:", best_solution_value, "read length:", len(read_seq))
                 break
             
             # print("Processing", chr_id, is_rc, upper_bound_cov, "best:", best_solution_value, "read length:", len(read_seq))
@@ -126,8 +148,10 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
             #     print(mem.exon_part_id, mem.x, mem.y, '\t', mem.val)
             # print(all_mems_to_chromosome)
 
+
+
             if len(all_mems_to_chromosome) < 80:
-                solutions, mem_solution_value = colinear_solver.read_coverage(all_mems_to_chromosome)
+                solutions, mem_solution_value = colinear_solver.read_coverage(all_mems_to_chromosome, max_intron)
                 quadratic_instance_counter += 1 
             else:
                 solutions, mem_solution_value = colinear_solver.n_logn_read_coverage(all_mems_to_chromosome)
@@ -137,15 +161,15 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                 best_solution_value = mem_solution_value
                 # print("best now:", mem_solution_value)
 
-            if len(solutions) > 1:
-                # print("More than 1 solution on chromosome")
-                # for sol in solutions:
-                #     print(mem_solution_value, [ (m.x, m.y) for m in sol])
-                multiple = True
+            # if len(solutions) > 1:
+            #     # print("More than 1 solution on chromosome")
+            #     # for sol in solutions:
+            #     #     print(mem_solution_value, [ (m.x, m.y) for m in sol])
+            #     # multiple = True
 
             for sol in solutions:
                 all_chainings.append( (chr_id, sol, mem_solution_value, is_rc) )
-
+            # print(all_chainings)
         is_secondary =  False
         is_rc =  False
         if not all_chainings:
