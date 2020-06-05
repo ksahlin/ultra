@@ -140,7 +140,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
         for (chr_id, chr_instance_index) , (upper_bound_cov, is_rc, all_mems_to_chromosome) in sorted(list(upper_bound.items()) + list(upper_bound_rc.items()), key = lambda x: x[1][0], reverse = True ): # mems.items():
             # print((chr_id, chr_instance_index), upper_bound_cov, all_mems_to_chromosome)
             if upper_bound_cov < best_solution_value:
-                print("Breaking for", chr_id, is_rc, upper_bound_cov, "best:", best_solution_value, "read length:", len(read_seq))
+                # print("Breaking for", chr_id, is_rc, upper_bound_cov, "best:", best_solution_value, "read length:", len(read_seq))
                 break
             
             # print("Processing", chr_id, is_rc, upper_bound_cov, "best:", best_solution_value, "read length:", len(read_seq))
