@@ -274,6 +274,7 @@ def add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, ma
         if e_stop - e_start >= 9:
             locations, edit_distance, accuracy = edlib_alignment(exon_seq, read_seq, mode="HW", task = 'path', k = 0.4*min(len(read_seq), len(exon_seq)) ) 
             # if 'flank' in exon_id:
+            # print(exon_seq)
             # print((e_start, e_stop), locations, edit_distance, accuracy )
             if edit_distance >= 0:
                 # calc_complessed_score(read_alignment, ref_alignment, len(read_seq), len(exon_seq))
@@ -393,7 +394,7 @@ def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon
     for (ref_chr_id, e_start, e_stop), all_exon_ids in sorted(unique_exon_choordinates.items(), key=lambda x: x[0][1]):
         exon_seq = ref_exon_sequences[ref_chr_id][(e_start, e_stop)]
         exon_id = all_exon_ids.pop()
-        # print(exon_seq)
+        # print("Testing full exon",exon_seq)
         add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, mam_instance)
 
     # Do not allow segments of internal exons yet (ONLY START and END EXON FOR NOW) because these can generate spurious optimal alignments.
@@ -405,7 +406,7 @@ def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon
             exon_seq = ref_exon_sequences[ref_chr_id][(e_start, e_stop)]        
             # print(len(exon_seq), s_start,s_stop, e_start, e_stop, len(exon_seq), s_start - e_start, len(exon_seq) - (e_stop - s_stop +1))
             segment_seq = exon_seq[s_start - e_start: len(exon_seq) - (e_stop - (s_stop + 1)) ]  # segment is MEM coordinated i.e. inclusive, so we subtract one here
-            # print("adding:", e_start, e_stop, segment_seq )
+            # print("adding segment:", e_start, e_stop, segment_seq )
             if len(segment_seq) > 5:
                 add_exon_to_mam(read_seq, ref_chr_id, segment_seq, e_start, e_stop, exon_id, mam_instance)
         # else:
