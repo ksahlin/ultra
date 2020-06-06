@@ -3,6 +3,7 @@ import sys
 import re
 import os
 import errno
+import itertools
 
 import parasail
 import edlib
@@ -26,6 +27,19 @@ import dill as pickle
 #             refs[chr_id] = seq
 #     return modified
 
+def remove_read_polyA_ends(seq, threshold_len):
+    seq_list = []
+
+    for ch, g in itertools.groupby(seq):
+        h_len = sum(1 for x in g)
+        # print(ch, h_len, g )
+        if h_len > threshold_len and (ch == "A" or ch == "T"):
+            seq_list.append(ch*5)
+        else:
+            seq_list.append(ch*h_len)
+
+    seq_mod = "".join([s for s in seq_list])
+    return seq_mod
 
 def pickle_dump(args, data, filename):
     with open(os.path.join(args.outfolder,filename), 'wb') as f:
