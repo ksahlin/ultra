@@ -87,7 +87,7 @@ def annotate_guaranteed_optimal_bound(mems, is_rc, max_intron):
 
         tot_cov = 0
         for start, stop in intervals:
-            tot_cov += stop - start
+            tot_cov += stop - start  + 1 # MEM choordinates are inclusive
 
         upper_bound[(chr_id, chr_instance_index)] = (tot_cov, is_rc, all_mems_to_solution)
     # for i in upper_bound:
