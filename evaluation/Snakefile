@@ -61,7 +61,8 @@ def mkdir_p(path):
             raise
 
 rule all:
-   input:   config["ROOT_IN"] + "/data/results/plots.zip",
+   input:   config["ROOT_IN"] + "/data/results/plots_bio.zip",
+            config["ROOT_IN"] + "/data/results/plots_sim.zip",
             config["ROOT_IN"] + "/data/results/plots_exon_size.zip"
 
 
@@ -493,13 +494,17 @@ rule gzip_exon_size:
     run:
         shell("zip {output.zip_file}  /nfs/brubeck.bx.psu.edu/scratch4/ksahlin/ultra_eval/evaluation_sim/*/correctness_per_exon_*.pdf")
 
-rule gzip:
-    input: sim_pdfs = expand(rules.plot_sim.output.pdf, dataset=["simulated","simulated_nic", "simulated_ens"]),
-            bio_pdfs = expand(rules.plot_biological.output.pdf, dataset=["ont_human", "pacbio_alzheimer", "sirv", "drosophila"]) #pdfs = expand(config["ROOT_OUT"] + "/evaluation/{dataset}/results.pdf", dataset=["ont_human", "pacbio_alzheimer", "sirv","simulated","simulated_nic", "simulated_ens"])
-    output: zip_file = config["ROOT_IN"] + "/data/results/plots.zip"
+rule gzip_bio:
+    input: bio_pdfs = expand(rules.plot_biological.output.pdf, dataset=["ont_human", "pacbio_alzheimer", "sirv", "drosophila"]) #pdfs = expand(config["ROOT_OUT"] + "/evaluation/{dataset}/results.pdf", dataset=["ont_human", "pacbio_alzheimer", "sirv","simulated","simulated_nic", "simulated_ens"])
+    output: zip_file = config["ROOT_IN"] + "/data/results/plots_bio.zip"
     run:
         shell("zip {output.zip_file}  /nfs/brubeck.bx.psu.edu/scratch4/ksahlin/ultra_eval/evaluation_bio/*/results.pdf")
 
+rule gzip_sim:
+    input: sim_pdfs = expand(rules.plot_sim.output.pdf, dataset=["simulated","simulated_nic", "simulated_ens"])
+    output: zip_file = config["ROOT_IN"] + "/data/results/plots_sim.zip"
+    run:
+        shell("zip {output.zip_file}  /nfs/brubeck.bx.psu.edu/scratch4/ksahlin/ultra_eval/evaluation_sim/*/results.pdf")
 
 # rule evaluate_real:
 #     input: original_reads = rules.subsample.output.subsampled_fastq,
