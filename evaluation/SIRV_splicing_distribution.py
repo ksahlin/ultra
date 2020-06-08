@@ -162,7 +162,7 @@ def main(args):
 
     fq_outfile = open(os.path.join(args.outfolder, "desalt_and_minimap_unique.fq"), "w")
     info_outfile = open(os.path.join(args.outfolder, "desalt_and_minimap_unique.csv"), "w")
-    for (acc, tr_id) in diff_spliced:
+    for (acc, tr_id) in desalt_and_minimap_unique:
         info_outfile.write(acc + "," + tr_id + "\n") 
         (seq, qual) = reads[acc]   
         fq_outfile.write("@{0}\n{1}\n{2}\n{3}\n".format(acc, seq, "+", qual))    
