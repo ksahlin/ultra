@@ -9,6 +9,8 @@ import itertools
 import pickle
 
 from collections import defaultdict
+from matplotlib_venn import venn3, venn3_circles, venn2
+
 
 # import parasail
 import pysam
@@ -79,30 +81,64 @@ def parse_differing_splicing_reads(csv_file):
             reads_desalt[acc] = (acc,algorithm,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag)
 
     ds_fsm_distribution = defaultdict(int)
+    desalt = set()
     for acc in reads_desalt:
         ds_annot, transcript_fsm_id = reads_desalt[acc][7], reads_desalt[acc][10]
         if ds_annot == 'FSM':
             ds_fsm_distribution[transcript_fsm_id] += 1
+            desalt.add( (acc, transcript_fsm_id) ) 
 
     mm2_fsm_distribution = defaultdict(int)
+    minimap2 = set()
     for acc in reads_minimap2:
         mm2_annot, transcript_fsm_id = reads_minimap2[acc][7], reads_minimap2[acc][10]
         if mm2_annot == 'FSM':
             mm2_fsm_distribution[transcript_fsm_id] += 1
+            minimap2.add( (acc, transcript_fsm_id) ) 
 
     ultra_fsm_distribution = defaultdict(int)
+    ultra = set()
     for acc in reads_ultra:
         ultra_annot, transcript_fsm_id = reads_ultra[acc][7], reads_ultra[acc][10]
         if ultra_annot == 'FSM':
             ultra_fsm_distribution[transcript_fsm_id] += 1
+            ultra.add( (acc, transcript_fsm_id) ) 
 
 
     print("ds_fsm_distribution:", sorted(ds_fsm_distribution.items(), key = lambda x: x[1]))        
     print("mm2_fsm_distribution:", sorted(mm2_fsm_distribution.items(), key = lambda x: x[1]))        
     print("ultra_fsm_distribution:", sorted(ultra_fsm_distribution.items(), key = lambda x: x[1]))        
 
-    # return differing_reads
 
+    print(len(ultra), len(desalt), len(minimap2))
+
+    # a = ultra
+    # b = desalt
+    # c = minimap2
+    a_not_b_c = ultra - (desalt | minimap2)
+    b_not_a_c = desalt - (ultra | minimap2)
+    c_not_a_b = minimap2 - (ultra | desalt)
+    a_b_not_c = (ultra & desalt) - minimap2
+    a_c_not_b = (ultra & minimap2) - desalt
+    b_c_not_a = (desalt & minimap2) - ultra
+    a_b_c = ultra & desalt & minimap2
+
+    print("BAD:")
+    print("desalt and minimap2:", len(b_c_not_a))
+    print("desalt unique:", len(b_not_a_c))
+    print("minimap2 unique:", len(c_not_a_b))
+    print()
+    print("GOOD:")
+    print("Ultra and desalt:", a_b_not_c)
+    print("Ultra and minimap2:", a_c_not_b)
+    print()
+    
+    print("NEUTRAL")
+    print("ultra unique:", len(a_not_b_c))
+    print("In all", len(a_b_c))
+    # return differing_reads
+    r = venn3([a, b, c], ("uLTRA", "deSALT", "minimap2"))
+    plt.savefig(os.path.join(path_, "sirv_venn.pdf"))
 
 def main(args):
 
