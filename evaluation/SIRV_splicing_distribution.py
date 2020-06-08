@@ -107,22 +107,20 @@ def parse_differing_splicing_reads(csv_file):
 def main(args):
 
     diff_spliced = parse_differing_splicing_reads(args.csvfile)
-    reads = { acc.split()[0] : (seq, qual) for i, (acc, (seq, qual)) in enumerate(readfq(open(args.reads, 'r')))}
-    print("Total reads", len(reads))
+    # reads = { acc.split()[0] : (seq, qual) for i, (acc, (seq, qual)) in enumerate(readfq(open(args.reads, 'r')))}
+    # print("Total reads", len(reads))
 
 
-    fq_outfile = open(os.path.join(args.outfolder, "diff_spliced.fq"), "w")
-    info_outfile = open(os.path.join(args.outfolder, "diff_spliced.csv"), "w")
-    for acc in diff_spliced:
-        info = diff_spliced[acc]
-        info_outfile.write(acc + "," + ",".join([str(i) for i in  info]) + "\n") 
-        (seq, qual) = reads[acc]   
-        fq_outfile.write("@{0}\n{1}\n{2}\n{3}\n".format(acc, seq, "+", qual))    
+    # fq_outfile = open(os.path.join(args.outfolder, "diff_spliced.fq"), "w")
+    # info_outfile = open(os.path.join(args.outfolder, "diff_spliced.csv"), "w")
+    # for acc in diff_spliced:
+    #     info = diff_spliced[acc]
+    #     info_outfile.write(acc + "," + ",".join([str(i) for i in  info]) + "\n") 
+    #     (seq, qual) = reads[acc]   
+    #     fq_outfile.write("@{0}\n{1}\n{2}\n{3}\n".format(acc, seq, "+", qual))    
 
-    fq_outfile.close()
-    info_outfile.close()
-    # detailed_results_outfile = open(os.path.join(args.outfolder, "results_per_read.csv"), "w")
-    # detailed_results_outfile.write("acc,read_type,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag\n")
+    # fq_outfile.close()
+    # info_outfile.close()
 
 
 
