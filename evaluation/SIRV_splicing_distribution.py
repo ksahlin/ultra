@@ -129,15 +129,15 @@ def parse_differing_splicing_reads(csv_file):
     print("minimap2 unique:", len(c_not_a_b))
     print()
     print("GOOD:")
-    print("Ultra and desalt:", a_b_not_c)
-    print("Ultra and minimap2:", a_c_not_b)
+    print("Ultra and desalt:", len(a_b_not_c))
+    print("Ultra and minimap2:", len(a_c_not_b))
     print()
     
     print("NEUTRAL")
     print("ultra unique:", len(a_not_b_c))
     print("In all", len(a_b_c))
     # return differing_reads
-    r = venn3([a, b, c], ("uLTRA", "deSALT", "minimap2"))
+    r = venn3([ultra, desalt, minimap2], ("uLTRA", "deSALT", "minimap2"))
     plt.savefig(os.path.join(path_, "sirv_venn.pdf"))
 
 def main(args):
