@@ -73,7 +73,7 @@ def is_overlapping(a_start,a_stop, b_start,b_stop):
     return (int(a_start) <= int(b_start) <= int(a_stop) )  or (int(a_start) <= int(b_stop) <= int(a_stop)) or (int(b_start) <= int(a_start) <= int(a_stop) <= int(b_stop) )
 
 
-def parse_differing_splicing_reads(csv_file):
+def parse_differing_splicing_reads(csv_file, outfolder):
     reads_ultra = {}
     reads_minimap2 = {}
     reads_desalt = {}
@@ -146,14 +146,14 @@ def parse_differing_splicing_reads(csv_file):
     print("In all", len(a_b_c))
     # return differing_reads
     r = venn3([ultra, desalt, minimap2], ("uLTRA", "deSALT", "minimap2"))
-    plt.savefig(os.path.join(path_, "sirv_venn.pdf"))
+    plt.savefig(os.path.join(outfolder, "sirv_venn.pdf"))
 
     return b_c_not_a
 
 
 def main(args):
 
-    desalt_and_minimap_unique = parse_differing_splicing_reads(args.csvfile)
+    desalt_and_minimap_unique = parse_differing_splicing_reads(args.csvfile, args.outfolder)
     reads = { acc.split()[0] : (seq, qual) for i, (acc, (seq, qual)) in enumerate(readfq(open(args.reads, 'r')))}
     # print("Total reads", len(reads))
 
