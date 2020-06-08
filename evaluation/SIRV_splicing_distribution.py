@@ -116,7 +116,9 @@ def parse_differing_splicing_reads(csv_file, outfolder):
     print("ds_fsm_distribution:", sorted(ds_fsm_distribution.items(), key = lambda x: x[1]))        
     print("mm2_fsm_distribution:", sorted(mm2_fsm_distribution.items(), key = lambda x: x[1]))        
     print("ultra_fsm_distribution:", sorted(ultra_fsm_distribution.items(), key = lambda x: x[1]))        
-
+    print("Desalt nr unique isoforms mapped to:", len(ds_fsm_distribution))
+    print("minimap2 nr unique isoforms mapped to:", len(mm2_fsm_distribution))
+    print("Ultra nr unique isoforms mapped to:", len(ultra_fsm_distribution))
 
     print(len(ultra), len(desalt), len(minimap2))
 
