@@ -9,6 +9,14 @@ import itertools
 import pickle
 
 from collections import defaultdict
+
+try:
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+except (ImportError, RuntimeError):
+    print("COULD not import matplotlib")
+
 from matplotlib_venn import venn3, venn3_circles, venn2
 
 
@@ -140,23 +148,25 @@ def parse_differing_splicing_reads(csv_file):
     r = venn3([ultra, desalt, minimap2], ("uLTRA", "deSALT", "minimap2"))
     plt.savefig(os.path.join(path_, "sirv_venn.pdf"))
 
+    return b_c_not_a
+
+
 def main(args):
 
-    diff_spliced = parse_differing_splicing_reads(args.csvfile)
-    # reads = { acc.split()[0] : (seq, qual) for i, (acc, (seq, qual)) in enumerate(readfq(open(args.reads, 'r')))}
+    desalt_and_minimap_unique = parse_differing_splicing_reads(args.csvfile)
+    reads = { acc.split()[0] : (seq, qual) for i, (acc, (seq, qual)) in enumerate(readfq(open(args.reads, 'r')))}
     # print("Total reads", len(reads))
 
 
-    # fq_outfile = open(os.path.join(args.outfolder, "diff_spliced.fq"), "w")
-    # info_outfile = open(os.path.join(args.outfolder, "diff_spliced.csv"), "w")
-    # for acc in diff_spliced:
-    #     info = diff_spliced[acc]
-    #     info_outfile.write(acc + "," + ",".join([str(i) for i in  info]) + "\n") 
-    #     (seq, qual) = reads[acc]   
-    #     fq_outfile.write("@{0}\n{1}\n{2}\n{3}\n".format(acc, seq, "+", qual))    
+    fq_outfile = open(os.path.join(args.outfolder, "desalt_and_minimap_unique.fq"), "w")
+    info_outfile = open(os.path.join(args.outfolder, "desalt_and_minimap_unique.csv"), "w")
+    for (acc, tr_id) in diff_spliced:
+        info_outfile.write(acc + "," + tr_id + "\n") 
+        (seq, qual) = reads[acc]   
+        fq_outfile.write("@{0}\n{1}\n{2}\n{3}\n".format(acc, seq, "+", qual))    
 
-    # fq_outfile.close()
-    # info_outfile.close()
+    fq_outfile.close()
+    info_outfile.close()
 
 
 
