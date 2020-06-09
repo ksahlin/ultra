@@ -207,11 +207,14 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                 predicted_exons = []
                 tot_exons_len = 0
                 prev_y_coord = -1
+                covered = 0
                 for mam in mam_solution:
                     if (mam.x, mam.y) in ref_exon_sequences[mam.ref_chr_id]:
                         seq = ref_exon_sequences[mam.ref_chr_id][(mam.x, mam.y)] 
+                        covered += mam.d - mam.c + 1
                     elif (mam.x, mam.y) in ref_flank_sequences[mam.ref_chr_id]:
                         seq = ref_flank_sequences[mam.ref_chr_id][(mam.x, mam.y)] 
+                        covered += mam.d - mam.c + 1
 
                     else:
                         print("Bug encountered, {0} is not in {1}".format((mam.x, mam.y), mam_solution))
@@ -270,7 +273,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                 # checing for internal (splice site) non covered regions
                 if len(non_covered_regions) >= 3 and (max(non_covered_regions[1:-1]) > args.non_covered_cutoff):
                     classification = 'Unclassified_insufficient_junction_coverage'
-                coverage = mam_value / float(len(read_seq)) 
+                coverage = covered / float(len(read_seq)) 
                 read_alignments.append( (alignment_score, read_acc, chr_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, is_rc, coverage) )
                 
 

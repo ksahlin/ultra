@@ -13,7 +13,7 @@ def reverse_mapping(d):
 def dd_set(): # top level function declaration needed for multiprocessing
     return defaultdict(set)
 
-def create_graph_from_exon_parts(db, min_mem, flank_size): 
+def create_graph_from_exon_parts(db, min_mem, flank_size, small_exon_threshold): 
     """
         We need to link parts --> exons and exons --> transcripts
     """
@@ -125,7 +125,7 @@ def create_graph_from_exon_parts(db, min_mem, flank_size):
             flanks_to_gene[chr_id][(max(0, exons_list[0].start - flank_size), exons_list[0].start - 1)] = gene.id
             flanks_to_gene[chr_id][(exons_list[-1].stop, exons_list[-1].stop + flank_size)] = gene.id
             for exon in exons_list:
-                if exon.stop - exon.start < 50:
+                if exon.stop - exon.start < small_exon_threshold:
                     gene_to_small_exons[gene.id].append(exon.id)
 
     for chr_id in flanks_to_gene:

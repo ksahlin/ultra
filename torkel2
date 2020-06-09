@@ -60,7 +60,7 @@ def prep_splicing(args):
     exons_to_ref, parts_to_exons, splices_to_transcripts, \
     transcripts_to_splices, all_splice_pairs_annotations, \
     all_splice_sites_annotations, exon_id_to_choordinates, \
-    exon_to_gene, gene_to_small_exons, flanks_to_gene = augmented_gene.create_graph_from_exon_parts(db, args.min_mem, args.flank_size )
+    exon_to_gene, gene_to_small_exons, flanks_to_gene = augmented_gene.create_graph_from_exon_parts(db, args.min_mem, args.flank_size, args.small_exon_threshold )
 
     # dump to pickle here! Both graph and reference seqs
     # help_functions.pickle_dump(args, genes_to_ref, 'genes_to_ref.pickle')
@@ -369,6 +369,7 @@ if __name__ == '__main__':
     pipeline_parser.add_argument('--min_mem', type=int, default=14, help='Threshold for minimum mem size considered.')
     pipeline_parser.add_argument('--flank_size', type=int, default=200, help='Size of genomic regions surrounding genes.')
     pipeline_parser.add_argument('--max_intron', type=int, default=1000000, help='Maximum size between mems considered in chaining solution.')
+    pipeline_parser.add_argument('--small_exon_threshold', type=int, default=100, help='Considered in MAM solution even if they cont contain MEMs.')
     pipeline_parser.add_argument('--reduce_read_ployA', type=int, default=8, help='Reduces polyA tails longer than X bases (default 10) in reads to 5bp before MEM finding. This helps MEM matching to spurios regions but does not affect final read alignments.')
     pipeline_parser.add_argument('--alignment_threshold', type=int, default=0.3, help='Lower threshold for considering an alignment. \
                                                                                         Counted as the difference between total match score and total mismatch penalty. \
@@ -388,6 +389,7 @@ if __name__ == '__main__':
     prep_splicing_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
     prep_splicing_parser.add_argument('--min_mem', type=int, default=14, help='Threshold for minimum mem size considered.')
     prep_splicing_parser.add_argument('--flank_size', type=int, default=200, help='Size of genomic regions surrounding genes.')
+    prep_splicing_parser.add_argument('--small_exon_threshold', type=int, default=100, help='Considered in MAM solution even if they cont contain MEMs.')
     prep_splicing_parser.add_argument('--disable_infer', action='store_true', help='Makes splice creation step much faster. Thes parameter can be set if gene and transcript name fields are provided in gtf file.')
     prep_splicing_parser.set_defaults(which='prep_splicing')
 
