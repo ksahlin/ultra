@@ -135,8 +135,8 @@ def get_genomic_cigar(read_aln, ref_aln, predicted_exons):
     # print('cigar segments', cigars)
 
     # ######## ORIGINAL  ###########################
-    # # for c in cigars:
-    # #     print(c)
+    # for c in cigars:
+    #     print(c)
     # genomic_cigar = []
     # intron_lengths = [e2[0] - e1[1] for e1, e2 in zip(predicted_exons[:-1], predicted_exons[1:])]
     # print(intron_lengths)

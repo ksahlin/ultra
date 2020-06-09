@@ -27,14 +27,15 @@ import dill as pickle
 #             refs[chr_id] = seq
 #     return modified
 
-def remove_read_polyA_ends(seq, threshold_len):
-    seq_list = []
+def remove_read_polyA_ends(seq, threshold_len, to_len):
+    end_length_window = min(len(seq)//2, 100)
+    seq_list = [ seq[:-end_length_window] ]
 
-    for ch, g in itertools.groupby(seq):
+    for ch, g in itertools.groupby(seq[-end_length_window:]):
         h_len = sum(1 for x in g)
         # print(ch, h_len, g )
         if h_len > threshold_len and (ch == "A" or ch == "T"):
-            seq_list.append(ch*5)
+            seq_list.append(ch*to_len)
         else:
             seq_list.append(ch*h_len)
 
