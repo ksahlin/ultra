@@ -124,7 +124,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
         if read_acc not in reads: # if parallelization not all reads in mummer file are in read batches
             continue
         else:
-            read_seq = reads[read_acc]
+            read_seq = help_functions.remove_read_polyA_ends(reads[read_acc], args.reduce_read_ployA, 1)
         # print("instance sizes fw:", [ (chr_id, len(mm)) for chr_id, mm in mems.items()])
         # print("instance sizes rc:", [ (chr_id, len(mm)) for chr_id, mm in mems_rc.items()])
         # print(read_acc)
@@ -200,6 +200,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
             # print("finished Mam solution:",mam_value, mam_solution)
             # for zzz2 in mam_solution:
             #     print(zzz2)
+            # print(non_covered_regions)
             mam_sol_exons_length = sum([ mam.y - mam.x for mam in mam_solution])
             if mam_value > 0:
                 chained_exon_seqs = []
@@ -248,6 +249,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                     read_aln, ref_aln, cigar_string, cigar_tuples, alignment_score = help_functions.parasail_alignment(read_seq, created_ref_seq)
                     # print(read_aln)
                     # print(ref_aln)
+                    # print("alignment_score:", alignment_score)
 
                 # matches = sum([1 for n1,n2 in zip(read_aln, ref_aln) if n1 == n2 ])
                 # substitutions = sum([1 for n1,n2 in zip(read_aln, ref_aln) if n1 != n2 and n1 != "-" and n2 != "-" ])
@@ -269,7 +271,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                     # print("skipping")
                     continue
                 classification, annotated_to_transcript_id = classify_alignment2.main(chr_id, predicted_splices, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations)
-
+                # print(classification)
                 # checing for internal (splice site) non covered regions
                 if len(non_covered_regions) >= 3 and (max(non_covered_regions[1:-1]) > args.non_covered_cutoff):
                     classification = 'Unclassified_insufficient_junction_coverage'

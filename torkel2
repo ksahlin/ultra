@@ -208,7 +208,7 @@ def align_reads(args):
         for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r')):
             # print(seq)
             # print(help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA))
-            reads_tmp.write('>{0}\n{1}\n'.format(acc, help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA)))
+            reads_tmp.write('>{0}\n{1}\n'.format(acc, help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5)))
         reads_tmp.close()
         args.reads_tmp = reads_tmp.name
         print("Finished processing reads for mummer ")
@@ -223,7 +223,7 @@ def align_reads(args):
         for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r')):
             # print(help_functions.reverse_complement(seq))
             # print(help_functions.remove_read_polyA_ends(help_functions.reverse_complement(seq), args.reduce_read_ployA))
-            reads_rc.write('>{0}\n{1}\n'.format(acc, help_functions.remove_read_polyA_ends(help_functions.reverse_complement(seq), args.reduce_read_ployA)))
+            reads_rc.write('>{0}\n{1}\n'.format(acc, help_functions.reverse_complement(help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5))))
         reads_rc.close()
         args.reads_rc = reads_rc.name
         print("Finished processing reverse complement reads for mummer")
@@ -248,11 +248,11 @@ def align_reads(args):
             read_batch_temp_file = open(os.path.join(args.outfolder, "reads_batch_{0}.fa".format(i)), "w")
             read_batch_temp_file_rc = open(os.path.join(args.outfolder, "reads_batch_{0}_rc.fa".format(i) ), "w")
             for acc, seq in read_batch_dict.items():
-                read_batch_temp_file.write('>{0}\n{1}\n'.format(acc, help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA)))
+                read_batch_temp_file.write('>{0}\n{1}\n'.format(acc, help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5)))
             read_batch_temp_file.close()
 
             for acc, seq in read_batch_dict.items():
-                read_batch_temp_file_rc.write('>{0}\n{1}\n'.format(acc, help_functions.remove_read_polyA_ends(help_functions.reverse_complement(seq), args.reduce_read_ployA)))
+                read_batch_temp_file_rc.write('>{0}\n{1}\n'.format(acc, help_functions.reverse_complement(help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5))))
             read_batch_temp_file_rc.close()
             
             read_batch = read_batch_temp_file.name
