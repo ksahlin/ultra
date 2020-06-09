@@ -275,7 +275,6 @@ def add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, ma
             locations, edit_distance, accuracy = edlib_alignment(exon_seq, read_seq, mode="HW", task = 'path', k = 0.4*min(len(read_seq), len(exon_seq)) ) 
             # if 'flank' in exon_id:
             # print(exon_seq)
-            # print((e_start, e_stop), locations, edit_distance, accuracy )
             if edit_distance >= 0:
                 # calc_complessed_score(read_alignment, ref_alignment, len(read_seq), len(exon_seq))
                 # e_score = calc_evalue(read_alignment, ref_alignment, len(read_seq), len(exon_seq))
@@ -284,8 +283,10 @@ def add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, ma
                 #     print("had more", e_stop - e_start, locations)
 
                 for start, stop in locations:
+                    # print((e_start, e_stop), locations, edit_distance, accuracy, stop - start + 1, (stop - start + 1)*accuracy, (stop - start + 1 - edit_distance)* accuracy)
+
                     min_segment_length = stop - start + 1 #Edlib end location is inclusive
-                    score = accuracy*min_segment_length #- edit_distance
+                    score = accuracy*(min_segment_length - edit_distance) # accuracy*min_segment_length
                     if (min_segment_length - edit_distance)/float(min_segment_length) > 0.6:
                         # for exon_id in all_exon_ids: break # only need one of the redundant exon_ids
                         # exon_id = all_exon_ids.pop()
@@ -337,7 +338,7 @@ def add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, ma
             
             start, stop = locations[0]
             min_segment_length = stop - start + 1 #Edlib end location is inclusive
-            score = accuracy*min_segment_length #-  edit_distance #/len(read_seq)
+            score = accuracy*(min_segment_length - edit_distance) #accuracy*min_segment_length  #/len(read_seq)
             # print("LOOK:", min_segment_length, edit_distance, score, locations)
             # if e_score < 1.0:
             if (min_segment_length -  edit_distance)/float(min_segment_length) > 0.6:
