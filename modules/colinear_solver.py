@@ -279,6 +279,7 @@ def read_coverage_mam_score(mams):
 
     """
     mams = sorted(mams, key = lambda x: x.y )
+    overlap_threshold = 20
     # print(mams)
     if len(mams) > 1000:
         print('MAM',len(mams))
@@ -307,8 +308,8 @@ def read_coverage_mam_score(mams):
             max_c_value_case_a = 0
             T_traceback_index = None
 
-        I_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if v.c <= mams[j_prime].d <= v.d and j_prime < j]
-        # I_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if v.c <= mams[j_prime].d <= v.c - 1 + overlap_threshold and j_prime < j]
+        # I_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if v.c <= mams[j_prime].d <= v.d and j_prime < j]
+        I_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if v.c <= mams[j_prime].d <= v.c - 1 + overlap_threshold and j_prime < j]
         # I_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if v.c <= mams[j_prime].d  <= v.c + (v.d - v.c)*(1.0 - v.val/(v.d - v.c)) ]  #Maybe bug here, check the objective!! need to be careful
         if I_values:
             # print("here", j, I_values)

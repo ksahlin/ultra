@@ -98,6 +98,7 @@ def edlib_alignment(query, target, mode = "HW", task = 'locations', k=-1):
         # print(accuracy, ( (ref_stop - ref_start) - result['editDistance'])/ (ref_stop - ref_start))
         # print(cigar_string, result['editDistance'], locations, accuracy)
         query_alignment, target_alignment, cigar_tuples = cigar_to_seq(cigar_string, query, target[ref_start: ref_stop+1 ])
+        # print(cigar_string)
         # print(query_alignment)
         # print(target_alignment)
 
@@ -286,7 +287,7 @@ def add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, ma
                 for start, stop in locations:
                     min_segment_length = stop - start + 1 #Edlib end location is inclusive
                     # print((e_start, e_stop), locations, edit_distance, min_segment_length, accuracy, (stop - start + 1)*accuracy, (stop - start + 1 - edit_distance)* accuracy, (min_segment_length - edit_distance)/float(min_segment_length))
-
+                    # print(exon_seq)
                     score = accuracy*(min_segment_length - edit_distance) # accuracy*min_segment_length
                     if (min_segment_length - edit_distance)/float(min_segment_length) > 0.5:
                         # for exon_id in all_exon_ids: break # only need one of the redundant exon_ids
@@ -409,6 +410,7 @@ def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon
         if e_stop <= unique_part_locations[0][2]: # is start exon
             exon_seq = ref_exon_sequences[ref_chr_id][(e_start, e_stop)]        
             segment_seq = exon_seq[s_start - e_start:  ]  # We allow only semi global hit towards one end (the upstream end of the read)
+            # print()
             # print("testing segment1:", e_start, e_stop, s_start, s_stop, segment_seq )
             if len(segment_seq) > 5:
                 add_exon_to_mam(read_seq, ref_chr_id, segment_seq, e_start, e_stop, exon_id, mam_instance)
@@ -418,6 +420,7 @@ def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon
             # print(len(exon_seq), s_start,s_stop, e_start, e_stop, len(exon_seq), s_start - e_start, len(exon_seq) - (e_stop - s_stop +1))
             # segment_seq = exon_seq[s_start - e_start: len(exon_seq) - (e_stop - (s_stop + 1)) ]  # segment is MEM coordinated i.e. inclusive, so we subtract one here
             segment_seq = exon_seq[: len(exon_seq) - (e_stop - (s_stop + 1)) ]  # segment is MEM coordinated i.e. inclusive, so we subtract one here, allow semi global hit towards one end (the downstream end of the read)
+            # print()
             # print("testing segment2:", e_start, e_stop, s_start, s_stop, segment_seq )
             if len(segment_seq) > 5:
                 add_exon_to_mam(read_seq, ref_chr_id, segment_seq, e_start, e_stop, exon_id, mam_instance)
@@ -450,7 +453,7 @@ def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon
     ###################################################################################################
     ###################################################################################################
     ###################################################################################################
-    # print(mam_instance)
+    # print("MAM INSTANCE", mam_instance)
     if mam_instance:
         mam_solution, value, unique = colinear_solver.read_coverage_mam_score(mam_instance)
     else:
