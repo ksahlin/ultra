@@ -137,55 +137,55 @@ def get_genomic_cigar(read_aln, ref_aln, predicted_exons):
     # ######## ORIGINAL  ###########################
     # for c in cigars:
     #     print(c)
-    # genomic_cigar = []
-    # intron_lengths = [e2[0] - e1[1] for e1, e2 in zip(predicted_exons[:-1], predicted_exons[1:])]
-    # print(intron_lengths)
-    # for i in range(len(cigars)):
-    #     if i <= len(intron_lengths) -1:
-    #         genomic_cigar.append( cigars[i] + '{0}N'.format( intron_lengths[i] ) )
-    #     else:
-    #         genomic_cigar.append( cigars[i]  )
-    # ################################################
-
- 
-
-    ######################################################
-    ################ BUGFIXED  ###########################
-    intron_lengths = [e2[0] - e1[1] for e1, e2 in zip(predicted_exons[:-1], predicted_exons[1:])]
-    p = "[1-9]+D"
-    p_rev = "D[1-9]+"
-    if len(cigars) > 1:
-        # for i, (c1,c2) in enumerate(zip(cigars[:-1], cigars[1:])):
-        for i, c in enumerate(cigars):
-            if i == 0: # first
-                #check only end
-                c, n_add_end = modify_end(c, p_rev)
-                intron_lengths[i] += n_add_end
-
-            elif i == len(cigars) - 1: # last
-                #check only beginning
-                c, n_add_beg = modify_beginning(c, p)
-                intron_lengths[i-1] += n_add_beg 
-                
-            else: # middle
-                c, n_add_beg = modify_beginning(c, p)
-                c, n_add_end = modify_end(c, p_rev)
-                intron_lengths[i-1] += n_add_beg 
-                intron_lengths[i] += n_add_end
-
-            cigars[i] = c
-    # print()
-    # for c in cigars:
-    #     print(c)
     genomic_cigar = []
+    intron_lengths = [e2[0] - e1[1] for e1, e2 in zip(predicted_exons[:-1], predicted_exons[1:])]
     # print(intron_lengths)
     for i in range(len(cigars)):
         if i <= len(intron_lengths) -1:
             genomic_cigar.append( cigars[i] + '{0}N'.format( intron_lengths[i] ) )
         else:
             genomic_cigar.append( cigars[i]  )
-    ###########################
-    ###########################
+    # ################################################
+
+ 
+
+    # ######################################################################
+    # ################ MODIFYING CIGAR AROUND INTRONS  ######################
+    # intron_lengths = [e2[0] - e1[1] for e1, e2 in zip(predicted_exons[:-1], predicted_exons[1:])]
+    # p = "[1-9]+D"
+    # p_rev = "D[1-9]+"
+    # if len(cigars) > 1:
+    #     # for i, (c1,c2) in enumerate(zip(cigars[:-1], cigars[1:])):
+    #     for i, c in enumerate(cigars):
+    #         if i == 0: # first
+    #             #check only end
+    #             c, n_add_end = modify_end(c, p_rev)
+    #             intron_lengths[i] += n_add_end
+
+    #         elif i == len(cigars) - 1: # last
+    #             #check only beginning
+    #             c, n_add_beg = modify_beginning(c, p)
+    #             intron_lengths[i-1] += n_add_beg 
+                
+    #         else: # middle
+    #             c, n_add_beg = modify_beginning(c, p)
+    #             c, n_add_end = modify_end(c, p_rev)
+    #             intron_lengths[i-1] += n_add_beg 
+    #             intron_lengths[i] += n_add_end
+
+    #         cigars[i] = c
+    # # print()
+    # # for c in cigars:
+    # #     print(c)
+    # genomic_cigar = []
+    # # print(intron_lengths)
+    # for i in range(len(cigars)):
+    #     if i <= len(intron_lengths) -1:
+    #         genomic_cigar.append( cigars[i] + '{0}N'.format( intron_lengths[i] ) )
+    #     else:
+    #         genomic_cigar.append( cigars[i]  )
+    # ###########################
+    # ###########################
 
     genomic_cigar = "".join(s for s in genomic_cigar)
 
