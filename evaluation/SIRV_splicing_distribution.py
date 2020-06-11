@@ -10,6 +10,8 @@ import pickle
 
 from collections import defaultdict
 
+import pandas as pd
+
 try:
     import matplotlib
     matplotlib.use('Agg')
