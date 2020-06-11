@@ -506,6 +506,18 @@ rule gzip_sim:
     run:
         shell("zip {output.zip_file}  /nfs/brubeck.bx.psu.edu/scratch4/ksahlin/ultra_eval/evaluation_sim/*/results.pdf")
 
+rule sirv_analysis:
+    input: csv = config["ROOT_OUT"] + "/evaluation_bio/sirv/results_per_read.csv",
+            reads = config["ROOT_OUT"] + "/data/sirv/reads.fq"
+    output: zip_file = config["ROOT_IN"] + "/data/results/plots_sirv_analysis.zip"
+            # config["ROOT_IN"] + "/data/results/sirv_venn.pdf",
+            # config["ROOT_IN"] + "/data/results/sirv_counts_SIRV1.pdf"
+    run:
+        #python  SIRV_splicing_distribution.py /nfs/brubeck.bx.psu.edu/scratch4/ksahlin/ultra_eval/data/sirv/reads.fq /nfs/brubeck.bx.psu.edu/scratch4/ksahlin/ultra_eval/evaluation_bio/sirv/results_per_read.csv /nfs/brubeck.bx.psu.edu/scratch4/ksahlin/ultra_eval/evaluation_bio/sirv/
+        outfolder = config["ROOT_OUT"] + "/evaluation_bio/sirv/"
+        shell("python SIRV_splicing_distribution.py {input.reads} {input.csv} {outfolder}")
+        shell("zip {output.zip_file} /nfs/brubeck.bx.psu.edu/scratch4/ksahlin/ultra_eval/evaluation_bio/sirv/sirv_*")
+
 # rule evaluate_real:
 #     input: original_reads = rules.subsample.output.subsampled_fastq,
 #             corrected_reads = rules.combine_isoncorrect.output.corrected_reads_fastq,
