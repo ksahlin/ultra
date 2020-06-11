@@ -179,7 +179,7 @@ def plot_nr_of_isoforms(data_for_mapping_bias, outfolder ):
             i += 1
     print(data)
     for l in loci:
-        d = df.loc[df['Loci'] == l]
+        d = data.loc[data['Loci'] == l]
         g = sns.catplot(x="SIRV_id", y="FSM_count", hue="Algorithm", kind="point", data=d)
         g.set_ylabels("FSM count")
         g.set_xlabels("SIRV ID")
