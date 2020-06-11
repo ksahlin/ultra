@@ -150,6 +150,8 @@ def parse_differing_splicing_reads(csv_file, outfolder):
     print("NEUTRAL")
     print("ultra unique:", len(a_not_b_c))
     print("In all", len(a_b_c))
+
+    print("ALL FSM READS:", len( (ultra | desalt | minimap2 )) )
     # return differing_reads
 
     return b_c_not_a, [ultra, desalt, minimap2], [ultra_fsm_distribution, ds_fsm_distribution, mm2_fsm_distribution]
