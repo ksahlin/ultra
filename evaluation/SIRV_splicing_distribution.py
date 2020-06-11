@@ -176,9 +176,10 @@ def plot_nr_of_isoforms(data_for_mapping_bias, outfolder ):
             data.loc[i] = [algorithm, gene, sirv_id, fsm_count]
             i += 1
     print(data)
-    g = sns.catplot(x="SIRV_id", y="FSM_count", hue="Algorithm", kind="point", col="gene", data=data)
+    g = sns.catplot(x="SIRV_id", y="FSM_count", hue="Algorithm", kind="point", col="gene", col_wrap=3, data=data)
     g.set_ylabels("FSM count")
     g.set_xlabels("SIRV ID")
+    g.set_titles("{col_name} {col_var}")
     g.set_xticklabels(rotation=90)
     plt.yscale('log')
     plt.savefig(os.path.join(outfolder, "sirv_counts.pdf"))
