@@ -63,7 +63,8 @@ def mkdir_p(path):
 rule all:
    input:   config["ROOT_IN"] + "/data/results/plots_bio.zip",
             config["ROOT_IN"] + "/data/results/plots_sim.zip",
-            config["ROOT_IN"] + "/data/results/plots_exon_size.zip"
+            config["ROOT_IN"] + "/data/results/plots_exon_size.zip",
+            config["ROOT_IN"] + "/data/results/plots_sirv_analysis.zip"
 
 
             #[config["ROOT_OUT"] + "/evaluation/{dataset}/results_per_read.csv".format(dataset=dataset) for dataset in ["ont_human", "pacbio_alzheimer", "sirv", "simulated", "simulated_nic", "simulated_ens"]],
