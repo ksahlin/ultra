@@ -77,6 +77,8 @@ def parse_differing_splicing_reads(csv_file):
             reads_desalt[acc] = (acc,algorithm,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag)
 
     differing_reads = defaultdict(set)
+    desalt_FSM = 0
+    ultra_FSM = 0
     for acc in reads_desalt:
         ds_annot, ds_chr, ds_start, ds_stop = reads_desalt[acc][7], reads_desalt[acc][11], reads_desalt[acc][12], reads_desalt[acc][13]
         ia_annot, ia_chr, ia_start, ia_stop = reads_isonalign[acc][7], reads_isonalign[acc][11], reads_isonalign[acc][12], reads_isonalign[acc][13]
@@ -86,8 +88,17 @@ def parse_differing_splicing_reads(csv_file):
         elif ds_annot != 'FSM' and ia_annot == 'FSM':
             fsm_unique_for_ultra += 1  
 
+        if ds_annot == 'FSM':
+            desalt_FSM += 1
+        if ia_annot == 'FSM':
+            ultra_FSM += 1
+
     print("fsm_unique_for_ultra:", fsm_unique_for_ultra)        
     print("fsm_unique_for_desalt_GTF:", len(differing_reads))        
+
+    print("fsm_tot_ultra:", ultra_FSM)        
+    print("fsm_tot_desalt_GTF:", desalt_FSM)    
+
     return differing_reads
 
 
