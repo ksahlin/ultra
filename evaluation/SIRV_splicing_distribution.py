@@ -180,12 +180,12 @@ def plot_nr_of_isoforms(data_for_mapping_bias, outfolder ):
     print(data)
     for l in loci:
         d = data.loc[data['Loci'] == l]
-        g = sns.pointplot(x="SIRV_id", y="FSM_count", hue="Algorithm", data=d)
-        plt.setp(g.collections, alpha=.5) #for the markers
-        plt.setp(g.lines, alpha=.5)       #for the lines
-        g.set_ylabels("FSM count")
-        g.set_xlabels("SIRV ID")
-        g.set_xticklabels(rotation=50)
+        ax = sns.pointplot(x="SIRV_id", y="FSM_count", hue="Algorithm", data=d)
+        plt.setp(ax.collections, alpha=.5) #for the markers
+        plt.setp(ax.lines, alpha=.5)       #for the lines
+        ax.set(ylabel="FSM count")
+        ax.set(xlabel="SIRV ID")
+        ax.set_xticklabels(rotation=50)
         plt.yscale('log')
         plt.savefig(os.path.join(outfolder, "sirv_counts_{0}.pdf".format(l)))
         plt.clf()      
