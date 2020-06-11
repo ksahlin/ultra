@@ -162,6 +162,7 @@ def venn(data_for_venn, outfolder):
 
 def plot_nr_of_isoforms(data_for_mapping_bias, outfolder ):
     m = {0:'uLTRA', 1:'deSALT', 2: 'minimap2'}
+    g = {}
     # testdata
     # ds_fsm_distribution = [('SIRV304', 4), ('SIRV702', 53), ('SIRV503', 85), ('SIRV301', 109), ('SIRV705', 514), ('SIRV613', 521), ('SIRV306', 544), ('SIRV103', 631), ('SIRV101', 666), ('SIRV703', 675), ('SIRV303', 1039), ('SIRV201', 1105), ('SIRV106', 1223), ('SIRV107', 1248), ('SIRV302', 1489), ('SIRV202', 1722), ('SIRV405', 1756), ('SIRV409', 1866), ('SIRV204', 1876), ('SIRV307', 2584), ('SIRV404', 4384), ('SIRV610', 4452), ('SIRV509', 4995), ('SIRV203', 6433), ('SIRV604', 6529), ('SIRV305', 6902), ('SIRV601', 7136), ('SIRV612', 7205), ('SIRV611', 8389), ('SIRV608', 11188), ('SIRV105', 13224), ('SIRV605', 15352), ('SIRV309', 16423), ('SIRV102', 16624), ('SIRV406', 16899), ('SIRV616', 17395), ('SIRV607', 24212), ('SIRV410', 24415), ('SIRV308', 25880), ('SIRV310', 29637), ('SIRV606', 31014), ('SIRV507', 49303), ('SIRV615', 67949), ('SIRV602', 70150), ('SIRV109', 71720), ('SIRV614', 77764), ('SIRV609', 91320)]
     # mm2_fsm_distribution = [('SIRV702', 71), ('SIRV503', 113), ('SIRV301', 114), ('SIRV613', 490), ('SIRV306', 580), ('SIRV103', 639), ('SIRV101', 678), ('SIRV705', 701), ('SIRV703', 706), ('SIRV201', 1188), ('SIRV303', 1212), ('SIRV107', 1263), ('SIRV106', 1274), ('SIRV302', 1725), ('SIRV405', 1811), ('SIRV204', 1839), ('SIRV202', 1851), ('SIRV409', 1940), ('SIRV307', 2945), ('SIRV610', 3750), ('SIRV404', 3974), ('SIRV604', 5984), ('SIRV203', 6155), ('SIRV601', 6431), ('SIRV612', 6599), ('SIRV305', 7082), ('SIRV611', 8403), ('SIRV608', 9985), ('SIRV605', 13966), ('SIRV105', 14933), ('SIRV616', 15240), ('SIRV309', 16587), ('SIRV102', 17024), ('SIRV406', 17090), ('SIRV607', 24139), ('SIRV410', 24661), ('SIRV308', 25823), ('SIRV606', 27173), ('SIRV310', 29674), ('SIRV507', 57275), ('SIRV602', 64702), ('SIRV614', 66636), ('SIRV615', 70215), ('SIRV109', 71483), ('SIRV609', 89736)]
@@ -171,13 +172,14 @@ def plot_nr_of_isoforms(data_for_mapping_bias, outfolder ):
     for k, method_dict in enumerate(data_for_mapping_bias):
         algorithm = m[k]
         for j, (sirv_id, fsm_count) in enumerate(method_dict.items()):
-            data.loc[i] = [algorithm, sirv_id, fsm_count]
+            gene = sirv_id[:5]
+            data.loc[i] = [algorithm, gene, sirv_id, fsm_count]
             i += 1
     print(data)
-    g = sns.catplot(x="SIRV_id", y="FSM_count", hue="Algorithm", kind="point", data=data)
+    g = sns.catplot(x="SIRV_id", y="FSM_count", hue="Algorithm", kind="point", col="gene", data=data)
     g.set_ylabels("FSM count")
     g.set_xlabels("SIRV ID")
-    g.set_xticklabels(rotation=50)
+    g.set_xticklabels(rotation=90)
     plt.yscale('log')
     plt.savefig(os.path.join(outfolder, "sirv_counts.pdf"))
 
