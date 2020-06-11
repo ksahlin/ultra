@@ -10,7 +10,6 @@ import pickle
 
 from collections import defaultdict
 
-import pandas as pd
 
 try:
     import matplotlib
@@ -21,6 +20,9 @@ except (ImportError, RuntimeError):
 
 from matplotlib_venn import venn3, venn3_circles, venn2
 
+import numpy as np
+import seaborn as sns
+import pandas as pd
 
 # import parasail
 import pysam
@@ -166,13 +168,17 @@ def plot_nr_of_isoforms(data_for_mapping_bias, outfolder ):
     # ultra_fsm_distribution = [('SIRV702', 115), ('SIRV301', 167), ('SIRV501', 498), ('SIRV306', 667), ('SIRV613', 722), ('SIRV103', 813), ('SIRV101', 933), ('SIRV502', 1144), ('SIRV705', 1159), ('SIRV703', 1204), ('SIRV106', 1569), ('SIRV107', 1631), ('SIRV303', 1676), ('SIRV405', 1698), ('SIRV201', 1843), ('SIRV302', 2123), ('SIRV704', 2331), ('SIRV204', 2403), ('SIRV304', 2766), ('SIRV409', 2820), ('SIRV202', 2994), ('SIRV708', 3786), ('SIRV706', 3978), ('SIRV510', 4402), ('SIRV307', 4552), ('SIRV509', 4853), ('SIRV610', 5045), ('SIRV503', 6029), ('SIRV404', 6226), ('SIRV508', 7002), ('SIRV203', 8167), ('SIRV305', 8724), ('SIRV601', 9258), ('SIRV611', 10158), ('SIRV612', 11435), ('SIRV604', 11755), ('SIRV608', 12465), ('SIRV408', 13204), ('SIRV309', 16725), ('SIRV102', 17289), ('SIRV406', 17532), ('SIRV616', 20300), ('SIRV605', 25051), ('SIRV308', 26816), ('SIRV410', 27740), ('SIRV105', 28098), ('SIRV310', 30045), ('SIRV505', 30359), ('SIRV506', 30700), ('SIRV606', 34199), ('SIRV511', 34728), ('SIRV607', 36813), ('SIRV403', 37059), ('SIRV507', 71281), ('SIRV615', 74600), ('SIRV109', 80321), ('SIRV614', 83221), ('SIRV602', 98305), ('SIRV609', 123301)]
     data = pd.DataFrame(index=range(0), columns=['Algorithm', 'SIRV_id', 'FSM_count'])
     i = 0
-    for k, method_dict in enumarate(data_for_mapping_bias):
+    for k, method_dict in enumerate(data_for_mapping_bias):
         algorithm = m[k]
         for j, (sirv_id, fsm_count) in enumerate(method_dict.items()):
             data.loc[i] = [algorithm, sirv_id, fsm_count]
             i += 1
     print(data)
-    sns.catplot(x="SIRV_id", y="FSM_count", hue="Algorithm", kind="point", data=data)
+    g = sns.catplot(x="SIRV_id", y="FSM_count", hue="Algorithm", kind="point", data=data)
+    g.set_ylabels("FSM count")
+    g.set_xlabels("SIRV ID")
+    g.set_xticklabels(rotation=50)
+    plt.yscale('log')
     plt.savefig(os.path.join(outfolder, "sirv_counts.pdf"))
 
 
