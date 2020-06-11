@@ -187,7 +187,7 @@ def plot_nr_of_isoforms(data_for_mapping_bias, outfolder ):
         ax.set(ylabel="FSM count")
         ax.set(xlabel="SIRV ID")
         ax.set_xticklabels(ax.get_xticklabels(), rotation=50)
-        fig.tight_layout()
+        plt.tight_layout()
         plt.yscale('log')
         plt.savefig(os.path.join(outfolder, "sirv_counts_{0}.pdf".format(l)))
         plt.clf()      
