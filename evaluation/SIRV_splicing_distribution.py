@@ -158,6 +158,7 @@ def parse_differing_splicing_reads(csv_file, outfolder):
 def venn(data_for_venn, outfolder):
     r = venn3(data_for_venn, ("uLTRA", "deSALT", "minimap2"))
     plt.savefig(os.path.join(outfolder, "sirv_venn.pdf"))
+    plt.clf()
 
 
 def plot_nr_of_isoforms(data_for_mapping_bias, outfolder ):
