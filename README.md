@@ -75,6 +75,7 @@ Make sure the below listed dependencies are installed (installation links below)
 * [parasail](https://github.com/jeffdaily/parasail-python)
 * [pysam](http://pysam.readthedocs.io/en/latest/installation.html) (>= v0.11)
 * dill
+* [intervaltree](https://github.com/chaimleib/intervaltree)
 
 
 With these dependencies installed. Run

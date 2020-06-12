@@ -280,7 +280,9 @@ def read_coverage_mam_score(mams):
     """
     mams = sorted(mams, key = lambda x: x.y )
     overlap_threshold = 20
-    # print(mams)
+    # print("MAM INSTANCE", mams)
+    # for mam in mams:
+    #     print(mam.exon_id, mam.x, mam.y, '\t', mam.val, mam.min_segment_length)
     if len(mams) > 1000:
         print('MAM',len(mams))
     T = [ (v.d, v.val)  for v in mams]

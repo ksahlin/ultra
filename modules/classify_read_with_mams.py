@@ -407,8 +407,8 @@ def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon
         # is first or last hit exon only
         # print(e_stop, unique_part_locations[0][2], unique_part_locations[-1][1], e_start)
         # if e_stop <= unique_part_locations[0][2] or  unique_part_locations[-1][1] <= e_start: # is start exon or is end_exon
+        exon_seq = ref_exon_sequences[ref_chr_id][(e_start, e_stop)]        
         if e_stop <= unique_part_locations[0][2]: # is start exon
-            exon_seq = ref_exon_sequences[ref_chr_id][(e_start, e_stop)]        
             segment_seq = exon_seq[s_start - e_start:  ]  # We allow only semi global hit towards one end (the upstream end of the read)
             # print()
             # print("testing segment1:", e_start, e_stop, s_start, s_stop, segment_seq )
@@ -416,7 +416,6 @@ def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon
                 add_exon_to_mam(read_seq, ref_chr_id, segment_seq, e_start, e_stop, exon_id, mam_instance)
 
         elif unique_part_locations[-1][1] <= e_start: # is end_exon
-            exon_seq = ref_exon_sequences[ref_chr_id][(e_start, e_stop)]        
             # print(len(exon_seq), s_start,s_stop, e_start, e_stop, len(exon_seq), s_start - e_start, len(exon_seq) - (e_stop - s_stop +1))
             # segment_seq = exon_seq[s_start - e_start: len(exon_seq) - (e_stop - (s_stop + 1)) ]  # segment is MEM coordinated i.e. inclusive, so we subtract one here
             segment_seq = exon_seq[: len(exon_seq) - (e_stop - (s_stop + 1)) ]  # segment is MEM coordinated i.e. inclusive, so we subtract one here, allow semi global hit towards one end (the downstream end of the read)
@@ -428,27 +427,46 @@ def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon
         #     print("Segment is in internal exon!")
 
 
-    # add the flanks if any in the solution
+    # add the flanks if any in the solution But they are required to be start and end flanks of the part MEMs and not overlapping any exons (i.e., the exon hits to be considered)
     for (ref_chr_id, f_start, f_stop), _ in sorted(unique_flank_choordinates.items(), key=lambda x: x[0][1]):
         flank_seq = ref_flank_sequences[ref_chr_id][(f_start, f_stop)]
         flank_id = "flank_{0}_{1}".format(f_start, f_stop)
         # print("adding full flank:", f_start, f_stop, flank_seq )
+        # if (f_stop <= unique_part_locations[0][1]) or (unique_part_locations[-1][2] <= f_start): # is start flank
         add_exon_to_mam(read_seq, ref_chr_id, flank_seq, f_start, f_stop, flank_id, mam_instance)
 
-    # finally add eventual segments of the flanks if any in the solution
+    # finally add eventual segments of the flanks if any in the solution But they are required not to overlap any exons 
     for (ref_chr_id, s_start, s_stop) in unique_flank_choordinates_segments:
         ref_chr_id, f_start, f_stop = unique_flank_choordinates_segments[(ref_chr_id, s_start, s_stop)]
         flank_seq = ref_flank_sequences[ref_chr_id][(f_start, f_stop)]
-        # print(len(flank_seq), s_start - f_start, len(flank_seq) - (f_stop - s_stop +1))
-        segment_seq = flank_seq[s_start - f_start: len(flank_seq) - (f_stop - (s_stop + 1)) ]  # segment is MEM coordinated i.e. inclusive, so we subtract one here
         flank_id = "flank_{0}_{1}".format(f_start, f_stop)
-        # choordinate offset bug here starts at 09 while flank starts at 10
-        # print("adding flank segment:", s_start, s_stop, segment_seq )
+        # if f_stop <= unique_part_locations[0][1]: # is start flank
+        #     segment_seq = flank_seq[s_start - f_start:  ]  # We allow only semi global hit towards one end (the upstream end of the read)
+        #     # print("Testing start flank segment:", s_start, s_stop, segment_seq )
+        #     if len(segment_seq) > 5:
+        #         # prev_len_mam_instance = len(mam_instance)
+        #         add_exon_to_mam(read_seq, ref_chr_id, segment_seq, f_start, f_stop, flank_id, mam_instance)
+        # elif unique_part_locations[-1][2] <= f_start: # is end flank
+        #     segment_seq = flank_seq[: len(flank_seq) - (f_stop - (s_stop + 1)) ]  # segment is MEM coordinated i.e. inclusive, so we subtract one here, allow semi global hit towards one end (the downstream end of the read)
+        #     # print("Testing end flank segment:", s_start, s_stop, segment_seq )
+        #     if len(segment_seq) > 5:
+        #         # prev_len_mam_instance = len(mam_instance)
+        #         add_exon_to_mam(read_seq, ref_chr_id, segment_seq, f_start, f_stop, flank_id, mam_instance)
+
+        segment_seq = flank_seq[s_start - f_start:  ]   # segment is MEM coordinated i.e. inclusive, so we subtract one here
         if len(segment_seq) > 5:
-            # prev_len_mam_instance = len(mam_instance)
             add_exon_to_mam(read_seq, ref_chr_id, segment_seq, f_start, f_stop, flank_id, mam_instance)
-            # if len(mam_instance) > prev_len_mam_instance:
-            #     print("added:", exon_id, "to mam instance")
+        segment_seq = flank_seq[: len(flank_seq) - (f_stop - (s_stop + 1)) ]  # segment is MEM coordinated i.e. inclusive, so we subtract one here
+        if len(segment_seq) > 5:
+            add_exon_to_mam(read_seq, ref_chr_id, segment_seq, f_start, f_stop, flank_id, mam_instance)
+
+        # # print(len(flank_seq), s_start - f_start, len(flank_seq) - (f_stop - s_stop +1))
+        # segment_seq = flank_seq[s_start - f_start: len(flank_seq) - (f_stop - (s_stop + 1)) ]  # segment is MEM coordinated i.e. inclusive, so we subtract one here
+        # if len(segment_seq) > 5:
+        #     # prev_len_mam_instance = len(mam_instance)
+        #     add_exon_to_mam(read_seq, ref_chr_id, segment_seq, f_start, f_stop, flank_id, mam_instance)
+        #     # if len(mam_instance) > prev_len_mam_instance:
+        #     #     print("added:", exon_id, "to mam instance")
 
     ###################################################################################################
     ###################################################################################################
