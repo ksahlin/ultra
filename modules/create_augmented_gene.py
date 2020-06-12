@@ -1,6 +1,8 @@
 
 from collections import defaultdict
 
+import intervaltree
+
 from modules.help_functions import readfq
 
 def reverse_mapping(d):
@@ -27,9 +29,13 @@ def create_graph_from_exon_parts(db, min_mem, flank_size, small_exon_threshold):
     all_splice_pairs_annotations = defaultdict(dd_set)
     all_splice_sites_annotations = defaultdict(set)
     # annotated_transcripts = defaultdict(set)
+    part_intervals = defaultdict(intervaltree.IntervalTree)
 
     parts_to_exons = defaultdict(dd_set)
     for i, exon in enumerate(db.features_of_type('exon', order_by='seqid')):
+        # print(exon.seqid, exon.start, exon.stop, exon.featuretype,dir(exon))
+        # import sys
+        # sys.exit()
         # if exon.seqid.isdigit() or exon.seqid == 'X' or exon.seqid == 'Y':
         #     chr_id = 'chr'+ exon.seqid
         # elif exon.seqid == 'MT':
@@ -52,6 +58,7 @@ def create_graph_from_exon_parts(db, min_mem, flank_size, small_exon_threshold):
 
         if chr_id != prev_seq_id: # switching chromosomes
             parts_to_exons[prev_seq_id][(active_start, active_stop)] = active_exons
+            part_intervals[prev_seq_id].addi(active_start, active_stop, None)
             prev_seq_id = chr_id
             active_start = exon.start - 1
             active_stop = exon.stop
@@ -60,6 +67,7 @@ def create_graph_from_exon_parts(db, min_mem, flank_size, small_exon_threshold):
 
         if exon.start - 1 > active_stop:
             parts_to_exons[chr_id][(active_start, active_stop)] = active_exons
+            part_intervals[prev_seq_id].addi(active_start, active_stop, None)
             active_exons = set()
             active_exons.add(exon.id)
 
@@ -73,6 +81,7 @@ def create_graph_from_exon_parts(db, min_mem, flank_size, small_exon_threshold):
         assert active_start <= exon.start - 1
 
     parts_to_exons[chr_id][(active_start, active_stop)] = active_exons
+    part_intervals[prev_seq_id].addi(active_start, active_stop, None)
 
 
     for transcript in db.features_of_type('transcript', order_by='seqid'): #db.children(gene, featuretype='transcript', order_by='start'):
@@ -117,20 +126,34 @@ def create_graph_from_exon_parts(db, min_mem, flank_size, small_exon_threshold):
 
     flanks_to_gene = defaultdict(dict)   
     gene_to_small_exons = {} # gene_id : [exon_id ]
+    flanks_not_overlapping = 0
+    total_flanks = 0
     for gene in db.features_of_type('gene', order_by='seqid'):
         gene_to_small_exons[gene.id] = []
         exons_list = [exon for exon in  db.children(gene, featuretype='exon', order_by='start')]
         chr_id = gene.seqid
         if exons_list:
-            flanks_to_gene[chr_id][(max(0, exons_list[0].start - flank_size), exons_list[0].start - 1)] = gene.id
-            flanks_to_gene[chr_id][(exons_list[-1].stop, exons_list[-1].stop + flank_size)] = gene.id
+            ovl = part_intervals[chr_id].overlaps(max(0, exons_list[0].start - flank_size), exons_list[0].start - 1)
+            if not ovl:
+                flanks_to_gene[chr_id][(max(0, exons_list[0].start - flank_size), exons_list[0].start - 1)] = gene.id
+                flanks_not_overlapping +=1
+            total_flanks +=1            
+
+            ovl = part_intervals[chr_id].overlaps(exons_list[-1].stop, exons_list[-1].stop + flank_size)
+            if not ovl:
+                flanks_to_gene[chr_id][(exons_list[-1].stop, exons_list[-1].stop + flank_size)] = gene.id
+                flanks_not_overlapping +=1
+            total_flanks +=1            
+
             for exon in exons_list:
                 if exon.stop - exon.start < small_exon_threshold:
                     gene_to_small_exons[gene.id].append(exon.id)
 
-    for chr_id in flanks_to_gene:
-        print(chr_id, flanks_to_gene[chr_id])
-
+    # for chr_id in flanks_to_gene:
+    #     print(chr_id, flanks_to_gene[chr_id])
+    print("total_flanks:", total_flanks)
+    print("flanks_not_overlapping:", flanks_not_overlapping)
+    
     # print(gene_to_small_exons)
     # for g in gene_to_small_exons:
     #     for e in gene_to_small_exons[g]:
