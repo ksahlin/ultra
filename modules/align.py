@@ -19,7 +19,7 @@ from modules import classify_alignment2
 from modules import sam_output
 from modules import mummer_wrapper
 
-def annotate_guaranteed_optimal_bound(mems, is_rc, max_intron):
+def annotate_guaranteed_optimal_bound(mems, is_rc, max_allowed_intron):
     """
         Calculate the maximum coverage (mem-score) that a read can get per chromosome
         and annotate this value to each instance. We can use this annotation to avoid expensive MAM calculation 
@@ -27,7 +27,7 @@ def annotate_guaranteed_optimal_bound(mems, is_rc, max_intron):
         for a chromosome is smaller than a solution already computed
     """
 
-    # split mems into separate instances if there is more than max_intron nt between two consecutive hits!
+    # split mems into separate instances if there is more than max_allowed_intron nt between two consecutive hits!
     # need to reindex j based on splitting the solution per chromosome..
     all_mem_sols = {} 
     for chr_id, all_mems_to_chromosome in mems.items():
@@ -39,7 +39,7 @@ def annotate_guaranteed_optimal_bound(mems, is_rc, max_intron):
             # m1.j = j_reindex 
             curr_instance = [m1]
             for m1,m2 in zip(all_mems_to_chromosome[:-1], all_mems_to_chromosome[1:]):
-                if m2.x - m1.y > max_intron:
+                if m2.x - m1.y > max_allowed_intron:
                     all_mem_sols[(chr_id, chr_instance_index)] = curr_instance
                     chr_instance_index  += 1 
                     j_reindex = 0
@@ -101,7 +101,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
     mems_path_rc =  os.path.join( args.outfolder, "mummer_mems_batch_{0}_rc.txt".format(batch_number) )
     nlog_n_instance_counter = 0
     quadratic_instance_counter = 0
-    max_intron = args.max_intron
+    max_allowed_intron = args.max_intron
     if batch_number == -1:
         alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, "torkel.sam"), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
         warning_log_file = open(os.path.join(args.outfolder, "torkel.stderr"), "w")
@@ -128,8 +128,8 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
         # print("instance sizes fw:", [ (chr_id, len(mm)) for chr_id, mm in mems.items()])
         # print("instance sizes rc:", [ (chr_id, len(mm)) for chr_id, mm in mems_rc.items()])
         # print(read_acc)
-        upper_bound = annotate_guaranteed_optimal_bound(mems, False, max_intron)
-        upper_bound_rc = annotate_guaranteed_optimal_bound(mems_rc, True, max_intron)
+        upper_bound = annotate_guaranteed_optimal_bound(mems, False, max_allowed_intron)
+        upper_bound_rc = annotate_guaranteed_optimal_bound(mems_rc, True, max_allowed_intron)
         # print()
         processed_read_counter += 1
         if processed_read_counter % 5000 == 0:
@@ -151,7 +151,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
 
 
             if len(all_mems_to_chromosome) < 80:
-                solutions, mem_solution_value = colinear_solver.read_coverage(all_mems_to_chromosome, max_intron)
+                solutions, mem_solution_value = colinear_solver.read_coverage(all_mems_to_chromosome, max_allowed_intron)
                 quadratic_instance_counter += 1 
             else:
                 solutions, mem_solution_value = colinear_solver.n_logn_read_coverage(all_mems_to_chromosome)
@@ -202,6 +202,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
             #     print(zzz2)
             # print(non_covered_regions)
             mam_sol_exons_length = sum([ mam.y - mam.x for mam in mam_solution])
+            # print(max_intron_size)
             if mam_value > 0:
                 chained_exon_seqs = []
                 prev_ref_stop = -1
@@ -237,7 +238,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                 created_ref_seq = "".join([exon for exon in chained_exon_seqs])
                 predicted_splices = [ (e1[1],e2[0]) for e1, e2 in zip(predicted_exons[:-1],predicted_exons[1:])]
 
-                if len(created_ref_seq) > 20000 or len(read_seq) > 20000 or 10*len(read_seq) < mam_sol_exons_length:
+                if len(created_ref_seq) > 20000 or len(read_seq) > 20000: # or 10*len(read_seq) < mam_sol_exons_length:
                     # print("lenght ref: {0}, length query:{1}".format(len(created_ref_seq), len(read_seq)))
                     read_aln, ref_aln, edit_distance = help_functions.edlib_alignment(read_seq, created_ref_seq, aln_mode = "HW")
                     match_score = sum([2 for n1,n2 in zip(read_aln, ref_aln) if n1 == n2 ])
@@ -263,14 +264,26 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                 # print("lenght ref: {0}, length query:{1}".format(len(created_ref_seq), len(read_seq)))
                 # print(created_ref_seq)
                 # print(read_seq)
-                # print()
-                # print(read_aln)
-                # print(ref_aln)
-                if alignment_score < 2*args.alignment_threshold*len(read_seq):
-                    # print()
-                    # print("skipping")
-                    continue
+                # if alignment_score/len(read_seq) < 5:
+                #     print()
+                #     print(read_acc)
+                #     print(read_aln)
+                #     print(ref_aln)
+                #     print(alignment_score/len(read_seq), "Score: {0}, old T: {1}, new T: {2}".format(alignment_score, 2*args.alignment_threshold*len(read_seq), len(read_seq)*8*args.alignment_threshold))
+                
+                # if alignment_score < 8*args.alignment_threshold*len(read_seq):
+                #     continue
+
                 classification, annotated_to_transcript_id = classify_alignment2.main(chr_id, predicted_splices, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations)
+                
+                largest_intron_size = max([m2.x - m1.y for m1,m2 in zip(mam_solution[:-1], mam_solution[1:]) ]) if len(mam_solution) > 1 else 0
+                if (alignment_score < 8*args.alignment_threshold*len(read_seq) or largest_intron_size > max_allowed_intron) and classification != 'FSM':
+                    # print()
+                    # print(read_acc)
+                    # print(read_aln)
+                    # print(ref_aln)
+                    # print(classification, alignment_score/len(read_seq), "Score: {0}, old T: {1}, new T: {2}".format(alignment_score, 2*args.alignment_threshold*len(read_seq), len(read_seq)*8*args.alignment_threshold))
+                    continue
                 # print(classification)
                 # checing for internal (splice site) non covered regions
                 if len(non_covered_regions) >= 3 and (max(non_covered_regions[1:-1]) > args.non_covered_cutoff):
