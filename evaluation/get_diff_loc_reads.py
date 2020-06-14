@@ -89,21 +89,21 @@ def parse_differing_location_reads(csv_file):
                 if ia_chr != mm2_chr or not is_overlapping(ia_start, ia_stop, mm2_start, mm2_stop): # not overlapping with isONalign
                     differing_reads[acc].add( ( "differing_pos", mm2_chr, ds_annot, ds_start, ds_stop, mm2_annot, mm2_start, mm2_stop,  reads_isonalign[acc]) )
         
-        # More detailed analysis for later
-        else:
-            if mm2_chr == 'unaligned' and  ds_chr == 'unaligned':
-                if ia_chr != 'unaligned': 
-                    differing_reads[acc].add( ("unaligned_mm2_ds", "-",  "-",  "-",  "-",  "-", reads_isonalign[acc]) )
-            elif mm2_chr == 'unaligned':
-                if ia_chr != 'unaligned': 
-                    ds_chr, ds_start, ds_stop = reads_desalt[acc][11], reads_desalt[acc][12], reads_desalt[acc][13]
-                    if not is_overlapping(ia_start, ia_stop, ds_start, ds_stop):
-                        differing_reads[acc].add( ("unaligned_mm2_diff_ds",ds_chr, ds_annot, ds_start, ds_stop, "-", "-", "-", reads_isonalign[acc]) )
-            elif ds_chr == 'unaligned':
-                if ia_chr != 'unaligned': 
-                    mm2_chr, mm2_start, mm2_stop = reads_minimap2[acc][11], reads_minimap2[acc][12], reads_minimap2[acc][13]
-                    if not is_overlapping(ia_start, ia_stop, mm2_start, mm2_stop):
-                        differing_reads[acc].add( ("unaligned_ds_diff_mm2", mm2_chr, '-', "-", "-", mm2_annot, mm2_start, mm2_stop, reads_isonalign[acc]) )
+        # # More detailed analysis for later
+        # else:
+        #     if mm2_chr == 'unaligned' and  ds_chr == 'unaligned':
+        #         if ia_chr != 'unaligned': 
+        #             differing_reads[acc].add( ("unaligned_mm2_ds", "-",  "-",  "-",  "-",  "-", reads_isonalign[acc]) )
+        #     elif mm2_chr == 'unaligned':
+        #         if ia_chr != 'unaligned': 
+        #             ds_chr, ds_start, ds_stop = reads_desalt[acc][11], reads_desalt[acc][12], reads_desalt[acc][13]
+        #             if not is_overlapping(ia_start, ia_stop, ds_start, ds_stop):
+        #                 differing_reads[acc].add( ("unaligned_mm2_diff_ds",ds_chr, ds_annot, ds_start, ds_stop, "-", "-", "-", reads_isonalign[acc]) )
+        #     elif ds_chr == 'unaligned':
+        #         if ia_chr != 'unaligned': 
+        #             mm2_chr, mm2_start, mm2_stop = reads_minimap2[acc][11], reads_minimap2[acc][12], reads_minimap2[acc][13]
+        #             if not is_overlapping(ia_start, ia_stop, mm2_start, mm2_stop):
+        #                 differing_reads[acc].add( ("unaligned_ds_diff_mm2", mm2_chr, '-', "-", "-", mm2_annot, mm2_start, mm2_stop, reads_isonalign[acc]) )
     return differing_reads
 
 
