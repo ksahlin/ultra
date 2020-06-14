@@ -238,7 +238,18 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                 created_ref_seq = "".join([exon for exon in chained_exon_seqs])
                 predicted_splices = [ (e1[1],e2[0]) for e1, e2 in zip(predicted_exons[:-1],predicted_exons[1:])]
 
-                if len(created_ref_seq) > 20000 or len(read_seq) > 20000: # or 10*len(read_seq) < mam_sol_exons_length:
+                classification, annotated_to_transcript_id = classify_alignment2.main(chr_id, predicted_splices, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations)
+                largest_intron_size = max([m2.x - m1.y for m1,m2 in zip(mam_solution[:-1], mam_solution[1:]) ]) if len(mam_solution) > 1 else 0
+                if largest_intron_size > max_allowed_intron and classification != 'FSM':
+                    # print()
+                    # print(read_acc)
+                    # print(read_aln)
+                    # print(ref_aln)
+                    # print(classification, alignment_score/len(read_seq), "Score: {0}, old T: {1}, new T: {2}".format(alignment_score, 2*args.alignment_threshold*len(read_seq), len(read_seq)*8*args.alignment_threshold))
+                    continue
+
+
+                if len(created_ref_seq) > 20000 or len(read_seq) > 20000 or (1000 < len(read_seq) < mam_sol_exons_length/10):
                     # print("lenght ref: {0}, length query:{1}".format(len(created_ref_seq), len(read_seq)))
                     read_aln, ref_aln, edit_distance = help_functions.edlib_alignment(read_seq, created_ref_seq, aln_mode = "HW")
                     match_score = sum([2 for n1,n2 in zip(read_aln, ref_aln) if n1 == n2 ])
@@ -277,7 +288,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                 classification, annotated_to_transcript_id = classify_alignment2.main(chr_id, predicted_splices, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations)
                 
                 largest_intron_size = max([m2.x - m1.y for m1,m2 in zip(mam_solution[:-1], mam_solution[1:]) ]) if len(mam_solution) > 1 else 0
-                if (alignment_score < 8*args.alignment_threshold*len(read_seq) or largest_intron_size > max_allowed_intron) and classification != 'FSM':
+                if alignment_score < 8*args.alignment_threshold*len(read_seq) and classification != 'FSM':
                     # print()
                     # print(read_acc)
                     # print(read_aln)
