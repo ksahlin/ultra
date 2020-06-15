@@ -14,6 +14,9 @@ import parasail
 import pysam
 import gffutils
 
+import intervaltree
+
+
 '''
     Below code taken from https://github.com/lh3/readfq/blob/master/readfq.py
 '''
@@ -99,7 +102,7 @@ def reverse_complement(string):
     return(rev_comp)
 
 
-def print_detailed_values_to_file(error_rates, annotations_dict, reads, outfile, read_type, read_alignments):
+def print_detailed_values_to_file(error_rates, annotations_dict, reads, outfile, read_type, read_alignments, exon_intervals):
     for acc in reads:
         if acc in error_rates:
             err_rate = error_rates[acc]
@@ -112,14 +115,16 @@ def print_detailed_values_to_file(error_rates, annotations_dict, reads, outfile,
             reference_end = '-'
             flag = '-'
             read_class = ("-","-","-","unaligned","-","-","-") # namedtuple('Annotation', ['tot_splices', 'read_sm_junctions', 'read_nic_junctions', 'annotation', "donor_acceptors", "donor_acceptors_choords", "transcript_fsm_id" ])
+            is_genomic = '-'
         else:
             read = read_alignments[acc]
             reference_name, reference_start, reference_end, flag = read.reference_name, read.reference_start, read.reference_end + 1, read.flag
             read_class = annotations_dict[acc] 
+            is_genomic = 1 if exon_intervals[reference_name].overlaps(reference_start, reference_end) else 0s
 
         read_length = len(reads[acc])
         # is_unaligned_in_other_method = 1 if acc in reads_unaligned_in_other_method else 0
-        info_tuple = (acc, read_type, err_rate, read_length, *read_class, reference_name, reference_start, reference_end, flag) # 'tot_splices', 'read_sm_junctions', 'read_nic_junctions', 'fsm', 'nic', 'ism', 'nnc', 'no_splices'  )
+        info_tuple = (acc, read_type, err_rate, read_length, *read_class, reference_name, reference_start, reference_end, flag, is_genomic) # 'tot_splices', 'read_sm_junctions', 'read_nic_junctions', 'fsm', 'nic', 'ism', 'nnc', 'no_splices'  )
         outfile.write( ",".join( [str(item) for item in info_tuple] ) + "\n")
 
 
@@ -206,6 +211,9 @@ def get_annotated_splicesites(ref_gff_file, infer_genes, outfolder):
                                 sort_attribute_values=True, disable_infer_genes=True, disable_infer_transcripts=True)
         db = gffutils.FeatureDB(db_name, keep_order=True)
 
+
+    exon_intervals = defaultdict(intervaltree.IntervalTree)
+
     splice_coordinates = {} # to calc individual fraction of correct sites and NIC
     splice_coordinates_pairs = {} 
     ref_isoforms = {} # To calculate Full splice matches
@@ -227,6 +235,8 @@ def get_annotated_splicesites(ref_gff_file, infer_genes, outfolder):
             for e in consecutive_exons:
                 splice_coordinates[chromosome].add(e.stop)
                 splice_coordinates[chromosome].add(e.start -1 )
+                exon_intervals[chromosome].addi(e.start -1, e.stop, None)
+
 
             # for splice pairs
             tmp_splice_sites = []
@@ -236,7 +246,7 @@ def get_annotated_splicesites(ref_gff_file, infer_genes, outfolder):
             
             ref_isoforms[chromosome][tuple(tmp_splice_sites)] = transcript.id
 
-    return ref_isoforms, splice_coordinates, splice_coordinates_pairs
+    return ref_isoforms, splice_coordinates, splice_coordinates_pairs, exon_intervals
 
 
 from collections import namedtuple
@@ -458,13 +468,13 @@ def main(args):
         annotated_ref_isoforms = pickle_load(os.path.join( args.outfolder, 'annotated_ref_isoforms.pickle') )
         annotated_splice_coordinates = pickle_load(os.path.join( args.outfolder, 'annotated_splice_coordinates.pickle') )
         annotated_splice_coordinates_pairs = pickle_load(os.path.join( args.outfolder, 'annotated_splice_coordinates_pairs.pickle') )
-        # minimum_annotated_intron = pickle_load(os.path.join( args.outfolder, 'minimum_annotated_intron.pickle') )
+        exon_intervals = pickle_load(os.path.join( args.outfolder, 'exon_intervals.pickle') )
     else:
-        annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs = get_annotated_splicesites(args.gff_file, args.infer_genes, args.outfolder)
+        annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, exon_intervals = get_annotated_splicesites(args.gff_file, args.infer_genes, args.outfolder)
         pickle_dump(annotated_ref_isoforms, os.path.join( args.outfolder, 'annotated_ref_isoforms.pickle') )
         pickle_dump(annotated_splice_coordinates, os.path.join( args.outfolder, 'annotated_splice_coordinates.pickle') )
         pickle_dump(annotated_splice_coordinates_pairs, os.path.join( args.outfolder, 'annotated_splice_coordinates_pairs.pickle') )
-        # pickle_dump(minimum_annotated_intron, os.path.join( args.outfolder, 'minimum_annotated_intron.pickle') )
+        pickle_dump(exon_intervals, os.path.join( args.outfolder, 'exon_intervals.pickle') )
 
     reads = { acc.split()[0] : seq for i, (acc, (seq, qual)) in enumerate(readfq(open(args.reads, 'r')))}
     print("Total reads", len(reads))
@@ -479,7 +489,7 @@ def main(args):
     # minimum_annotated_intron = max(minimum_annotated_intron,  args.min_intron)
 
     detailed_results_outfile = open(os.path.join(args.outfolder, "results_per_read.csv"), "w")
-    detailed_results_outfile.write("acc,read_type,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag\n")
+    detailed_results_outfile.write("acc,read_type,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_genomic\n")
 
     print("here")
     if args.torkel_sam:
@@ -487,7 +497,7 @@ def main(args):
         torkel_splice_sites = get_read_candidate_splice_sites(torkel_primary_locations, annotated_splice_coordinates_pairs)
         print('uLTRA')
         torkel_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, torkel_splice_sites, refs, torkel_primary_locations)
-        print_detailed_values_to_file(error_rates, torkel_splice_results, reads, detailed_results_outfile, "uLTRA", torkel_primary_locations)
+        print_detailed_values_to_file(error_rates, torkel_splice_results, reads, detailed_results_outfile, "uLTRA", torkel_primary_locations, exon_intervals)
         print("Reads successfully aligned uLTRA:", len(torkel_primary_locations))
         del torkel_splice_sites
         del torkel_splice_results
@@ -501,7 +511,7 @@ def main(args):
         mm2_splice_sites = get_read_candidate_splice_sites(mm2_primary_locations, annotated_splice_coordinates_pairs)
         print('MINIMAP2')
         mm2_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, mm2_splice_sites, refs, mm2_primary_locations)
-        print_detailed_values_to_file(error_rates, mm2_splice_results, reads, detailed_results_outfile, "minimap2", mm2_primary_locations)    
+        print_detailed_values_to_file(error_rates, mm2_splice_results, reads, detailed_results_outfile, "minimap2", mm2_primary_locations, exon_intervals)    
         print("Reads successfully aligned mm2:", len(mm2_primary_locations))
         del mm2_splice_sites
         del mm2_splice_results
@@ -515,7 +525,7 @@ def main(args):
         graphmap2_splice_sites = get_read_candidate_splice_sites(graphmap2_primary_locations, annotated_splice_coordinates_pairs)
         print('Graphmap2')
         graphmap2_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, graphmap2_splice_sites, refs, graphmap2_primary_locations)
-        print_detailed_values_to_file(error_rates, graphmap2_splice_results, reads, detailed_results_outfile, "Graphmap2", graphmap2_primary_locations)
+        print_detailed_values_to_file(error_rates, graphmap2_splice_results, reads, detailed_results_outfile, "Graphmap2", graphmap2_primary_locations, exon_intervals)
         print("Reads successfully aligned graphmap2:", len(graphmap2_primary_locations))
         del graphmap2_splice_sites
         del graphmap2_splice_results
@@ -530,7 +540,7 @@ def main(args):
         print('Graphmap2')
         graphmap2_gtf_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, graphmap2_gtf_splice_sites, refs, graphmap2_gtf_primary_locations)
         reads_unaligned_in_graphmap2_gtf = set(reads.keys()) - set(graphmap2_gtf_primary_locations.keys()) 
-        print_detailed_values_to_file(error_rates, graphmap2_gtf_splice_results, reads, detailed_results_outfile, "Graphmap2_GTF", graphmap2_gtf_primary_locations)
+        print_detailed_values_to_file(error_rates, graphmap2_gtf_splice_results, reads, detailed_results_outfile, "Graphmap2_GTF", graphmap2_gtf_primary_locations, exon_intervals)
         print("Reads successfully aligned graphmap2:", len(graphmap2_gtf_primary_locations))
         print("READS UNALIGNED graphmap2:", len(reads_unaligned_in_graphmap2_gtf) )
         del graphmap2_gtf_splice_sites
@@ -544,7 +554,7 @@ def main(args):
         print('deSALT')
         desalt_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, desalt_splice_sites, refs, desalt_primary_locations)
         reads_unaligned_in_desalt = set(reads.keys()) - set(desalt_primary_locations.keys()) 
-        print_detailed_values_to_file(error_rates, desalt_splice_results, reads, detailed_results_outfile, "deSALT", desalt_primary_locations)
+        print_detailed_values_to_file(error_rates, desalt_splice_results, reads, detailed_results_outfile, "deSALT", desalt_primary_locations, exon_intervals)
         print("Reads successfully aligned deSALT:", len(desalt_primary_locations))
         print("READS UNALIGNED deSALT:", len(reads_unaligned_in_desalt) )
         del desalt_primary_locations
@@ -557,7 +567,7 @@ def main(args):
         print('deSALT')
         desalt_gtf_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, desalt_gtf_splice_sites, refs, desalt_gtf_primary_locations)
         reads_unaligned_in_desalt_gtf = set(reads.keys()) - set(desalt_gtf_primary_locations.keys()) 
-        print_detailed_values_to_file(error_rates, desalt_gtf_splice_results, reads, detailed_results_outfile, "deSALT_GTF", desalt_gtf_primary_locations)
+        print_detailed_values_to_file(error_rates, desalt_gtf_splice_results, reads, detailed_results_outfile, "deSALT_GTF", desalt_gtf_primary_locations, exon_intervals)
         print("Reads successfully aligned deSALT:", len(desalt_gtf_primary_locations))
         print("READS UNALIGNED deSALT:", len(reads_unaligned_in_desalt_gtf) )
         del desalt_gtf_primary_locations

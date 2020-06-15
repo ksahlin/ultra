@@ -69,13 +69,98 @@ def parse_differing_location_reads(csv_file):
     reads_desalt = {}
     for line in open(csv_file,'r'):
         #print(line)
-        acc,algorithm,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag = line.strip().split(",")
+        acc,algorithm,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_genomic = line.strip().split(",")
         if algorithm == 'uLTRA':
-            reads_isonalign[acc] =  (acc,algorithm,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag) 
+            reads_isonalign[acc] =  (acc,algorithm,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_genomic) 
         if algorithm == 'minimap2':
-            reads_minimap2[acc] = (acc,algorithm,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag) 
+            reads_minimap2[acc] = (acc,algorithm,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_genomic) 
         if algorithm == 'deSALT':
-            reads_desalt[acc] = (acc,algorithm,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag)
+            reads_desalt[acc] = (acc,algorithm,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_genomic)
+    return reads_isonalign, reads_minimap2, reads_desalt
+
+
+def get_FSM_concordance(reads_isonalign, reads_minimap2, reads_desalt):
+    ds_fsm_distribution = defaultdict(set)
+    desalt = set()
+    for acc in reads_desalt:
+        ds_annot, transcript_fsm_id = reads_desalt[acc][7], reads_desalt[acc][10]
+        if ds_annot == 'FSM':
+            ds_fsm_distribution[transcript_fsm_id].add(acc)
+            desalt.add( (acc, transcript_fsm_id) ) 
+
+    mm2_fsm_distribution = defaultdict(set)
+    minimap2 = set()
+    for acc in reads_minimap2:
+        mm2_annot, transcript_fsm_id = reads_minimap2[acc][7], reads_minimap2[acc][10]
+        if mm2_annot == 'FSM':
+            mm2_fsm_distribution[transcript_fsm_id].add(acc)
+            minimap2.add( (acc, transcript_fsm_id) ) 
+
+    ultra_fsm_distribution = defaultdict(set)
+    ultra = set()
+    for acc in reads_ultra:
+        ultra_annot, transcript_fsm_id = reads_ultra[acc][7], reads_ultra[acc][10]
+        if ultra_annot == 'FSM':
+            ultra_fsm_distribution[transcript_fsm_id].add(acc)
+            ultra.add( (acc, transcript_fsm_id) ) 
+
+
+    # print("ds_fsm_distribution:", sorted(ds_fsm_distribution.items(), key = lambda x: x[1]))        
+    # print("mm2_fsm_distribution:", sorted(mm2_fsm_distribution.items(), key = lambda x: x[1]))        
+    # print("ultra_fsm_distribution:", sorted(ultra_fsm_distribution.items(), key = lambda x: x[1]))        
+    print("Desalt nr unique isoforms mapped to:", len(ds_fsm_distribution))
+    print("minimap2 nr unique isoforms mapped to:", len(mm2_fsm_distribution))
+    print("Ultra nr unique isoforms mapped to:", len(ultra_fsm_distribution))
+
+    print(len(ultra), len(desalt), len(minimap2))
+
+    # a = ultra
+    # b = desalt
+    # c = minimap2
+    a_not_b_c = ultra - (desalt | minimap2)
+    b_not_a_c = desalt - (ultra | minimap2)
+    c_not_a_b = minimap2 - (ultra | desalt)
+    a_b_not_c = (ultra & desalt) - minimap2
+    a_c_not_b = (ultra & minimap2) - desalt
+    b_c_not_a = (desalt & minimap2) - ultra
+    a_b_c = ultra & desalt & minimap2
+
+    print("BAD:")
+    print("desalt and minimap2:", len(b_c_not_a))
+    print("desalt unique:", len(b_not_a_c))
+    print("minimap2 unique:", len(c_not_a_b))
+    print()
+    print("GOOD:")
+    print("Ultra and desalt:", len(a_b_not_c))
+    print("Ultra and minimap2:", len(a_c_not_b))
+    print()
+    
+    print("NEUTRAL")
+    print("ultra unique:", len(a_not_b_c))
+    print("In all", len(a_b_c))
+
+    print("ALL FSM READS:", len( (ultra | desalt | minimap2 )) )
+    return [ultra, desalt, minimap2], [ultra_fsm_distribution, ds_fsm_distribution, mm2_fsm_distribution]
+
+
+def venn(data_for_venn, outfolder):
+    ultra, desalt, minimap2 = data_for_venn
+    total = len((ultra | desalt | minimap2 ))
+    r = venn3(data_for_venn, ("uLTRA", "deSALT", "minimap2"), subset_label_formatter=lambda x: f"{(x/total):1.1%}")
+    plt.savefig(os.path.join(outfolder, "fsm_concordance.pdf"))
+    plt.clf()
+
+def get_success_regions(data_for_success_cases, outfolder):
+    ultra_fsm_distribution, ds_fsm_distribution, mm2_fsm_distribution = data_for_success_cases
+
+    ultra_unique = set(ultra_fsm_distribution.keys()) - (set(ds_fsm_distribution.keys()) | set(mm2_fsm_distribution.keys()))
+    outfile = open(os.path.join(outfolder, "success.csv"), "w")
+    for tr_id in ultra_unique:
+        for acc in ultra_fsm_distribution[tr_id]:
+            outfile.write("{0},{1}\n".format(tr_id, acc)) 
+    outfile.close()
+
+def get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desalt):
 
     differing_reads = defaultdict(set)
     for acc in reads_isonalign:
@@ -109,23 +194,27 @@ def parse_differing_location_reads(csv_file):
 
 def main(args):
 
-    diff_mapped = parse_differing_location_reads(args.csvfile)
+    reads_isonalign, reads_minimap2, reads_desalt = parse_differing_location_reads(args.csvfile)
+    data_for_venn, data_for_success_cases = get_FSM_concordance( reads_isonalign, reads_minimap2, reads_desalt)
+    venn(data_for_venn, args.outfolder)
+    get_success_regions(data_for_success_cases, args.outfolder)
+    get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desalt)
+
+
     reads = { acc.split()[0] : (seq, qual) for i, (acc, (seq, qual)) in enumerate(readfq(open(args.reads, 'r')))}
     print("Total reads", len(reads))
 
 
-    fq_outfile = open(os.path.join(args.outfolder, "diff_mapped.fq"), "w")
-    info_outfile = open(os.path.join(args.outfolder, "diff_mapped.csv"), "w")
-    for acc in diff_mapped:
-        info = diff_mapped[acc]
-        info_outfile.write(acc + "," + ",".join([str(i) for i in  info]) + "\n") 
-        (seq, qual) = reads[acc]   
-        fq_outfile.write("@{0}\n{1}\n{2}\n{3}\n".format(acc, seq, "+", qual))    
+    # fq_outfile = open(os.path.join(args.outfolder, "diff_mapped.fq"), "w")
+    # info_outfile = open(os.path.join(args.outfolder, "diff_mapped.csv"), "w")
+    # for acc in diff_mapped:
+    #     info = diff_mapped[acc]
+    #     info_outfile.write(acc + "," + ",".join([str(i) for i in  info]) + "\n") 
+    #     (seq, qual) = reads[acc]   
+    #     fq_outfile.write("@{0}\n{1}\n{2}\n{3}\n".format(acc, seq, "+", qual))    
 
-    fq_outfile.close()
-    info_outfile.close()
-    # detailed_results_outfile = open(os.path.join(args.outfolder, "results_per_read.csv"), "w")
-    # detailed_results_outfile.write("acc,read_type,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag\n")
+    # fq_outfile.close()
+    # info_outfile.close()
 
 
 
