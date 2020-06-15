@@ -163,16 +163,43 @@ def get_success_regions(data_for_success_cases, outfolder):
 def get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desalt):
 
     differing_reads = defaultdict(set)
+    mm_aln = defaultdict(set)
+    mm_genomic = set()
+    for acc in reads_minimap2:
+        mm2_annot, mm2_chr, mm2_start, mm2_stop, mm_is_genomic = reads_minimap2[acc][7], reads_minimap2[acc][11], reads_minimap2[acc][12], reads_minimap2[acc][13], reads_minimap2[acc][16]
+        if mm_is_genomic == '1':
+            mm_genomic.add(acc)
+
+    ds_genomic = set()
+    for acc in reads_desalt:
+        ds_annot, ds_chr, ds_start, ds_stop ds_is_genomic = reads_desalt[acc][7], reads_desalt[acc][11], reads_desalt[acc][12], reads_desalt[acc][13], reads_desalt[acc][16]
+        if ds_is_genomic == '1':
+            ds_genomic.add(acc)
+
+    is_genomic = ds_genomic & mm_genomic
+    ultra_aln = defaultdict(set)
     for acc in reads_isonalign:
-        mm2_annot, mm2_chr, mm2_start, mm2_stop = reads_minimap2[acc][7], reads_minimap2[acc][11], reads_minimap2[acc][12], reads_minimap2[acc][13]
-        ds_annot, ds_chr, ds_start, ds_stop = reads_desalt[acc][7], reads_desalt[acc][11], reads_desalt[acc][12], reads_desalt[acc][13]
-        ia_annot, ia_chr, ia_start, ia_stop = reads_isonalign[acc][7], reads_isonalign[acc][11], reads_isonalign[acc][12], reads_isonalign[acc][13]
-        if mm2_chr != 'unaligned' and  ds_chr != 'unaligned':
-            if ia_chr == 'unaligned':
-                differing_reads[acc].add( ( "unaligned_ultra",mm2_chr, ds_annot, ds_start, ds_stop, mm2_annot, mm2_start, mm2_stop,  reads_isonalign[acc]) )
-            elif mm2_chr == ds_chr and is_overlapping(ds_start, ds_stop, mm2_start, mm2_stop): # they are overlapping
-                if ia_chr != mm2_chr or not is_overlapping(ia_start, ia_stop, mm2_start, mm2_stop): # not overlapping with isONalign
-                    differing_reads[acc].add( ( "differing_pos", mm2_chr, ds_annot, ds_start, ds_stop, mm2_annot, mm2_start, mm2_stop,  reads_isonalign[acc]) )
+        ia_annot, ia_chr, ia_start, ia_stop, ia_is_genomic = reads_isonalign[acc][7], reads_isonalign[acc][11], reads_isonalign[acc][12], reads_isonalign[acc][13], reads_isonalign[acc][16]
+
+        if acc in is_genomic:
+            ultra_aln[ia_annot] += 1
+
+    print("Categories of likely genomic reads:", ultra_aln)
+    # categories:
+    #  genomic/exonic
+    # What are the venn diagrams in overlapping locations for all the exonic reads
+
+    # What is the category type for uLTRA for reads where minimap2 and deSALT agrees its a genomic read
+
+
+    # interesting to infer: how many unaligned is genomic
+
+        # if mm2_chr != 'unaligned' and  ds_chr != 'unaligned':
+        #     if ia_chr == 'unaligned':
+        #         differing_reads[acc].add( ( "unaligned_ultra",mm2_chr, ds_annot, ds_start, ds_stop, mm2_annot, mm2_start, mm2_stop,  reads_isonalign[acc]) )
+        #     elif mm2_chr == ds_chr and is_overlapping(ds_start, ds_stop, mm2_start, mm2_stop): # they are overlapping
+        #         if ia_chr != mm2_chr or not is_overlapping(ia_start, ia_stop, mm2_start, mm2_stop): # not overlapping with isONalign
+        #             differing_reads[acc].add( ( "differing_pos", mm2_chr, ds_annot, ds_start, ds_stop, mm2_annot, mm2_start, mm2_stop,  reads_isonalign[acc]) )
         
         # # More detailed analysis for later
         # else:
@@ -189,7 +216,7 @@ def get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desa
         #             mm2_chr, mm2_start, mm2_stop = reads_minimap2[acc][11], reads_minimap2[acc][12], reads_minimap2[acc][13]
         #             if not is_overlapping(ia_start, ia_stop, mm2_start, mm2_stop):
         #                 differing_reads[acc].add( ("unaligned_ds_diff_mm2", mm2_chr, '-', "-", "-", mm2_annot, mm2_start, mm2_stop, reads_isonalign[acc]) )
-    return differing_reads
+    # return differing_reads
 
 
 def main(args):
