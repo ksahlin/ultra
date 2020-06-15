@@ -37,7 +37,7 @@ def total_error_rate(input_csv, outfolder):
     # ax = sns.boxplot(x="p", y=y, hue = "type", data=indata)
     # ax.set_ylim(0,15)
     # ax.set_ylabel("Error rate %")
-
+    plt.tight_layout()
     plt.savefig(os.path.join(outfolder, "total_error_rate.eps"))
     plt.savefig(os.path.join(outfolder, "total_error_rate.pdf"))
     plt.close()
@@ -71,7 +71,7 @@ def number_splices_fsm(input_csv, outfolder):
     # g.set_xlim(0,70)
     # g.set_xticks(np.arange(0, 70, step=5))
     # ax.set_ylabel("Error rate %")
-
+    plt.tight_layout()
     plt.savefig(os.path.join(outfolder, "nr_splices.eps"))
     plt.savefig(os.path.join(outfolder, "nr_splices.pdf"))
     plt.close()
@@ -166,7 +166,7 @@ def total_error_rate2(input_csv, outfolder):
     corr = indata[indata['read_type']=='uLTRA']
     print(corr.median(axis = 0))
     print(corr.sum(axis = 0))
-
+    plt.tight_layout()
     plt.savefig(os.path.join(outfolder, "total_error_rate2.eps"))
     plt.savefig(os.path.join(outfolder, "total_error_rate2.pdf"))
     plt.close()
@@ -198,6 +198,7 @@ def alignment_accuracy_plot(input_csv, outfolder):
     # ax.set_ylim(0,15)
     # ax.set_ylabel("Error rate %")
     (g.set_axis_labels("Alignment type", "Count").set_xticklabels(["Correct", "Inexact", "Exon diff", "Incorrect", "Unaligned"]))
+    plt.tight_layout()
     plt.savefig(os.path.join(outfolder, "results.eps"))
     plt.savefig(os.path.join(outfolder, "results.pdf"))
     plt.close()
@@ -222,7 +223,7 @@ def splice_site_classification_plot(input_csv, outfolder):
     # ax = sns.boxplot(x="p", y=y, hue = "type", data=indata)
     # ax.set_ylim(0,15)
     # ax.set_ylabel("Error rate %")
-
+    plt.tight_layout()
     plt.savefig(os.path.join(outfolder, "results.eps"))
     plt.savefig(os.path.join(outfolder, "results.pdf"))
     plt.close()
