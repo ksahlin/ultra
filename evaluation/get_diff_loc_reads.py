@@ -191,7 +191,7 @@ def get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desa
         ia_annot, ia_chr, ia_start, ia_stop, ia_is_genomic = reads_isonalign[acc][7], reads_isonalign[acc][11], reads_isonalign[acc][12], reads_isonalign[acc][13], reads_isonalign[acc][15]
 
         if acc in is_genomic:
-            ultra_aln[ia_annot] += 1
+            ultra_aln.add(acc)
 
     print("Categories of likely genomic reads:", ultra_aln)
     # categories:
