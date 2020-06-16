@@ -172,28 +172,46 @@ def get_success_regions(data_for_success_cases, outfolder):
 def get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desalt):
 
     differing_reads = defaultdict(set)
-    mm_aln = defaultdict(set)
+    mm_aln = {}
     mm_genomic = set()
     for acc in reads_minimap2:
         mm2_annot, mm2_chr, mm2_start, mm2_stop, mm_is_genomic = reads_minimap2[acc][7], reads_minimap2[acc][11], reads_minimap2[acc][12], reads_minimap2[acc][13], reads_minimap2[acc][15]
         if mm_is_genomic == '1':
             mm_genomic.add(acc)
-
+        mm_aln[acc] = mm2_annot
+    
+    ds_aln = {}
     ds_genomic = set()
     for acc in reads_desalt:
         ds_annot, ds_chr, ds_start, ds_stop, ds_is_genomic = reads_desalt[acc][7], reads_desalt[acc][11], reads_desalt[acc][12], reads_desalt[acc][13], reads_desalt[acc][15]
         if ds_is_genomic == '1':
             ds_genomic.add(acc)
+        ds_aln[acc] = ds_annot
 
     is_genomic = ds_genomic & mm_genomic
-    ultra_aln = defaultdict(set)
+    # get the uLTRA categories for likely genomic reads
+
+    ultra_unaligned = set()
+    ultra_categories =  defaultdict(int)
     for acc in reads_isonalign:
         ia_annot, ia_chr, ia_start, ia_stop, ia_is_genomic = reads_isonalign[acc][7], reads_isonalign[acc][11], reads_isonalign[acc][12], reads_isonalign[acc][13], reads_isonalign[acc][15]
-
         if acc in is_genomic:
-            ultra_aln.add(acc)
+            ultra_categories[ia_annot] += 1
+        if ia_annot == 'unaligned':
+            ultra_unaligned.add(acc)
 
-    print("Categories of likely genomic reads:", ultra_aln)
+
+    print("ULTRA categories of likely genomic reads:", ultra_categories)
+
+    mm_categories = defaultdict(int)
+    ds_categories = defaultdict(int)
+    for acc in ultra_unaligned:
+        mm_categories[ mm_aln[acc] ] += 1
+        ds_categories[ ds_aln[acc] ] += 1
+
+    print("Minimap2 categories of ultra unaligned reads:", mm_categories)
+    print("Desalt categories of ultra unaligned reads:", ds_categories)
+
     # categories:
     #  genomic/exonic
     # What are the venn diagrams in overlapping locations for all the exonic reads
