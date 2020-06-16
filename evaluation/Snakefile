@@ -381,7 +381,8 @@ rule evaluate_biological:
         eval_dir = config["ROOT_IN"] + "/evaluation/"
         outfolder = config["ROOT_OUT"] + "/evaluation_bio/{0}/".format(wildcards.dataset)  
         mkdir_p(outfolder) 
-        
+        shell("TMPDIR=/scratch/kristoffer")
+        mkdir_p("/scratch/kristoffer")
         if wildcards.dataset == 'sirv':
             ref = config["SIRV"]
             gtf_annotation = config["ANNOTATION"] + "/SIRV.gtf"
