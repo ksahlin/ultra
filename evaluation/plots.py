@@ -198,9 +198,9 @@ def alignment_accuracy_plot(input_csv, outfolder):
     # ax.set_ylim(0,15)
     # ax.set_ylabel("Error rate %")
     (g.set_axis_labels("Alignment type", "Count").set_xticklabels(["Correct", "Inexact", "Exon diff", "Incorrect", "Unaligned"]))
-    plt.tight_layout()
-    plt.savefig(os.path.join(outfolder, "results.eps"))
-    plt.savefig(os.path.join(outfolder, "results.pdf"))
+    # plt.tight_layout()
+    plt.savefig(os.path.join(outfolder, "results.eps"), bbox_extra_artists=(lgd,), bbox_inches='tight')
+    plt.savefig(os.path.join(outfolder, "results.pdf"), bbox_extra_artists=(lgd,), bbox_inches='tight')
     plt.close()
 
 
@@ -223,9 +223,9 @@ def splice_site_classification_plot(input_csv, outfolder):
     # ax = sns.boxplot(x="p", y=y, hue = "type", data=indata)
     # ax.set_ylim(0,15)
     # ax.set_ylabel("Error rate %")
-    plt.tight_layout()
-    plt.savefig(os.path.join(outfolder, "results.eps"))
-    plt.savefig(os.path.join(outfolder, "results.pdf"))
+    # plt.tight_layout()
+    plt.savefig(os.path.join(outfolder, "results.eps"), bbox_extra_artists=(lgd,), bbox_inches='tight')
+    plt.savefig(os.path.join(outfolder, "results.pdf"), bbox_extra_artists=(lgd,), bbox_inches='tight')
     plt.close()
 
 
