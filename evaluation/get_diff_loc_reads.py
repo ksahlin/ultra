@@ -8,6 +8,15 @@ import itertools
 
 import pickle
 
+try:
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+except (ImportError, RuntimeError):
+    print("COULD not import matplotlib")
+
+from matplotlib_venn import venn3, venn3_circles, venn2
+
 from collections import defaultdict
 
 # import parasail
