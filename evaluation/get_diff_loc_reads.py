@@ -78,13 +78,13 @@ def parse_differing_location_reads(csv_file):
     reads_desalt = {}
     for line in open(csv_file,'r'):
         #print(line)
-        acc,algorithm,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_genomic = line.strip().split(",")
+        acc,algorithm,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_exonic = line.strip().split(",")
         if algorithm == 'uLTRA':
-            reads_isonalign[acc] =  (acc,algorithm,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_genomic) 
+            reads_isonalign[acc] =  (acc,algorithm,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_exonic) 
         if algorithm == 'minimap2':
-            reads_minimap2[acc] = (acc,algorithm,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_genomic) 
+            reads_minimap2[acc] = (acc,algorithm,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_exonic) 
         if algorithm == 'deSALT':
-            reads_desalt[acc] = (acc,algorithm,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_genomic)
+            reads_desalt[acc] = (acc,algorithm,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_exonic)
     return reads_isonalign, reads_minimap2, reads_desalt
 
 
@@ -175,27 +175,27 @@ def get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desa
     mm_aln = {}
     mm_genomic = set()
     for acc in reads_minimap2:
-        mm2_annot, mm2_chr, mm2_start, mm2_stop, mm_is_genomic = reads_minimap2[acc][7], reads_minimap2[acc][11], reads_minimap2[acc][12], reads_minimap2[acc][13], reads_minimap2[acc][15]
-        if mm_is_genomic == '1':
+        mm2_annot, mm2_chr, mm2_start, mm2_stop, mm_is_exonic = reads_minimap2[acc][7], reads_minimap2[acc][11], reads_minimap2[acc][12], reads_minimap2[acc][13], reads_minimap2[acc][15]
+        if mm_is_exonic == '0':
             mm_genomic.add(acc)
         mm_aln[acc] = mm2_annot
     
     ds_aln = {}
     ds_genomic = set()
     for acc in reads_desalt:
-        ds_annot, ds_chr, ds_start, ds_stop, ds_is_genomic = reads_desalt[acc][7], reads_desalt[acc][11], reads_desalt[acc][12], reads_desalt[acc][13], reads_desalt[acc][15]
-        if ds_is_genomic == '1':
+        ds_annot, ds_chr, ds_start, ds_stop, ds_is_exonic = reads_desalt[acc][7], reads_desalt[acc][11], reads_desalt[acc][12], reads_desalt[acc][13], reads_desalt[acc][15]
+        if ds_is_exonic == '0':
             ds_genomic.add(acc)
         ds_aln[acc] = ds_annot
 
-    is_genomic = ds_genomic & mm_genomic
+    is_exonic = ds_genomic & mm_genomic
     # get the uLTRA categories for likely genomic reads
 
     ultra_unaligned = set()
     ultra_categories =  defaultdict(int)
     for acc in reads_isonalign:
-        ia_annot, ia_chr, ia_start, ia_stop, ia_is_genomic = reads_isonalign[acc][7], reads_isonalign[acc][11], reads_isonalign[acc][12], reads_isonalign[acc][13], reads_isonalign[acc][15]
-        if acc in is_genomic:
+        ia_annot, ia_chr, ia_start, ia_stop, ia_is_exonic = reads_isonalign[acc][7], reads_isonalign[acc][11], reads_isonalign[acc][12], reads_isonalign[acc][13], reads_isonalign[acc][15]
+        if acc in is_exonic:
             ultra_categories[ia_annot] += 1
         if ia_annot == 'unaligned':
             ultra_unaligned.add(acc)

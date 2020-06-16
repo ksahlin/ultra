@@ -115,16 +115,16 @@ def print_detailed_values_to_file(error_rates, annotations_dict, reads, outfile,
             reference_end = '-'
             flag = '-'
             read_class = ("-","-","-","unaligned","-","-","-") # namedtuple('Annotation', ['tot_splices', 'read_sm_junctions', 'read_nic_junctions', 'annotation', "donor_acceptors", "donor_acceptors_choords", "transcript_fsm_id" ])
-            is_genomic = '-'
+            is_exonic = '-'
         else:
             read = read_alignments[acc]
             reference_name, reference_start, reference_end, flag = read.reference_name, read.reference_start, read.reference_end + 1, read.flag
             read_class = annotations_dict[acc] 
-            is_genomic = 1 if exon_intervals[reference_name].overlaps(reference_start, reference_end) else 0
+            is_exonic = 1 if exon_intervals[reference_name].overlaps(reference_start, reference_end) else 0
 
         read_length = len(reads[acc])
         # is_unaligned_in_other_method = 1 if acc in reads_unaligned_in_other_method else 0
-        info_tuple = (acc, read_type, err_rate, read_length, *read_class, reference_name, reference_start, reference_end, flag, is_genomic) # 'tot_splices', 'read_sm_junctions', 'read_nic_junctions', 'fsm', 'nic', 'ism', 'nnc', 'no_splices'  )
+        info_tuple = (acc, read_type, err_rate, read_length, *read_class, reference_name, reference_start, reference_end, flag, is_exonic) # 'tot_splices', 'read_sm_junctions', 'read_nic_junctions', 'fsm', 'nic', 'ism', 'nnc', 'no_splices'  )
         outfile.write( ",".join( [str(item) for item in info_tuple] ) + "\n")
 
 
@@ -489,7 +489,7 @@ def main(args):
     # minimum_annotated_intron = max(minimum_annotated_intron,  args.min_intron)
 
     detailed_results_outfile = open(os.path.join(args.outfolder, "results_per_read.csv"), "w")
-    detailed_results_outfile.write("acc,read_type,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_genomic\n")
+    detailed_results_outfile.write("acc,read_type,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_exonic\n")
 
     print("here")
     if args.torkel_sam:
