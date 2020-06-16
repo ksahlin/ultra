@@ -79,7 +79,7 @@ def parse_differing_location_reads(csv_file):
     return reads_isonalign, reads_minimap2, reads_desalt
 
 
-def get_FSM_concordance(reads_isonalign, reads_minimap2, reads_desalt):
+def get_FSM_concordance(reads_ultra, reads_minimap2, reads_desalt):
     ds_fsm_distribution = defaultdict(set)
     desalt = set()
     for acc in reads_desalt:
