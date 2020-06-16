@@ -175,20 +175,20 @@ def get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desa
     mm_aln = defaultdict(set)
     mm_genomic = set()
     for acc in reads_minimap2:
-        mm2_annot, mm2_chr, mm2_start, mm2_stop, mm_is_genomic = reads_minimap2[acc][7], reads_minimap2[acc][11], reads_minimap2[acc][12], reads_minimap2[acc][13], reads_minimap2[acc][16]
+        mm2_annot, mm2_chr, mm2_start, mm2_stop, mm_is_genomic = reads_minimap2[acc][7], reads_minimap2[acc][11], reads_minimap2[acc][12], reads_minimap2[acc][13], reads_minimap2[acc][15]
         if mm_is_genomic == '1':
             mm_genomic.add(acc)
 
     ds_genomic = set()
     for acc in reads_desalt:
-        ds_annot, ds_chr, ds_start, ds_stop, ds_is_genomic = reads_desalt[acc][7], reads_desalt[acc][11], reads_desalt[acc][12], reads_desalt[acc][13], reads_desalt[acc][16]
+        ds_annot, ds_chr, ds_start, ds_stop, ds_is_genomic = reads_desalt[acc][7], reads_desalt[acc][11], reads_desalt[acc][12], reads_desalt[acc][13], reads_desalt[acc][15]
         if ds_is_genomic == '1':
             ds_genomic.add(acc)
 
     is_genomic = ds_genomic & mm_genomic
     ultra_aln = defaultdict(set)
     for acc in reads_isonalign:
-        ia_annot, ia_chr, ia_start, ia_stop, ia_is_genomic = reads_isonalign[acc][7], reads_isonalign[acc][11], reads_isonalign[acc][12], reads_isonalign[acc][13], reads_isonalign[acc][16]
+        ia_annot, ia_chr, ia_start, ia_stop, ia_is_genomic = reads_isonalign[acc][7], reads_isonalign[acc][11], reads_isonalign[acc][12], reads_isonalign[acc][13], reads_isonalign[acc][15]
 
         if acc in is_genomic:
             ultra_aln[ia_annot] += 1
