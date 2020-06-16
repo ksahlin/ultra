@@ -120,7 +120,7 @@ def print_detailed_values_to_file(error_rates, annotations_dict, reads, outfile,
             read = read_alignments[acc]
             reference_name, reference_start, reference_end, flag = read.reference_name, read.reference_start, read.reference_end + 1, read.flag
             read_class = annotations_dict[acc] 
-            is_genomic = 1 if exon_intervals[reference_name].overlaps(reference_start, reference_end) else 0s
+            is_genomic = 1 if exon_intervals[reference_name].overlaps(reference_start, reference_end) else 0
 
         read_length = len(reads[acc])
         # is_unaligned_in_other_method = 1 if acc in reads_unaligned_in_other_method else 0
