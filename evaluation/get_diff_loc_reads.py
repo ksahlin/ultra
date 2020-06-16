@@ -172,7 +172,7 @@ def get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desa
 
     ds_genomic = set()
     for acc in reads_desalt:
-        ds_annot, ds_chr, ds_start, ds_stop ds_is_genomic = reads_desalt[acc][7], reads_desalt[acc][11], reads_desalt[acc][12], reads_desalt[acc][13], reads_desalt[acc][16]
+        ds_annot, ds_chr, ds_start, ds_stop, ds_is_genomic = reads_desalt[acc][7], reads_desalt[acc][11], reads_desalt[acc][12], reads_desalt[acc][13], reads_desalt[acc][16]
         if ds_is_genomic == '1':
             ds_genomic.add(acc)
 
