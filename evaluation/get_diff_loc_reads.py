@@ -188,29 +188,39 @@ def get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desa
             ds_genomic.add(acc)
         ds_aln[acc] = ds_annot
 
-    is_exonic = ds_genomic & mm_genomic
+    is_genomic = ds_genomic & mm_genomic
     # get the uLTRA categories for likely genomic reads
 
     ultra_unaligned = set()
     ultra_categories =  defaultdict(int)
+    suspicious_fsms = set()
     for acc in reads_isonalign:
         ia_annot, ia_chr, ia_start, ia_stop, ia_is_exonic = reads_isonalign[acc][7], reads_isonalign[acc][11], reads_isonalign[acc][12], reads_isonalign[acc][13], reads_isonalign[acc][15]
-        if acc in is_exonic:
+        if acc in is_genomic:
             ultra_categories[ia_annot] += 1
+            if ia_annot == "FSM":
+                suspicious_fsms.add(acc)
         if ia_annot == 'unaligned':
             ultra_unaligned.add(acc)
 
+    print("suspicious_fsms",suspicious_fsms)
 
     print("ULTRA categories of likely genomic reads:", ultra_categories)
 
     mm_categories = defaultdict(int)
     ds_categories = defaultdict(int)
+    unaligned_fsms = set()
     for acc in ultra_unaligned:
         mm_categories[ mm_aln[acc] ] += 1
         ds_categories[ ds_aln[acc] ] += 1
 
+        if mm_aln[acc] == ds_aln[acc] == 'FSM':
+            unaligned_fsms.add(acc)
+
     print("Minimap2 categories of ultra unaligned reads:", mm_categories)
     print("Desalt categories of ultra unaligned reads:", ds_categories)
+
+    print("potential missed fsms", unaligned_fsms)
 
     # categories:
     #  genomic/exonic
