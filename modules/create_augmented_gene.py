@@ -30,9 +30,14 @@ def create_graph_from_exon_parts(db, min_mem, flank_size, small_exon_threshold):
     all_splice_sites_annotations = defaultdict(set)
     # annotated_transcripts = defaultdict(set)
     part_intervals = defaultdict(intervaltree.IntervalTree)
-
     parts_to_exons = defaultdict(dd_set)
+    max_intron_chr = defaultdict(int)
     for i, exon in enumerate(db.features_of_type('exon', order_by='seqid')):
+
+        # if i > 0:
+        #     if  exon.stop - active_stop > 100000:
+        #         check so that  its the  same gene
+        #         print("intron size:", exon.stop - active_stop, exon.seqid,prev_seq_id)
         # print(exon.seqid, exon.start, exon.stop, exon.featuretype,dir(exon))
         # import sys
         # sys.exit()
@@ -98,6 +103,11 @@ def create_graph_from_exon_parts(db, min_mem, flank_size, small_exon_threshold):
             transcript_exons.append( (exon.start-1, exon.stop) )
         internal_transcript_splices = [ (e1[1],e2[0]) for e1, e2 in zip(transcript_exons[:-1],transcript_exons[1:])]
         
+        for i1,i2 in internal_transcript_splices:
+            if i2 - i1 > max_intron_chr[chr_id]:
+                max_intron_chr[chr_id] = i2 - i1
+                # print("intron size:", i2 - i1, chr_id)
+
         # internal transcript splices
         splices_to_transcripts[chr_id][ tuple(internal_transcript_splices)].add(transcript.id)
         for site1, site2 in internal_transcript_splices:
@@ -153,7 +163,7 @@ def create_graph_from_exon_parts(db, min_mem, flank_size, small_exon_threshold):
     #     print(chr_id, flanks_to_gene[chr_id])
     print("total_flanks:", total_flanks)
     print("flanks_not_overlapping:", flanks_not_overlapping)
-    
+
     # print(gene_to_small_exons)
     # for g in gene_to_small_exons:
     #     for e in gene_to_small_exons[g]:
@@ -162,7 +172,7 @@ def create_graph_from_exon_parts(db, min_mem, flank_size, small_exon_threshold):
     return  exons_to_ref, parts_to_exons, splices_to_transcripts, \
             transcripts_to_splices, all_splice_pairs_annotations, \
             all_splice_sites_annotations, exon_id_to_choordinates, \
-            exon_to_gene, gene_to_small_exons, flanks_to_gene
+            exon_to_gene, gene_to_small_exons, flanks_to_gene, max_intron_chr
 
 
 

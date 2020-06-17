@@ -218,6 +218,8 @@ def get_unique_exon_and_flank_locations(solution, parts_to_exons, exon_id_to_cho
     exon_hit_locations.sort(key= lambda x: x[1])
     # print(exon_hit_locations)
     # print(segment_exon_hit_locations)
+    # print(flank_hit_locations)
+    # print(segment_flank_hit_locations)
     # print(approximate_hit_locations)
     return exon_hit_locations, segment_exon_hit_locations, flank_hit_locations, segment_flank_hit_locations, choord_to_exon_id
 
