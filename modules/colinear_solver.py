@@ -254,10 +254,11 @@ def read_coverage(mems, max_intron):
 
 
     solution_index = argmax(C)
-    # print(C)
+    print(C)
     # print(traceback_vector)
     C_max = C[solution_index]
     all_C_max_indicies = all_solutions_c_max_indicies(C, C_max)
+    print(all_C_max_indicies)
     # print("number solutions with the same score:", all_solutions_c_max_indicies(C, C_max))
     C_max, solutions = reconstruct_all_solutions(mems, all_C_max_indicies, traceback_vector, C)
     # solutions = []
@@ -282,7 +283,7 @@ def read_coverage_mam_score(mams):
     overlap_threshold = 20
     # print("MAM INSTANCE", mams)
     # for mam in mams:
-    #     print(mam.exon_id, mam.x, mam.y, '\t', mam.val, mam.min_segment_length)
+    #     print(mam.exon_id, mam.x, mam.y, mam.c, mam.d, '\t', mam.val, mam.min_segment_length)
     if len(mams) > 1000:
         print('MAM',len(mams))
     T = [ (v.d, v.val)  for v in mams]

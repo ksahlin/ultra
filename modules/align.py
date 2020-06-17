@@ -19,18 +19,20 @@ from modules import classify_alignment2
 from modules import sam_output
 from modules import mummer_wrapper
 
-def annotate_guaranteed_optimal_bound(mems, is_rc, max_allowed_intron):
+def annotate_guaranteed_optimal_bound(mems, is_rc, max_intron_chr, max_global_intron):
     """
         Calculate the maximum coverage (mem-score) that a read can get per chromosome
         and annotate this value to each instance. We can use this annotation to avoid expensive MAM calculation 
         because we can basically continue to next read if the theoretically possibel maximum chaining value 
         for a chromosome is smaller than a solution already computed
     """
-
+    # print("max_intron_chr", max_intron_chr)
     # split mems into separate instances if there is more than max_allowed_intron nt between two consecutive hits!
     # need to reindex j based on splitting the solution per chromosome..
     all_mem_sols = {} 
     for chr_id, all_mems_to_chromosome in mems.items():
+        max_allowed_intron = min(max_intron_chr[chr_id] + 20000, max_global_intron)
+        # print("max_allowed_intron",chr_id, max_allowed_intron)
         chr_instance_index = 0
         j_reindex = 0
         if len(all_mems_to_chromosome) > 1:
@@ -101,7 +103,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
     mems_path_rc =  os.path.join( args.outfolder, "mummer_mems_batch_{0}_rc.txt".format(batch_number) )
     nlog_n_instance_counter = 0
     quadratic_instance_counter = 0
-    max_allowed_intron = args.max_intron
+    max_global_intron = args.max_intron
     if batch_number == -1:
         alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, "torkel.sam"), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
         warning_log_file = open(os.path.join(args.outfolder, "torkel.stderr"), "w")
@@ -113,7 +115,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
     exon_id_to_choordinates, ref_exon_sequences, ref_flank_sequences, splices_to_transcripts, \
     transcripts_to_splices, all_splice_pairs_annotations, \
     all_splice_sites_annotations, parts_to_exons, \
-    exon_to_gene, gene_to_small_exons = auxillary_data
+    exon_to_gene, gene_to_small_exons, max_intron_chr = auxillary_data
 
     classifications = defaultdict(str)
     read_accessions_with_mappings = set()
@@ -128,8 +130,8 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
         # print("instance sizes fw:", [ (chr_id, len(mm)) for chr_id, mm in mems.items()])
         # print("instance sizes rc:", [ (chr_id, len(mm)) for chr_id, mm in mems_rc.items()])
         # print(read_acc)
-        upper_bound = annotate_guaranteed_optimal_bound(mems, False, max_allowed_intron)
-        upper_bound_rc = annotate_guaranteed_optimal_bound(mems_rc, True, max_allowed_intron)
+        upper_bound = annotate_guaranteed_optimal_bound(mems, False, max_intron_chr, max_global_intron)
+        upper_bound_rc = annotate_guaranteed_optimal_bound(mems_rc, True, max_intron_chr, max_global_intron)
         # print()
         processed_read_counter += 1
         if processed_read_counter % 5000 == 0:
@@ -145,12 +147,12 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
             
             # print("Processing", chr_id, is_rc, upper_bound_cov, "best:", best_solution_value, "read length:", len(read_seq))
             # for mem in all_mems_to_chromosome:
-            #     print(mem.exon_part_id, mem.x, mem.y, '\t', mem.val)
-            # print(all_mems_to_chromosome)
+            #     print(mem.exon_part_id, mem.x, mem.y, mem.c, mem.d, '\t', mem.val)
+            # print(len(all_mems_to_chromosome))
 
 
-
-            if len(all_mems_to_chromosome) < 80:
+            max_allowed_intron = min(max_intron_chr[chr_id],max_global_intron)
+            if len(all_mems_to_chromosome) < 90:
                 solutions, mem_solution_value = colinear_solver.read_coverage(all_mems_to_chromosome, max_allowed_intron)
                 quadratic_instance_counter += 1 
             else:
@@ -169,8 +171,8 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
 
             for sol in solutions:
                 all_chainings.append( (chr_id, sol, mem_solution_value, is_rc) )
-                # for zzz in sol:
-                #     print(zzz)
+                # for mem in sol:
+                #     print(mem.exon_part_id, mem.x, mem.y, "(sol)")
             # print(all_chainings)
         is_secondary =  False
         is_rc =  False

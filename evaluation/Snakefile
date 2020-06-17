@@ -173,9 +173,9 @@ rule ultra_align:
 
         outfolder = config["ROOT_OUT"] + "/alignments/ultra/{0}/".format(wildcards.dataset)
         if wildcards.dataset == "drosophila":
-            shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 align {ref} {input.reads}  {outfolder} --min_mem 14 --t 62  --max_intron 150000 2>&1 | tee {output.time_and_mem} ") # 2> {output.time_and_mem}
+            shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 align {ref} {input.reads}  {outfolder} --min_mem 14 --t 62  2>&1 | tee {output.time_and_mem} ") # 2> {output.time_and_mem}
         else:
-            shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 align {ref} {input.reads}  {outfolder} --min_mem 14 --t 62 --max_intron 200000  2>&1 | tee {output.time_and_mem} ") # 2> {output.time_and_mem}
+            shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 align {ref} {input.reads}  {outfolder} --min_mem 14 --t 62  2>&1 | tee {output.time_and_mem} ") # 2> {output.time_and_mem}
 
         shell("mv {outfolder}/torkel.sam {output.sam}")
 

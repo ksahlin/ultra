@@ -60,7 +60,7 @@ def prep_splicing(args):
     exons_to_ref, parts_to_exons, splices_to_transcripts, \
     transcripts_to_splices, all_splice_pairs_annotations, \
     all_splice_sites_annotations, exon_id_to_choordinates, \
-    exon_to_gene, gene_to_small_exons, flanks_to_gene = augmented_gene.create_graph_from_exon_parts(db, args.min_mem, args.flank_size, args.small_exon_threshold )
+    exon_to_gene, gene_to_small_exons, flanks_to_gene, max_intron_chr = augmented_gene.create_graph_from_exon_parts(db, args.min_mem, args.flank_size, args.small_exon_threshold )
 
     # dump to pickle here! Both graph and reference seqs
     # help_functions.pickle_dump(args, genes_to_ref, 'genes_to_ref.pickle')
@@ -74,6 +74,7 @@ def prep_splicing(args):
     help_functions.pickle_dump(args, exon_to_gene, 'exon_to_gene.pickle')
     help_functions.pickle_dump(args, gene_to_small_exons, 'gene_to_small_exons.pickle')
     help_functions.pickle_dump(args, flanks_to_gene, 'flanks_to_gene.pickle')
+    help_functions.pickle_dump(args, max_intron_chr, 'max_intron_chr.pickle')
 
 
 def prep_seqs(args):
@@ -130,11 +131,12 @@ def import_data(args):
     parts_to_exons = help_functions.pickle_load( os.path.join(args.outfolder, 'parts_to_exons.pickle') )
     exon_to_gene = help_functions.pickle_load( os.path.join(args.outfolder, 'exon_to_gene.pickle') )
     gene_to_small_exons = help_functions.pickle_load( os.path.join(args.outfolder, 'gene_to_small_exons.pickle') )
+    max_intron_chr = help_functions.pickle_load( os.path.join(args.outfolder, 'max_intron_chr.pickle') )
 
     return exon_id_to_choordinates, ref_exon_sequences, ref_flank_sequences, splices_to_transcripts, \
             transcripts_to_splices, all_splice_pairs_annotations, \
             all_splice_sites_annotations, parts_to_exons,\
-            exon_to_gene, gene_to_small_exons
+            exon_to_gene, gene_to_small_exons, max_intron_chr
 
 
 def batch(dictionary, size, batch_type):
@@ -368,7 +370,7 @@ if __name__ == '__main__':
     pipeline_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
     pipeline_parser.add_argument('--min_mem', type=int, default=14, help='Threshold for minimum mem size considered.')
     pipeline_parser.add_argument('--flank_size', type=int, default=200, help='Size of genomic regions surrounding genes.')
-    pipeline_parser.add_argument('--max_intron', type=int, default=200000, help='Maximum size between mems considered in chaining solution.')
+    pipeline_parser.add_argument('--max_intron', type=int, default=1200000, help='Set global maximum size between mems considered in chaining solution. This is otherwise inferred from GTF file per chromosome.')
     pipeline_parser.add_argument('--small_exon_threshold', type=int, default=100, help='Considered in MAM solution even if they cont contain MEMs.')
     pipeline_parser.add_argument('--reduce_read_ployA', type=int, default=8, help='Reduces polyA tails longer than X bases (default 10) in reads to 5bp before MEM finding. This helps MEM matching to spurios regions but does not affect final read alignments.')
     pipeline_parser.add_argument('--alignment_threshold', type=int, default=0.5, help='Lower threshold for considering an alignment. \
@@ -405,7 +407,7 @@ if __name__ == '__main__':
     align_reads_parser.add_argument('reads', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
     align_reads_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')   
     align_reads_parser.add_argument('--t', dest = 'nr_cores', type=int, default=3, help='Number of cores.')
-    align_reads_parser.add_argument('--max_intron', type=int, default=200000, help='Maximum size between mems considered in chaining solution.')
+    align_reads_parser.add_argument('--max_intron', type=int, default=1200000, help='Set global maximum size between mems considered in chaining solution. This is otherwise inferred from GTF file per chromosome.')
     align_reads_parser.add_argument('--reduce_read_ployA', type=int, default=8, help='Reduces polyA tails longer than X bases (default 10) in reads to 5bp before MEM finding. This helps MEM matching to spurios regions but does not affect final read alignments.')
     align_reads_parser.add_argument('--alignment_threshold', type=int, default=0.5, help='Lower threshold for considering an alignment. \
                                                                                         Counted as the difference between total match score and total mismatch penalty. \
