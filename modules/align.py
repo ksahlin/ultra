@@ -243,8 +243,6 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                 if largest_intron_size > max_allowed_intron and classification != 'FSM':
                     # print()
                     # print(read_acc)
-                    # print(read_aln)
-                    # print(ref_aln)
                     # print(classification, alignment_score/len(read_seq), "Score: {0}, old T: {1}, new T: {2}".format(alignment_score, 2*args.alignment_threshold*len(read_seq), len(read_seq)*8*args.alignment_threshold))
                     continue
 
@@ -313,7 +311,8 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
         if len(read_alignments) == 0:
             sam_output.main(read_acc, '*', 'unaligned', [], '*', '*', '*', alignment_outfile, is_rc, is_secondary, 0)
         else:
-            sorted_wrt_alignement_score = sorted(read_alignments, key = lambda x: x[0], reverse = True)
+            # sorted_wrt_alignement_score = sorted(read_alignments, key = lambda x: x[0], reverse = True)
+            sorted_wrt_alignement_score = sorted(read_alignments, key = lambda x: (-x[0], x[3]))
             best_aln_sw_score = sorted_wrt_alignement_score[0][0]
             more_than_one_alignment = True if len(sorted_wrt_alignement_score) > 1 else False
             # if len(sorted_wrt_alignement_score) > 1:
