@@ -171,7 +171,7 @@ def get_success_regions(data_for_success_cases, reads, outfolder):
 
     ultra_unique = set(ultra_fsm_distribution.keys()) - (set(ds_fsm_distribution.keys()) | set(mm2_fsm_distribution.keys()))
     outfile = open(os.path.join(outfolder, "success.csv"), "w")
-    fa_outfile = open(os.path.join(outfolder, "success.fq"), "w")
+    fa_outfile = open(os.path.join(outfolder, "success.fa"), "w")
 
     for tr_id in ultra_unique:
         for acc in ultra_fsm_distribution[tr_id]:
@@ -181,7 +181,7 @@ def get_success_regions(data_for_success_cases, reads, outfolder):
         if nr_fsm_reads >= 10:
             print("interesting success case:", tr_id, nr_fsm_reads)
             for acc in ds_fsm_distribution[tr_id]:
-                seq = reads[acc]
+                seq, qual = reads[acc]
                 fa_outfile.write(">{0}\n{1}\n".format(acc + "_" + tr_id, seq)) 
 
     outfile.close()
@@ -193,7 +193,7 @@ def get_fail_regions(data_for_success_cases, reads, outfolder):
 
     ultra_missed = (set(ds_fsm_distribution.keys()) & set(mm2_fsm_distribution.keys())) - set(ultra_fsm_distribution.keys())
     outfile = open(os.path.join(outfolder, "missed.csv"), "w")
-    fa_outfile = open(os.path.join(outfolder, "missed.fq"), "w")
+    fa_outfile = open(os.path.join(outfolder, "missed.fa"), "w")
     for tr_id in ultra_missed:
         for acc in ds_fsm_distribution[tr_id]:
             outfile.write("{0},{1}\n".format(tr_id, acc)) 
@@ -202,7 +202,7 @@ def get_fail_regions(data_for_success_cases, reads, outfolder):
         if nr_fsm_reads >= 10:
             print("interesting missed case:", tr_id, nr_fsm_reads)
             for acc in ds_fsm_distribution[tr_id]:
-                seq = reads[acc]
+                seq,qual = reads[acc]
                 fa_outfile.write(">{0}\n{1}\n".format(acc + "_" + tr_id, seq)) 
 
     outfile.close()
