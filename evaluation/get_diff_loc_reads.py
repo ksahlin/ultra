@@ -152,11 +152,18 @@ def get_FSM_concordance(reads_ultra, reads_minimap2, reads_desalt):
     return [ultra, desalt, minimap2], [ultra_fsm_distribution, ds_fsm_distribution, mm2_fsm_distribution]
 
 
-def venn(data_for_venn, outfolder):
+def venn(data_for_venn, outfolder, filename):
     ultra, desalt, minimap2 = data_for_venn
-    total = len((ultra | desalt | minimap2 ))
+    if type(ultra) == set:
+        total = len((ultra | desalt | minimap2 ))
+    else:
+        ultra = set(ultra.keys())
+        desalt = set(desalt.keys())
+        minimap2 = set(minimap2.keys())
+        data_for_venn = [ultra, desalt, minimap2]
+        total = len((ultra | desalt | minimap2 ))
     r = venn3(data_for_venn, ("uLTRA", "deSALT", "minimap2"), subset_label_formatter=lambda x: f"{(x/total):1.1%}")
-    plt.savefig(os.path.join(outfolder, "fsm_concordance.pdf"))
+    plt.savefig(os.path.join(outfolder, filename +".pdf"))
     plt.clf()
 
 def get_success_regions(data_for_success_cases, outfolder):
@@ -167,7 +174,28 @@ def get_success_regions(data_for_success_cases, outfolder):
     for tr_id in ultra_unique:
         for acc in ultra_fsm_distribution[tr_id]:
             outfile.write("{0},{1}\n".format(tr_id, acc)) 
+
+        nr_fsm_reads = len(ultra_fsm_distribution[tr_id])
+        if nr_fsm_reads >= 10:
+            print("incetesting success case:", tr_id, nr_fsm_reads)
+
     outfile.close()
+
+def get_fail_regions(data_for_success_cases, outfolder):
+    ultra_fsm_distribution, ds_fsm_distribution, mm2_fsm_distribution = data_for_success_cases
+
+    ultra_missed = (set(ds_fsm_distribution.keys()) & set(mm2_fsm_distribution.keys())) - set(ultra_fsm_distribution.keys())
+    outfile = open(os.path.join(outfolder, "missed.csv"), "w")
+    for tr_id in ultra_missed:
+        for acc in ds_fsm_distribution[tr_id]:
+            outfile.write("{0},{1}\n".format(tr_id, acc)) 
+
+        nr_fsm_reads = len(ds_fsm_distribution[tr_id])
+        if nr_fsm_reads >= 10:
+            print("incetesting missed case:", tr_id, nr_fsm_reads)
+
+    outfile.close()
+
 
 def get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desalt):
 
@@ -203,7 +231,7 @@ def get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desa
         if ia_annot == 'unaligned':
             ultra_unaligned.add(acc)
 
-    print("suspicious_fsms",suspicious_fsms)
+    print("suspicious_fsm reads", len(suspicious_fsms), "20 first:", suspicious_fsms[:20])
 
     print("ULTRA categories of likely genomic reads:", ultra_categories)
 
@@ -220,7 +248,7 @@ def get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desa
     print("Minimap2 categories of ultra unaligned reads:", mm_categories)
     print("Desalt categories of ultra unaligned reads:", ds_categories)
 
-    print("potential missed fsms", unaligned_fsms)
+    print("potential missed fsm reads", len(unaligned_fsms), "20 first:", unaligned_fsms[:20])
 
     # categories:
     #  genomic/exonic
@@ -260,8 +288,10 @@ def main(args):
 
     reads_isonalign, reads_minimap2, reads_desalt = parse_differing_location_reads(args.csvfile)
     data_for_venn, data_for_success_cases = get_FSM_concordance( reads_isonalign, reads_minimap2, reads_desalt)
-    venn(data_for_venn, args.outfolder)
+    venn(data_for_venn, args.outfolder, "reads_to_FSM_concordance")
+    venn(data_for_success_cases, args.outfolder, "unique_FSM_concordance")
     get_success_regions(data_for_success_cases, args.outfolder)
+    get_fail_regions(data_for_success_cases, args.outfolder)
     get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desalt)
 
 
