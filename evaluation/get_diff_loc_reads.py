@@ -166,35 +166,47 @@ def venn(data_for_venn, outfolder, filename):
     plt.savefig(os.path.join(outfolder, filename +".pdf"))
     plt.clf()
 
-def get_success_regions(data_for_success_cases, outfolder):
+def get_success_regions(data_for_success_cases, reads, outfolder):
     ultra_fsm_distribution, ds_fsm_distribution, mm2_fsm_distribution = data_for_success_cases
 
     ultra_unique = set(ultra_fsm_distribution.keys()) - (set(ds_fsm_distribution.keys()) | set(mm2_fsm_distribution.keys()))
     outfile = open(os.path.join(outfolder, "success.csv"), "w")
+    fa_outfile = open(os.path.join(outfolder, "success.fq"), "w")
+
     for tr_id in ultra_unique:
         for acc in ultra_fsm_distribution[tr_id]:
             outfile.write("{0},{1}\n".format(tr_id, acc)) 
 
         nr_fsm_reads = len(ultra_fsm_distribution[tr_id])
         if nr_fsm_reads >= 10:
-            print("incetesting success case:", tr_id, nr_fsm_reads)
+            print("interesting success case:", tr_id, nr_fsm_reads)
+            for acc in ds_fsm_distribution[tr_id]:
+                seq = reads[acc]
+                fa_outfile.write(">{0}\n{1}\n".format(acc + "_" + tr_id, seq)) 
 
     outfile.close()
+    fa_outfile.close()
 
-def get_fail_regions(data_for_success_cases, outfolder):
+
+def get_fail_regions(data_for_success_cases, reads, outfolder):
     ultra_fsm_distribution, ds_fsm_distribution, mm2_fsm_distribution = data_for_success_cases
 
     ultra_missed = (set(ds_fsm_distribution.keys()) & set(mm2_fsm_distribution.keys())) - set(ultra_fsm_distribution.keys())
     outfile = open(os.path.join(outfolder, "missed.csv"), "w")
+    fa_outfile = open(os.path.join(outfolder, "missed.fq"), "w")
     for tr_id in ultra_missed:
         for acc in ds_fsm_distribution[tr_id]:
             outfile.write("{0},{1}\n".format(tr_id, acc)) 
 
         nr_fsm_reads = len(ds_fsm_distribution[tr_id])
         if nr_fsm_reads >= 10:
-            print("incetesting missed case:", tr_id, nr_fsm_reads)
+            print("interesting missed case:", tr_id, nr_fsm_reads)
+            for acc in ds_fsm_distribution[tr_id]:
+                seq = reads[acc]
+                fa_outfile.write(">{0}\n{1}\n".format(acc + "_" + tr_id, seq)) 
 
     outfile.close()
+    fa_outfile.close()
 
 
 def get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desalt):
@@ -231,7 +243,7 @@ def get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desa
         if ia_annot == 'unaligned':
             ultra_unaligned.add(acc)
 
-    print("suspicious_fsm reads", len(suspicious_fsms), "20 first:", suspicious_fsms[:20])
+    print("suspicious_fsm reads", len(suspicious_fsms), "20 first:", list(suspicious_fsms)[:20])
 
     print("ULTRA categories of likely genomic reads:", ultra_categories)
 
@@ -248,7 +260,7 @@ def get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desa
     print("Minimap2 categories of ultra unaligned reads:", mm_categories)
     print("Desalt categories of ultra unaligned reads:", ds_categories)
 
-    print("potential missed fsm reads", len(unaligned_fsms), "20 first:", unaligned_fsms[:20])
+    print("potential missed fsm reads", len(unaligned_fsms), "20 first:", list(unaligned_fsms)[:20])
 
     # categories:
     #  genomic/exonic
@@ -290,13 +302,15 @@ def main(args):
     data_for_venn, data_for_success_cases = get_FSM_concordance( reads_isonalign, reads_minimap2, reads_desalt)
     venn(data_for_venn, args.outfolder, "reads_to_FSM_concordance")
     venn(data_for_success_cases, args.outfolder, "unique_FSM_concordance")
-    get_success_regions(data_for_success_cases, args.outfolder)
-    get_fail_regions(data_for_success_cases, args.outfolder)
-    get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desalt)
-
 
     reads = { acc.split()[0] : (seq, qual) for i, (acc, (seq, qual)) in enumerate(readfq(open(args.reads, 'r')))}
     print("Total reads", len(reads))
+
+    get_success_regions(data_for_success_cases, reads, args.outfolder)
+    get_fail_regions(data_for_success_cases, reads, args.outfolder)
+    get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desalt)
+
+
 
 
     # fq_outfile = open(os.path.join(args.outfolder, "diff_mapped.fq"), "w")
