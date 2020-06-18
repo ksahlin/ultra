@@ -151,7 +151,8 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
             # print(len(all_mems_to_chromosome))
 
 
-            max_allowed_intron = min(max_intron_chr[chr_id],max_global_intron)
+            max_allowed_intron = min(max_intron_chr[chr_id] + 20000, max_global_intron)
+            # print("max_allowed_intron", max_allowed_intron, max_intron_chr[chr_id])
             if len(all_mems_to_chromosome) < 90:
                 solutions, mem_solution_value = colinear_solver.read_coverage(all_mems_to_chromosome, max_allowed_intron)
                 quadratic_instance_counter += 1 
