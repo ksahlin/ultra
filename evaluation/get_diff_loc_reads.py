@@ -192,8 +192,8 @@ def get_fail_regions(data_for_success_cases, reads, outfolder):
     ultra_fsm_distribution, ds_fsm_distribution, mm2_fsm_distribution = data_for_success_cases
 
     ultra_missed = (set(ds_fsm_distribution.keys()) & set(mm2_fsm_distribution.keys())) - set(ultra_fsm_distribution.keys())
-    outfile = open(os.path.join(outfolder, "missed.csv"), "w")
-    fa_outfile = open(os.path.join(outfolder, "missed.fa"), "w")
+    outfile = open(os.path.join(outfolder, "completely_missed_fsm_transcripts.csv"), "w")
+    fa_outfile = open(os.path.join(outfolder, "completely_missed_fsm_transcripts.fa"), "w")
     for tr_id in ultra_missed:
         for acc in ds_fsm_distribution[tr_id]:
             outfile.write("{0},{1}\n".format(tr_id, acc)) 
@@ -266,7 +266,7 @@ def get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desa
     fa_outfile = open(os.path.join(outfolder, "unaligned_FSMs.fa"), "w")
     for acc in unaligned_fsms:
         seq,qual = reads[acc]
-        fa_outfile.write(">{0}\n{1}\n".format(acc + "_" + tr_id, seq)) 
+        fa_outfile.write(">{0}\n{1}\n".format(acc, seq)) 
 
     outfile.close()
     fa_outfile.close()
@@ -306,6 +306,33 @@ def get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desa
         #                 differing_reads[acc].add( ("unaligned_ds_diff_mm2", mm2_chr, '-', "-", "-", mm2_annot, mm2_start, mm2_stop, reads_isonalign[acc]) )
     # return differing_reads
 
+def get_ultra_categories_of_missed_likely_fsm_reads(data_for_venn, reads_isonalign, reads):
+    ultra, desalt, minimap2 = data_for_venn
+    missed_fsm = (desalt & minimap2) - ultra
+    missed_fsm_read_acc = {acc : transcript_fsm_id for acc, transcript_fsm_id in missed_fsm}
+
+    outfile = open(os.path.join(outfolder, "all_missed_fsm_reads.csv"), "w")
+    fa_outfile = open(os.path.join(outfolder, "all_missed_fsm_reads.fa"), "w")
+    for acc in unaligned_fsms:
+        seq,qual = reads[acc]
+        fa_outfile.write(">{0}\n{1}\n".format(acc, seq)) 
+
+
+
+    ultra_categories =  defaultdict(int)
+    for acc in reads_isonalign:
+        ia_annot, ia_chr, ia_start, ia_stop, ia_is_exonic = reads_isonalign[acc][7], reads_isonalign[acc][11], reads_isonalign[acc][12], reads_isonalign[acc][13], reads_isonalign[acc][15]
+        if acc in missed_fsm_read_acc:
+            tr_id = missed_fsm_read_acc[acc]
+            ultra_categories[ia_annot] += 1
+            seq, qual = reads[acc]
+            fa_outfile.write(">{0}\n{1}\n".format(acc + "_" + tr_id, seq)) 
+            outfile.write("{0}\t{1}\n".format(acc,tr_id))
+    outfile.close()
+    fa_outfile.close()
+
+    print("ULTRA categories of likely FMS reads (predicted by both mm2 and deSALT):", ultra_categories)
+
 
 def main(args):
 
@@ -321,7 +348,7 @@ def main(args):
     get_fail_regions(data_for_success_cases, reads, args.outfolder)
     get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desalt, reads)
 
-
+    get_ultra_categories_of_missed_likely_fsm_reads(data_for_venn, reads_isonalign)
 
 
     # fq_outfile = open(os.path.join(args.outfolder, "diff_mapped.fq"), "w")
