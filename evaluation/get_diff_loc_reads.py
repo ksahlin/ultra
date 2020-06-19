@@ -209,7 +209,7 @@ def get_fail_regions(data_for_success_cases, reads, outfolder):
     fa_outfile.close()
 
 
-def get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desalt):
+def get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desalt, reads):
 
     differing_reads = defaultdict(set)
     mm_aln = {}
@@ -259,8 +259,19 @@ def get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desa
 
     print("Minimap2 categories of ultra unaligned reads:", mm_categories)
     print("Desalt categories of ultra unaligned reads:", ds_categories)
-
     print("potential missed fsm reads", len(unaligned_fsms), "20 first:", list(unaligned_fsms)[:20])
+
+
+    outfile = open(os.path.join(outfolder, "unaligned_FSMs.csv"), "w")
+    fa_outfile = open(os.path.join(outfolder, "unaligned_FSMs.fa"), "w")
+    for acc in unaligned_fsms:
+        seq,qual = reads[acc]
+        fa_outfile.write(">{0}\n{1}\n".format(acc + "_" + tr_id, seq)) 
+
+    outfile.close()
+    fa_outfile.close()
+
+
 
     # categories:
     #  genomic/exonic
@@ -308,7 +319,7 @@ def main(args):
 
     get_success_regions(data_for_success_cases, reads, args.outfolder)
     get_fail_regions(data_for_success_cases, reads, args.outfolder)
-    get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desalt)
+    get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desalt, reads)
 
 
 
