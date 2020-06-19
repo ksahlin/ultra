@@ -240,7 +240,7 @@ def get_unique_exon_and_flank_choordinates(exon_hit_locations, segment_exon_hit_
         unique_exon_choordinates[ (ref_chr_id, e_start, e_stop) ].add(exon_id)
         
         segm_ref_start, segm_ref_stop, segm_read_start, segm_read_stop = segment_exon_hit_locations[(ref_chr_id, e_start, e_stop)]
-        unique_exon_choordinates_segments[(ref_chr_id, segm_ref_start, segm_ref_stop) ] =  (ref_chr_id, e_start, e_stop, exon_id)
+        unique_exon_choordinates_segments[(ref_chr_id, e_start, e_stop) ] =  (ref_chr_id, segm_ref_start, segm_ref_stop, exon_id)
 
         # also add all small exons that may be smaller than minimum MEM size
         unique_genes = set(gene_id for exon_id in exon_ids for gene_id in exon_to_gene[exon_id])
@@ -259,12 +259,12 @@ def get_unique_exon_and_flank_choordinates(exon_hit_locations, segment_exon_hit_
         # case read starts     read:     [ > 0.2*e_len]   ----------------------------...
         # within start exon    exon: --------------------------------
         if (segm_ref_start - ref_start) > 0.05*(ref_stop - ref_start):
-            unique_flank_choordinates_segments[(ref_chr_id, segm_ref_start, segm_ref_stop) ] =  (ref_chr_id, ref_start, ref_stop)
+            unique_flank_choordinates_segments[(ref_chr_id, ref_start, ref_stop) ] =  (ref_chr_id, segm_ref_start, segm_ref_stop)
 
         # case read ends       read:  ...----------------------------   [ > 0.2*e_len]   
         # within end exon      exon:                      ---------------------------------
         if (ref_stop - segm_ref_stop ) > 0.05*(ref_stop - ref_start):
-            unique_flank_choordinates_segments[(ref_chr_id, segm_ref_start, segm_ref_stop) ] =  (ref_chr_id, ref_start, ref_stop)
+            unique_flank_choordinates_segments[(ref_chr_id,  ref_start, ref_stop) ] =  (ref_chr_id, segm_ref_start, segm_ref_stop)
 
     return unique_exon_choordinates, unique_exon_choordinates_segments, unique_flank_choordinates, unique_flank_choordinates_segments
 
@@ -407,9 +407,13 @@ def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon
         add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, mam_instance)
 
     # Do not allow segments of internal exons yet (ONLY START and END EXON FOR NOW) because these can generate spurious optimal alignments.
-    for (ref_chr_id, s_start, s_stop) in unique_exon_choordinates_segments:
-        ref_chr_id, e_start, e_stop, exon_id = unique_exon_choordinates_segments[(ref_chr_id, s_start, s_stop)]
+    # print(unique_exon_choordinates_segments)
+    # print("first exon_hit_locations:",exon_hit_locations[0][2])
+    for (ref_chr_id, e_start, e_stop) in unique_exon_choordinates_segments:
+        # ref_chr_id, e_start, e_stop, exon_id = unique_exon_choordinates_segments[(ref_chr_id, s_start, s_stop)]
+        ref_chr_id, s_start, s_stop, exon_id = unique_exon_choordinates_segments[(ref_chr_id, e_start, e_stop)]
         # is first or last hit exon only
+        # print(e_stop, exon_hit_locations[0][2])
         # print(e_stop, exon_hit_locations[0][2], exon_hit_locations[-1][1], e_start)
         # if e_stop <= exon_hit_locations[0][2] or  exon_hit_locations[-1][1] <= e_start: # is start exon or is end_exon
         exon_seq = ref_exon_sequences[ref_chr_id][(e_start, e_stop)]        
@@ -441,8 +445,8 @@ def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon
         add_exon_to_mam(read_seq, ref_chr_id, flank_seq, f_start, f_stop, flank_id, mam_instance)
 
     # finally add eventual segments of the flanks if any in the solution But they are required not to overlap any exons 
-    for (ref_chr_id, s_start, s_stop) in unique_flank_choordinates_segments:
-        ref_chr_id, f_start, f_stop = unique_flank_choordinates_segments[(ref_chr_id, s_start, s_stop)]
+    for (ref_chr_id, f_start, f_stop) in unique_flank_choordinates_segments:
+        ref_chr_id, s_start, s_stop = unique_flank_choordinates_segments[(ref_chr_id, f_start, f_stop)]
         flank_seq = ref_flank_sequences[ref_chr_id][(f_start, f_stop)]
         flank_id = "flank_{0}_{1}".format(f_start, f_stop)
         # if f_stop <= exon_hit_locations[0][1]: # is start flank
