@@ -348,7 +348,7 @@ def main(args):
     get_fail_regions(data_for_success_cases, reads, args.outfolder)
     get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desalt, reads)
 
-    get_ultra_categories_of_missed_likely_fsm_reads(data_for_venn, reads_isonalign)
+    get_ultra_categories_of_missed_likely_fsm_reads(data_for_venn, reads_isonalign, reads)
 
 
     # fq_outfile = open(os.path.join(args.outfolder, "diff_mapped.fq"), "w")
