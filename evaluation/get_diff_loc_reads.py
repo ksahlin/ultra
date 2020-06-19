@@ -313,12 +313,6 @@ def get_ultra_categories_of_missed_likely_fsm_reads(data_for_venn, reads_isonali
 
     outfile = open(os.path.join(outfolder, "all_missed_fsm_reads.csv"), "w")
     fa_outfile = open(os.path.join(outfolder, "all_missed_fsm_reads.fa"), "w")
-    for acc in unaligned_fsms:
-        seq,qual = reads[acc]
-        fa_outfile.write(">{0}\n{1}\n".format(acc, seq)) 
-
-
-
     ultra_categories =  defaultdict(int)
     for acc in reads_isonalign:
         ia_annot, ia_chr, ia_start, ia_stop, ia_is_exonic = reads_isonalign[acc][7], reads_isonalign[acc][11], reads_isonalign[acc][12], reads_isonalign[acc][13], reads_isonalign[acc][15]
