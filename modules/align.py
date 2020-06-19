@@ -129,6 +129,8 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
             read_seq = help_functions.remove_read_polyA_ends(reads[read_acc], args.reduce_read_ployA, 1)
         # print("instance sizes fw:", [ (chr_id, len(mm)) for chr_id, mm in mems.items()])
         # print("instance sizes rc:", [ (chr_id, len(mm)) for chr_id, mm in mems_rc.items()])
+        # print()
+        # print()
         # print(read_acc)
         upper_bound = annotate_guaranteed_optimal_bound(mems, False, max_intron_chr, max_global_intron)
         upper_bound_rc = annotate_guaranteed_optimal_bound(mems_rc, True, max_intron_chr, max_global_intron)
@@ -299,7 +301,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                 # print(classification)
                 # checing for internal (splice site) non covered regions
                 if len(non_covered_regions) >= 3 and (max(non_covered_regions[1:-1]) > args.non_covered_cutoff):
-                    classification = 'Unclassified_insufficient_junction_coverage'
+                    classification = 'Insufficient_junction_coverage_unclassified'
                 coverage = covered / float(len(read_seq)) 
                 read_alignments.append( (alignment_score, read_acc, chr_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, is_rc, coverage) )
                 

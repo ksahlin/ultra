@@ -171,6 +171,10 @@ def get_unique_exon_and_flank_locations(solution, parts_to_exons, exon_id_to_cho
     segment_flank_hit_locations = { } 
     choord_to_exon_id = {}
 
+    # these two variables are used to check which exos are considered start and stop exons in the read alignment
+    # any such exons will be allowed to align with segments of hits (emulating semi-global alignments)
+    first_part_stop = 2**32
+    last_part_start = 0
     # print(solution)
     for mem in solution:
         ref_chr_id, ref_start, ref_stop =  mem.exon_part_id.split('^')
@@ -190,6 +194,11 @@ def get_unique_exon_and_flank_locations(solution, parts_to_exons, exon_id_to_cho
                     segment_flank_hit_locations[(ref_chr_id, ref_start, ref_stop)] = [mem.x, mem.y, mem.c, mem.d]       
         else:
             # get all exons associated with the part and see if they are hit
+            if ref_stop <= first_part_stop:
+                first_part_stop = ref_stop
+            if ref_start >= last_part_start:
+                last_part_start = ref_start
+
             for exon_id in exon_ids:
                 # exon overlaps with mem
                 e_start, e_stop = exon_id_to_choordinates[exon_id]
@@ -221,7 +230,7 @@ def get_unique_exon_and_flank_locations(solution, parts_to_exons, exon_id_to_cho
     # print(flank_hit_locations)
     # print(segment_flank_hit_locations)
     # print(approximate_hit_locations)
-    return exon_hit_locations, segment_exon_hit_locations, flank_hit_locations, segment_flank_hit_locations, choord_to_exon_id
+    return exon_hit_locations, segment_exon_hit_locations, flank_hit_locations, segment_flank_hit_locations, choord_to_exon_id, first_part_stop, last_part_start
 
 
 def get_unique_exon_and_flank_choordinates(exon_hit_locations, segment_exon_hit_locations, flank_hit_locations, segment_flank_hit_locations, choord_to_exon_id, parts_to_exons, exon_id_to_choordinates, exon_to_gene, gene_to_small_exons):
@@ -378,7 +387,7 @@ def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon
     # predicted_exons = []
     # covered_regions = []
 
-    exon_hit_locations, segment_exon_hit_locations, flank_hit_locations, segment_flank_hit_locations, choord_to_exon_id = get_unique_exon_and_flank_locations(solution, parts_to_exons, exon_id_to_choordinates)
+    exon_hit_locations, segment_exon_hit_locations, flank_hit_locations, segment_flank_hit_locations, choord_to_exon_id, first_part_stop, last_part_start = get_unique_exon_and_flank_locations(solution, parts_to_exons, exon_id_to_choordinates)
     # print()
     # print(exon_hit_locations)
     # print()
@@ -406,35 +415,6 @@ def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon
         # print("Testing full exon", e_start, e_stop, exon_id, exon_seq)
         add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, mam_instance)
 
-    # Do not allow segments of internal exons yet (ONLY START and END EXON FOR NOW) because these can generate spurious optimal alignments.
-    # print(unique_exon_choordinates_segments)
-    # print("first exon_hit_locations:",exon_hit_locations[0][2])
-    for (ref_chr_id, e_start, e_stop) in unique_exon_choordinates_segments:
-        # ref_chr_id, e_start, e_stop, exon_id = unique_exon_choordinates_segments[(ref_chr_id, s_start, s_stop)]
-        ref_chr_id, s_start, s_stop, exon_id = unique_exon_choordinates_segments[(ref_chr_id, e_start, e_stop)]
-        # is first or last hit exon only
-        # print(e_stop, exon_hit_locations[0][2])
-        # print(e_stop, exon_hit_locations[0][2], exon_hit_locations[-1][1], e_start)
-        # if e_stop <= exon_hit_locations[0][2] or  exon_hit_locations[-1][1] <= e_start: # is start exon or is end_exon
-        exon_seq = ref_exon_sequences[ref_chr_id][(e_start, e_stop)]        
-        if e_stop <= exon_hit_locations[0][2]: # is start exon
-            segment_seq = exon_seq[s_start - e_start:  ]  # We allow only semi global hit towards one end (the upstream end of the read)
-            # print()
-            # print("testing segment1:", e_start, e_stop, s_start, s_stop, segment_seq )
-            if len(segment_seq) > 5:
-                add_exon_to_mam(read_seq, ref_chr_id, segment_seq, e_start, e_stop, exon_id, mam_instance)
-
-        elif exon_hit_locations[-1][1] <= e_start: # is end_exon
-            # print(len(exon_seq), s_start,s_stop, e_start, e_stop, len(exon_seq), s_start - e_start, len(exon_seq) - (e_stop - s_stop +1))
-            # segment_seq = exon_seq[s_start - e_start: len(exon_seq) - (e_stop - (s_stop + 1)) ]  # segment is MEM coordinated i.e. inclusive, so we subtract one here
-            segment_seq = exon_seq[: len(exon_seq) - (e_stop - (s_stop + 1)) ]  # segment is MEM coordinated i.e. inclusive, so we subtract one here, allow semi global hit towards one end (the downstream end of the read)
-            # print()
-            # print("testing segment2:", e_start, e_stop, s_start, s_stop, segment_seq )
-            if len(segment_seq) > 5:
-                add_exon_to_mam(read_seq, ref_chr_id, segment_seq, e_start, e_stop, exon_id, mam_instance)
-        # else:
-        #     print("Segment is in internal exon!")
-
 
     # add the flanks if any in the solution But they are required to be start and end flanks of the part MEMs and not overlapping any exons (i.e., the exon hits to be considered)
     for (ref_chr_id, f_start, f_stop), _ in sorted(unique_flank_choordinates.items(), key=lambda x: x[0][1]):
@@ -444,23 +424,55 @@ def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon
         # if (f_stop <= exon_hit_locations[0][1]) or (exon_hit_locations[-1][2] <= f_start): # is start flank
         add_exon_to_mam(read_seq, ref_chr_id, flank_seq, f_start, f_stop, flank_id, mam_instance)
 
+
+    # Consider segments here after all full exons and flanks have been aligned. A segment is tested for 
+    # all exons/flanks with start/ end coordinate after the choort of the last valid MAM added!
+
+    # Do not allow segments of internal exons yet (ONLY START and END EXON FOR NOW) because these can generate spurious optimal alignments.
+    # print(unique_exon_choordinates_segments)
+    # print(exon_hit_locations)
+    # print("first exon_hit_locations:", first_part_stop, exon_hit_locations[0][2])
+    # print("Last exon_hit_locations:", last_part_start, exon_hit_locations[-1][1])
+    if len(mam_instance) > 0:
+        first_valid_mam_stop = min([m.y for m in mam_instance])
+        last_valid_mam_start = max([m.x for m in mam_instance])
+    else:
+        first_valid_mam_stop = -1
+        last_valid_mam_start = 2**32
+    final_first_stop = max(first_part_stop, first_valid_mam_stop)
+    final_last_start = min(last_part_start, last_valid_mam_start)
+    # print(first_part_stop >= first_valid_mam_stop, "OMG")
+    # print(last_part_start <= last_valid_mam_start, "OMG2")
+
+    for (ref_chr_id, e_start, e_stop) in unique_exon_choordinates_segments:
+        # ref_chr_id, e_start, e_stop, exon_id = unique_exon_choordinates_segments[(ref_chr_id, s_start, s_stop)]
+        ref_chr_id, s_start, s_stop, exon_id = unique_exon_choordinates_segments[(ref_chr_id, e_start, e_stop)]
+        # is first or last hit exon only
+        # print(e_stop, first_valid_mam_stop, first_part_stop, exon_hit_locations[0][2])
+        # print(e_start, last_valid_mam_start, last_part_start, exon_hit_locations[-1][1])
+        exon_seq = ref_exon_sequences[ref_chr_id][(e_start, e_stop)]        
+        if e_stop <= final_first_stop: # is start exon
+            segment_seq = exon_seq[s_start - e_start:  ]  # We allow only semi global hit towards one end (the upstream end of the read)
+            # print()
+            print("testing segment1:", e_start, e_stop, s_start, s_stop, segment_seq )
+            if len(segment_seq) > 5:
+                add_exon_to_mam(read_seq, ref_chr_id, segment_seq, e_start, e_stop, exon_id, mam_instance)
+
+        elif final_last_start <= e_start: # is end_exon
+            # print(len(exon_seq), s_start,s_stop, e_start, e_stop, len(exon_seq), s_start - e_start, len(exon_seq) - (e_stop - s_stop +1))
+            # segment_seq = exon_seq[s_start - e_start: len(exon_seq) - (e_stop - (s_stop + 1)) ]  # segment is MEM coordinated i.e. inclusive, so we subtract one here
+            segment_seq = exon_seq[: len(exon_seq) - (e_stop - (s_stop + 1)) ]  # segment is MEM coordinated i.e. inclusive, so we subtract one here, allow semi global hit towards one end (the downstream end of the read)
+            # print()
+            # print("testing segment2:", e_start, e_stop, s_start, s_stop, segment_seq )
+            if len(segment_seq) > 5:
+                add_exon_to_mam(read_seq, ref_chr_id, segment_seq, e_start, e_stop, exon_id, mam_instance)
+
+
     # finally add eventual segments of the flanks if any in the solution But they are required not to overlap any exons 
     for (ref_chr_id, f_start, f_stop) in unique_flank_choordinates_segments:
         ref_chr_id, s_start, s_stop = unique_flank_choordinates_segments[(ref_chr_id, f_start, f_stop)]
         flank_seq = ref_flank_sequences[ref_chr_id][(f_start, f_stop)]
         flank_id = "flank_{0}_{1}".format(f_start, f_stop)
-        # if f_stop <= exon_hit_locations[0][1]: # is start flank
-        #     segment_seq = flank_seq[s_start - f_start:  ]  # We allow only semi global hit towards one end (the upstream end of the read)
-        #     # print("Testing start flank segment:", s_start, s_stop, segment_seq )
-        #     if len(segment_seq) > 5:
-        #         # prev_len_mam_instance = len(mam_instance)
-        #         add_exon_to_mam(read_seq, ref_chr_id, segment_seq, f_start, f_stop, flank_id, mam_instance)
-        # elif exon_hit_locations[-1][2] <= f_start: # is end flank
-        #     segment_seq = flank_seq[: len(flank_seq) - (f_stop - (s_stop + 1)) ]  # segment is MEM coordinated i.e. inclusive, so we subtract one here, allow semi global hit towards one end (the downstream end of the read)
-        #     # print("Testing end flank segment:", s_start, s_stop, segment_seq )
-        #     if len(segment_seq) > 5:
-        #         # prev_len_mam_instance = len(mam_instance)
-        #         add_exon_to_mam(read_seq, ref_chr_id, segment_seq, f_start, f_stop, flank_id, mam_instance)
 
         segment_seq = flank_seq[s_start - f_start:  ]   # segment is MEM coordinated i.e. inclusive, so we subtract one here
         if len(segment_seq) > 5:
@@ -471,13 +483,6 @@ def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon
             # print("Testing end flank segment:", s_start, f_stop, segment_seq )
             add_exon_to_mam(read_seq, ref_chr_id, segment_seq, f_start, f_stop, flank_id, mam_instance)
 
-        # # print(len(flank_seq), s_start - f_start, len(flank_seq) - (f_stop - s_stop +1))
-        # segment_seq = flank_seq[s_start - f_start: len(flank_seq) - (f_stop - (s_stop + 1)) ]  # segment is MEM coordinated i.e. inclusive, so we subtract one here
-        # if len(segment_seq) > 5:
-        #     # prev_len_mam_instance = len(mam_instance)
-        #     add_exon_to_mam(read_seq, ref_chr_id, segment_seq, f_start, f_stop, flank_id, mam_instance)
-        #     # if len(mam_instance) > prev_len_mam_instance:
-        #     #     print("added:", exon_id, "to mam instance")
 
     ###################################################################################################
     ###################################################################################################
