@@ -379,7 +379,7 @@ if __name__ == '__main__':
                                                                                         matches and mismatches would be 0.75 - 0.25 = 0.5. Default val (0.5) sets that a score\
                                                                                         higher than 2*0.5*read_length would be considered an alignment, otherwise unaligned.')
     pipeline_parser.add_argument('--t', dest = 'nr_cores', type=int, default=3, help='Number of cores.')
-    pipeline_parser.add_argument('--non_covered_cutoff', type=int, default=10, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
+    pipeline_parser.add_argument('--non_covered_cutoff', type=int, default=15, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
     pipeline_parser.add_argument('--dropoff', type=float, default=0.7, help='Ignore alignment to hits with read coverage of this fraction less than the best hit.')
     pipeline_parser.add_argument('--ignore_rc', action='store_true', help='Ignore to map to reverse complement.')
     pipeline_parser.add_argument('--disable_infer', action='store_true', help='Makes splice creation step much faster. Thes parameter can be set if gene and transcript name fields are provided in gtf file.')
@@ -414,7 +414,7 @@ if __name__ == '__main__':
                                                                                         If a read has 25\% errors (under edit distance scoring), the difference between \
                                                                                         matches and mismatches would be 0.75 - 0.25 = 0.5. Default val (0.5) sets that a score\
                                                                                         higher than 2*0.5*read_length would be considered an alignment, otherwise unaligned.')
-    align_reads_parser.add_argument('--non_covered_cutoff', type=int, default=10, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
+    align_reads_parser.add_argument('--non_covered_cutoff', type=int, default=15, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
     align_reads_parser.add_argument('--dropoff', type=float, default=0.7, help='Ignore alignment to hits with read coverage of this fraction less than the best hit.')
     align_reads_parser.add_argument('--ignore_rc', action='store_true', help='Ignore to map to reverse complement.')
     align_reads_parser.add_argument('--min_mem', type=int, default=14, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
