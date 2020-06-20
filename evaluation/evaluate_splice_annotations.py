@@ -488,92 +488,106 @@ def main(args):
     # print("SHORTEST INTRON:", minimum_annotated_intron)
     # minimum_annotated_intron = max(minimum_annotated_intron,  args.min_intron)
 
-    detailed_results_outfile = open(os.path.join(args.outfolder, "results_per_read.csv"), "w")
-    detailed_results_outfile.write("acc,read_type,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_exonic\n")
+    detailed_results_outfile = open(os.path.join(args.outfolder, args.toolname +".csv"), "w")
+    # detailed_results_outfile.write("acc,read_type,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_exonic\n")
 
-    print("here")
-    if args.torkel_sam:
-        torkel_primary_locations = decide_primary_locations(args.torkel_sam, args)
-        torkel_splice_sites = get_read_candidate_splice_sites(torkel_primary_locations, annotated_splice_coordinates_pairs)
-        print('uLTRA')
-        torkel_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, torkel_splice_sites, refs, torkel_primary_locations)
-        print_detailed_values_to_file(error_rates, torkel_splice_results, reads, detailed_results_outfile, "uLTRA", torkel_primary_locations, exon_intervals)
-        print("Reads successfully aligned uLTRA:", len(torkel_primary_locations))
-        del torkel_splice_sites
-        del torkel_splice_results
-        reads_unaligned_in_torkel = set(reads.keys()) - set(torkel_primary_locations.keys())
-        print("READS UNALIGNED uLTRA:", len(reads_unaligned_in_torkel) )
-        del reads_unaligned_in_torkel
-        del torkel_primary_locations
+    t_name_dict = { 'ultra' : "uLTRA", 'minimap2' : 'minimap2',
+                    'desalt' : "deSALT", 'desalt_gtf' : "deSALT_GTF", 
+                    'graphmap2' : 'GraphMap2', 'graphmap2_gtf' : 'GraphMap2_GTF'}
+    primary_locations = decide_primary_locations(args.sam, args)
+    aligned_splice_sites = get_read_candidate_splice_sites(primary_locations, annotated_splice_coordinates_pairs)
+    tool_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, aligned_splice_sites, refs, primary_locations)
+    print_detailed_values_to_file(error_rates, tool_splice_results, reads, detailed_results_outfile, t_name_dict[args.toolname], primary_locations, exon_intervals)
+    print("Reads successfully aligned:", len(primary_locations))
+    del aligned_splice_sites
+    del tool_splice_results
+    reads_unaligned_in_torkel = set(reads.keys()) - set(primary_locations.keys())
+    print("READS UNALIGNED:", len(reads_unaligned_in_torkel) )
+    del reads_unaligned_in_torkel
+    del primary_locations
 
-    if args.mm2_sam:
-        mm2_primary_locations = decide_primary_locations(args.mm2_sam, args)
-        mm2_splice_sites = get_read_candidate_splice_sites(mm2_primary_locations, annotated_splice_coordinates_pairs)
-        print('MINIMAP2')
-        mm2_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, mm2_splice_sites, refs, mm2_primary_locations)
-        print_detailed_values_to_file(error_rates, mm2_splice_results, reads, detailed_results_outfile, "minimap2", mm2_primary_locations, exon_intervals)    
-        print("Reads successfully aligned mm2:", len(mm2_primary_locations))
-        del mm2_splice_sites
-        del mm2_splice_results
-        reads_unaligned_in_mm2 = set(reads.keys()) - set(mm2_primary_locations.keys()) 
-        print("READS UNALIGNED mm2:", len(reads_unaligned_in_mm2) )
-        del reads_unaligned_in_mm2
-        del mm2_primary_locations
+    # if args.toolname == 'uLTRA':
+    #     torkel_primary_locations = decide_primary_locations(args.torkel_sam, args)
+    #     torkel_splice_sites = get_read_candidate_splice_sites(torkel_primary_locations, annotated_splice_coordinates_pairs)
+    #     print('uLTRA')
+    #     torkel_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, torkel_splice_sites, refs, torkel_primary_locations)
+    #     print_detailed_values_to_file(error_rates, torkel_splice_results, reads, detailed_results_outfile, "uLTRA", torkel_primary_locations, exon_intervals)
+    #     print("Reads successfully aligned uLTRA:", len(torkel_primary_locations))
+    #     del torkel_splice_sites
+    #     del torkel_splice_results
+    #     reads_unaligned_in_torkel = set(reads.keys()) - set(torkel_primary_locations.keys())
+    #     print("READS UNALIGNED uLTRA:", len(reads_unaligned_in_torkel) )
+    #     del reads_unaligned_in_torkel
+    #     del torkel_primary_locations
 
-    if args.graphmap2_sam:
-        graphmap2_primary_locations = decide_primary_locations(args.graphmap2_sam, args)
-        graphmap2_splice_sites = get_read_candidate_splice_sites(graphmap2_primary_locations, annotated_splice_coordinates_pairs)
-        print('Graphmap2')
-        graphmap2_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, graphmap2_splice_sites, refs, graphmap2_primary_locations)
-        print_detailed_values_to_file(error_rates, graphmap2_splice_results, reads, detailed_results_outfile, "Graphmap2", graphmap2_primary_locations, exon_intervals)
-        print("Reads successfully aligned graphmap2:", len(graphmap2_primary_locations))
-        del graphmap2_splice_sites
-        del graphmap2_splice_results
-        reads_unaligned_in_graphmap2 = set(reads.keys()) - set(graphmap2_primary_locations.keys()) 
-        print("READS UNALIGNED graphmap2:", len(reads_unaligned_in_graphmap2) )
-        del reads_unaligned_in_graphmap2
-        del graphmap2_primary_locations
+    # if args.toolname == 'minimap2':
+    #     mm2_primary_locations = decide_primary_locations(args.mm2_sam, args)
+    #     mm2_splice_sites = get_read_candidate_splice_sites(mm2_primary_locations, annotated_splice_coordinates_pairs)
+    #     print('MINIMAP2')
+    #     mm2_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, mm2_splice_sites, refs, mm2_primary_locations)
+    #     print_detailed_values_to_file(error_rates, mm2_splice_results, reads, detailed_results_outfile, "minimap2", mm2_primary_locations, exon_intervals)    
+    #     print("Reads successfully aligned mm2:", len(mm2_primary_locations))
+    #     del mm2_splice_sites
+    #     del mm2_splice_results
+    #     reads_unaligned_in_mm2 = set(reads.keys()) - set(mm2_primary_locations.keys()) 
+    #     print("READS UNALIGNED mm2:", len(reads_unaligned_in_mm2) )
+    #     del reads_unaligned_in_mm2
+    #     del mm2_primary_locations
 
-    if args.graphmap2_gtf_sam:
-        graphmap2_gtf_primary_locations = decide_primary_locations(args.graphmap2_gtf_sam, args)
-        graphmap2_gtf_splice_sites = get_read_candidate_splice_sites(graphmap2_gtf_primary_locations, annotated_splice_coordinates_pairs)
-        print('Graphmap2')
-        graphmap2_gtf_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, graphmap2_gtf_splice_sites, refs, graphmap2_gtf_primary_locations)
-        reads_unaligned_in_graphmap2_gtf = set(reads.keys()) - set(graphmap2_gtf_primary_locations.keys()) 
-        print_detailed_values_to_file(error_rates, graphmap2_gtf_splice_results, reads, detailed_results_outfile, "Graphmap2_GTF", graphmap2_gtf_primary_locations, exon_intervals)
-        print("Reads successfully aligned graphmap2:", len(graphmap2_gtf_primary_locations))
-        print("READS UNALIGNED graphmap2:", len(reads_unaligned_in_graphmap2_gtf) )
-        del graphmap2_gtf_splice_sites
-        del graphmap2_gtf_splice_results
-        del reads_unaligned_in_graphmap2_gtf
-        del graphmap2_gtf_primary_locations
+    # if args.toolname == 'graphmap2':
+    #     graphmap2_primary_locations = decide_primary_locations(args.graphmap2_sam, args)
+    #     graphmap2_splice_sites = get_read_candidate_splice_sites(graphmap2_primary_locations, annotated_splice_coordinates_pairs)
+    #     print('Graphmap2')
+    #     graphmap2_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, graphmap2_splice_sites, refs, graphmap2_primary_locations)
+    #     print_detailed_values_to_file(error_rates, graphmap2_splice_results, reads, detailed_results_outfile, "Graphmap2", graphmap2_primary_locations, exon_intervals)
+    #     print("Reads successfully aligned graphmap2:", len(graphmap2_primary_locations))
+    #     del graphmap2_splice_sites
+    #     del graphmap2_splice_results
+    #     reads_unaligned_in_graphmap2 = set(reads.keys()) - set(graphmap2_primary_locations.keys()) 
+    #     print("READS UNALIGNED graphmap2:", len(reads_unaligned_in_graphmap2) )
+    #     del reads_unaligned_in_graphmap2
+    #     del graphmap2_primary_locations
+
+    # if args.toolname == 'graphmap2_gtf':
+    #     graphmap2_gtf_primary_locations = decide_primary_locations(args.graphmap2_gtf_sam, args)
+    #     graphmap2_gtf_splice_sites = get_read_candidate_splice_sites(graphmap2_gtf_primary_locations, annotated_splice_coordinates_pairs)
+    #     print('Graphmap2')
+    #     graphmap2_gtf_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, graphmap2_gtf_splice_sites, refs, graphmap2_gtf_primary_locations)
+    #     reads_unaligned_in_graphmap2_gtf = set(reads.keys()) - set(graphmap2_gtf_primary_locations.keys()) 
+    #     print_detailed_values_to_file(error_rates, graphmap2_gtf_splice_results, reads, detailed_results_outfile, "Graphmap2_GTF", graphmap2_gtf_primary_locations, exon_intervals)
+    #     print("Reads successfully aligned graphmap2:", len(graphmap2_gtf_primary_locations))
+    #     print("READS UNALIGNED graphmap2:", len(reads_unaligned_in_graphmap2_gtf) )
+    #     del graphmap2_gtf_splice_sites
+    #     del graphmap2_gtf_splice_results
+    #     del reads_unaligned_in_graphmap2_gtf
+    #     del graphmap2_gtf_primary_locations
         
-    if args.desalt_sam:
-        desalt_primary_locations = decide_primary_locations(args.desalt_sam, args)
-        desalt_splice_sites = get_read_candidate_splice_sites(desalt_primary_locations, annotated_splice_coordinates_pairs)
-        print('deSALT')
-        desalt_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, desalt_splice_sites, refs, desalt_primary_locations)
-        reads_unaligned_in_desalt = set(reads.keys()) - set(desalt_primary_locations.keys()) 
-        print_detailed_values_to_file(error_rates, desalt_splice_results, reads, detailed_results_outfile, "deSALT", desalt_primary_locations, exon_intervals)
-        print("Reads successfully aligned deSALT:", len(desalt_primary_locations))
-        print("READS UNALIGNED deSALT:", len(reads_unaligned_in_desalt) )
-        del desalt_primary_locations
-        del desalt_splice_sites
-        del desalt_splice_results
-        del reads_unaligned_in_desalt
-    if args.desalt_gtf_sam:
-        desalt_gtf_primary_locations = decide_primary_locations(args.desalt_gtf_sam, args)
-        desalt_gtf_splice_sites = get_read_candidate_splice_sites(desalt_gtf_primary_locations, annotated_splice_coordinates_pairs)
-        print('deSALT')
-        desalt_gtf_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, desalt_gtf_splice_sites, refs, desalt_gtf_primary_locations)
-        reads_unaligned_in_desalt_gtf = set(reads.keys()) - set(desalt_gtf_primary_locations.keys()) 
-        print_detailed_values_to_file(error_rates, desalt_gtf_splice_results, reads, detailed_results_outfile, "deSALT_GTF", desalt_gtf_primary_locations, exon_intervals)
-        print("Reads successfully aligned deSALT:", len(desalt_gtf_primary_locations))
-        print("READS UNALIGNED deSALT:", len(reads_unaligned_in_desalt_gtf) )
-        del desalt_gtf_primary_locations
-        del desalt_gtf_splice_sites
-        del desalt_gtf_splice_results
-        del reads_unaligned_in_desalt_gtf
+    # if args.toolname == 'desalt':
+    #     desalt_primary_locations = decide_primary_locations(args.desalt_sam, args)
+    #     desalt_splice_sites = get_read_candidate_splice_sites(desalt_primary_locations, annotated_splice_coordinates_pairs)
+    #     print('deSALT')
+    #     desalt_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, desalt_splice_sites, refs, desalt_primary_locations)
+    #     reads_unaligned_in_desalt = set(reads.keys()) - set(desalt_primary_locations.keys()) 
+    #     print_detailed_values_to_file(error_rates, desalt_splice_results, reads, detailed_results_outfile, "deSALT", desalt_primary_locations, exon_intervals)
+    #     print("Reads successfully aligned deSALT:", len(desalt_primary_locations))
+    #     print("READS UNALIGNED deSALT:", len(reads_unaligned_in_desalt) )
+    #     del desalt_primary_locations
+    #     del desalt_splice_sites
+    #     del desalt_splice_results
+    #     del reads_unaligned_in_desalt
+    # if args.toolname == 'desalt_gtf':
+    #     desalt_gtf_primary_locations = decide_primary_locations(args.desalt_gtf_sam, args)
+    #     desalt_gtf_splice_sites = get_read_candidate_splice_sites(desalt_gtf_primary_locations, annotated_splice_coordinates_pairs)
+    #     print('deSALT')
+    #     desalt_gtf_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, desalt_gtf_splice_sites, refs, desalt_gtf_primary_locations)
+    #     reads_unaligned_in_desalt_gtf = set(reads.keys()) - set(desalt_gtf_primary_locations.keys()) 
+    #     print_detailed_values_to_file(error_rates, desalt_gtf_splice_results, reads, detailed_results_outfile, "deSALT_GTF", desalt_gtf_primary_locations, exon_intervals)
+    #     print("Reads successfully aligned deSALT:", len(desalt_gtf_primary_locations))
+    #     print("READS UNALIGNED deSALT:", len(reads_unaligned_in_desalt_gtf) )
+    #     del desalt_gtf_primary_locations
+    #     del desalt_gtf_splice_sites
+    #     del desalt_gtf_splice_results
+    #     del reads_unaligned_in_desalt_gtf
 
     detailed_results_outfile.close()
 
@@ -585,16 +599,18 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Evaluate pacbio IsoSeq transcripts.")
-    parser.add_argument('--torkel_sam', type=str, default = '', help='Path to the original read file')
-    parser.add_argument('--mm2_sam', type=str, default = '', help='Path to the corrected read file')
-    parser.add_argument('--desalt_sam', type=str, default = '', help='Path to the corrected read file')
-    parser.add_argument('--desalt_gtf_sam', type=str, default = '', help='Path to the corrected read file')
-    parser.add_argument('--graphmap2_sam', type=str, default = '', help='Path to the corrected read file')
-    parser.add_argument('--graphmap2_gtf_sam', type=str, default = '', help='Path to the corrected read file')
+    parser.add_argument('sam', type=str, help='Path to the original read file')
+    # parser.add_argument('--torkel_sam', type=str, default = '', help='Path to the original read file')
+    # parser.add_argument('--mm2_sam', type=str, default = '', help='Path to the corrected read file')
+    # parser.add_argument('--desalt_sam', type=str, default = '', help='Path to the corrected read file')
+    # parser.add_argument('--desalt_gtf_sam', type=str, default = '', help='Path to the corrected read file')
+    # parser.add_argument('--graphmap2_sam', type=str, default = '', help='Path to the corrected read file')
+    # parser.add_argument('--graphmap2_gtf_sam', type=str, default = '', help='Path to the corrected read file')
     parser.add_argument('reads', type=str, help='Path to the read file')
     parser.add_argument('refs', type=str, help='Path to the refs file')
     parser.add_argument('gff_file', type=str, help='Path to the refs file')
     parser.add_argument('outfolder', type=str, help='Output path of results')
+    parser.add_argument('toolname', type=str, help='Output toolname of results')
     # parser.add_argument('--min_intron', type=int, default=15, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
     parser.add_argument('--infer_genes', action= "store_true", help='Include pairwise alignment of original and corrected read.')
     parser.add_argument('--load_database', action= "store_true", help='Load already computed splice junctions and transcript annotations instead of constructing a new database.')
