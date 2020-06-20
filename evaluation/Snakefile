@@ -395,7 +395,7 @@ rule evaluate_biological:
             ref = config["SIRV"]
             gtf_annotation = config["ANNOTATION"] + "/SIRV.gtf"
             shell("python {eval_dir}/evaluate_splice_annotations.py  {input.sam} {input.reads} \
-                                                                        {ref} {gtf_annotation} {outfolder} {wildcards.tool} --infer_genes")
+                                                                        {ref} {gtf_annotation} {outfolder} {wildcards.tool} --load_database --infer_genes")
         elif wildcards.dataset == "drosophila":
             ref =  config["drosophila97"]
             gtf_annotation = config["ANNOTATION"] + "/drosophila.gtf"
