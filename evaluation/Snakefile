@@ -408,7 +408,7 @@ rule evaluate_biological:
                                                                     {ref} {gtf_annotation} {outfolder} --load_database")
 
 rule summarize_biological_results:
-    input: tool_csv_files = expand(rules.evaluate_biological.output.csv_file, tool=["ultra", 'minimap2', 'desalt', 'desalt_gtf', 'graphmap2', 'graphmap2_gtf']) #config["ROOT_OUT"] + "/evaluation_bio/{dataset}/{tool}.csv"
+    input: tool_csv_files = lambda wildcards: expand(rules.evaluate_biological.output.csv_file, dataset = wildcards.dataset, tool=["ultra", 'minimap2', 'desalt', 'desalt_gtf', 'graphmap2', 'graphmap2_gtf']) #config["ROOT_OUT"] + "/evaluation_bio/{dataset}/{tool}.csv"
     output: csv_file = config["ROOT_OUT"] + "/evaluation_bio/{dataset}/results_per_read.csv"
     run:
         header = "acc,read_type,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_exonic\n"
