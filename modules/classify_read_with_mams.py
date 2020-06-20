@@ -454,7 +454,7 @@ def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon
         if e_stop <= final_first_stop: # is start exon
             segment_seq = exon_seq[s_start - e_start:  ]  # We allow only semi global hit towards one end (the upstream end of the read)
             # print()
-            print("testing segment1:", e_start, e_stop, s_start, s_stop, segment_seq )
+            # print("testing segment1:", e_start, e_stop, s_start, s_stop, segment_seq )
             if len(segment_seq) > 5:
                 add_exon_to_mam(read_seq, ref_chr_id, segment_seq, e_start, e_stop, exon_id, mam_instance)
 
