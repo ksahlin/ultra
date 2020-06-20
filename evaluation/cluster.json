@@ -29,9 +29,9 @@
     "evaluate_biological": 
     {
         "jobname" : "evaluate_biological",
-        "cpus-per-task" : "64",
+        "cpus-per-task" : "20",
         "Nodes" : 1,
-        "mem" : "500G",
+        "mem" : "160G",
         "runtime" : "2-00:00:00",
         "mail" : "ksahlin@kth.se",
         "mail_type" : "FAIL",
