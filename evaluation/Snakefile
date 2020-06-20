@@ -412,8 +412,10 @@ rule summarize_biological_results:
     output: csv_file = config["ROOT_OUT"] + "/evaluation_bio/{dataset}/results_per_read.csv"
     run:
         header = "acc,read_type,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_exonic\n"
-        shell("echo -e {header} > {output.csv_file}")
+        # shell("echo -e {header} > {output.csv_file}")
         shell("cat {input.tool_csv_files} >> {output.csv_file}")
+        shell("sed  -i '1i acc,read_type,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_exonic' {output.csv_file}")
+        # shell("sed  -i '1i {header}' {output.csv_file}")
 
 # rule evaluate_biological:
 #     input:  ultra = rules.ultra_align.output.sam,
