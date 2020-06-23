@@ -491,7 +491,7 @@ def main(args):
     detailed_results_outfile = open(os.path.join(args.outfolder, args.toolname +".csv"), "w")
     # detailed_results_outfile.write("acc,read_type,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_exonic\n")
 
-    t_name_dict = { 'ultra' : "uLTRA", 'minimap2' : 'minimap2',
+    t_name_dict = { 'ultra' : "uLTRA", 'minimap2' : 'minimap2', 'minimap2_gtf' : 'minimap2_GTF',
                     'desalt' : "deSALT", 'desalt_gtf' : "deSALT_GTF", 
                     'graphmap2' : 'GraphMap2', 'graphmap2_gtf' : 'GraphMap2_GTF'}
     primary_locations = decide_primary_locations(args.sam, args)

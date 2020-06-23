@@ -182,7 +182,7 @@ def alignment_accuracy_plot(input_csv, outfolder):
     # print(len(indata))
 
     g = sns.catplot(x="alignment_classification", #col="Depth",
-                data=indata,  hue="alignment_algorithm", hue_order= ["uLTRA", "minimap2", "deSALT", "deSALT_GTF", "Graphmap2", "Graphmap2_GTF"],
+                data=indata,  hue="alignment_algorithm", hue_order= ["uLTRA", "minimap2", "minimap2_GTF", "deSALT", "deSALT_GTF", "Graphmap2", "Graphmap2_GTF"],
                 order= ["correct", "site_diff", "diff_exon_count", "diff_location", 'unaligned'], kind="count", aspect=1)
 
     # g.set(ylim=(0,15))
@@ -214,7 +214,7 @@ def splice_site_classification_plot(input_csv, outfolder):
     # print(len(indata))
 
     g = sns.catplot(x="annotation", #col="Depth",
-                data=indata,  hue="read_type", hue_order= ["uLTRA", "minimap2", "deSALT", "deSALT_GTF", "Graphmap2", "Graphmap2_GTF"],
+                data=indata,  hue="read_type", hue_order= ["uLTRA", "minimap2", "minimap2_GTF", "deSALT", "deSALT_GTF", "Graphmap2", "Graphmap2_GTF"],
                 order= ["FSM", "ISM", "NIC", "NNC", 'NO_SPLICE', "unaligned"], kind="count", aspect=1)
 
     # g.set(ylim=(0,15))

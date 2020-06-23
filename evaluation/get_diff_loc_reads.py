@@ -81,7 +81,7 @@ def parse_differing_location_reads(csv_file):
         acc,algorithm,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_exonic = line.strip().split(",")
         if algorithm == 'uLTRA':
             reads_isonalign[acc] =  (acc,algorithm,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_exonic) 
-        if algorithm == 'minimap2':
+        if algorithm == 'minimap2_GTF':
             reads_minimap2[acc] = (acc,algorithm,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_exonic) 
         if algorithm == 'deSALT_GTF':
             reads_desalt[acc] = (acc,algorithm,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_exonic)
@@ -162,7 +162,7 @@ def venn(data_for_venn, outfolder, filename):
         minimap2 = set(minimap2.keys())
         data_for_venn = [ultra, desalt, minimap2]
         total = len((ultra | desalt | minimap2 ))
-    r = venn3(data_for_venn, ("uLTRA", "deSALT_GTF", "minimap2"), subset_label_formatter=lambda x: f"{(x/total):1.1%}")
+    r = venn3(data_for_venn, ("uLTRA", "deSALT_GTF", "minimap2_GTF"), subset_label_formatter=lambda x: f"{(x/total):1.1%}")
     plt.savefig(os.path.join(outfolder, filename +".pdf"))
     plt.clf()
 

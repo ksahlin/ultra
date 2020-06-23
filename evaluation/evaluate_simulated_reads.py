@@ -415,6 +415,17 @@ def main(args):
         print("Reads successfully aligned mm2:", len(mm2_primary_locations))
         print("READS UNALIGNED mm2:", len(reads_unaligned_in_mm2) )
 
+    if args.mm2_gtf_sam:
+        mm2_gtf_primary_locations = decide_primary_locations(args.mm2_gtf_sam, args)
+        mm2_gtf_exon_sites = get_read_alignment_exon_sites(mm2_gtf_primary_locations, annotated_splice_coordinates_pairs)
+        print('MINIMAP2')
+        mm2_gtf_alignment_results, total_count_exon_sizes, correct_count_exon_sizes = get_alignment_classifications(true_exon_sites, mm2_gtf_exon_sites)
+        print_correctness_per_exon_size(correctness_per_exon_size_outfile, total_count_exon_sizes, correct_count_exon_sizes, "minimap2")
+        reads_unaligned_in_mm2_gtf = set(reads.keys()) - set(mm2_gtf_primary_locations.keys()) 
+        print_detailed_values_to_file(error_rates, mm2_gtf_alignment_results, reads, detailed_results_outfile, "minimap2")    
+        print("Reads successfully aligned mm2:", len(mm2_gtf_primary_locations))
+        print("READS UNALIGNED mm2:", len(reads_unaligned_in_mm2_gtf) )
+
     if args.graphmap2_sam:
         graphmap2_primary_locations = decide_primary_locations(args.graphmap2_sam, args)
         graphmap2_exon_sites = get_read_alignment_exon_sites(graphmap2_primary_locations, annotated_splice_coordinates_pairs)
@@ -480,6 +491,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Evaluate pacbio IsoSeq transcripts.")
     parser.add_argument('--torkel_sam', type=str, default = '', help='Path to the original read file')
     parser.add_argument('--mm2_sam', type=str, default = '', help='Path to the corrected read file')
+    parser.add_argument('--mm2_gtf_sam', type=str, default = '', help='Path to the corrected read file')
     parser.add_argument('--desalt_sam', type=str, default = '', help='Path to the corrected read file')
     parser.add_argument('--desalt_gtf_sam', type=str, default = '', help='Path to the corrected read file')
     parser.add_argument('--graphmap2_sam', type=str, default = '', help='Path to the corrected read file')
