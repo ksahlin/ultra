@@ -14,9 +14,6 @@ import parasail
 import pysam
 import gffutils
 
-import intervaltree
-
-
 '''
     Below code taken from https://github.com/lh3/readfq/blob/master/readfq.py
 '''
@@ -52,7 +49,50 @@ def readfq(fp): # this is a generator function
                 break
 
 
-def decide_primary_locations(sam_file, args): # maybe this function is not needed if only one primary alignment from minimap2
+def cigar_to_seq(cigar, query, ref):
+    cigar_tuples = []
+    result = re.split(r'[=DXSMI]+', cigar)
+    cig_pos = 0
+    for length in result[:-1]:
+        cig_pos += len(length)
+        type_ = cigar[cig_pos]
+        cig_pos += 1
+        cigar_tuples.append((int(length), type_ ))
+
+    r_index = 0
+    q_index = 0
+    q_aln = []
+    r_aln = []
+    for length_ , type_ in cigar_tuples:
+        if type_ == "=" or type_ == "X":
+            q_aln.append(query[q_index : q_index + length_])
+            r_aln.append(ref[r_index : r_index + length_])
+
+            r_index += length_
+            q_index += length_
+        
+        elif  type_ == "I":
+            # insertion w.r.t. reference
+            r_aln.append('-' * length_)
+            q_aln.append(query[q_index: q_index + length_])
+            #  only query index change
+            q_index += length_
+
+        elif type_ == 'D':
+            # deletion w.r.t. reference
+            r_aln.append(ref[r_index: r_index + length_])
+            q_aln.append('-' * length_)
+            #  only ref index change
+            r_index += length_
+        
+        else:
+            print("error")
+            print(cigar)
+            sys.exit()
+
+    return  "".join([s for s in q_aln]), "".join([s for s in r_aln]), cigar_tuples
+
+def get_error_profiles(sam_file, reads, refs, args): # maybe this function is not needed if only one primary alignment from minimap2
     SAM_file = pysam.AlignmentFile(sam_file, "r", check_sq=False)
     reads_primary = {}
     reads_multiple_primary = set()
@@ -60,35 +100,30 @@ def decide_primary_locations(sam_file, args): # maybe this function is not neede
 
     for read in SAM_file.fetch(until_eof=True):
         if read.flag == 0 or read.flag == 16:
+            # read_seq = reads[read.query_name]
+            # ref_seq = reads[read.reference_name][read.query_alignment_start: read.query_alignment_end]
+            # read_alignment, ref_alignment, cigar_tuples = cigar_to_seq(cigar_string, read_seq, ref_seq)
+
             ins = sum([length for type_, length in read.cigartuples if type_ == 1])
-            del_ = sum([length for type_, length in read.cigartuples if type_ == 2]) # and length < args.min_intron ])
+            del_ = sum([length for type_, length in read.cigartuples if type_ == 2])
+            softclipped = sum([length for type_, length in read.cigartuples if type_ == 4])
+
             subs = sum([length for type_, length in read.cigartuples if type_ == 8])
-            matches = sum([length for type_, length in read.cigartuples if type_ == 7])
-            tot_align = ins + del_ + subs + matches
-            try:
-                identity = matches/float(tot_align)
-            except:
-                print(matches, tot_align,ins, del_, subs, read.flag, read.query_name )
-                identity = 0
+            # matches = sum([length for type_, length in read.cigartuples if type_ == 7])
+            matches = sum([length for type_, length in read.cigartuples if type_ == 0 or type_ == 7 or type_ == 8 ])
+
+            # tot_align = ins + del_ + subs + matches
+            # try:
+            #     identity = matches/float(tot_align)
+            # except:
+            #     print(matches, tot_align,ins, del_, subs, read.flag, read.query_name )
+            #     identity = 0
 
             if read.query_name in reads_primary:
                 print("BUG multiple primary", read.query_name)
-                # reads_multiple_primary.add(read.query_name)
-                # if identity >= reads_tmp[read.query_name][0] and  matches >= reads_tmp[read.query_name][1]:
-                #     reads_primary[read.query_name] = read
-                #     reads_tmp[read.query_name] = (identity, matches)
-                # elif identity <= reads_tmp[read.query_name][0] and  matches <= reads_tmp[read.query_name][1]:
-                #     continue
-                # else:
-                #     if identity * matches > reads_tmp[read.query_name][0] * reads_tmp[read.query_name][1]:
-                #         reads_primary[read.query_name] = read
-                #         reads_tmp[read.query_name] = (identity, matches)
-                #     else: 
-                #         continue
-
             else:
-                reads_primary[read.query_name] = read
-                reads_tmp[read.query_name] = (identity, matches)
+                reads_primary[read.query_name] = (ins, del_, subs, softclipped, matches,read)
+                reads_tmp[read.query_name] =  matches
     print("TOTAL READS FLAGGED WITH MULTIPLE PRIMARY:", len(reads_multiple_primary))
     return reads_primary     
 
@@ -102,31 +137,50 @@ def reverse_complement(string):
     return(rev_comp)
 
 
-def print_detailed_values_to_file(error_rates, annotations_dict, reads, outfile, read_type, read_alignments, exon_intervals):
+def print_detailed_values_to_file(reads, outfile, read_type, read_alignments):
+    sum_matches = 0
+    sum_ins = 0
+    sum_subs = 0
+    sum_dels = 0
+    sum_softs = 0
+    sum_unaln = 0
     for acc in reads:
-        if acc in error_rates:
-            err_rate = error_rates[acc]
-        else:
-            err_rate = "-"
-
+        read_length = len(reads[acc])
         if acc not in read_alignments:
             reference_name = 'unaligned'
             reference_start = '-'  #read.reference_name, read.reference_start, read.reference_end + 1, read.flag,
             reference_end = '-'
             flag = '-'
-            read_class = ("-","-","-","unaligned","-","-","-") # namedtuple('Annotation', ['tot_splices', 'read_sm_junctions', 'read_nic_junctions', 'annotation', "donor_acceptors", "donor_acceptors_choords", "transcript_fsm_id" ])
-            is_exonic = '-'
+            err_rate = '-'
+            read_error_profile = ("-","-","-","-") 
+            sum_unaln += read_length
         else:
-            read = read_alignments[acc]
-            reference_name, reference_start, reference_end, flag = read.reference_name, read.reference_start, read.reference_end + 1, read.flag
-            read_class = annotations_dict[acc] 
-            is_exonic = 1 if exon_intervals[reference_name].overlaps(reference_start, reference_end) else 0
+            (ins, del_, subs, softclipped, matches, read) = read_alignments[acc]
+            read_error_profile = (matches, ins, del_, subs, softclipped)
+            try: 
+                err_rate = (ins + del_ + subs + softclipped)/float(ins + del_ + subs + softclipped + matches)
+            except ZeroDivisionError:
+                print(ins, del_ , subs, softclipped, matches, acc, read_length)
+                reference_name = 'unaligned'
+                reference_start = '-'  #read.reference_name, read.reference_start, read.reference_end + 1, read.flag,
+                reference_end = '-'
+                flag = '-'
+                err_rate = '-'
+                read_error_profile = ("-","-","-","-") 
+                sum_unaln += read_length
 
-        read_length = len(reads[acc])
+            reference_name, reference_start, reference_end, flag = read.reference_name, read.reference_start, read.reference_end + 1, read.flag
+            sum_ins += ins
+            sum_dels += del_
+            sum_subs += subs
+            sum_softs += softclipped
+            sum_matches += matches
         # is_unaligned_in_other_method = 1 if acc in reads_unaligned_in_other_method else 0
-        info_tuple = (acc, read_type, err_rate, read_length, *read_class, reference_name, reference_start, reference_end, flag, is_exonic) # 'tot_splices', 'read_sm_junctions', 'read_nic_junctions', 'fsm', 'nic', 'ism', 'nnc', 'no_splices'  )
+        info_tuple = (acc, read_type, read_length, err_rate, *read_error_profile, reference_name, reference_start, reference_end, flag) # 'tot_splices', 'read_sm_junctions', 'read_nic_junctions', 'fsm', 'nic', 'ism', 'nnc', 'no_splices'  )
         outfile.write( ",".join( [str(item) for item in info_tuple] ) + "\n")
 
+    print("sum_ins", "sum_subs", "sum_dels", "sum_softs", "sum_unaln", "sum_matches")
+    print(sum_ins, sum_subs, sum_dels, sum_softs, sum_unaln, sum_matches)
 
 def get_splice_sites(cigar_tuples, first_exon_start, annotated_chr_coordinate_pairs):
     splice_sites = []
@@ -211,9 +265,6 @@ def get_annotated_splicesites(ref_gff_file, infer_genes, outfolder):
                                 sort_attribute_values=True, disable_infer_genes=True, disable_infer_transcripts=True)
         db = gffutils.FeatureDB(db_name, keep_order=True)
 
-
-    exon_intervals = defaultdict(intervaltree.IntervalTree)
-
     splice_coordinates = {} # to calc individual fraction of correct sites and NIC
     splice_coordinates_pairs = {} 
     ref_isoforms = {} # To calculate Full splice matches
@@ -235,8 +286,6 @@ def get_annotated_splicesites(ref_gff_file, infer_genes, outfolder):
             for e in consecutive_exons:
                 splice_coordinates[chromosome].add(e.stop)
                 splice_coordinates[chromosome].add(e.start -1 )
-                exon_intervals[chromosome].addi(e.start -1, e.stop, None)
-
 
             # for splice pairs
             tmp_splice_sites = []
@@ -246,7 +295,7 @@ def get_annotated_splicesites(ref_gff_file, infer_genes, outfolder):
             
             ref_isoforms[chromosome][tuple(tmp_splice_sites)] = transcript.id
 
-    return ref_isoforms, splice_coordinates, splice_coordinates_pairs, exon_intervals
+    return ref_isoforms, splice_coordinates, splice_coordinates_pairs
 
 
 from collections import namedtuple
@@ -468,126 +517,48 @@ def main(args):
         annotated_ref_isoforms = pickle_load(os.path.join( args.outfolder, 'annotated_ref_isoforms.pickle') )
         annotated_splice_coordinates = pickle_load(os.path.join( args.outfolder, 'annotated_splice_coordinates.pickle') )
         annotated_splice_coordinates_pairs = pickle_load(os.path.join( args.outfolder, 'annotated_splice_coordinates_pairs.pickle') )
-        exon_intervals = pickle_load(os.path.join( args.outfolder, 'exon_intervals.pickle') )
+        # minimum_annotated_intron = pickle_load(os.path.join( args.outfolder, 'minimum_annotated_intron.pickle') )
     else:
-        annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, exon_intervals = get_annotated_splicesites(args.gff_file, args.infer_genes, args.outfolder)
+        annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs = get_annotated_splicesites(args.gff_file, args.infer_genes, args.outfolder)
         pickle_dump(annotated_ref_isoforms, os.path.join( args.outfolder, 'annotated_ref_isoforms.pickle') )
         pickle_dump(annotated_splice_coordinates, os.path.join( args.outfolder, 'annotated_splice_coordinates.pickle') )
         pickle_dump(annotated_splice_coordinates_pairs, os.path.join( args.outfolder, 'annotated_splice_coordinates_pairs.pickle') )
-        pickle_dump(exon_intervals, os.path.join( args.outfolder, 'exon_intervals.pickle') )
+        # pickle_dump(minimum_annotated_intron, os.path.join( args.outfolder, 'minimum_annotated_intron.pickle') )
 
     reads = { acc.split()[0] : seq for i, (acc, (seq, qual)) in enumerate(readfq(open(args.reads, 'r')))}
     print("Total reads", len(reads))
     print("here")
-    if args.simulated:
-        error_rates = get_error_rates(reads)
-    else:
-        error_rates = {}
     refs = { acc.split()[0] : seq for i, (acc, (seq, _)) in enumerate(readfq(open(args.refs, 'r')))}
     # modify_reference_headers(refs)
     # print("SHORTEST INTRON:", minimum_annotated_intron)
     # minimum_annotated_intron = max(minimum_annotated_intron,  args.min_intron)
 
-    detailed_results_outfile = open(os.path.join(args.outfolder, args.toolname +".csv"), "w")
-    # detailed_results_outfile.write("acc,read_type,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_exonic\n")
+    detailed_results_outfile = open(os.path.join(args.outfolder, "results_per_read_cigar.csv"), "w")
+    detailed_results_outfile.write("acc,read_type,read_length,error_rate,matches,ins,del,softclipped,chr_id,reference_start,reference_end,sam_flag\n")
+    print("here")
+    if args.torkel_sam:
+        torkel_primary_locations = get_error_profiles(args.torkel_sam, reads, refs, args)
+        print_detailed_values_to_file(reads, detailed_results_outfile, "uLTRA", torkel_primary_locations)
 
-    t_name_dict = { 'ultra' : "uLTRA", 'minimap2' : 'minimap2', 'minimap2_gtf' : 'minimap2_GTF',
-                    'desalt' : "deSALT", 'desalt_gtf' : "deSALT_GTF", 
-                    'graphmap2' : 'GraphMap2', 'graphmap2_gtf' : 'GraphMap2_GTF'}
-    primary_locations = decide_primary_locations(args.sam, args)
-    aligned_splice_sites = get_read_candidate_splice_sites(primary_locations, annotated_splice_coordinates_pairs)
-    tool_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, aligned_splice_sites, refs, primary_locations)
-    print_detailed_values_to_file(error_rates, tool_splice_results, reads, detailed_results_outfile, t_name_dict[args.toolname], primary_locations, exon_intervals)
-    print("Reads successfully aligned:", len(primary_locations))
-    del aligned_splice_sites
-    del tool_splice_results
-    reads_unaligned_in_torkel = set(reads.keys()) - set(primary_locations.keys())
-    print("READS UNALIGNED:", len(reads_unaligned_in_torkel) )
-    del reads_unaligned_in_torkel
-    del primary_locations
+    if args.mm2_sam:
+        mm2_primary_locations = get_error_profiles(args.mm2_sam, reads, refs, args)
+        print_detailed_values_to_file(reads, detailed_results_outfile, "minimap2", mm2_primary_locations)    
 
-    # if args.toolname == 'uLTRA':
-    #     torkel_primary_locations = decide_primary_locations(args.torkel_sam, args)
-    #     torkel_splice_sites = get_read_candidate_splice_sites(torkel_primary_locations, annotated_splice_coordinates_pairs)
-    #     print('uLTRA')
-    #     torkel_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, torkel_splice_sites, refs, torkel_primary_locations)
-    #     print_detailed_values_to_file(error_rates, torkel_splice_results, reads, detailed_results_outfile, "uLTRA", torkel_primary_locations, exon_intervals)
-    #     print("Reads successfully aligned uLTRA:", len(torkel_primary_locations))
-    #     del torkel_splice_sites
-    #     del torkel_splice_results
-    #     reads_unaligned_in_torkel = set(reads.keys()) - set(torkel_primary_locations.keys())
-    #     print("READS UNALIGNED uLTRA:", len(reads_unaligned_in_torkel) )
-    #     del reads_unaligned_in_torkel
-    #     del torkel_primary_locations
+    if args.graphmap2_sam:
+        graphmap2_primary_locations = get_error_profiles(args.graphmap2_sam, reads, refs, args)
+        print_detailed_values_to_file(reads, detailed_results_outfile, "Graphmap2", graphmap2_primary_locations)
 
-    # if args.toolname == 'minimap2':
-    #     mm2_primary_locations = decide_primary_locations(args.mm2_sam, args)
-    #     mm2_splice_sites = get_read_candidate_splice_sites(mm2_primary_locations, annotated_splice_coordinates_pairs)
-    #     print('MINIMAP2')
-    #     mm2_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, mm2_splice_sites, refs, mm2_primary_locations)
-    #     print_detailed_values_to_file(error_rates, mm2_splice_results, reads, detailed_results_outfile, "minimap2", mm2_primary_locations, exon_intervals)    
-    #     print("Reads successfully aligned mm2:", len(mm2_primary_locations))
-    #     del mm2_splice_sites
-    #     del mm2_splice_results
-    #     reads_unaligned_in_mm2 = set(reads.keys()) - set(mm2_primary_locations.keys()) 
-    #     print("READS UNALIGNED mm2:", len(reads_unaligned_in_mm2) )
-    #     del reads_unaligned_in_mm2
-    #     del mm2_primary_locations
-
-    # if args.toolname == 'graphmap2':
-    #     graphmap2_primary_locations = decide_primary_locations(args.graphmap2_sam, args)
-    #     graphmap2_splice_sites = get_read_candidate_splice_sites(graphmap2_primary_locations, annotated_splice_coordinates_pairs)
-    #     print('Graphmap2')
-    #     graphmap2_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, graphmap2_splice_sites, refs, graphmap2_primary_locations)
-    #     print_detailed_values_to_file(error_rates, graphmap2_splice_results, reads, detailed_results_outfile, "Graphmap2", graphmap2_primary_locations, exon_intervals)
-    #     print("Reads successfully aligned graphmap2:", len(graphmap2_primary_locations))
-    #     del graphmap2_splice_sites
-    #     del graphmap2_splice_results
-    #     reads_unaligned_in_graphmap2 = set(reads.keys()) - set(graphmap2_primary_locations.keys()) 
-    #     print("READS UNALIGNED graphmap2:", len(reads_unaligned_in_graphmap2) )
-    #     del reads_unaligned_in_graphmap2
-    #     del graphmap2_primary_locations
-
-    # if args.toolname == 'graphmap2_gtf':
-    #     graphmap2_gtf_primary_locations = decide_primary_locations(args.graphmap2_gtf_sam, args)
-    #     graphmap2_gtf_splice_sites = get_read_candidate_splice_sites(graphmap2_gtf_primary_locations, annotated_splice_coordinates_pairs)
-    #     print('Graphmap2')
-    #     graphmap2_gtf_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, graphmap2_gtf_splice_sites, refs, graphmap2_gtf_primary_locations)
-    #     reads_unaligned_in_graphmap2_gtf = set(reads.keys()) - set(graphmap2_gtf_primary_locations.keys()) 
-    #     print_detailed_values_to_file(error_rates, graphmap2_gtf_splice_results, reads, detailed_results_outfile, "Graphmap2_GTF", graphmap2_gtf_primary_locations, exon_intervals)
-    #     print("Reads successfully aligned graphmap2:", len(graphmap2_gtf_primary_locations))
-    #     print("READS UNALIGNED graphmap2:", len(reads_unaligned_in_graphmap2_gtf) )
-    #     del graphmap2_gtf_splice_sites
-    #     del graphmap2_gtf_splice_results
-    #     del reads_unaligned_in_graphmap2_gtf
-    #     del graphmap2_gtf_primary_locations
+    if args.graphmap2_gtf_sam:
+        graphmap2_gtf_primary_locations = get_error_profiles(args.graphmap2_gtf_sam, reads, refs, args)
+        print_detailed_values_to_file(reads, detailed_results_outfile, "Graphmap2_GTF", graphmap2_gtf_primary_locations)
         
-    # if args.toolname == 'desalt':
-    #     desalt_primary_locations = decide_primary_locations(args.desalt_sam, args)
-    #     desalt_splice_sites = get_read_candidate_splice_sites(desalt_primary_locations, annotated_splice_coordinates_pairs)
-    #     print('deSALT')
-    #     desalt_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, desalt_splice_sites, refs, desalt_primary_locations)
-    #     reads_unaligned_in_desalt = set(reads.keys()) - set(desalt_primary_locations.keys()) 
-    #     print_detailed_values_to_file(error_rates, desalt_splice_results, reads, detailed_results_outfile, "deSALT", desalt_primary_locations, exon_intervals)
-    #     print("Reads successfully aligned deSALT:", len(desalt_primary_locations))
-    #     print("READS UNALIGNED deSALT:", len(reads_unaligned_in_desalt) )
-    #     del desalt_primary_locations
-    #     del desalt_splice_sites
-    #     del desalt_splice_results
-    #     del reads_unaligned_in_desalt
-    # if args.toolname == 'desalt_gtf':
-    #     desalt_gtf_primary_locations = decide_primary_locations(args.desalt_gtf_sam, args)
-    #     desalt_gtf_splice_sites = get_read_candidate_splice_sites(desalt_gtf_primary_locations, annotated_splice_coordinates_pairs)
-    #     print('deSALT')
-    #     desalt_gtf_splice_results = get_splice_classifications(annotated_ref_isoforms, annotated_splice_coordinates, annotated_splice_coordinates_pairs, desalt_gtf_splice_sites, refs, desalt_gtf_primary_locations)
-    #     reads_unaligned_in_desalt_gtf = set(reads.keys()) - set(desalt_gtf_primary_locations.keys()) 
-    #     print_detailed_values_to_file(error_rates, desalt_gtf_splice_results, reads, detailed_results_outfile, "deSALT_GTF", desalt_gtf_primary_locations, exon_intervals)
-    #     print("Reads successfully aligned deSALT:", len(desalt_gtf_primary_locations))
-    #     print("READS UNALIGNED deSALT:", len(reads_unaligned_in_desalt_gtf) )
-    #     del desalt_gtf_primary_locations
-    #     del desalt_gtf_splice_sites
-    #     del desalt_gtf_splice_results
-    #     del reads_unaligned_in_desalt_gtf
+    if args.desalt_sam:
+        desalt_primary_locations = get_error_profiles(args.desalt_sam, reads, refs, args)
+        print_detailed_values_to_file(reads, detailed_results_outfile, "deSALT", desalt_primary_locations)
+
+    if args.desalt_gtf_sam:
+        desalt_gtf_primary_locations = get_error_profiles(args.desalt_gtf_sam, reads, refs, args)
+        print_detailed_values_to_file(reads, detailed_results_outfile, "deSALT_GTF", desalt_gtf_primary_locations)
 
     detailed_results_outfile.close()
 
@@ -599,18 +570,16 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Evaluate pacbio IsoSeq transcripts.")
-    parser.add_argument('sam', type=str, help='Path to the original read file')
-    # parser.add_argument('--torkel_sam', type=str, default = '', help='Path to the original read file')
-    # parser.add_argument('--mm2_sam', type=str, default = '', help='Path to the corrected read file')
-    # parser.add_argument('--desalt_sam', type=str, default = '', help='Path to the corrected read file')
-    # parser.add_argument('--desalt_gtf_sam', type=str, default = '', help='Path to the corrected read file')
-    # parser.add_argument('--graphmap2_sam', type=str, default = '', help='Path to the corrected read file')
-    # parser.add_argument('--graphmap2_gtf_sam', type=str, default = '', help='Path to the corrected read file')
+    parser.add_argument('--torkel_sam', type=str, default = '', help='Path to the original read file')
+    parser.add_argument('--mm2_sam', type=str, default = '', help='Path to the corrected read file')
+    parser.add_argument('--desalt_sam', type=str, default = '', help='Path to the corrected read file')
+    parser.add_argument('--desalt_gtf_sam', type=str, default = '', help='Path to the corrected read file')
+    parser.add_argument('--graphmap2_sam', type=str, default = '', help='Path to the corrected read file')
+    parser.add_argument('--graphmap2_gtf_sam', type=str, default = '', help='Path to the corrected read file')
     parser.add_argument('reads', type=str, help='Path to the read file')
     parser.add_argument('refs', type=str, help='Path to the refs file')
     parser.add_argument('gff_file', type=str, help='Path to the refs file')
     parser.add_argument('outfolder', type=str, help='Output path of results')
-    parser.add_argument('toolname', type=str, help='Output toolname of results')
     # parser.add_argument('--min_intron', type=int, default=15, help='Threchold for what is counted as varation/intron in alignment as opposed to deletion.')
     parser.add_argument('--infer_genes', action= "store_true", help='Include pairwise alignment of original and corrected read.')
     parser.add_argument('--load_database', action= "store_true", help='Load already computed splice junctions and transcript annotations instead of constructing a new database.')

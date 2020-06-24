@@ -33,10 +33,10 @@
 """
 
 shell.prefix("set -o pipefail; ")
-# configfile: "experiments.json"
+configfile: "experiments.json"
 
-wildcard_constraints:
-    nr_reads="[\d]+",
+# wildcard_constraints:
+#     nr_reads="[\d]+",
 
 ####################################################
 ########## standard python functions ###############
@@ -61,8 +61,31 @@ def mkdir_p(path):
             raise
 
 rule all:
-   input:  config["ROOT_OUT"] + "/evaluation/ont_human/results_per_read.csv",
-            config["ROOT_OUT"] + "/evaluation/simulated/results_per_read.csv"
+   input:   config["ROOT_IN"] + "/data/results/plots_bio.zip",
+            config["ROOT_IN"] + "/data/results/plots_sim.zip",
+            config["ROOT_IN"] + "/data/results/plots_exon_size.zip",
+            config["ROOT_IN"] + "/data/results/plots_sirv_analysis.zip",
+            config["ROOT_IN"] + "/data/results/map_concordance_bio.zip"
+
+
+            #[config["ROOT_OUT"] + "/evaluation/{dataset}/results_per_read.csv".format(dataset=dataset) for dataset in ["ont_human", "pacbio_alzheimer", "sirv", "simulated", "simulated_nic", "simulated_ens"]],
+            #[config["ROOT_OUT"] + "/evaluation/{dataset}/results.pdf".format(dataset=dataset) for dataset in ["ont_human", "pacbio_alzheimer", "sirv", "simulated", "simulated_nic", "simulated_ens"]],            
+
+            # config["ROOT_OUT"] + "/evaluation/ont_human/results_per_read.csv",
+            # config["ROOT_OUT"] + "/evaluation/simulated/results_per_read.csv",
+            # config["ROOT_OUT"] + "/evaluation/simulated_nic/results_per_read.csv",
+            # config["ROOT_OUT"] + "/evaluation/pacbio_alzheimer/results_per_read.csv",
+            # config["ROOT_OUT"] + "/evaluation/sirv/results_per_read.csv",
+            # config["ROOT_OUT"] + "/evaluation/simulated_ens/results_per_read.csv",
+            # config["ROOT_OUT"] + "/evaluation/ont_human/results.pdf",
+            # config["ROOT_OUT"] + "/evaluation/simulated/results.pdf",
+            # config["ROOT_OUT"] + "/evaluation/simulated_nic/results.pdf",
+            # config["ROOT_OUT"] + "/evaluation/pacbio_alzheimer/results.pdf",
+            # config["ROOT_OUT"] + "/evaluation/sirv/results.pdf",
+            # config["ROOT_OUT"] + "/evaluation/simulated_ens/results.pdf",
+
+            # config["ROOT_OUT"] + "/evaluation/ont_human/results_per_read_cigar.csv",
+            # config["ROOT_OUT"] + "/evaluation/pacbio_alzheimer/results_per_read_cigar.csv"
 
 
 rule biological:
@@ -78,182 +101,440 @@ rule controlled_sim:
 
 
 rule simulate:
-    input:  fasta = config["TRANSCRIPTOME"]
-    output: simulated_reads =  config["ROOT_OUT"] + "/data/simulated.fa",
-            accessions_map =  config["ROOT_OUT"] + "/data/accessions_map.csv"
+    input:  ref_transcripts = config["TRANSCRIPTOME"],
+            annotation = config["ANNOTATION"] + "/NA12878.gtf",
+            ref = config["HG38"]
+    output: simulated_reads_fa =  config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
+            simulated_reads_fq =  config["ROOT_OUT"] + "/data/{dataset}/reads.fq",
+            accessions_map =  config["ROOT_OUT"] + "/data/{dataset}/accessions_map.csv"
+    wildcard_constraints:
+        dataset="sim[_\w]+"
+
     run:
 
         inbase= config["ROOT_IN"]
         mkdir_p(config["ROOT_OUT"] + "/data/")
+        simulated_reads_prefix = config["ROOT_OUT"] + "/data/{0}/reads".format(wildcards.dataset)
+        if wildcards.dataset == "simulated":
+            shell("python {inbase}/evaluation/simulate_reads.py {input.ref_transcripts} {simulated_reads_prefix} 1000000")
 
-        # python simulate_reads.py ../data/all_transcripts_ENSEMBL.txt ~/tmp/ULTRA/sim_reads_test.fa 100
-        shell("python {inbase}/evaluation/simulate_reads.py {input.fasta} {output.simulated_reads} 1000000 --fasta")
+        elif wildcards.dataset == "simulated_nic":
+            shell("python {inbase}/evaluation/simulate_reads.py --disable_infer --nic --gtf {input.annotation} {input.ref} {simulated_reads_prefix} 1000000")
+
+        elif wildcards.dataset == "simulated_ens":
+            shell("python {inbase}/evaluation/simulate_reads.py --ens {input.ref_transcripts} {simulated_reads_prefix} 1000000")
+
+        # shell("python {inbase}/evaluation/simulate_reads.py {input.fasta} {output.simulated_reads} 1000000 --fasta")
 
 
 
 rule ultra_prep:
-    input:  fastq =  config["ROOT_OUT"] + "/data/{dataset}.fa",
-            ref = config["HG38"],
-            gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"
-
+    input:  
     output: ref_index = config["ROOT_OUT"] + "/alignments/ultra/{dataset}/all_splice_sites_annotations.pickle",
-            # time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/ultra/{dataset}/indexing_time_and_mem.txt"
+            time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/ultra/{dataset}/indexing_time_and_mem.txt"
     run:
         outfolder = config["ROOT_OUT"] + "/alignments/ultra/{0}/".format(wildcards.dataset)
         mkdir_p(outfolder)
         time_outfolder = config["ROOT_OUT"] + "/time_and_mem/ultra/{0}/".format(wildcards.dataset)
         mkdir_p(time_outfolder)
 
-        shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_splicing --disable_infer {input.gtf_annotation} {outfolder}")
-        shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_seqs {input.ref} {outfolder} --min_mem 14 --mask_threshold 100 ") #2> {output.time_and_mem}
+        if wildcards.dataset == 'sirv':
+            ref = config["SIRV"]
+            annotation = config["ANNOTATION"] + "/SIRV.gtf"
+            shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_splicing {annotation} {outfolder}")
+            shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_seqs {ref} {outfolder} --min_mem 14 --mask_threshold 1000 2>&1 | tee {output.time_and_mem}") #2> {output.time_and_mem}
+
+        elif wildcards.dataset == "drosophila":
+            ref =  config["drosophila97"]
+            annotation = config["ANNOTATION"] + "/drosophila.gtf"
+            shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_splicing --disable_infer {annotation} {outfolder}")
+            shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_seqs {ref} {outfolder} --min_mem 14 --mask_threshold 1000 2>&1 | tee {output.time_and_mem}") #2> {output.time_and_mem}
+
+        else:
+            ref = config["HG38"]
+            annotation = config["ANNOTATION"] + "/NA12878.gtf"
+            shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_splicing --disable_infer {annotation} {outfolder}")
+            shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_seqs {ref} {outfolder} --min_mem 14 --mask_threshold 100 2>&1 | tee {output.time_and_mem}") #2> {output.time_and_mem}
 
 
 rule ultra_align:
-    input:  reads = config["ROOT_OUT"] + "/data/{dataset}.fa",
+    input:  reads = config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
             ultra_index = rules.ultra_prep.output.ref_index,
-            ref = config["HG38"],
+            # ref = config["HG38"],
     output: sam = config["ROOT_OUT"] + "/alignments/ultra/{dataset}/reads.sam",
-            # time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/ultra/{dataset}/aligning_time_and_mem.txt"
+            time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/ultra/{dataset}/aligning_time_and_mem.txt"
     run:
+        if wildcards.dataset == "sirv":
+            ref = config["SIRV"]
+        elif wildcards.dataset == "drosophila":
+            ref =  config["drosophila97"]
+        else:
+            ref = config["HG38"]
+
         outfolder = config["ROOT_OUT"] + "/alignments/ultra/{0}/".format(wildcards.dataset)
-        shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 align {input.ref} {input.reads}  {outfolder} --min_mem 14 --t 62 ") # 2> {output.time_and_mem}
+        if wildcards.dataset == "drosophila":
+            shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 align {ref} {input.reads}  {outfolder} --min_mem 14 --t 62  2>&1 | tee {output.time_and_mem} ") # 2> {output.time_and_mem}
+        else:
+            shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 align {ref} {input.reads}  {outfolder} --min_mem 14 --t 62  2>&1 | tee {output.time_and_mem} ") # 2> {output.time_and_mem}
+
         shell("mv {outfolder}/torkel.sam {output.sam}")
 
 rule minimap2_index:
-    input: ref = config["HG38"]
+    input: #ref = config["HG38"]
     output: time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/minimap2/{dataset}/indexing_time_and_mem.txt",
             mm_index =  config["ROOT_OUT"] + "/alignments/minimap2/{dataset}/index.mmi"
     run:
+        if wildcards.dataset == "sirv":
+            ref = config["SIRV"]
+        elif wildcards.dataset == "drosophila":
+            ref =  config["drosophila97"]
+        else:
+            ref = config["HG38"]
+
         outfolder = config["ROOT_OUT"] + "/alignments/minimap2/{0}/".format(wildcards.dataset)
         mkdir_p(outfolder)
         time_outfolder = config["ROOT_OUT"] + "/time_and_mem/minimap2/{0}/".format(wildcards.dataset)
         mkdir_p(time_outfolder)
 
-        shell("/usr/bin/time -v  minimap2 -ax splice -k14 -d {output.mm_index} {input.ref} 2> {output.time_and_mem}")
+        if wildcards.dataset == "sirv":
+            shell("/usr/bin/time -v  minimap2 -ax splice -k14 -d {output.mm_index} {ref} 2> {output.time_and_mem}")
+
+        elif wildcards.dataset == "pacbio_alzheimer" :
+            shell("/usr/bin/time -v  minimap2 -ax splice -k14 -d {output.mm_index} {ref} 2> {output.time_and_mem}")
+        else:
+            shell("/usr/bin/time -v  minimap2 -ax splice -k13 -d {output.mm_index} {ref} 2> {output.time_and_mem}")
+
 
 
 rule minimap2_align:
-    input: fastq =  config["ROOT_OUT"] + "/data/{dataset}.fa",
+    input: fastq =  config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
             index = rules. minimap2_index.output.mm_index
     output: time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/minimap2/{dataset}/aligning_time_and_mem.txt",
             sam =  config["ROOT_OUT"] + "/alignments/minimap2/{dataset}/reads.sam"
     run:
-        shell("/usr/bin/time -v  minimap2 --eqx -t 32 -ax splice -k14 {input.index} {input.fastq} 1>  {output.sam} 2> {output.time_and_mem} ")
+
+        if wildcards.dataset == "sirv":
+            shell("/usr/bin/time -v  minimap2 --eqx -t 62 -ax splice -k14 --splice-flank=no {input.index} {input.fastq} 1>  {output.sam} 2> {output.time_and_mem} ")
+        elif wildcards.dataset == "pacbio_alzheimer" :
+            shell("/usr/bin/time -v  minimap2 --eqx -t 62 -ax splice -k14 -G 500k {input.index} {input.fastq} 1>  {output.sam} 2> {output.time_and_mem} ")
+        else:
+            shell("/usr/bin/time -v  minimap2 --eqx -t 62 -ax splice -k13 -w 5 -G 500k {input.index} {input.fastq} 1>  {output.sam} 2> {output.time_and_mem} ")
 
 
+
+rule minimap2_gtf_align:
+    input: fastq =  config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
+            index = rules. minimap2_index.output.mm_index
+    output: time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/minimap2_gtf/{dataset}/aligning_time_and_mem.txt",
+            sam =  config["ROOT_OUT"] + "/alignments/minimap2_gtf/{dataset}/reads.sam"
+    run:
+
+        if wildcards.dataset == "sirv":
+            annotation = config["ANNOTATION"] + "/SIRV.bed"
+            shell("/usr/bin/time -v  minimap2 --junc-bed {annotation} --eqx -t 62 -ax splice -k14 --splice-flank=no {input.index} {input.fastq} 1>  {output.sam} 2> {output.time_and_mem} ")
+        elif wildcards.dataset == "drosophila":
+            annotation = config["ANNOTATION"] + "/drosophila.bed"
+            shell("/usr/bin/time -v  minimap2 --junc-bed {annotation} --eqx -t 62 -ax splice -k13 -w 5 -G 500k {input.index} {input.fastq} 1>  {output.sam} 2> {output.time_and_mem} ")
+        elif wildcards.dataset == "pacbio_alzheimer" :
+            annotation = config["ANNOTATION"] + "/NA12878.bed"
+            shell("/usr/bin/time -v  minimap2 --junc-bed {annotation} --eqx -t 62 -ax splice -k14 -G 500k {input.index} {input.fastq} 1>  {output.sam} 2> {output.time_and_mem} ")
+        else:
+            annotation = config["ANNOTATION"] + "/NA12878.bed"
+            shell("/usr/bin/time -v  minimap2 --junc-bed {annotation} --eqx -t 62 -ax splice -k13 -w 5 -G 500k {input.index} {input.fastq} 1>  {output.sam} 2> {output.time_and_mem} ")
+
+
+        
 rule desalt_annotation_fix:
-    input: gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"
+    input: #annotation = config["ANNOTATION"] + "/NA12878.gtf"
     output: desalt_gtf_annotation_outfile = config["ROOT_OUT"] + "/alignments/desalt/{dataset}/annotation.info"
     run:
+
+        if wildcards.dataset == "sirv":
+            annotation = config["ANNOTATION"] + "/SIRV.gtf"
+        elif wildcards.dataset == "drosophila":
+            annotation = config["ANNOTATION"] + "/drosophila.gtf"
+        else:
+            annotation = config["ANNOTATION"] + "/NA12878.gtf"
+
         outfolder = config["ROOT_OUT"] + "/alignments/desalt/{0}/".format(wildcards.dataset)
         mkdir_p(outfolder)
-        shell("python /galaxy/home/ksahlin/prefix/source/deSALT/src/Annotation_Load.py {input.gtf_annotation}  {output.desalt_gtf_annotation_outfile}")
+        shell("python /galaxy/home/ksahlin/prefix/source/deSALT/src/Annotation_Load.py {annotation}  {output.desalt_gtf_annotation_outfile}")
+
 
 rule desalt_index:
-    input: ref = config["HG38"]
-    output: desalt_index_folder =  directory(config["ROOT_OUT"] + "/alignments/desalt/{dataset}/index"),
-            #time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/desalt/{dataset}/indexing_time_and_mem.txt"
+    input: #ref = config["HG38"]
+    output: 
+            time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/desalt/{dataset}/indexing_time_and_mem.txt",
+            finished_flag =  config["ROOT_OUT"] + "/time_and_mem/desalt/{dataset}/done.txt"
+            # desalt_index_folder =  directory(config["ROOT_OUT"] + "/alignments/desalt/{dataset}/index"),
     run:
+        if wildcards.dataset == "sirv":
+            ref = config["SIRV"]
+        elif wildcards.dataset == "drosophila":
+            ref =  config["drosophila97"]
+        else:
+            ref = config["HG38"]
+
         outfolder = config["ROOT_OUT"] + "/alignments/desalt/{0}/".format(wildcards.dataset)
         mkdir_p(outfolder)
         time_outfolder = config["ROOT_OUT"] + "/time_and_mem/desalt/{0}/".format(wildcards.dataset)
         mkdir_p(time_outfolder)
+        index = config["ROOT_OUT"] + "/alignments/desalt/{0}/index".format(wildcards.dataset)
 
-        shell("/usr/bin/time -v  /galaxy/home/ksahlin/prefix/source/deSALT/src/./deBGA index {input.ref} {output.desalt_index_folder}") # 2> {output.time_and_mem}")
-        # shell("/usr/bin/time -v  deSALT index {input.ref} {output.desalt_index_folder} 2> {output.time_and_mem}")
+        # shell("/usr/bin/time -v  /galaxy/home/ksahlin/prefix/source/deSALT/src/./deBGA index {input.ref} {output.desalt_index_folder}") # 2> {output.time_and_mem}")
+        shell("/usr/bin/time -v  deSALT index {ref} {index} 2>&1 | tee {output.time_and_mem} ") # " 2> {output.time_and_mem}")
+        shell("touch  {output.finished_flag} ")
 
 rule desalt_align:
-    input: fastq =  config["ROOT_OUT"] + "/data/{dataset}.fq",
-            index = rules.desalt_index.output.desalt_index_folder,
-            desalt_gtf_annotation_outfile = rules.desalt_annotation_fix.output.desalt_gtf_annotation_outfile
+    input: fastq =  config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
+            # index = rules.desalt_index.output.desalt_index_folder,
+            finished_flag = rules.desalt_index.output.finished_flag
+            # desalt_gtf_annotation_outfile = rules.desalt_annotation_fix.output.desalt_gtf_annotation_outfile
     output: sam =  config["ROOT_OUT"] + "/alignments/desalt/{dataset}/reads.sam",
-            # time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/desalt/{dataset}/aligning_time_and_mem.txt
+            time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/desalt/{dataset}/aligning_time_and_mem.txt"
     run:
+        index = config["ROOT_OUT"] + "/alignments/desalt/{0}/index".format(wildcards.dataset)
         import tempfile
         work_dir = tempfile.mkdtemp()
         tempfile = os.path.join(work_dir, "desalt_temp_prefix")
-        shell("/usr/bin/time -v  deSALT aln {input.index} {input.fastq}  -t 32 -o {output.sam} -f {tempfile}") # 2> {output.time_and_mem} ")
-        # shell("/usr/bin/time -v  deSALT aln {input.index} {input.fastq}  -t 32 --gtf {input.desalt_gtf_annotation_outfile} -o {output.sam} -f {tempfile}") # 2> {output.time_and_mem} ")
+        if wildcards.dataset == "sirv":
+            shell("/usr/bin/time -v  deSALT aln {index} {input.fastq} --noncan 4 -d 10  -s 2 -l 14  -t 48  -o {output.sam} -f {tempfile} 2>&1 | tee {output.time_and_mem} ") 
+        else:
+            shell("/usr/bin/time -v  deSALT aln {index} {input.fastq} --max-intron-len 500000 -d 10  -s 2 -l 14  -t 48  -o {output.sam} -f {tempfile} 2>&1 | tee {output.time_and_mem} ") 
+
+
+rule desalt_gtf_align:
+    input: fastq =  config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
+            # index = rules.desalt_index.output.desalt_index_folder,
+            finished_flag = rules.desalt_index.output.finished_flag,
+            desalt_gtf_annotation_outfile = rules.desalt_annotation_fix.output.desalt_gtf_annotation_outfile
+    output: sam =  config["ROOT_OUT"] + "/alignments/desalt_gtf/{dataset}/reads.sam",
+            time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/desalt_gtf/{dataset}/aligning_time_and_mem.txt"
+    run:
+
+        index = config["ROOT_OUT"] + "/alignments/desalt/{0}/index".format(wildcards.dataset)
+        import tempfile
+        work_dir = tempfile.mkdtemp()
+        tempfile = os.path.join(work_dir, "desalt_gtf_temp_prefix")
+        shell("/usr/bin/time -v  deSALT aln {index} {input.fastq} --max-intron-len 500000 -d 10  -s 2 -l 14  -t 48 --gtf {input.desalt_gtf_annotation_outfile} -o {output.sam} -f {tempfile}  2>&1 | tee {output.time_and_mem} ") 
 
 
 rule graphmap2_index:
-    input:  ref = config["HG38"],
-            fastq =  config["ROOT_OUT"] + "/data/{dataset}.fq",
-            gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf",
+    input:  #ref = config["HG38"],
+            fastq =  config["ROOT_OUT"] + "/data/{dataset}/reads.fq"
     output: index =  config["ROOT_OUT"] + "/alignments/graphmap2/{dataset}/index.gmidx",
-            # time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2/{dataset}/aligning_time_and_mem.txt"
+            time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2/{dataset}/aligning_time_and_mem.txt"
     run:
-        shell("/usr/bin/time -v  graphmap2 align --index-only --index {output.index} --gtf {input.gtf_annotation}  -x rnaseq -r {input.ref} -d {input.fastq}") # 2> {output.time_and_mem}  ")
+
+        if wildcards.dataset == "sirv":
+            ref = config["SIRV"]
+        elif wildcards.dataset == "drosophila":
+            ref =  config["drosophila97"]
+        else:
+            ref = config["HG38"]
+
+        shell("/usr/bin/time -v  graphmap2 align --index-only --index {output.index}  -x rnaseq -r {ref} -d {input.fastq} 2>&1 | tee {output.time_and_mem} ") # 2> {output.time_and_mem}  ")
+
+rule graphmap2_gtf_align:
+    input:  #ref = config["HG38"],
+            fastq =  config["ROOT_OUT"] + "/data/{dataset}/reads.fq",
+            index = rules.graphmap2_index.output.index,
+            #annotation = config["ANNOTATION"] + "/NA12878.gtf",
+    output: sam =  config["ROOT_OUT"] + "/alignments/graphmap2_gtf/{dataset}/reads.sam",
+            time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2_gtf/{dataset}/aligning_time_and_mem.txt"
+    run:
+        if wildcards.dataset == "sirv":
+            ref = config["SIRV"]
+            annotation = config["ANNOTATION"] + "/SIRV_with_transcripts.gtf"
+            error_rate = 7
+        elif wildcards.dataset == "drosophila":
+            ref =  config["drosophila97"]
+            annotation = config["ANNOTATION"] + "/drosophila.gtf"
+            error_rate = 7
+        else:
+            ref = config["HG38"]
+            annotation = config["ANNOTATION"] + "/NA12878.gtf"
+            if wildcards.dataset == "simulated_ens" or wildcards.dataset == "pacbio_alzheimer":
+                error_rate = 0.5
+            else:
+                error_rate = 10
+
+
+        shell("/usr/bin/time -v  graphmap2 align  --error-rate {error_rate} --index {input.index} --gtf {annotation} --threads 62 -x rnaseq -r {ref} -d {input.fastq} -o {output.sam}  2>&1 | tee {output.time_and_mem} ")
+
 
 rule graphmap2_align:
-    input:  ref = config["HG38"],
-            fastq =  config["ROOT_OUT"] + "/data/{dataset}.fq",
+    input:  #ref = config["HG38"],
+            fastq =  config["ROOT_OUT"] + "/data/{dataset}/reads.fq",
             index = rules.graphmap2_index.output.index,
-            gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf",
     output: sam =  config["ROOT_OUT"] + "/alignments/graphmap2/{dataset}/reads.sam",
-            # time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2/{dataset}/aligning_time_and_mem.txt"
+            time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2/{dataset}/aligning_time_and_mem.txt"
     run:
-        shell("/usr/bin/time -v  graphmap2 align --index {input.index}  --threads 32 -x rnaseq -r {input.ref} -d {input.fastq} -o {output.sam} ")
-        # shell("/usr/bin/time -v  graphmap2 align --index {input.index} --gtf {input.gtf_annotation} --threads 32 -x rnaseq -r {input.ref} -d {input.fastq} -o {output.sam} ")
+        if wildcards.dataset == "sirv":
+            ref = config["SIRV"]
+            error_rate = 7
+        elif wildcards.dataset == "drosophila":
+            ref =  config["drosophila97"]
+            error_rate = 7
+        else:
+            ref = config["HG38"]
+            if wildcards.dataset == "simulated_ens" or wildcards.dataset == "pacbio_alzheimer":
+                error_rate = 0.5
+            else:
+                error_rate = 10
+
+        shell("/usr/bin/time -v  graphmap2 align --error-rate {error_rate} --index {input.index} --threads 62 -x rnaseq -r {ref} -d {input.fastq} -o {output.sam}  2>&1 | tee {output.time_and_mem} ")
 
 
-rule evaluate:
+rule evaluate_sim:
     input:  ultra = rules.ultra_align.output.sam,
             minimap2 = rules.minimap2_align.output.sam,
+            minimap2_gtf = rules.minimap2_gtf_align.output.sam,
             desalt = rules.desalt_align.output.sam,
+            desalt_gtf = rules.desalt_gtf_align.output.sam,
             graphmap2 = rules.graphmap2_align.output.sam,
-            reads =  config["ROOT_OUT"] + "/data/{dataset}.fa",
-            ref =  config["HG38"],
-            gtf_annotation = config["ANNOTATION"] + "/NA12878.gtf"  # drosophila v97 gtf annotation
-    output: csv_file =  config["ROOT_OUT"] + "/evaluation/{dataset}/results_per_read.csv"
+            graphmap2_gtf = rules.graphmap2_gtf_align.output.sam,
+            reads =  config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
+    output: csv_file = config["ROOT_OUT"] + "/evaluation_sim/{dataset}/results_per_read.csv",
+            csv_exon_size_file = config["ROOT_OUT"] + "/evaluation_sim/{dataset}/correctness_per_exon_size.csv"
+    # wildcard_constraints:
+    #     dataset="sim[_\w]+"
     run:
-
         eval_dir = config["ROOT_IN"] + "/evaluation/"
-        outfolder = config["ROOT_OUT"] + "/evaluation/{0}/".format(wildcards.dataset)  
+        outfolder = config["ROOT_OUT"] + "/evaluation_sim/{0}/".format(wildcards.dataset)  
         mkdir_p(outfolder) 
+        ref = config["HG38"]
+        annotation = config["ANNOTATION"] + "/NA12878.gtf"
 
-        if wildcards.dataset == "simulated":
-            accessions_map = rules.simulate.output.accessions_map
-            # shell("python {eval_dir}/evaluate_simulated_reads.py  --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --graphmap2_sam {input.graphmap2}  {input.reads}  \
-            #                                                 {input.ref} {input.gtf_annotation} {accessions_map} {outfolder} --load_database")   
-            shell("python {eval_dir}/evaluate_simulated_reads.py  --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --graphmap2_sam {input.graphmap2}  {input.reads}  \
-                                                            {input.ref} {input.gtf_annotation} {accessions_map} {outfolder} --load_database")   
+        if wildcards.dataset == "simulated" or wildcards.dataset == "simulated_nic":
+            accessions_map = config["ROOT_OUT"] + "/data/{0}/accessions_map.csv".format(wildcards.dataset) #rules.simulate.output.accessions_map
+            shell("python {eval_dir}/evaluate_simulated_reads.py  --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --mm2_gtf_sam {input.minimap2_gtf} --desalt_sam {input.desalt} --desalt_gtf_sam {input.desalt_gtf} \
+                                                                 --graphmap2_sam {input.graphmap2}  --graphmap2_gtf_sam {input.graphmap2_gtf} {input.reads} \
+                                                            {ref} {annotation} {accessions_map} {outfolder} --load_database")   
+        
+        elif wildcards.dataset == "simulated_ens":
+            accessions_map = config["ROOT_OUT"] + "/data/{0}/accessions_map.csv".format(wildcards.dataset) #rules.simulate.output.accessions_map
+            shell("python {eval_dir}/evaluate_simulated_reads.py  --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --mm2_gtf_sam {input.minimap2_gtf} --desalt_sam {input.desalt} --desalt_gtf_sam {input.desalt_gtf} \
+                                                                  {input.reads} {ref} {annotation} {accessions_map} {outfolder} --load_database")   
 
+rule evaluate_biological:
+    input:  sam = config["ROOT_OUT"] + "/alignments/{tool}/{dataset}/reads.sam",
+            reads =  config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
+    output: csv_file = config["ROOT_OUT"] + "/evaluation_bio/{dataset}/{tool}.csv"
+    run:
+        eval_dir = config["ROOT_IN"] + "/evaluation/"
+        outfolder = config["ROOT_OUT"] + "/evaluation_bio/{0}/".format(wildcards.dataset)  
+        mkdir_p(outfolder) 
+        shell("TMPDIR=/scratch/kristoffer")
+        mkdir_p("/scratch/kristoffer")
+        if wildcards.dataset == 'sirv':
+            ref = config["SIRV"]
+            annotation = config["ANNOTATION"] + "/SIRV.gtf"
+            shell("python {eval_dir}/evaluate_splice_annotations.py  {input.sam} {input.reads} \
+                                                                        {ref} {annotation} {outfolder} {wildcards.tool} --load_database --infer_genes")
+        elif wildcards.dataset == "drosophila":
+            ref =  config["drosophila97"]
+            annotation = config["ANNOTATION"] + "/drosophila.gtf"
+            shell("python {eval_dir}/evaluate_splice_annotations.py   {input.sam} {input.reads}  \
+                                                                    {ref} {annotation} {outfolder} {wildcards.tool} --load_database")
         else:
-            # shell("python {eval_dir}/evaluate_splice_annotations.py   --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --graphmap2_sam {input.graphmap2}  {input.reads}  \
-            #                                                 {input.ref} {input.gtf_annotation} {outfolder} --load_database")
-            shell("python {eval_dir}/evaluate_splice_annotations.py   --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --desalt_sam {input.desalt} --graphmap2_sam {input.graphmap2}  {input.reads}  \
-                                                            {input.ref} {input.gtf_annotation} {outfolder} --load_database")
+            ref = config["HG38"]
+            annotation = config["ANNOTATION"] + "/NA12878.gtf"
+            shell("python {eval_dir}/evaluate_splice_annotations.py   {input.sam}  {input.reads}  \
+                                                                    {ref} {annotation} {outfolder} {wildcards.tool} --load_database")
+
+rule summarize_biological_results:
+    input: tool_csv_files = lambda wildcards: expand(rules.evaluate_biological.output.csv_file, dataset = wildcards.dataset, tool=["ultra", 'minimap2', 'minimap2_gtf', 'desalt', 'desalt_gtf', 'graphmap2', 'graphmap2_gtf']) #config["ROOT_OUT"] + "/evaluation_bio/{dataset}/{tool}.csv"
+    output: csv_file = config["ROOT_OUT"] + "/evaluation_bio/{dataset}/results_per_read.csv"
+    run:
+        header = "acc,read_type,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_exonic\n"
+        # shell("echo -e {header} > {output.csv_file}")
+        shell("cat {input.tool_csv_files} >> {output.csv_file}")
+        shell("sed  -i '1i acc,read_type,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_exonic' {output.csv_file}")
 
 
-# rule evaluate_real:
-#     input: original_reads = rules.subsample.output.subsampled_fastq,
-#             corrected_reads = rules.combine_isoncorrect.output.corrected_reads_fastq,
-#             original_reads_aligned =  rules.align_original_reads_minimap2.output.original_reads_aligned,
-#             corrected_reads_aligned =  rules.align_corrected_reads_minimap2.output.corrected_reads_aligned,
-#             clusters_tsv = rules.isONclust.output.clusters,
-#             gtf_annotation = config["ANNOTATION"] + "/{dataset}.gtf"  # drosophila v97 gtf annotation
-#     output: csv_file =  config["ROOT_OUT"] + "/evaluation_biological/{dataset}/{nr_reads}/results.csv"
-#     run:
-#         if wildcards.dataset == "SIRV":
-#             ref = config["SIRV"]
-#         elif wildcards.dataset == "NA12878":
-#             ref = config["HG38"]
-#         elif wildcards.dataset == "drosophila":
-#             ref =  config["drosophila97"]
 
-#         eval_dir = config["ROOT_IN"] + "/scripts/"
-#         outfolder = config["ROOT_OUT"] + "/evaluation_biological/{0}/{1}/".format(wildcards.dataset, wildcards.nr_reads)  
-#         mkdir_p(outfolder) 
-#         if wildcards.dataset == "NA12878":
-#             shell("python {eval_dir}/evaluate_real_reads.py  {input.original_reads_aligned}  {input.corrected_reads_aligned} {input.original_reads}  \
-#                                                         {input.corrected_reads} {ref} {input.clusters_tsv} {input.gtf_annotation} {outfolder} --load_database")
-#         elif wildcards.dataset == "drosophila":
-#             shell("python {eval_dir}/evaluate_real_reads.py  {input.original_reads_aligned}  {input.corrected_reads_aligned} {input.original_reads}  \
-#                                                         {input.corrected_reads} {ref} {input.clusters_tsv} {input.gtf_annotation} {outfolder}")
-#         else:
-#             shell("python {eval_dir}/evaluate_real_reads.py  {input.original_reads_aligned}  {input.corrected_reads_aligned} {input.original_reads}  \
-#                                                         {input.corrected_reads} {ref} {input.clusters_tsv} {input.gtf_annotation} {outfolder} --infer_genes")
+rule plot_biological:
+    input: csv_file = rules.summarize_biological_results.output.csv_file
+    output: pdf = config["ROOT_OUT"] + "/evaluation_bio/{dataset}/results.pdf"
+    # wildcard_constraints:
+    #     dataset="^(?!sim).*$"
+    run:
+        eval_dir = config["ROOT_IN"] + "/evaluation/"
+        outfolder = config["ROOT_OUT"] + "/evaluation_bio/{0}/".format(wildcards.dataset)  
+        mkdir_p(outfolder) 
+        shell("python {eval_dir}/plots.py {input.csv_file}  {outfolder}")
 
+rule plot_sim:
+    input: csv_file = rules.evaluate_sim.output.csv_file
+    output: pdf = config["ROOT_OUT"] + "/evaluation_sim/{dataset}/results.pdf"
+    # wildcard_constraints:
+    #     dataset="sim[_\w]+"
+    run:
+        eval_dir = config["ROOT_IN"] + "/evaluation/"
+        outfolder = config["ROOT_OUT"] + "/evaluation_sim/{0}/".format(wildcards.dataset)  
+        mkdir_p(outfolder) 
+        shell("python {eval_dir}/plots.py --simulated {input.csv_file}  {outfolder}")
+
+
+
+rule plot_exon_size:
+    input: csv_exon_size_file = rules.evaluate_sim.output.csv_exon_size_file 
+    output: pdf = config["ROOT_OUT"] + "/evaluation_sim/{dataset}/correctness_per_exon_size.pdf"
+    # wildcard_constraints:
+    #     dataset="sim[_\w]+"
+    run:
+        eval_dir = config["ROOT_IN"] + "/evaluation/"
+        outfolder = config["ROOT_OUT"] + "/evaluation_sim/{0}/".format(wildcards.dataset)  
+        mkdir_p(outfolder) 
+        shell("python {eval_dir}/plot_correctness_per_exon_size.py {input.csv_exon_size_file}  {outfolder}")
+
+
+rule gzip_exon_size:
+    input: pdfs = expand(rules.plot_exon_size.output.pdf, dataset=["simulated","simulated_nic", "simulated_ens"])
+    output: zip_file = config["ROOT_IN"] + "/data/results/plots_exon_size.zip"
+    run:
+        shell("zip {output.zip_file}  /nfs/brubeck.bx.psu.edu/scratch4/ksahlin/ultra_eval/evaluation_sim/*/correctness_per_exon_*.pdf")
+
+rule gzip_bio:
+    input: bio_pdfs = expand(rules.plot_biological.output.pdf, dataset=["ont_human", "pacbio_alzheimer", "sirv", "drosophila"]) #pdfs = expand(config["ROOT_OUT"] + "/evaluation/{dataset}/results.pdf", dataset=["ont_human", "pacbio_alzheimer", "sirv","simulated","simulated_nic", "simulated_ens"])
+    output: zip_file = config["ROOT_IN"] + "/data/results/plots_bio.zip"
+    run:
+        shell("zip {output.zip_file}  /nfs/brubeck.bx.psu.edu/scratch4/ksahlin/ultra_eval/evaluation_bio/*/results.pdf")
+
+rule gzip_sim:
+    input: sim_pdfs = expand(rules.plot_sim.output.pdf, dataset=["simulated","simulated_nic", "simulated_ens"])
+    output: zip_file = config["ROOT_IN"] + "/data/results/plots_sim.zip"
+    run:
+        shell("zip {output.zip_file}  /nfs/brubeck.bx.psu.edu/scratch4/ksahlin/ultra_eval/evaluation_sim/*/results.pdf")
+
+rule sirv_analysis:
+    input: csv = config["ROOT_OUT"] + "/evaluation_bio/sirv/results_per_read.csv",
+            reads = config["ROOT_OUT"] + "/data/sirv/reads.fq"
+    output: zip_file = config["ROOT_IN"] + "/data/results/plots_sirv_analysis.zip"
+            # config["ROOT_IN"] + "/data/results/sirv_venn.pdf",
+            # config["ROOT_IN"] + "/data/results/sirv_counts_SIRV1.pdf"
+    run:
+        #python  SIRV_splicing_distribution.py /nfs/brubeck.bx.psu.edu/scratch4/ksahlin/ultra_eval/data/sirv/reads.fq /nfs/brubeck.bx.psu.edu/scratch4/ksahlin/ultra_eval/evaluation_bio/sirv/results_per_read.csv /nfs/brubeck.bx.psu.edu/scratch4/ksahlin/ultra_eval/evaluation_bio/sirv/
+        outfolder = config["ROOT_OUT"] + "/evaluation_bio/sirv/"
+        shell("python SIRV_splicing_distribution.py {input.reads} {input.csv} {outfolder}")
+        shell("zip {output.zip_file} /nfs/brubeck.bx.psu.edu/scratch4/ksahlin/ultra_eval/evaluation_bio/sirv/sirv_*")
+
+
+rule mapping_concordance:
+    input: csv = config["ROOT_OUT"] + "/evaluation_bio/{dataset}/results_per_read.csv",
+            reads = config["ROOT_OUT"] + "/data/{dataset}/reads.fq"
+    output: venn_file = config["ROOT_OUT"] + "/evaluation_bio/{dataset}/unique_FSM_concordance.pdf", # config["ROOT_IN"] + "/data/{dataset}/fsm_concordance.pdf"
+            summary = config["ROOT_OUT"] + "/evaluation_bio/{dataset}/summary.txt"
+    run:
+        outfolder = config["ROOT_OUT"] + "/evaluation_bio/{0}/".format(wildcards.dataset)
+        shell("python get_diff_loc_reads.py {input.reads} {input.csv} {outfolder} > {output.summary}")
+
+
+rule gzip_map_concordance:
+    input: bio_pdfs = expand(rules.mapping_concordance.output.venn_file, dataset=["ont_human", "pacbio_alzheimer", "drosophila"]) #pdfs = expand(config["ROOT_OUT"] + "/evaluation/{dataset}/results.pdf", dataset=["ont_human", "pacbio_alzheimer", "sirv","simulated","simulated_nic", "simulated_ens"])
+    output: zip_file = config["ROOT_IN"] + "/data/results/map_concordance_bio.zip"
+    run:
+        shell("zip {output.zip_file}  /nfs/brubeck.bx.psu.edu/scratch4/ksahlin/ultra_eval/evaluation_bio/*/*concordance.pdf")
 
 

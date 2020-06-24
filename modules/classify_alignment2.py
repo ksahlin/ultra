@@ -60,10 +60,12 @@ def main(chr_id, predicted_splices, splices_to_transcripts, transcripts_to_splic
             return   "NIC_novel", transcript   
 
     # ISM
+    # print()
     # print(all_splice_pairs_annotations[chr_id])
-    # print(all_splice_sites_annotations[chr_id])
-    hits = [all_splice_pairs_annotations[chr_id][splice_pair] for splice_pair in all_splice_pairs_annotations[chr_id]]
-    # print(hits)
+    # print(predicted_splices)
+    # hits = [all_splice_pairs_annotations[chr_id][splice_pair] for splice_pair in all_splice_pairs_annotations[chr_id]]
+    hits = [all_splice_pairs_annotations[chr_id][splice_pair] for splice_pair in predicted_splices]
+    # print("LOOOOL", chr_id, hits)
     # print(predicted_splices)
     in_all_pairs = set.intersection(*hits)
     # print(in_all_pairs)

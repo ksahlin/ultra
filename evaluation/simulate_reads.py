@@ -6,6 +6,7 @@ import math
 from collections import defaultdict
 import errno
 
+import gffutils
 '''
     Below function taken from https://github.com/lh3/readfq/blob/master/readfq.py
 '''
@@ -124,7 +125,7 @@ def simulate_read(i, transcript_acc, isoform ):
     # shortened_read_acc = transcript_acc
     # acc = str(transcript_acc) + "_" +  str(i) + "_" + str(err_rate) #= (read_seq, qual_seq)
     full_read_acc = str(transcript_acc) + "_" +  str(i) + "_" + str(err_rate)
-    print(err, len(isoform), float(err)/ len(isoform))
+    # print(err, len(isoform), float(err)/ len(isoform))
     # print(read_seq)
     # print(qual_seq)
 
@@ -141,24 +142,119 @@ def mkdir_p(path):
         else:
             raise
 
+from itertools import chain, combinations
+def powerset(iterable):
+    "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
+    s = list(iterable)
+    return chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
+
+def generate_nics(db, sequence_material):
+    refs = {acc : seq for acc, (seq, _) in readfq(open(args.sequence_material,"r"))}
+
+    nic_transcripts = {}
+    for gene in db.features_of_type('gene'):
+        # genes_to_ref[gene.id] = str(gene.seqid)
+        # print("here", gene.id,  str(gene.seqid))
+        chr_id = gene.seqid
+        if chr_id not in refs:
+            continue
+
+        print("parsing gene:", gene.id )
+        annotated = set()
+        nr_transcripts = 0
+        for transcript in db.children(gene, featuretype='transcript', order_by='start'):  
+            exons = tuple((exon.seqid, exon.start - 1, exon.stop) for exon in db.children(transcript, featuretype='exon', order_by='start'))
+            annotated.add(exons)
+            # print(exons)
+            nr_transcripts += 1
+
+        gene_exons = [(exon.seqid, exon.start - 1, exon.stop) for exon in db.children(gene, featuretype='exon', order_by='start')]
+        non_overlapping_gene_exons = [ (e_id,start1,stop1) for (e_id,start1,stop1), (e2_id,start2,stop2) in zip(gene_exons[:-1], gene_exons[1:]) if stop1 < start2]
+        # print(len(gene_exons), len(non_overlapping_gene_exons))
+        # randomly select internal exons with p=0.5 and check whether this is already in annotated, if not add to nic
+        # print( len(annotated),len(gene_exons))
+
+        if len(non_overlapping_gene_exons) > 3:
+            nr_fails = 0
+            nr_nic = 0
+            while nr_nic < len(annotated):
+                new_internal_exons = [ e for e in non_overlapping_gene_exons[1:-1] if random.uniform(0, 1) > 0.5]
+                candidate_nic = tuple([non_overlapping_gene_exons[0]] + new_internal_exons +  [non_overlapping_gene_exons[-1]])
+                # print( "l", len(candidate_nic))
+                if candidate_nic in annotated:
+                    nr_fails +=1
+                else:
+                    # print(candidate_nic)
+                    nic_id = "{0}|{1}|{2}|{3}|{4}".format(str(gene.id), str(gene.seqid), nr_nic, ";".join([ str(start) for (s_id, start, stop) in candidate_nic ]), ";".join([str(stop) for (s_id, start, stop) in candidate_nic ]) )
+                    exons_seqs = []
+                    for s_id, start,stop in candidate_nic: 
+                        seq = refs[chr_id][start : stop] 
+                        exons_seqs.append(seq)
+                    nic_seq = "".join([s for s in exons_seqs])
+                    if 'N' in nic_seq:
+                        nr_fails +=1
+                    else:
+                        nic_transcripts[nic_id] = nic_seq
+                        nr_nic += 1
+                        nr_fails = 0
+
+                if nr_fails > 5:
+                    break
+    print(len(nic_transcripts))
+
+    return nic_transcripts
 
 def main(args):
-    sequence_transcripts = {seq : acc for acc, (seq, _) in readfq(open(args.sequence_material,"r")) }
-    print(len(sequence_transcripts))
-    sequence_transcripts = {acc: seq for seq, acc in sequence_transcripts.items() }
+    if args.nic:
+        database = os.path.join(args.outfolder,'database.db')
+        if os.path.isfile(database):
+            print("Database found in directory using this one.")
+            print("If you want to recreate the database, please remove the file: {0}".format(database))
+            print()
+            db = gffutils.FeatureDB(database, keep_order=True)
+        elif not args.disable_infer:
+            fn = gffutils.example_filename(args.gtf)
+            db = gffutils.create_db(fn, dbfn=database, force=True, keep_order=True, merge_strategy='merge', 
+                                    sort_attribute_values=True)
+            db = gffutils.FeatureDB(database, keep_order=True)
+        else:
+            fn = gffutils.example_filename(args.gtf)
+            db = gffutils.create_db(fn, dbfn=database, force=True, keep_order=True, merge_strategy='merge', 
+                                    sort_attribute_values=True, disable_infer_genes=True, disable_infer_transcripts=True)
+            db = gffutils.FeatureDB(database, keep_order=True)
 
-    # just generate all numbers at once and draw from this 5x should be enough
-    ont_reads = {}
+        sequence_transcripts = generate_nics(db, args.sequence_material)
+        # sequence_transcripts = {}
+
+    else:
+        sequence_transcripts = {seq : acc for acc, (seq, _) in readfq(open(args.sequence_material,"r")) }
+        print(len(sequence_transcripts))
+        sequence_transcripts = {acc: seq for seq, acc in sequence_transcripts.items() }
+
+
+    sim_reads = {}
     reads_generated_log = defaultdict(int)
     errors = []
     all_transctript_accessions = list(sequence_transcripts.keys())
-    for i in range(args.read_count):
-        acc = random.choice( all_transctript_accessions)
-        transcript = sequence_transcripts[acc]
-        read_acc, full_read_acc,  read, qual = simulate_read(i, acc, transcript)
-        ont_reads[read_acc] = (read, qual, full_read_acc)
-        if i % 5000 == 0:
-            print(i, "reads simulated.")
+    if args.ens:
+        for i, transcript_acc in enumerate(all_transctript_accessions):
+            transcript = sequence_transcripts[transcript_acc]
+            # read_acc, full_read_acc,  read, qual = simulate_read(i, acc, transcript)
+            tmp1 = transcript_acc.split("|")
+            read_acc = "|".join(tmp1[:3]) + "_" +  str(i) + "_" + str(0.0)
+            full_read_acc = str(transcript_acc) + "_" +  str(i) + "_" + str(0.0)
+            qual = "".join([chr(73) for n in transcript])
+            sim_reads[read_acc] = (transcript, qual, full_read_acc)
+            if i % 5000 == 0:
+                print(i, "reads simulated.")
+    else:
+        for i in range(args.read_count):
+            acc = random.choice( all_transctript_accessions)
+            transcript = sequence_transcripts[acc]
+            read_acc, full_read_acc,  read, qual = simulate_read(i, acc, transcript)
+            sim_reads[read_acc] = (read, qual, full_read_acc)
+            if i % 5000 == 0:
+                print(i, "reads simulated.")
 
 
     # for acc, abundance in misc_functions.iteritems(reads_generated_log):
@@ -177,31 +273,37 @@ def main(args):
 
     # args.logfile.write("mean error: {0}, sd error:{1}, min_error:{2}, max_error:{3}, median_error:{4}\n".format(mu, sigma, min_error, max_error, median_error))
 
-    outfile = open(args.outfile, "w")
+    outfile_fasta = open(args.outfile_prefix + ".fa", "w")
     accsessions_outfile = open(args.full_acc_file, "w")
-    if args.fasta:
-        for read_acc, (read_seq,qual_seq, full_read_acc) in sorted(ont_reads.items(), key = lambda x: len(x[1]), reverse = True):
-            outfile.write(">{0}\n{1}\n".format(read_acc, read_seq))
-            accsessions_outfile.write("{0},{1}\n".format(read_acc, full_read_acc))
-    else:
-        for read_acc, (read_seq,qual_seq, full_read_acc) in sorted(ont_reads.items(), key = lambda x: len(x[1]), reverse = True):
-            outfile.write("@{0}\n{1}\n{2}\n{3}\n".format(read_acc, read_seq, "+", qual_seq))
-            accsessions_outfile.write("{0},{1}\n".format(read_acc, full_read_acc))
+    # if args.fasta:
+    for read_acc, (read_seq,qual_seq, full_read_acc) in sorted(sim_reads.items(), key = lambda x: len(x[1]), reverse = True):
+        outfile_fasta.write(">{0}\n{1}\n".format(read_acc, read_seq))
+        accsessions_outfile.write("{0},{1}\n".format(read_acc, full_read_acc))
+    # else:
+    outfile_fastq = open(args.outfile_prefix + ".fq", "w")
+    for read_acc, (read_seq,qual_seq, full_read_acc) in sorted(sim_reads.items(), key = lambda x: len(x[1]), reverse = True):
+        outfile_fastq.write("@{0}\n{1}\n{2}\n{3}\n".format(read_acc, read_seq, "+", qual_seq))
+        accsessions_outfile.write("{0},{1}\n".format(read_acc, full_read_acc))
 
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Generate pacbio reads from a set of transcripts.")
     parser.add_argument('sequence_material', type=str, help='The fasta file with sequences to be sequenced.')
-    parser.add_argument('outfile', type=str, help='Output path to fasta file')
+    parser.add_argument('outfile_prefix', type=str, help='Output path to fasta file')
     parser.add_argument('read_count', type=int, help='Number of reads to simulate.')
-    parser.add_argument('--fasta', action="store_true", help='Output in fasta format')
+    # parser.add_argument('--fasta', action="store_true", help='Output in fasta format')
+    parser.add_argument('--nic', action="store_true", help='Simulate NIC transcripts')
+    parser.add_argument('--ens', action="store_true", help='Just simulate the original transcript no errors')
+    parser.add_argument('--gtf', type=str, default = '', help='GTF to simulate NIC from.')
+    parser.add_argument('--disable_infer', action="store_true", help='GTF to simulate NIC from.')
     # parser.add_argument('config', type=str, help='config file')
 
 
     args = parser.parse_args()
-    path_, file_prefix = os.path.split(args.outfile)
+    path_, file_prefix = os.path.split(args.outfile_prefix)
     mkdir_p(path_)
     args.logfile = open(os.path.join(path_, file_prefix + ".log"), "w")
+    args.outfolder = path_
     args.full_acc_file = os.path.join(path_, "accessions_map.csv")
     main(args)
