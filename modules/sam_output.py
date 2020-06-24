@@ -1,6 +1,7 @@
 import pysam
 from itertools import groupby
 from operator import itemgetter
+import re
 
 def get_segments(read_aln, ref_aln, predicted_exons):
     segments = []
@@ -21,7 +22,7 @@ def get_segments(read_aln, ref_aln, predicted_exons):
 
         if n != '-':
             curr_ref_pos += 1
-
+    # print(curr_ref_pos)
     if n != '-' and curr_ref_pos in ref_seq_break_points: 
         ref_aln_break_points.append(i)
 
@@ -35,7 +36,7 @@ def get_segments(read_aln, ref_aln, predicted_exons):
 
     # print('ref_aln_break_points', ref_aln_break_points)
     # print('ref_aln_break_points_no_consecutive', ref_aln_break_points_no_consecutive)
-
+    # print(len(ref_aln_break_points_no_consecutive))
     e_start = 0
     for i,e_stop in enumerate(ref_aln_break_points_no_consecutive):
         if i == len(ref_aln_break_points_no_consecutive) - 1:
@@ -101,31 +102,108 @@ def get_cigars(segments):
     # print(start_offset, 'segments_cigar', segments_cigar)
     return segments_cigar, start_offset #"".join([str(length)+ type_ for length, type_ in c ])
 
+
+def modify_beginning(c, p):
+    add_N_beg = 0
+    match_beg = re.match(p, c)
+    if match_beg:
+        # print('heeeej',c)
+        m = match_beg.group()
+        add_N_beg  = int(m[:-1])
+        c = c[len(m):]
+    return c, add_N_beg
+
+
+def modify_end(c,p):
+    add_N_end = 0
+    c_rev = c[::-1]
+    match_end = re.match(p, c_rev)
+    if match_end:
+        # print('holllla',c)
+        m_rev = match_end.group()
+        m = m_rev[::-1]
+        add_N_end  = int(m[:-1])
+        c = c[:-len(m)]
+    return c, add_N_end
+
+
 def get_genomic_cigar(read_aln, ref_aln, predicted_exons):
     # print('here', read_aln)
     # print('here', ref_aln)
     segments = get_segments(read_aln, ref_aln, predicted_exons)
     cigars, start_offset = get_cigars(segments)
     # print('cigar segments', cigars)
+
+    # ######## ORIGINAL  ###########################
+    # for c in cigars:
+    #     print(c)
     genomic_cigar = []
     intron_lengths = [e2[0] - e1[1] for e1, e2 in zip(predicted_exons[:-1], predicted_exons[1:])]
+    # print(intron_lengths)
     for i in range(len(cigars)):
         if i <= len(intron_lengths) -1:
             genomic_cigar.append( cigars[i] + '{0}N'.format( intron_lengths[i] ) )
         else:
             genomic_cigar.append( cigars[i]  )
+    # ################################################
+
+ 
+
+    # ######################################################################
+    # ################ MODIFYING CIGAR AROUND INTRONS  ######################
+    # intron_lengths = [e2[0] - e1[1] for e1, e2 in zip(predicted_exons[:-1], predicted_exons[1:])]
+    # p = "[1-9]+D"
+    # p_rev = "D[1-9]+"
+    # if len(cigars) > 1:
+    #     # for i, (c1,c2) in enumerate(zip(cigars[:-1], cigars[1:])):
+    #     for i, c in enumerate(cigars):
+    #         if i == 0: # first
+    #             #check only end
+    #             c, n_add_end = modify_end(c, p_rev)
+    #             intron_lengths[i] += n_add_end
+
+    #         elif i == len(cigars) - 1: # last
+    #             #check only beginning
+    #             c, n_add_beg = modify_beginning(c, p)
+    #             intron_lengths[i-1] += n_add_beg 
+                
+    #         else: # middle
+    #             c, n_add_beg = modify_beginning(c, p)
+    #             c, n_add_end = modify_end(c, p_rev)
+    #             intron_lengths[i-1] += n_add_beg 
+    #             intron_lengths[i] += n_add_end
+
+    #         cigars[i] = c
+    # # print()
+    # # for c in cigars:
+    # #     print(c)
+    # genomic_cigar = []
+    # # print(intron_lengths)
+    # for i in range(len(cigars)):
+    #     if i <= len(intron_lengths) -1:
+    #         genomic_cigar.append( cigars[i] + '{0}N'.format( intron_lengths[i] ) )
+    #     else:
+    #         genomic_cigar.append( cigars[i]  )
+    # ###########################
+    # ###########################
 
     genomic_cigar = "".join(s for s in genomic_cigar)
+
     return genomic_cigar, start_offset
 
 
 
-def main(read_id, ref_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, alignment_outfile, is_rc, is_secondary, map_score):
+def main(read_id, ref_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, alignment_outfile, is_rc, is_secondary, map_score, aln_score = 0):
     # print(ref_id, classification, predicted_exons, read_aln, ref_aln, alignment_outfile)
     read_sam_entry = pysam.AlignedSegment(alignment_outfile.header)
     if classification != 'unaligned':
         genomic_cigar, start_offset = get_genomic_cigar(read_aln, ref_aln, predicted_exons)
-        # print('genomic cigar:', genomic_cigar)
+        # if genomic_cigar == "":
+        #     print(classification, is_rc, is_secondary, aln_score)
+        #     print('genomic cigar:', genomic_cigar, read_id)
+        #     print(read_aln)
+        #     print(ref_aln)
+        #     print(predicted_exons)
         read_sam_entry.cigarstring = genomic_cigar 
         read_sam_entry.reference_start = predicted_exons[0][0] + start_offset
         read_sam_entry.mapping_quality = map_score 

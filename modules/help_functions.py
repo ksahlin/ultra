@@ -3,29 +3,44 @@ import sys
 import re
 import os
 import errno
+import itertools
 
 import parasail
 import edlib
 import dill as pickle 
 
-def check_reference_headers(refs):
-    modified = False
-    for header in list(refs.keys()):
-        if header.isdigit() or header == 'X' or header == 'Y':
-            chr_id = 'chr'+ header
-        elif header == 'MT':
-            chr_id = 'chrM'
+# def check_reference_headers(refs):
+#     modified = False
+#     for header in list(refs.keys()):
+#         if header.isdigit() or header == 'X' or header == 'Y':
+#             chr_id = 'chr'+ header
+#         elif header == 'MT':
+#             chr_id = 'chrM'
+#         else:
+#             chr_id = header
+
+#         # we have modified 
+#         if chr_id != header:
+#             modified = True
+#             seq = refs[header]
+#             del refs[header]
+#             refs[chr_id] = seq
+#     return modified
+
+def remove_read_polyA_ends(seq, threshold_len, to_len):
+    end_length_window = min(len(seq)//2, 100)
+    seq_list = [ seq[:-end_length_window] ]
+
+    for ch, g in itertools.groupby(seq[-end_length_window:]):
+        h_len = sum(1 for x in g)
+        # print(ch, h_len, g )
+        if h_len > threshold_len and (ch == "A" or ch == "T"):
+            seq_list.append(ch*to_len)
         else:
-            chr_id = header
+            seq_list.append(ch*h_len)
 
-        # we have modified 
-        if chr_id != header:
-            modified = True
-            seq = refs[header]
-            del refs[header]
-            refs[chr_id] = seq
-    return modified
-
+    seq_mod = "".join([s for s in seq_list])
+    return seq_mod
 
 def pickle_dump(args, data, filename):
     with open(os.path.join(args.outfolder,filename), 'wb') as f:
@@ -135,11 +150,18 @@ def cigar_to_seq(cigar, query, ref):
     return  "".join([s for s in q_aln]), "".join([s for s in r_aln]), cigar_tuples
 
 
-def edlib_alignment(read_seq, ref_seq):
-    result = edlib.align(read_seq, ref_seq, task="path", mode="NW")
+def edlib_alignment(read_seq, ref_seq, aln_mode="NW"):
+    result = edlib.align(read_seq, ref_seq, task="path", mode=aln_mode)
     cigar_string = result["cigar"]
-    read_alignment, ref_alignment, cigar_tuples = cigar_to_seq(cigar_string, read_seq, ref_seq)
-    return read_alignment, ref_alignment
+    start, stop = result['locations'][0]
+    read_alignment, ref_alignment, cigar_tuples = cigar_to_seq(cigar_string, read_seq, ref_seq[start: stop])
+    read_alignment = "-"*start + read_alignment + "-"* (len(ref_seq)-stop - 1)
+    ref_alignment = ref_seq[:start] + ref_alignment + ref_seq[stop:]
+    # cigar_tuples.insert(0, (len(ref_seq[:start]),"D"))
+    # cigar_tuples.append((len(ref_seq[stop:]),"D"))
+    # print( len(read_alignment), len(ref_alignment))
+    assert len(read_alignment) == len(ref_alignment)
+    return read_alignment, ref_alignment, result['editDistance']
 
 def mkdir_p(path):
     try:
@@ -151,7 +173,7 @@ def mkdir_p(path):
         else:
             raise
 
-def parasail_alignment(s1, s2, match_score = 2, mismatch_penalty = -2, opening_penalty = 3, gap_ext = 1):
+def parasail_alignment(s1, s2, match_score = 8, mismatch_penalty = -8, opening_penalty = 12, gap_ext = 1):
     user_matrix = parasail.matrix_create("ACGT", match_score, mismatch_penalty)
     result = parasail.sg_trace_scan_16(s1, s2, opening_penalty, gap_ext, user_matrix)
     if result.saturated:
@@ -170,7 +192,9 @@ def parasail_alignment(s1, s2, match_score = 2, mismatch_penalty = -2, opening_p
     # print(s2_alignment)
     # print(cigar_string)
     # sys.exit()
-
+    # print(dir(result))
+    # print(result.end_query, result.end_ref, result.len_query, result.len_ref, result.length, result.matches)
+    # print()
     return s1_alignment, s2_alignment, cigar_string, cigar_tuples, result.score
 
     # # Rolling window of matching blocks
@@ -199,3 +223,46 @@ def parasail_alignment(s1, s2, match_score = 2, mismatch_penalty = -2, opening_p
     # alignment_ratio = sum(aligned_region)/float(len(s1))
     # return (s1, s2, (s1_alignment, s2_alignment, alignment_ratio))
 
+def ssw_alignment(s1, s2, match_score = 2, mismatch_penalty = -2, opening_penalty = 3, gap_ext = 1):
+    user_matrix = parasail.matrix_create("ACGT", match_score, mismatch_penalty)
+    result = parasail.ssw(s1, s2, opening_penalty, gap_ext, user_matrix)
+    print(result, type(result), dir(result))
+    print(dir(result))
+    for attr, value in result.__dict__.items():
+        print(attr, value)
+    # print(result.ref_begin1, result.ref_end1, result.read_begin1, result.read_end1)
+    # print()
+    return s1_alignment, s2_alignment, cigar_string, cigar_tuples, result.score
+
+def parasail_local(s1, s2, match_score = 2, mismatch_penalty = -2, opening_penalty = 3, gap_ext = 1):
+    user_matrix = parasail.matrix_create("ACGT", match_score, mismatch_penalty)
+    result = parasail.sw_trace_scan_16(s1, s2, opening_penalty, gap_ext, user_matrix)
+    if result.saturated:
+        print("SATURATED!",len(s1), len(s2))
+        result = parasail.sg_trace_scan_32(s1, s2, opening_penalty, gap_ext, user_matrix)
+        print("computed 32 bit instead")
+
+    # difference in how to obtain string from parasail between python v2 and v3... 
+    if sys.version_info[0] < 3:
+        cigar_string = str(result.cigar.decode).decode('utf-8')
+    else:
+        cigar_string = str(result.cigar.decode, 'utf-8')
+    s1_alignment, s2_alignment, cigar_tuples = cigar_to_seq(cigar_string, s1[result.cigar.beg_query:result.end_query], s2[result.cigar.beg_ref: result.end_ref])
+    # print(result.traceback.ref)
+    # print(result.traceback.comp)
+    # print(result.traceback.query)
+    # print(result.score, len(s1), len(s2))
+    print("read",s1_alignment)
+    print("Rref",s2_alignment)
+    print(result.cigar.beg_query,result.end_query)
+    print(result.cigar.beg_ref, result.end_ref)
+    print(cigar_string)
+    # print(result.cigar.seq)
+
+    # sys.exit()
+    # print(dir(result))  
+    # for attr, value in result.__dict__.items():
+    #     print(attr, value)
+    # print(result.end_query, result.end_ref, result.len_query, result.len_ref, result.length, result.matches)
+    # print()
+    return s1_alignment, s2_alignment, cigar_string, cigar_tuples, result.score
