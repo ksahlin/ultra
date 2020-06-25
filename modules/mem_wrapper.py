@@ -8,7 +8,7 @@ from collections import namedtuple
 mem = namedtuple('Mem', ['x', 'y', 'c', 'd', 'val', 'j', "exon_part_id"])
 globals()[mem.__name__] = mem # Global needed for multiprocessing
 
-def find_mems(outfolder, read_path, refs_path, mummer_out_path, min_mem):
+def find_mems_mummer(outfolder, read_path, refs_path, mummer_out_path, min_mem):
     # mummer_out_path = os.path.join( outfolder, "mummer_mems.txt" )
     with open(mummer_out_path, "w") as output_file:
         # print('Running spoa...', end=' ')
@@ -18,18 +18,19 @@ def find_mems(outfolder, read_path, refs_path, mummer_out_path, min_mem):
         # print('Done.')
         stdout.flush()
     output_file.close()
-    # mummer_file = open(mummer_out_path, "r").readlines()
-    # for line in mummer_file:
-    #     print(line)
-    # consensus = l[1].strip()
-    # msa = [s.strip() for s in l[3:]]
-    # print("regular spoa:", consensus)
-    # print(len(consensus))
-    # print(msa)
-    # r = open(ref_out_file, "w")
-    # r.write(">{0}\n{1}".format("reference", consensus))
-    # r.close()
-    # return consensus
+
+def find_mems_slamem(outfolder, read_path, refs_path, out_path, min_mem):
+    # time slaMEM -l 14 /Users/kxs624/tmp/ULTRA/human_test/refs_sequences.fa /Users/kxs624/tmp/ULTRA/human_test_new_flanking_strat/reads_tmp.fq -o /Users/kxs624/tmp/ULTRA/human_test/slamem_test.tx
+    with open(out_path, "w") as output_file:
+        # print('Running spoa...', end=' ')
+        stdout.flush()
+        stderr_file = open(os.path.join(outfolder, "slamem_stderr.1") , "w")
+        stdout_file = open(os.path.join(outfolder, "slamem_stdout.1") , "w")
+        subprocess.check_call([ 'slaMEM', '-l' , str(min_mem),  refs_path, read_path, '-o', output_file ], stdout=stdout_file, stderr=stderr_file)
+        # print('Done.')
+        stdout.flush()
+    output_file.close()
+
 
 
 # def parse_results(mems_path):
@@ -68,7 +69,7 @@ def find_mems(outfolder, read_path, refs_path, mummer_out_path, min_mem):
 #     return mems_db
 
 
-def get_mummer_records(mems_path, reads):
+def get_mem_records(mems_path, reads):
     '''
         Reads contains all the relevant reads in the batch to read mems from 
     '''
