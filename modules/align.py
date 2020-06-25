@@ -17,7 +17,7 @@ from modules import help_functions
 from modules import classify_read_with_mams
 from modules import classify_alignment2
 from modules import sam_output
-from modules import mummer_wrapper
+from modules import mem_wrapper
 
 def annotate_guaranteed_optimal_bound(mems, is_rc, max_intron_chr, max_global_intron):
     """
@@ -121,7 +121,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
     read_accessions_with_mappings = set()
     processed_read_counter = 0
 
-    for (read_acc, mems), (_, mems_rc) in zip(mummer_wrapper.get_mummer_records(mems_path,reads), mummer_wrapper.get_mummer_records(mems_path_rc, reads)):
+    for (read_acc, mems), (_, mems_rc) in zip(mem_wrapper.get_mem_records(mems_path,reads), mem_wrapper.get_mem_records(mems_path_rc, reads)):
         # multiple = False
         if read_acc not in reads: # if parallelization not all reads in mummer file are in read batches
             continue
@@ -143,7 +143,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
         best_solution_value = 0
         for (chr_id, chr_instance_index) , (upper_bound_cov, is_rc, all_mems_to_chromosome) in sorted(list(upper_bound.items()) + list(upper_bound_rc.items()), key = lambda x: x[1][0], reverse = True ): # mems.items():
             # print((chr_id, chr_instance_index), upper_bound_cov, all_mems_to_chromosome)
-            if upper_bound_cov < best_solution_value:
+            if upper_bound_cov < best_solution_value*args.dropoff:
                 # print("Breaking for", chr_id, is_rc, upper_bound_cov, "best:", best_solution_value, "read length:", len(read_seq))
                 break
             
