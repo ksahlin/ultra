@@ -26,7 +26,7 @@ from collections import defaultdict
 # from modules import graph_chainer 
 
 from modules import create_augmented_gene as augmented_gene 
-from modules import mummer_wrapper 
+from modules import mem_wrapper 
 from modules import colinear_solver 
 from modules import help_functions
 from modules import classify_read_with_mams
@@ -217,7 +217,7 @@ def align_reads(args):
 
         mummer_out_path =  os.path.join( args.outfolder, "mummer_mems_batch_-1.txt" )
         print("Running mummer forward") 
-        mummer_wrapper.find_mems(args.outfolder, args.reads_tmp, ref_path, mummer_out_path, args.min_mem)
+        mem_wrapper.find_mems_mummer(args.outfolder, args.reads_tmp, ref_path, mummer_out_path, args.min_mem)
         print("Completed mummer forward")
 
         print("Processing reverse complement reads for mummer")
@@ -232,7 +232,7 @@ def align_reads(args):
 
         mummer_out_path =  os.path.join(args.outfolder, "mummer_mems_batch_-1_rc.txt" )
         print("Running mummer reverse")
-        mummer_wrapper.find_mems(args.outfolder, args.reads_rc, ref_path, mummer_out_path, args.min_mem)
+        mem_wrapper.find_mems_mummer(args.outfolder, args.reads_rc, ref_path, mummer_out_path, args.min_mem)
         print("Completed mummer reverse")
     
     else:
@@ -265,7 +265,7 @@ def align_reads(args):
             batch_args.append( (args.outfolder, read_batch_rc, ref_path, mummer_batch_out_path_rc, args.min_mem ) )
 
         pool = Pool(processes=int(args.nr_cores))
-        results = pool.starmap(mummer_wrapper.find_mems, batch_args)
+        results = pool.starmap(mem_wrapper.find_mems_mummer, batch_args)
         pool.close()
         pool.join() 
         

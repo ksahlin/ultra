@@ -24,6 +24,9 @@ def create_graph_from_exon_parts(db, min_mem, flank_size, small_exon_threshold):
     exons_to_ref = {} # gene_id : { (exon_start, exon_stop) : set() }
     exon_to_gene = {} # exon_id : [gene_id ]
 
+    flanks_to_gene2 = defaultdict(dict)  
+    total_flanks2 = 0
+
     exon_id_to_choordinates = {}
     splices_to_transcripts = defaultdict(dd_set)
     all_splice_pairs_annotations = defaultdict(dd_set)
@@ -59,20 +62,41 @@ def create_graph_from_exon_parts(db, min_mem, flank_size, small_exon_threshold):
             active_start = exon.start - 1
             active_stop = exon.stop
             active_exons = set() 
-            active_exons.add(exon.id)
+            active_exons.add(exon.id)    
+            # adding very first flank on chromosome
+            # print(max(0, exon.start - 1000), exon.start - 1)
+            flanks_to_gene2[chr_id][(max(0, exon.start - 500), exon.start - 1)] = "flank_{0}".format(i)
+            total_flanks2 += 1
 
         if chr_id != prev_seq_id: # switching chromosomes
             parts_to_exons[prev_seq_id][(active_start, active_stop)] = active_exons
             part_intervals[prev_seq_id].addi(active_start, active_stop, None)
+            
+            # adding very last flank on chromosome
+            flanks_to_gene2[prev_seq_id][(max(0, active_stop), active_stop + 500)] = "flank_{0}".format(i)
+            total_flanks2 += 1
+            # print(max(0, active_stop), active_stop + 1000)
             prev_seq_id = chr_id
             active_start = exon.start - 1
             active_stop = exon.stop
             active_exons = set() 
-            active_exons.add(exon.id)           
+            active_exons.add(exon.id)     
+
 
         if exon.start - 1 > active_stop:
             parts_to_exons[chr_id][(active_start, active_stop)] = active_exons
             part_intervals[prev_seq_id].addi(active_start, active_stop, None)
+            if exon.start - active_stop > 1000:
+                flanks_to_gene2[chr_id][(max(0, active_stop), active_stop + 500)] = "flank_{0}_1".format(i)
+                flanks_to_gene2[chr_id][(max(0, exon.start - 500), exon.start - 1)] = "flank_{0}_2".format(i)
+                total_flanks2 += 2
+                # print(max(0, active_stop), active_stop + 1000)
+                # print(max(0, exon.start - 1000), exon.start - 1)
+
+            else: # add the whole intron
+                flanks_to_gene2[chr_id][(max(0, active_stop), exon.start)] = "flank_{0}".format(i)
+                total_flanks2 += 1
+
             active_exons = set()
             active_exons.add(exon.id)
 
@@ -84,6 +108,8 @@ def create_graph_from_exon_parts(db, min_mem, flank_size, small_exon_threshold):
             active_stop = max(active_stop, exon.stop)
 
         assert active_start <= exon.start - 1
+
+    print("total_flanks2:", total_flanks2)
 
     parts_to_exons[chr_id][(active_start, active_stop)] = active_exons
     part_intervals[prev_seq_id].addi(active_start, active_stop, None)
@@ -172,7 +198,7 @@ def create_graph_from_exon_parts(db, min_mem, flank_size, small_exon_threshold):
     return  exons_to_ref, parts_to_exons, splices_to_transcripts, \
             transcripts_to_splices, all_splice_pairs_annotations, \
             all_splice_sites_annotations, exon_id_to_choordinates, \
-            exon_to_gene, gene_to_small_exons, flanks_to_gene, max_intron_chr
+            exon_to_gene, gene_to_small_exons, flanks_to_gene2, max_intron_chr
 
 
 
