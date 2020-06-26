@@ -21,15 +21,14 @@ def find_mems_mummer(outfolder, read_path, refs_path, mummer_out_path, min_mem):
 
 def find_mems_slamem(outfolder, read_path, refs_path, out_path, min_mem):
     # time slaMEM -l 14 /Users/kxs624/tmp/ULTRA/human_test/refs_sequences.fa /Users/kxs624/tmp/ULTRA/human_test_new_flanking_strat/reads_tmp.fq -o /Users/kxs624/tmp/ULTRA/human_test/slamem_test.tx
-    with open(out_path, "w") as output_file:
-        # print('Running spoa...', end=' ')
-        stdout.flush()
-        stderr_file = open(os.path.join(outfolder, "slamem_stderr.1") , "w")
-        stdout_file = open(os.path.join(outfolder, "slamem_stdout.1") , "w")
-        subprocess.check_call([ 'slaMEM', '-l' , str(min_mem),  refs_path, read_path, '-o', output_file ], stdout=stdout_file, stderr=stderr_file)
-        # print('Done.')
-        stdout.flush()
-    output_file.close()
+    # with open(out_path, "w") as output_file:
+    stdout.flush()
+    stderr_file = open(os.path.join(outfolder, "slamem_stderr.1") , "w")
+    stdout_file = open(os.path.join(outfolder, "slamem_stdout.1") , "w")
+    subprocess.check_call([ 'slaMEM', '-l' , str(min_mem),  refs_path, read_path, '-o', out_path ], stdout=stdout_file, stderr=stderr_file)
+    # print('Done.')
+    stdout.flush()
+    # output_file.close()
 
 
 
@@ -77,8 +76,8 @@ def get_mem_records(mems_path, reads):
     relevant_read_cnt = 0
     for i, line in enumerate(open(mems_path, 'r')):
         if line[0] == '>':
-            tmp_line = line.split()[1].strip()
-            if tmp_line not in reads:
+            acc = line[1:].strip()
+            if acc not in reads:
                 relevant = False
                 continue
             else:
@@ -86,7 +85,7 @@ def get_mem_records(mems_path, reads):
                 relevant_read_cnt +=1
 
             if relevant_read_cnt == 1:
-                read_acc = line.split()[1].strip()  
+                read_acc = acc  
             else:
 
                 for chr_id in list(read_mems_tmp.keys()):
@@ -95,7 +94,7 @@ def get_mem_records(mems_path, reads):
                     read_mems_tmp[chr_id] = sorted_mems
 
                 yield read_acc, read_mems_tmp
-                read_acc = line.split()[1].strip() 
+                read_acc = acc 
             
             read_mems_tmp = defaultdict(list)
 
