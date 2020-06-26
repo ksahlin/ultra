@@ -142,19 +142,23 @@ rule ultra_prep:
             ref = config["SIRV"]
             annotation = config["ANNOTATION"] + "/SIRV.gtf"
             shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_splicing {annotation} {outfolder}")
-            shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_seqs {ref} {outfolder} --min_mem 14 --mask_threshold 1000 2>&1 | tee {output.time_and_mem}") #2> {output.time_and_mem}
+            shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_seqs {ref} {outfolder} --min_mem 16 --mask_threshold 1000 2>&1 | tee {output.time_and_mem}") #2> {output.time_and_mem}
 
         elif wildcards.dataset == "drosophila":
             ref =  config["drosophila97"]
             annotation = config["ANNOTATION"] + "/drosophila.gtf"
             shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_splicing --disable_infer {annotation} {outfolder}")
-            shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_seqs {ref} {outfolder} --min_mem 14 --mask_threshold 1000 2>&1 | tee {output.time_and_mem}") #2> {output.time_and_mem}
+            shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_seqs {ref} {outfolder} --min_mem 16 --mask_threshold 1000 2>&1 | tee {output.time_and_mem}") #2> {output.time_and_mem}
 
         else:
             ref = config["HG38"]
             annotation = config["ANNOTATION"] + "/NA12878.gtf"
             shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_splicing --disable_infer {annotation} {outfolder}")
-            shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_seqs {ref} {outfolder} --min_mem 14 --mask_threshold 100 2>&1 | tee {output.time_and_mem}") #2> {output.time_and_mem}
+            if wildcards.dataset == 'pacbio_alzheimer' or wildcards.dataset == "simulated_ens":
+                # min_mem 20 for the lower error_rate datasets
+                shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_seqs {ref} {outfolder} --min_mem 20 --mask_threshold 1000 2>&1 | tee {output.time_and_mem}") #2> {output.time_and_mem}
+            else:
+                shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 prep_seqs {ref} {outfolder} --min_mem 16 --mask_threshold 1000 2>&1 | tee {output.time_and_mem}") #2> {output.time_and_mem}
 
 
 rule ultra_align:
@@ -172,10 +176,10 @@ rule ultra_align:
             ref = config["HG38"]
 
         outfolder = config["ROOT_OUT"] + "/alignments/ultra/{0}/".format(wildcards.dataset)
-        if wildcards.dataset == "drosophila":
-            shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 align {ref} {input.reads}  {outfolder} --min_mem 14 --t 62  2>&1 | tee {output.time_and_mem} ") # 2> {output.time_and_mem}
+        if wildcards.dataset == 'pacbio_alzheimer' or wildcards.dataset == "simulated_ens":
+            shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 align {ref} {input.reads}  {outfolder} --min_mem 20 --min_acc 0.8 --t 62  2>&1 | tee {output.time_and_mem} ") # 2> {output.time_and_mem}
         else:
-            shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 align {ref} {input.reads}  {outfolder} --min_mem 14 --t 62  2>&1 | tee {output.time_and_mem} ") # 2> {output.time_and_mem}
+            shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/torkel2 align {ref} {input.reads}  {outfolder} --min_mem 16 --min_acc 0.6 --t 62  2>&1 | tee {output.time_and_mem} ") # 2> {output.time_and_mem}
 
         shell("mv {outfolder}/torkel.sam {output.sam}")
 

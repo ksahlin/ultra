@@ -108,7 +108,7 @@
         "cpus-per-task" : "64",
         "Nodes" : 1,
         "mem" : "500G",
-        "runtime" : "2-00:00:00",
+        "runtime" : "4-00:00:00",
         "mail" : "ksahlin@kth.se",
         "mail_type" : "FAIL",
         "exclude" : "c[8-11,15-16]"
@@ -120,7 +120,7 @@
         "cpus-per-task" : "64",
         "Nodes" : 1,
         "mem" : "500G",
-        "runtime" : "2-00:00:00",
+        "runtime" : "4-00:00:00",
         "mail" : "ksahlin@kth.se",
         "mail_type" : "FAIL",
         "exclude" : "c[8-11,15-16]"
