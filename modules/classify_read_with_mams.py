@@ -300,7 +300,7 @@ def add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, ma
 
                 for start, stop in locations:
                     min_segment_length = stop - start + 1 #Edlib end location is inclusive
-                    print((e_start, e_stop), locations, edit_distance, min_segment_length, accuracy, (stop - start + 1)*accuracy, (stop - start + 1 - edit_distance)* accuracy, (min_segment_length - edit_distance)/float(min_segment_length))
+                    # print((e_start, e_stop), locations, edit_distance, min_segment_length, accuracy, (stop - start + 1)*accuracy, (stop - start + 1 - edit_distance)* accuracy, (min_segment_length - edit_distance)/float(min_segment_length))
                     # print(exon_seq)
                     score = accuracy*(min_segment_length - edit_distance) # accuracy*min_segment_length
                     if (min_segment_length - edit_distance)/float(min_segment_length) > min_acc:
