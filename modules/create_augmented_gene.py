@@ -94,7 +94,7 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold):
                 # print(max(0, exon.start - 1000), exon.start - 1)
 
             else: # add the whole intron
-                flanks_to_gene2[chr_id][(max(0, active_stop), exon.start)] = "flank_{0}".format(i)
+                flanks_to_gene2[chr_id][(max(0, active_stop), exon.start - 1)] = "flank_{0}".format(i)
                 total_flanks2 += 1
 
             active_exons = set()

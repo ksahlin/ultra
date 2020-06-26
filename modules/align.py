@@ -104,6 +104,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
     nlog_n_instance_counter = 0
     quadratic_instance_counter = 0
     max_global_intron = args.max_intron
+    min_acc = args.min_acc
     if batch_number == -1:
         alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, "torkel.sam"), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
         warning_log_file = open(os.path.join(args.outfolder, "torkel.stderr"), "w")
@@ -201,7 +202,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
             # print("mem solution:", is_rc, chaining_score, mem_solution)
             non_covered_regions, mam_value, mam_solution = classify_read_with_mams.main(mem_solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, \
                                                                                                                     exon_id_to_choordinates, exon_to_gene, gene_to_small_exons, \
-                                                                                                                    read_seq, warning_log_file)
+                                                                                                                    read_seq, warning_log_file, min_acc)
             # print("finished Mam solution:",mam_value, mam_solution)
             # for zzz2 in mam_solution:
             #     print(zzz2)
