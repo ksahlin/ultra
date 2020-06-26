@@ -278,7 +278,7 @@ def get_unique_exon_and_flank_choordinates(exon_hit_locations, segment_exon_hit_
     return unique_exon_choordinates, unique_exon_choordinates_segments, unique_flank_choordinates, unique_flank_choordinates_segments
 
 
-def add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, mam_instance):
+def add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, mam_instance, min_acc):
     if e_stop - e_start >= 5:
         # exon_seq = ref_exon_sequences[ref_chr_id][(e_start, e_stop)]
         # print((e_start, e_stop))
@@ -300,10 +300,10 @@ def add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, ma
 
                 for start, stop in locations:
                     min_segment_length = stop - start + 1 #Edlib end location is inclusive
-                    # print((e_start, e_stop), locations, edit_distance, min_segment_length, accuracy, (stop - start + 1)*accuracy, (stop - start + 1 - edit_distance)* accuracy, (min_segment_length - edit_distance)/float(min_segment_length))
+                    print((e_start, e_stop), locations, edit_distance, min_segment_length, accuracy, (stop - start + 1)*accuracy, (stop - start + 1 - edit_distance)* accuracy, (min_segment_length - edit_distance)/float(min_segment_length))
                     # print(exon_seq)
                     score = accuracy*(min_segment_length - edit_distance) # accuracy*min_segment_length
-                    if (min_segment_length - edit_distance)/float(min_segment_length) > 0.5:
+                    if (min_segment_length - edit_distance)/float(min_segment_length) > min_acc:
                         # for exon_id in all_exon_ids: break # only need one of the redundant exon_ids
                         # exon_id = all_exon_ids.pop()
                         # covered_regions.append((start,stop, score, exon_id, ref_chr_id))
@@ -358,7 +358,7 @@ def add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, ma
             score = accuracy*(min_segment_length - edit_distance) #accuracy*min_segment_length  #/len(read_seq)
             # print("LOOK:", min_segment_length, edit_distance, score, locations)
             # if e_score < 1.0:
-            if (min_segment_length -  edit_distance)/float(min_segment_length) > 0.5:
+            if (min_segment_length -  edit_distance)/float(min_segment_length) > min_acc:
                 start, stop = 0, len(read_seq) - 1
                 # covered_regions.append((start,stop, score, exon_id, ref_chr_id))
                 # for exon_id in all_exon_ids:
@@ -374,7 +374,7 @@ def add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, ma
     
 
 
-def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon_id_to_choordinates, exon_to_gene, gene_to_small_exons, read_seq, warning_log_file):
+def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon_id_to_choordinates, exon_to_gene, gene_to_small_exons, read_seq, warning_log_file, min_acc):
     """
         NOTE: if paramerer task = 'path' is given to edlib_alignment function calls below, it will give exact accuracy of the aligmnent but the program will be ~40% slower to calling task = 'locations'
             Now we are approxmating accuracy by dividing by start and end of the reference coordinates of the alignment. This is not good approw if there is a large instertion
@@ -413,7 +413,7 @@ def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon
         exon_seq = ref_exon_sequences[ref_chr_id][(e_start, e_stop)]
         exon_id = all_exon_ids.pop()
         # print("Testing full exon", e_start, e_stop, exon_id, exon_seq)
-        add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, mam_instance)
+        add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, mam_instance, min_acc)
 
 
     # add the flanks if any in the solution But they are required to be start and end flanks of the part MEMs and not overlapping any exons (i.e., the exon hits to be considered)
@@ -422,7 +422,7 @@ def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon
         flank_id = "flank_{0}_{1}".format(f_start, f_stop)
         # print("adding full flank:", f_start, f_stop, flank_seq )
         # if (f_stop <= exon_hit_locations[0][1]) or (exon_hit_locations[-1][2] <= f_start): # is start flank
-        add_exon_to_mam(read_seq, ref_chr_id, flank_seq, f_start, f_stop, flank_id, mam_instance)
+        add_exon_to_mam(read_seq, ref_chr_id, flank_seq, f_start, f_stop, flank_id, mam_instance, min_acc)
 
 
     # Consider segments here after all full exons and flanks have been aligned. A segment is tested for 
@@ -456,7 +456,7 @@ def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon
             # print()
             # print("testing segment1:", e_start, e_stop, s_start, s_stop, segment_seq )
             if len(segment_seq) > 5:
-                add_exon_to_mam(read_seq, ref_chr_id, segment_seq, e_start, e_stop, exon_id, mam_instance)
+                add_exon_to_mam(read_seq, ref_chr_id, segment_seq, e_start, e_stop, exon_id, mam_instance, min_acc)
 
         elif final_last_start <= e_start: # is end_exon
             # print(len(exon_seq), s_start,s_stop, e_start, e_stop, len(exon_seq), s_start - e_start, len(exon_seq) - (e_stop - s_stop +1))
@@ -465,7 +465,7 @@ def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon
             # print()
             # print("testing segment2:", e_start, e_stop, s_start, s_stop, segment_seq )
             if len(segment_seq) > 5:
-                add_exon_to_mam(read_seq, ref_chr_id, segment_seq, e_start, e_stop, exon_id, mam_instance)
+                add_exon_to_mam(read_seq, ref_chr_id, segment_seq, e_start, e_stop, exon_id, mam_instance, min_acc)
 
 
     # finally add eventual segments of the flanks if any in the solution But they are required not to overlap any exons 
@@ -477,11 +477,11 @@ def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon
         segment_seq = flank_seq[s_start - f_start:  ]   # segment is MEM coordinated i.e. inclusive, so we subtract one here
         if len(segment_seq) > 5:
             # print("Testing start flank segment:", f_start, s_stop, segment_seq )
-            add_exon_to_mam(read_seq, ref_chr_id, segment_seq, f_start, f_stop, flank_id, mam_instance)
+            add_exon_to_mam(read_seq, ref_chr_id, segment_seq, f_start, f_stop, flank_id, mam_instance, min_acc)
         segment_seq = flank_seq[: len(flank_seq) - (f_stop - (s_stop + 1)) ]  # segment is MEM coordinated i.e. inclusive, so we subtract one here
         if len(segment_seq) > 5:
             # print("Testing end flank segment:", s_start, f_stop, segment_seq )
-            add_exon_to_mam(read_seq, ref_chr_id, segment_seq, f_start, f_stop, flank_id, mam_instance)
+            add_exon_to_mam(read_seq, ref_chr_id, segment_seq, f_start, f_stop, flank_id, mam_instance, min_acc)
 
 
     ###################################################################################################
