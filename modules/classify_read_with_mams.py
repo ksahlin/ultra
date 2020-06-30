@@ -244,7 +244,8 @@ def get_unique_exon_and_flank_choordinates(exon_hit_locations, segment_exon_hit_
     # This thresholds allows such a wiggle overlap in hitting mems outside of exom boundaries, the chance that the hit is 6nt or larger is a probablitiy of p=1/(4^6) \approx 0.0002
     wiggle_overlap = 5 
     for (ref_chr_id, e_start, e_stop) in exon_hit_locations:
-        exon_ids = parts_to_exons[ref_chr_id][(e_start, e_stop)]
+        # exon_ids = parts_to_exons[ref_chr_id][(e_start, e_stop)]
+        # print(parts_to_exons)
         exon_id = choord_to_exon_id[(ref_chr_id, e_start, e_stop)]
         unique_exon_choordinates[ (ref_chr_id, e_start, e_stop) ].add(exon_id)
         
@@ -252,8 +253,12 @@ def get_unique_exon_and_flank_choordinates(exon_hit_locations, segment_exon_hit_
         unique_exon_choordinates_segments[(ref_chr_id, e_start, e_stop) ] =  (ref_chr_id, segm_ref_start, segm_ref_stop, exon_id)
 
         # also add all small exons that may be smaller than minimum MEM size
-        unique_genes = set(gene_id for exon_id in exon_ids for gene_id in exon_to_gene[exon_id])
+        # unique_genes = set(gene_id for exon_id in exon_ids for gene_id in exon_to_gene[exon_id])
+        unique_genes = set(gene_id for gene_id in exon_to_gene[exon_id])
+        # print("LOOOOL", exon_ids)
+
         small_exons = set(small_exon_id for gene_id in unique_genes for small_exon_id in gene_to_small_exons[gene_id]) 
+        # print(small_exons)
         for small_exon_id in small_exons:
             e_start, e_stop = exon_id_to_choordinates[small_exon_id]
             if (ref_chr_id,e_start, e_stop) not in unique_exon_choordinates:
@@ -274,7 +279,8 @@ def get_unique_exon_and_flank_choordinates(exon_hit_locations, segment_exon_hit_
         # within end exon      exon:                      ---------------------------------
         if (ref_stop - segm_ref_stop ) > 0.05*(ref_stop - ref_start):
             unique_flank_choordinates_segments[(ref_chr_id,  ref_start, ref_stop) ] =  (ref_chr_id, segm_ref_start, segm_ref_stop)
-
+    # print(unique_exon_choordinates)
+    # sys.exit()
     return unique_exon_choordinates, unique_exon_choordinates_segments, unique_flank_choordinates, unique_flank_choordinates_segments
 
 
