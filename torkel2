@@ -101,12 +101,20 @@ def prep_seqs(args):
         print("Warning: Detected {0} sequences in reference fasta that are not in annotation. Will not be able to infer annotations from alignments on the following refernece sequences:\n".format(len(not_in_annot)))
         for s in not_in_annot:
             print(s, "with length:{0}".format(len(refs[s])))
+    # print(flanks_to_gene)
+    ref_part_sequences, ref_flank_sequences = augmented_gene.get_part_sequences_from_choordinates(parts_to_exons, flanks_to_gene, refs)
+    # print(len(ref_part_sequences))
+    # print(len(ref_flank_sequences))
 
-    ref_part_sequences = augmented_gene.get_part_sequences_from_choordinates(parts_to_exons, flanks_to_gene, refs)
     augmented_gene.mask_abundant_kmers(ref_part_sequences, args.min_mem, args.mask_threshold)
+    augmented_gene.mask_abundant_kmers(ref_flank_sequences, args.min_mem, args.mask_threshold)
+
+    ref_part_sequences = help_functions.update_nested(ref_part_sequences, ref_flank_sequences)
+    # print()
+    # print(ref_part_sequences)
     ref_exon_sequences = augmented_gene.get_exon_sequences_from_choordinates(exon_id_to_choordinates, exons_to_ref, refs)
     ref_flank_sequences = augmented_gene.get_flank_sequences_from_choordinates(flanks_to_gene, refs)
-
+    # print("ref_exon_sequences", ref_exon_sequences)
     help_functions.pickle_dump(args, exon_id_to_choordinates, 'exon_id_to_choordinates.pickle')
     help_functions.pickle_dump(args, ref_part_sequences, 'ref_part_sequences.pickle')
     help_functions.pickle_dump(args, ref_exon_sequences, 'ref_exon_sequences.pickle')
@@ -189,7 +197,7 @@ def align_reads(args):
     # path_covers = help_functions.pickle_load( os.path.join(args.outfolder, 'paths.pickle') )
 
     ref_part_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'ref_part_sequences.pickle') )
-
+    # print(ref_part_sequences)
     ref_path = os.path.join(args.outfolder, "refs_sequences.fa")
     refs_file = open(ref_path, 'w') #open(os.path.join(outfolder, "refs_sequences_tmp.fa"), "w")
     for chr_id  in ref_part_sequences:
@@ -376,7 +384,7 @@ if __name__ == '__main__':
     # group2.add_argument('--slamem', action="store_true", help='Use slaMEM to find mems. About 1.5-2x slower than mumer but consumes less than 25% of the memory compared to mummer')
 
     pipeline_parser.add_argument('--min_mem', type=int, default=17, help='Threshold for minimum mem size considered.')
-    pipeline_parser.add_argument('--min_acc', type=float, default=0.7, help='Minimum accuracy of MAM to be considered in mam chaining.')
+    pipeline_parser.add_argument('--min_acc', type=float, default=0.6, help='Minimum accuracy of MAM to be considered in mam chaining.')
     pipeline_parser.add_argument('--flank_size', type=int, default=500, help='Size of genomic regions surrounding genes.')
     pipeline_parser.add_argument('--max_intron', type=int, default=1200000, help='Set global maximum size between mems considered in chaining solution. This is otherwise inferred from GTF file per chromosome.')
     pipeline_parser.add_argument('--small_exon_threshold', type=int, default=200, help='Considered in MAM solution even if they cont contain MEMs.')
@@ -388,10 +396,10 @@ if __name__ == '__main__':
                                                                                         higher than 2*0.5*read_length would be considered an alignment, otherwise unaligned.')
     pipeline_parser.add_argument('--t', dest = 'nr_cores', type=int, default=3, help='Number of cores.')
     pipeline_parser.add_argument('--non_covered_cutoff', type=int, default=15, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
-    pipeline_parser.add_argument('--dropoff', type=float, default=0.7, help='Ignore alignment to hits with read coverage of this fraction less than the best hit.')
+    pipeline_parser.add_argument('--dropoff', type=float, default=0.95, help='Ignore alignment to hits with read coverage of this fraction less than the best hit.')
     pipeline_parser.add_argument('--ignore_rc', action='store_true', help='Ignore to map to reverse complement.')
     pipeline_parser.add_argument('--disable_infer', action='store_true', help='Makes splice creation step much faster. Thes parameter can be set if gene and transcript name fields are provided in gtf file.')
-    pipeline_parser.add_argument('--mask_threshold', type=int, default=1000, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
+    pipeline_parser.add_argument('--mask_threshold', type=int, default=500, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
     pipeline_parser.set_defaults(which='pipeline')
 
 
@@ -405,7 +413,7 @@ if __name__ == '__main__':
     prep_seqs_parser.add_argument('ref', type=str, help='Reference genome (fasta)')
     prep_seqs_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
     prep_seqs_parser.add_argument('--min_mem', type=int, default=16, help='Threshold for minimum mem size considered.')
-    prep_seqs_parser.add_argument('--mask_threshold', type=int, default=1000, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
+    prep_seqs_parser.add_argument('--mask_threshold', type=int, default=500, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
     prep_seqs_parser.set_defaults(which='prep_seqs')
 
 
@@ -421,10 +429,10 @@ if __name__ == '__main__':
                                                                                         matches and mismatches would be 0.75 - 0.25 = 0.5. Default val (0.5) sets that a score\
                                                                                         higher than 2*0.5*read_length would be considered an alignment, otherwise unaligned.')
     align_reads_parser.add_argument('--non_covered_cutoff', type=int, default=15, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
-    align_reads_parser.add_argument('--dropoff', type=float, default=0.7, help='Ignore alignment to hits with read coverage of this fraction less than the best hit.')
+    align_reads_parser.add_argument('--dropoff', type=float, default=0.95, help='Ignore alignment to hits with read coverage of this fraction less than the best hit.')
     align_reads_parser.add_argument('--ignore_rc', action='store_true', help='Ignore to map to reverse complement.')
     align_reads_parser.add_argument('--min_mem', type=int, default=16, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
-    align_reads_parser.add_argument('--min_acc', type=float, default=0.7, help='Minimum accuracy of MAM to be considered in mam chaining.')
+    align_reads_parser.add_argument('--min_acc', type=float, default=0.6, help='Minimum accuracy of MAM to be considered in mam chaining.')
 
 
     align_reads_parser.set_defaults(which='align_reads')
