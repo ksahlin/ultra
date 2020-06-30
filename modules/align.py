@@ -215,6 +215,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                 predicted_exons = []
                 tot_exons_len = 0
                 prev_y_coord = -1
+                prev_segm_id = ""
                 covered = 0
                 for mam in mam_solution:
                     if (mam.x, mam.y) in ref_exon_sequences[mam.ref_chr_id]:
@@ -229,9 +230,19 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
 
                     if prev_y_coord == mam.x: #adjacent segments means its a flank and we should not add an new exon (i.e., intron split)
                         predicted_exons[-1] = (predicted_exons[-1][0], mam.y)  # update the last exon
+                    elif "compl_end" in mam.exon_id and prev_segm_id != "":
+                        predicted_exons[-1] = (predicted_exons[-1][0], mam.y)  # update the last exon
+                    elif "compl_beg" in prev_segm_id:
+                        predicted_exons[-1] = (predicted_exons[-1][0], mam.y)  # update the last exon
                     else:
                         predicted_exons.append( (mam.x, mam.y) )
+
+                    # if 1 < prev_y_coord - mam.x < 10:
+                    #     print(read_acc)
+                    #     print(mam, mam_solution,  predicted_exons)
+                    #     # print(sorted([ch for eee, ch in exon_id_to_choordinates.items()]))
                     prev_y_coord = mam.y
+                    prev_segm_id = mam.exon_id
                     # if mam.x < prev_ref_stop:
                         # chained_exon_seqs.append(seq[prev_ref_stop - mam.x: ])
                         # warning_log_file.write("Overlapping exons in solution with {0} bases. {1}, {2}, {3}, {4}.\n".format(prev_ref_stop - mam.x, chr_id, mam.x, prev_ref_stop, mam))

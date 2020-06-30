@@ -300,10 +300,11 @@ def add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, ma
 
                 for start, stop in locations:
                     min_segment_length = stop - start + 1 #Edlib end location is inclusive
-                    # print((e_start, e_stop), locations, edit_distance, min_segment_length, accuracy, (stop - start + 1)*accuracy, (stop - start + 1 - edit_distance)* accuracy, (min_segment_length - edit_distance)/float(min_segment_length))
+                    # print(accuracy)
+                    # print((e_start, e_stop), locations, edit_distance, min_segment_length, accuracy, (min_segment_length - edit_distance)/float(min_segment_length), (stop - start + 1)*accuracy, (stop - start + 1 - edit_distance)* accuracy, (min_segment_length - edit_distance)/float(min_segment_length))
                     # print(exon_seq)
                     score = accuracy*(min_segment_length - edit_distance) # accuracy*min_segment_length
-                    if (min_segment_length - edit_distance)/float(min_segment_length) > min_acc:
+                    if accuracy > min_acc: #(min_segment_length - edit_distance)/float(min_segment_length) > min_acc:
                         # for exon_id in all_exon_ids: break # only need one of the redundant exon_ids
                         # exon_id = all_exon_ids.pop()
                         # covered_regions.append((start,stop, score, exon_id, ref_chr_id))
@@ -358,7 +359,7 @@ def add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, ma
             score = accuracy*(min_segment_length - edit_distance) #accuracy*min_segment_length  #/len(read_seq)
             # print("LOOK:", min_segment_length, edit_distance, score, locations)
             # if e_score < 1.0:
-            if (min_segment_length -  edit_distance)/float(min_segment_length) > min_acc:
+            if accuracy > min_acc: #(min_segment_length -  edit_distance)/float(min_segment_length) > min_acc:
                 start, stop = 0, len(read_seq) - 1
                 # covered_regions.append((start,stop, score, exon_id, ref_chr_id))
                 # for exon_id in all_exon_ids:
@@ -443,7 +444,7 @@ def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon
     final_last_start = min(last_part_start, last_valid_mam_start)
     # print(first_part_stop >= first_valid_mam_stop, "OMG")
     # print(last_part_start <= last_valid_mam_start, "OMG2")
-
+    segm_already_tried = set()
     for (ref_chr_id, e_start, e_stop) in unique_exon_choordinates_segments:
         # ref_chr_id, e_start, e_stop, exon_id = unique_exon_choordinates_segments[(ref_chr_id, s_start, s_stop)]
         ref_chr_id, s_start, s_stop, exon_id = unique_exon_choordinates_segments[(ref_chr_id, e_start, e_stop)]
@@ -454,34 +455,39 @@ def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon
         if e_stop <= final_first_stop: # is start exon
             segment_seq = exon_seq[s_start - e_start:  ]  # We allow only semi global hit towards one end (the upstream end of the read)
             # print()
-            # print("testing segment1:", e_start, e_stop, s_start, s_stop, segment_seq )
-            if len(segment_seq) > 5:
+            if segment_seq not in segm_already_tried and len(segment_seq) > 5:
+                # print("testing segment1:", e_start, e_stop, s_start, s_stop, segment_seq )
                 add_exon_to_mam(read_seq, ref_chr_id, segment_seq, e_start, e_stop, exon_id, mam_instance, min_acc)
-
+                segm_already_tried.add(segment_seq)
         elif final_last_start <= e_start: # is end_exon
             # print(len(exon_seq), s_start,s_stop, e_start, e_stop, len(exon_seq), s_start - e_start, len(exon_seq) - (e_stop - s_stop +1))
             # segment_seq = exon_seq[s_start - e_start: len(exon_seq) - (e_stop - (s_stop + 1)) ]  # segment is MEM coordinated i.e. inclusive, so we subtract one here
             segment_seq = exon_seq[: len(exon_seq) - (e_stop - (s_stop + 1)) ]  # segment is MEM coordinated i.e. inclusive, so we subtract one here, allow semi global hit towards one end (the downstream end of the read)
             # print()
-            # print("testing segment2:", e_start, e_stop, s_start, s_stop, segment_seq )
-            if len(segment_seq) > 5:
+            if segment_seq not in segm_already_tried and len(segment_seq) > 5:
+                # print("testing segment2:", e_start, e_stop, s_start, s_stop, segment_seq )
                 add_exon_to_mam(read_seq, ref_chr_id, segment_seq, e_start, e_stop, exon_id, mam_instance, min_acc)
+                segm_already_tried.add(segment_seq)
 
 
     # finally add eventual segments of the flanks if any in the solution But they are required not to overlap any exons 
+    segm_already_tried = set()
     for (ref_chr_id, f_start, f_stop) in unique_flank_choordinates_segments:
         ref_chr_id, s_start, s_stop = unique_flank_choordinates_segments[(ref_chr_id, f_start, f_stop)]
         flank_seq = ref_flank_sequences[ref_chr_id][(f_start, f_stop)]
         flank_id = "flank_{0}_{1}".format(f_start, f_stop)
 
         segment_seq = flank_seq[s_start - f_start:  ]   # segment is MEM coordinated i.e. inclusive, so we subtract one here
-        if len(segment_seq) > 5:
+        if segment_seq not in segm_already_tried and len(segment_seq) > 5:
             # print("Testing start flank segment:", f_start, s_stop, segment_seq )
             add_exon_to_mam(read_seq, ref_chr_id, segment_seq, f_start, f_stop, flank_id, mam_instance, min_acc)
+            segm_already_tried.add(segment_seq)
+
         segment_seq = flank_seq[: len(flank_seq) - (f_stop - (s_stop + 1)) ]  # segment is MEM coordinated i.e. inclusive, so we subtract one here
-        if len(segment_seq) > 5:
+        if segment_seq not in segm_already_tried and len(segment_seq) > 5:
             # print("Testing end flank segment:", s_start, f_stop, segment_seq )
             add_exon_to_mam(read_seq, ref_chr_id, segment_seq, f_start, f_stop, flank_id, mam_instance, min_acc)
+            segm_already_tried.add(segment_seq)
 
 
     ###################################################################################################

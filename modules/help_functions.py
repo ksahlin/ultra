@@ -8,6 +8,7 @@ import itertools
 import parasail
 import edlib
 import dill as pickle 
+import collections.abc
 
 # def check_reference_headers(refs):
 #     modified = False
@@ -26,6 +27,16 @@ import dill as pickle
 #             del refs[header]
 #             refs[chr_id] = seq
 #     return modified
+
+
+def update_nested(d, u):
+    for k, v in u.items():
+        if isinstance(v, collections.abc.Mapping):
+            d[k] = update_nested(d.get(k, {}), v)
+        else:
+            d[k] = v
+    return d
+
 
 def remove_read_polyA_ends(seq, threshold_len, to_len):
     end_length_window = min(len(seq)//2, 100)
