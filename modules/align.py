@@ -97,6 +97,72 @@ def annotate_guaranteed_optimal_bound(mems, is_rc, max_intron_chr, max_global_in
 
     return upper_bound
 
+def find_exons(chr_id, mam_solution, exon_choordinates_to_chr, ref_exon_sequences, ref_segment_sequences, ref_flank_sequences, all_splice_pairs_annotations):
+    exons = []
+    i = 0
+    print("BEFO:", [(m.x,m.y) for m in mam_solution])
+    valid_introns_sites = all_splice_pairs_annotations[chr_id]
+    print(valid_introns_sites)
+    while i < len(mam_solution):
+        curr_x = mam_solution[i].x
+        curr_c = mam_solution[i].c
+        last_y = mam_solution[i].y
+        last_d = mam_solution[i].d
+        exon_id = mam_solution[i].ref_chr_id
+        # find closing exon
+        found_closing_end = False
+        j_last_exon = 0
+        for j, mam in enumerate(mam_solution[i:]):
+            print(curr_x, mam.y, j)
+            if (curr_x, mam.y) in exon_choordinates_to_chr:
+                exon_id = exon_choordinates_to_chr[(curr_x, mam.y)].pop()
+                exon_choordinates_to_chr[(curr_x, mam.y)].add(exon_id)
+                j_last_exon = j
+                last_exon_id = exon_id
+                last_y = mam.y
+                last_d = mam.d
+
+                if i + j + 1 < len(mam_solution) and (mam.y, mam_solution[i + j + 1].x ) in valid_introns_sites: # splitting because next one is a valid intron site
+                    print("VAAALID")
+                    break
+
+        exons.append((curr_x, last_y, curr_c, last_d, exon_id))
+        i += j_last_exon + 1
+
+        print(exons)
+
+    print("LOOL",[ (x,y) for x, y, c, d, seq_id  in  exons])
+
+    chained_exon_seqs = []
+    predicted_exons = []
+    prev_y_coord = -1
+    covered = 0
+    # for mam in mam_solution:
+    for x, y, c, d, seq_id in exons:
+        if (x, y) in ref_exon_sequences[chr_id]:
+            seq = ref_exon_sequences[chr_id][(x, y)] 
+            covered += d - c + 1
+        else: 
+            if (x, y) in ref_segment_sequences[seq_id]:
+                seq = ref_segment_sequences[seq_id][(x, y)] 
+                covered += d - c + 1
+            elif (x, y) in ref_flank_sequences[seq_id]:
+                seq = ref_flank_sequences[seq_id][(x, y)] 
+                covered += d - c + 1
+            else:
+                print("Bug encountered, {0} is not in {1}".format((x, y), mam_solution))
+
+        if prev_y_coord == x: #adjacent segments means its a flank and we should not add an new exon (i.e., intron split)
+            predicted_exons[-1] = (predicted_exons[-1][0], y)  # update the last exon
+        else:
+            predicted_exons.append( (x, y) )
+
+        prev_y_coord = y
+        chained_exon_seqs.append(seq)
+    created_ref_seq = "".join([exon for exon in chained_exon_seqs])
+    predicted_splices = [ (e1[1],e2[0]) for e1, e2 in zip(predicted_exons[:-1],predicted_exons[1:])]
+    return exons, created_ref_seq, predicted_exons, predicted_splices
+
 
 def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
     mems_path =  os.path.join( args.outfolder, "mummer_mems_batch_{0}.txt".format(batch_number) )
@@ -113,10 +179,10 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
         alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, "torkel_batch_{0}.sam".format(batch_number)), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
         warning_log_file = open(os.path.join(args.outfolder, "torkel_batch_{0}.stderr".format(batch_number)), "w")
 
-    exon_id_to_choordinates, ref_exon_sequences, ref_flank_sequences, splices_to_transcripts, \
+    segment_id_to_choordinates, ref_segment_sequences, ref_flank_sequences, splices_to_transcripts, \
     transcripts_to_splices, all_splice_pairs_annotations, \
     all_splice_sites_annotations, parts_to_exons, \
-    exon_to_gene, gene_to_small_exons, max_intron_chr = auxillary_data
+    segment_to_gene, gene_to_small_exons, max_intron_chr, exon_choordinates_to_id, ref_exon_sequences = auxillary_data
 
     classifications = defaultdict(str)
     read_accessions_with_mappings = set()
@@ -149,8 +215,8 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                 break
             
             # print("Processing", chr_id, is_rc, upper_bound_cov, "best:", best_solution_value, "read length:", len(read_seq))
-            # for mem in all_mems_to_chromosome:
-            #     print(mem.exon_part_id, mem.x, mem.y, mem.c, mem.d, '\t', mem.val)
+            for mem in all_mems_to_chromosome:
+                print(mem.exon_part_id, mem.x, mem.y, mem.c, mem.d, '\t', mem.val)
             # print(len(all_mems_to_chromosome))
 
 
@@ -200,13 +266,13 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
             else:
                 read_seq = read_seq
             # print("mem solution:", is_rc, chaining_score, mem_solution)
-            non_covered_regions, mam_value, mam_solution = classify_read_with_mams.main(mem_solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, \
-                                                                                                                    exon_id_to_choordinates, exon_to_gene, gene_to_small_exons, \
+            non_covered_regions, mam_value, mam_solution = classify_read_with_mams.main(mem_solution, ref_segment_sequences, ref_flank_sequences, parts_to_exons, \
+                                                                                                                    segment_id_to_choordinates, segment_to_gene, gene_to_small_exons, \
                                                                                                                     read_seq, warning_log_file, min_acc)
             # print("finished Mam solution:",mam_value, mam_solution)
-            # for zzz2 in mam_solution:
-            #     print(zzz2)
-            # print(non_covered_regions)
+            for zzz2 in mam_solution:
+                print(zzz2)
+            print(non_covered_regions)
             mam_sol_exons_length = sum([ mam.y - mam.x for mam in mam_solution])
             # print(max_intron_size)
             if mam_value > 0:
@@ -218,38 +284,22 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                 prev_segm_id = ""
                 covered = 0
                 for mam in mam_solution:
-                    if (mam.x, mam.y) in ref_exon_sequences[mam.ref_chr_id]:
-                        seq = ref_exon_sequences[mam.ref_chr_id][(mam.x, mam.y)] 
+                    if (mam.x, mam.y) in ref_segment_sequences[mam.ref_chr_id]:
+                        seq = ref_segment_sequences[mam.ref_chr_id][(mam.x, mam.y)] 
                         covered += mam.d - mam.c + 1
                     elif (mam.x, mam.y) in ref_flank_sequences[mam.ref_chr_id]:
                         seq = ref_flank_sequences[mam.ref_chr_id][(mam.x, mam.y)] 
                         covered += mam.d - mam.c + 1
-
                     else:
                         print("Bug encountered, {0} is not in {1}".format((mam.x, mam.y), mam_solution))
 
                     if prev_y_coord == mam.x: #adjacent segments means its a flank and we should not add an new exon (i.e., intron split)
                         predicted_exons[-1] = (predicted_exons[-1][0], mam.y)  # update the last exon
-                    elif "compl_end" in mam.exon_id and prev_segm_id != "":
-                        predicted_exons[-1] = (predicted_exons[-1][0], mam.y)  # update the last exon
-                    elif "compl_beg" in prev_segm_id:
-                        predicted_exons[-1] = (predicted_exons[-1][0], mam.y)  # update the last exon
                     else:
                         predicted_exons.append( (mam.x, mam.y) )
 
-                    # if 1 < prev_y_coord - mam.x < 10:
-                    #     print(read_acc)
-                    #     print(mam, mam_solution,  predicted_exons)
-                    #     # print(sorted([ch for eee, ch in exon_id_to_choordinates.items()]))
                     prev_y_coord = mam.y
                     prev_segm_id = mam.exon_id
-                    # if mam.x < prev_ref_stop:
-                        # chained_exon_seqs.append(seq[prev_ref_stop - mam.x: ])
-                        # warning_log_file.write("Overlapping exons in solution with {0} bases. {1}, {2}, {3}, {4}.\n".format(prev_ref_stop - mam.x, chr_id, mam.x, prev_ref_stop, mam))
-                        # warning_log_file.write("{0},{1}, mem score: {2}, best mem score:{3}, mam score:{4}\n".format(read_acc, chr_id, chaining_score,  best_chaining_score, mam_value))
-                        # warning_log_file.write(str(mam_solution) + '\n\n')
-                        # sys.exit()
-                    # else:
                     chained_exon_seqs.append(seq)
                     prev_ref_stop = mam.y
                 created_ref_seq = "".join([exon for exon in chained_exon_seqs])
@@ -263,7 +313,14 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                     # print(classification, alignment_score/len(read_seq), "Score: {0}, old T: {1}, new T: {2}".format(alignment_score, 2*args.alignment_threshold*len(read_seq), len(read_seq)*8*args.alignment_threshold))
                     continue
 
-
+                exons, created_ref_seq2, predicted_exons2, predicted_splices2 = find_exons(chr_id, mam_solution, exon_choordinates_to_id[chr_id], ref_exon_sequences, ref_segment_sequences, ref_flank_sequences, all_splice_pairs_annotations)
+                if created_ref_seq != created_ref_seq2:
+                    print(created_ref_seq)
+                    print(created_ref_seq2)
+                    created_ref_seq = created_ref_seq2
+                    predicted_splices = predicted_splices2
+                    predicted_exons = predicted_exons2
+                    print("MOD:", predicted_splices)
                 if len(created_ref_seq) > 20000 or len(read_seq) > 20000 or (1000 < len(read_seq) < mam_sol_exons_length/10):
                     # print("lenght ref: {0}, length query:{1}".format(len(created_ref_seq), len(read_seq)))
                     read_aln, ref_aln, edit_distance = help_functions.edlib_alignment(read_seq, created_ref_seq, aln_mode = "HW")
@@ -274,10 +331,12 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
 
                 else:
                     read_aln, ref_aln, cigar_string, cigar_tuples, alignment_score = help_functions.parasail_alignment(read_seq, created_ref_seq)
-                    # print(read_aln)
-                    # print(ref_aln)
-                    # print("alignment_score:", alignment_score)
-
+                    print(read_aln)
+                    print(ref_aln)
+                    print("alignment_score:", alignment_score)
+                    print(predicted_exons)
+                    print(predicted_splices)
+                    print(cigar_string)
                 # matches = sum([1 for n1,n2 in zip(read_aln, ref_aln) if n1 == n2 ])
                 # substitutions = sum([1 for n1,n2 in zip(read_aln, ref_aln) if n1 != n2 and n1 != "-" and n2 != "-" ])
                 # deletions = sum([1 for n1,n2 in zip(read_aln, ref_aln) if n1 == "-" ])
@@ -389,8 +448,8 @@ def align_parallel(read_data, auxillary_data, refs_lengths, args):
 
     start_multi = time()
     pool = Pool(processes=int(args.nr_cores))
-    # exon_id_to_choordinates, ref_exon_sequences, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations, parts_to_exons = import_data(args)
-    # auxillary_data = exon_id_to_choordinates, ref_exon_sequences, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations, parts_to_exons
+    # segment_id_to_choordinates, ref_segment_sequences, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations, parts_to_exons = import_data(args)
+    # auxillary_data = segment_id_to_choordinates, ref_segment_sequences, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations, parts_to_exons
     # read_data = batch([ (acc, reads[acc], mems[acc], mems_rc[acc], ) for i, acc in enumerate(mems)], batch_size)
     # alignment_outfiles = []
     # for i in range(args.nr_cores):

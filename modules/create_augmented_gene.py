@@ -18,27 +18,27 @@ def dd_set(): # top level function declaration needed for multiprocessing
 def dd_tuple(): # top level function declaration needed for multiprocessing
     return defaultdict(tuple)
 
-def get_complementary_exon_seq_per_part(parts_to_exons, exon_to_gene, exon_id_to_choordinates, exons_to_ref, active_exons, active_start, active_stop, chr_id):
-    chords_to_e_id = {v: k for k,v in exon_id_to_choordinates.items()}
-    for e_id in list(active_exons):
-        e_start, e_stop = exon_id_to_choordinates[e_id]
-        exon_gene_ids = exon_to_gene[e_id]
-        if active_start < e_start:
-            if (active_start, e_stop) not in chords_to_e_id:
-                # print("here1",(active_start, e_stop) )
-                # continue
-                exon_id_to_choordinates[e_id + "_compl_beg"] = (active_start, e_start)
-                exons_to_ref[e_id + "_compl_beg"] = chr_id
-                parts_to_exons[chr_id][(active_start, active_stop)].add(e_id + "_compl_beg")
-                exon_to_gene[e_id + "_compl_beg"] = exon_gene_ids 
-        if e_stop < active_stop:
-            if (e_start, active_stop) not in chords_to_e_id:
-                # print("here2",(e_start, active_stop) )
-                # continue
-                exon_id_to_choordinates[e_id + "_compl_end"] = (e_stop, active_stop)
-                exons_to_ref[e_id + "_compl_end"] = chr_id
-                parts_to_exons[chr_id][(active_start, active_stop)].add(e_id + "_compl_end")
-                exon_to_gene[e_id + "_compl_end"] = exon_gene_ids 
+# def get_complementary_exon_seq_per_part(parts_to_exons, exon_to_gene, exon_id_to_choordinates, exons_to_ref, active_exons, active_start, active_stop, chr_id):
+#     chords_to_e_id = {v: k for k,v in exon_id_to_choordinates.items()}
+#     for e_id in list(active_exons):
+#         e_start, e_stop = exon_id_to_choordinates[e_id]
+#         exon_gene_ids = exon_to_gene[e_id]
+#         if active_start < e_start:
+#             if (active_start, e_stop) not in chords_to_e_id:
+#                 # print("here1",(active_start, e_stop) )
+#                 # continue
+#                 exon_id_to_choordinates[e_id + "_compl_beg"] = (active_start, e_start)
+#                 exons_to_ref[e_id + "_compl_beg"] = chr_id
+#                 parts_to_exons[chr_id][(active_start, active_stop)].add(e_id + "_compl_beg")
+#                 exon_to_gene[e_id + "_compl_beg"] = exon_gene_ids 
+#         if e_stop < active_stop:
+#             if (e_start, active_stop) not in chords_to_e_id:
+#                 # print("here2",(e_start, active_stop) )
+#                 # continue
+#                 exon_id_to_choordinates[e_id + "_compl_end"] = (e_stop, active_stop)
+#                 exons_to_ref[e_id + "_compl_end"] = chr_id
+#                 parts_to_exons[chr_id][(active_start, active_stop)].add(e_id + "_compl_end")
+#                 exon_to_gene[e_id + "_compl_end"] = exon_gene_ids 
 
 
 def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_active_gene, pos_to_exon_ids, exon_id_to_choordinates, small_segment_threshold, min_mem):
@@ -57,8 +57,8 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
         sorted_pos = sorted(part_to_canonical_pos[(chr_id, part_id)])
 
         open_starts_e_ids = set() #list( pos_to_exon_ids[(chr_id, part_id)][p, is_start] for p, is_start in pos_to_exon_ids[(chr_id, part_id)] if p < ) # exons spanning over the small segment
-
-        # prinst(sorted_pos)
+        if chr_id == "SIRV5":
+            print(sorted_pos)
         pos_tuples = [(p1, p2) for p1, p2 in zip(sorted_pos[:-1], sorted_pos[1:])]
         for (p1, p2) in pos_tuples:
             open_starts_e_ids.update(pos_to_exon_ids[(chr_id, part_id)][p1, True])
@@ -78,14 +78,18 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
                         gene_to_small_segments[gene_id].append(segment_name)
 
             else:
-                # print("here bad", p1, p2)
                 relevant_starts = list(pos_to_exon_ids[(chr_id, part_id)][p1, True])
                 relevant_ends = list(pos_to_exon_ids[(chr_id, part_id)][p2, False])
                 all_segm_spanning = set(relevant_starts + relevant_ends)
+                if chr_id == "SIRV5":
+                    print("here bad", p1, p2)
+                    print(relevant_starts)
+                    print(relevant_ends)
                 if not all_segm_spanning:
                     # print("BUG", open_starts_e_ids)
-                    # for e_id in open_starts_e_ids:
-                    #     print(exon_id_to_choordinates[e_id])
+                    # if chr_id == "SIRV5":
+                    for e_id in open_starts_e_ids:
+                        print(exon_id_to_choordinates[e_id])
                     # sys.exit()
                     all_segm_spanning = open_starts_e_ids
                 # print(relevant_starts + relevant_ends)
@@ -138,6 +142,8 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_mem):
     part_to_canonical_pos = defaultdict(set)
     part_count_to_choord = defaultdict(dd_tuple)
     part_to_active_gene = defaultdict(set)
+    exon_choordinates_to_id = defaultdict(dd_set)
+
     for i, exon in enumerate(db.features_of_type('exon', order_by='seqid')):
         chr_id = exon.seqid
         exons_to_ref[exon.id] = chr_id
@@ -146,6 +152,7 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_mem):
         exon_gene_ids = exon.attributes["gene_id"] # is a list of strings
         exon_to_gene[exon.id] = exon_gene_ids
         exon_id_to_choordinates[exon.id] = (exon.start - 1, exon.stop)
+        exon_choordinates_to_id[chr_id][(exon.start - 1, exon.stop)].add(exon.id)
         # creating the augmentation
         if i == 0: # initialization
             prev_seq_id = chr_id
@@ -170,7 +177,7 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_mem):
             parts_to_exons[prev_seq_id][(active_start, active_stop)] = active_exons
             part_count_to_choord[(prev_seq_id,part_counter)] = (active_start, active_stop)
             # part_intervals[prev_seq_id].addi(active_start, active_stop, None)
-            get_complementary_exon_seq_per_part(parts_to_exons, exon_to_gene, exon_id_to_choordinates, exons_to_ref, active_exons, active_start, active_stop, prev_seq_id)
+            # get_complementary_exon_seq_per_part(parts_to_exons, exon_to_gene, exon_id_to_choordinates, exons_to_ref, active_exons, active_start, active_stop, prev_seq_id)
             # adding very last flank on chromosome
             flanks_to_gene2[prev_seq_id][(max(0, active_stop), active_stop + 2*flank_size)] = "flank_{0}".format(i)
             total_flanks2 += 1
@@ -196,7 +203,7 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_mem):
         elif exon.start - 1 > active_stop:
             parts_to_exons[chr_id][(active_start, active_stop)] = active_exons
             part_count_to_choord[(chr_id,part_counter)] = (active_start, active_stop)
-            get_complementary_exon_seq_per_part(parts_to_exons, exon_to_gene, exon_id_to_choordinates, exons_to_ref, active_exons, active_start, active_stop, prev_seq_id)
+            # get_complementary_exon_seq_per_part(parts_to_exons, exon_to_gene, exon_id_to_choordinates, exons_to_ref, active_exons, active_start, active_stop, prev_seq_id)
             # part_intervals[prev_seq_id].addi(active_start, active_stop, None)
             segment_size = 2*flank_size if set(exon_gene_ids).isdisjoint(active_gene_ids) else flank_size
             # part_intervalst(segment_size)
@@ -249,7 +256,7 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_mem):
 
     print("total parts size:", sum( [stop - start for chrrr in parts_to_exons for start,stop in parts_to_exons[chrrr] ]))
     print("total exons size:", sum( [stop - start for start, stop in exon_id_to_choordinates.values() ]))
-    # print( 'parts_to_segments', parts_to_segments["SIRV6"])
+    # print( 'parts_to_segments', parts_to_segments["SIRV5"])
     # sys.exit()
     parts_to_exons = parts_to_segments
     exon_to_gene = segment_to_gene
@@ -261,7 +268,7 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_mem):
 
     # print(parts_to_exons)
     # part_intervals[prev_seq_id].addi(active_start, active_stop, None)
-
+    min_intron = 2**32
 
     for transcript in db.features_of_type('transcript', order_by='seqid'): #db.children(gene, featuretype='transcript', order_by='start'):
         # if transcript.seqid.isdigit() or transcript.seqid == 'X' or transcript.seqid == 'Y':
@@ -282,6 +289,8 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_mem):
                 max_intron_chr[chr_id] = i2 - i1
                 # print("intron size:", i2 - i1, chr_id)
 
+            if i2 - i1 < min_intron:
+                min_intron = i2 - i1
         # internal transcript splices
         splices_to_transcripts[chr_id][ tuple(internal_transcript_splices)].add(transcript.id)
         for site1, site2 in internal_transcript_splices:
@@ -300,7 +309,8 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_mem):
         else:
             print("Something is wrong with transcript annotation: {0} on gene: {1}, and could not be added. Check that the gene ID and transcript ID is not the same!".format(transcript.id, transcript.seqid))
             # sys.exit()
-
+    print("min_intron:", min_intron)
+    # sys.exit()
     # transcripts_to_splices = reverse_mapping(splices_to_transcripts)
     transcripts_to_splices = defaultdict(dict)
     for chr_id, chr_sp_sites_dict in splices_to_transcripts.items():
@@ -340,7 +350,7 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_mem):
     return  exons_to_ref, parts_to_exons, splices_to_transcripts, \
             transcripts_to_splices, all_splice_pairs_annotations, \
             all_splice_sites_annotations, exon_id_to_choordinates, \
-            exon_to_gene, gene_to_small_exons, flanks_to_gene2, max_intron_chr
+            exon_to_gene, gene_to_small_exons, flanks_to_gene2, max_intron_chr, exon_choordinates_to_id
 
 
 
@@ -378,21 +388,21 @@ def get_part_sequences_from_choordinates(parts_to_exons, flanks_to_gene, refs):
     return part_segments, flank_segments
 
 
-def get_exon_sequences_from_choordinates(exon_id_to_choordinates, exons_to_ref, refs):
-    exon_sequences = defaultdict(dict)
-    for exon_id in exon_id_to_choordinates:
-        start,stop = exon_id_to_choordinates[exon_id]
-        chr_id = exons_to_ref[exon_id]
+def get_segment_sequences_from_segment_id(segment_id_to_choordinates, segments_to_ref, refs):
+    segment_sequences = defaultdict(dict)
+    for exon_id in segment_id_to_choordinates:
+        start,stop = segment_id_to_choordinates[exon_id]
+        chr_id = segments_to_ref[exon_id]
         if chr_id not in refs:
             continue
         else:
             seq = refs[chr_id][start : stop] 
-            exon_sequences[chr_id][(start,stop)] = seq
+            segment_sequences[chr_id][(start,stop)] = seq
     # print(segments)
-    return exon_sequences
+    return segment_sequences
 
 
-def get_flank_sequences_from_choordinates(flanks_to_gene, refs):
+def get_sequences_from_choordinates(flanks_to_gene, refs):
     flank_sequences = {}
 
     for chr_id in flanks_to_gene:
