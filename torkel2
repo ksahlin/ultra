@@ -57,42 +57,45 @@ def prep_splicing(args):
                                 sort_attribute_values=True, disable_infer_genes=True, disable_infer_transcripts=True)
         db = gffutils.FeatureDB(database, keep_order=True)
 
-    exons_to_ref, parts_to_exons, splices_to_transcripts, \
+    segments_to_ref, parts_to_segments, splices_to_transcripts, \
     transcripts_to_splices, all_splice_pairs_annotations, \
-    all_splice_sites_annotations, exon_id_to_choordinates, \
-    exon_to_gene, gene_to_small_exons, flanks_to_gene, max_intron_chr = augmented_gene.create_graph_from_exon_parts(db, args.flank_size, args.small_exon_threshold, args.min_mem )
+    all_splice_sites_annotations, segment_id_to_choordinates, \
+    segment_to_gene, gene_to_small_exons, flanks_to_gene, \
+    max_intron_chr, exon_choordinates_to_id = augmented_gene.create_graph_from_exon_parts(db, args.flank_size, args.small_exon_threshold, args.min_mem )
 
     # dump to pickle here! Both graph and reference seqs
     # help_functions.pickle_dump(args, genes_to_ref, 'genes_to_ref.pickle')
-    help_functions.pickle_dump(args, exons_to_ref, 'exons_to_ref.pickle')
+    help_functions.pickle_dump(args, segments_to_ref, 'segments_to_ref.pickle')
     help_functions.pickle_dump(args, splices_to_transcripts, 'splices_to_transcripts.pickle')
     help_functions.pickle_dump(args, transcripts_to_splices, 'transcripts_to_splices.pickle')
-    help_functions.pickle_dump(args, parts_to_exons, 'parts_to_exons.pickle')
+    help_functions.pickle_dump(args, parts_to_segments, 'parts_to_segments.pickle')
     help_functions.pickle_dump(args, all_splice_pairs_annotations, 'all_splice_pairs_annotations.pickle')
     help_functions.pickle_dump(args, all_splice_sites_annotations, 'all_splice_sites_annotations.pickle')
-    help_functions.pickle_dump(args, exon_id_to_choordinates, 'exon_id_to_choordinates.pickle')
-    help_functions.pickle_dump(args, exon_to_gene, 'exon_to_gene.pickle')
+    help_functions.pickle_dump(args, segment_id_to_choordinates, 'segment_id_to_choordinates.pickle')
+    help_functions.pickle_dump(args, segment_to_gene, 'segment_to_gene.pickle')
     help_functions.pickle_dump(args, gene_to_small_exons, 'gene_to_small_exons.pickle')
     help_functions.pickle_dump(args, flanks_to_gene, 'flanks_to_gene.pickle')
     help_functions.pickle_dump(args, max_intron_chr, 'max_intron_chr.pickle')
+    help_functions.pickle_dump(args, exon_choordinates_to_id, 'exon_choordinates_to_id.pickle')
 
 
 def prep_seqs(args):
     # genes_to_ref = help_functions.pickle_load( os.path.join(args.outfolder, 'genes_to_ref.pickle') )
-    parts_to_exons = help_functions.pickle_load( os.path.join(args.outfolder, 'parts_to_exons.pickle') )
-    exon_id_to_choordinates = help_functions.pickle_load( os.path.join(args.outfolder, 'exon_id_to_choordinates.pickle') )
-    exons_to_ref = help_functions.pickle_load( os.path.join(args.outfolder, 'exons_to_ref.pickle') )
+    parts_to_segments = help_functions.pickle_load( os.path.join(args.outfolder, 'parts_to_segments.pickle') )
+    segment_id_to_choordinates = help_functions.pickle_load( os.path.join(args.outfolder, 'segment_id_to_choordinates.pickle') )
+    segments_to_ref = help_functions.pickle_load( os.path.join(args.outfolder, 'segments_to_ref.pickle') )
     flanks_to_gene = help_functions.pickle_load( os.path.join(args.outfolder, 'flanks_to_gene.pickle') )
+    exon_choordinates_to_id = help_functions.pickle_load( os.path.join(args.outfolder, 'exon_choordinates_to_id.pickle') )
     
-    print( "Number of ref seqs in gff:", len(parts_to_exons.keys()))
+    print( "Number of ref seqs in gff:", len(parts_to_segments.keys()))
     refs = {acc : seq for acc, (seq, _) in help_functions.readfq(open(args.ref,"r"))}
     # modified = help_functions.check_reference_headers(refs)
     # if modified:
     #     print("Detected 1,..,22, MT, X, Y as header labels, treating these headers as: chr1,...,chr22, chrM, chrX, chrY")
     print( "Number of ref seqs in fasta:", len(refs.keys()))
 
-    not_in_ref = set(parts_to_exons.keys()) - set(refs.keys())
-    not_in_annot = set(refs.keys()) - set(parts_to_exons.keys()) 
+    not_in_ref = set(parts_to_segments.keys()) - set(refs.keys())
+    not_in_annot = set(refs.keys()) - set(parts_to_segments.keys()) 
     if not_in_ref:
         print("Warning: Detected {0} sequences that are in annotation but not in reference fasta. Using only sequences present in fasta. The following annotations cannot be detected:\n".format(len(not_in_ref)))
         for s in not_in_ref:
@@ -102,7 +105,7 @@ def prep_seqs(args):
         for s in not_in_annot:
             print(s, "with length:{0}".format(len(refs[s])))
     # print(flanks_to_gene)
-    ref_part_sequences, ref_flank_sequences = augmented_gene.get_part_sequences_from_choordinates(parts_to_exons, flanks_to_gene, refs)
+    ref_part_sequences, ref_flank_sequences = augmented_gene.get_part_sequences_from_choordinates(parts_to_segments, flanks_to_gene, refs)
     # print(len(ref_part_sequences))
     # print(len(ref_flank_sequences))
 
@@ -112,13 +115,15 @@ def prep_seqs(args):
     ref_part_sequences = help_functions.update_nested(ref_part_sequences, ref_flank_sequences)
     # print()
     # print(ref_part_sequences)
-    ref_exon_sequences = augmented_gene.get_exon_sequences_from_choordinates(exon_id_to_choordinates, exons_to_ref, refs)
-    ref_flank_sequences = augmented_gene.get_flank_sequences_from_choordinates(flanks_to_gene, refs)
-    # print("ref_exon_sequences", ref_exon_sequences)
-    help_functions.pickle_dump(args, exon_id_to_choordinates, 'exon_id_to_choordinates.pickle')
+    ref_segment_sequences = augmented_gene.get_segment_sequences_from_segment_id(segment_id_to_choordinates, segments_to_ref, refs)
+    ref_flank_sequences = augmented_gene.get_sequences_from_choordinates(flanks_to_gene, refs)
+    ref_exon_sequences = augmented_gene.get_sequences_from_choordinates(exon_choordinates_to_id, refs)
+    # print("ref_segment_sequences", ref_segment_sequences)
+    help_functions.pickle_dump(args, segment_id_to_choordinates, 'segment_id_to_choordinates.pickle')
     help_functions.pickle_dump(args, ref_part_sequences, 'ref_part_sequences.pickle')
-    help_functions.pickle_dump(args, ref_exon_sequences, 'ref_exon_sequences.pickle')
+    help_functions.pickle_dump(args, ref_segment_sequences, 'ref_segment_sequences.pickle')
     help_functions.pickle_dump(args, ref_flank_sequences, 'ref_flank_sequences.pickle')
+    help_functions.pickle_dump(args, ref_exon_sequences, 'ref_exon_sequences.pickle')
 
     # gene_graphs, splices_to_transcripts, annotated_transcripts = splice_graph.create_graph(db)
     # topological_sorts = splice_graph.create_global_source_sink(gene_graphs)    
@@ -129,22 +134,24 @@ def prep_seqs(args):
 
 
 def import_data(args):
-    exon_id_to_choordinates = help_functions.pickle_load( os.path.join(args.outfolder, 'exon_id_to_choordinates.pickle'))
-    ref_exon_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'ref_exon_sequences.pickle') )
+    segment_id_to_choordinates = help_functions.pickle_load( os.path.join(args.outfolder, 'segment_id_to_choordinates.pickle'))
+    exon_choordinates_to_id = help_functions.pickle_load( os.path.join(args.outfolder, 'exon_choordinates_to_id.pickle'))
+    ref_segment_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'ref_segment_sequences.pickle') )
     ref_flank_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'ref_flank_sequences.pickle') )
     splices_to_transcripts = help_functions.pickle_load( os.path.join(args.outfolder, 'splices_to_transcripts.pickle') )
     transcripts_to_splices = help_functions.pickle_load( os.path.join(args.outfolder, 'transcripts_to_splices.pickle') )
     all_splice_pairs_annotations = help_functions.pickle_load( os.path.join(args.outfolder, 'all_splice_pairs_annotations.pickle') )
     all_splice_sites_annotations = help_functions.pickle_load( os.path.join(args.outfolder, 'all_splice_sites_annotations.pickle') )
-    parts_to_exons = help_functions.pickle_load( os.path.join(args.outfolder, 'parts_to_exons.pickle') )
-    exon_to_gene = help_functions.pickle_load( os.path.join(args.outfolder, 'exon_to_gene.pickle') )
+    parts_to_segments = help_functions.pickle_load( os.path.join(args.outfolder, 'parts_to_segments.pickle') )
+    segment_to_gene = help_functions.pickle_load( os.path.join(args.outfolder, 'segment_to_gene.pickle') )
     gene_to_small_exons = help_functions.pickle_load( os.path.join(args.outfolder, 'gene_to_small_exons.pickle') )
     max_intron_chr = help_functions.pickle_load( os.path.join(args.outfolder, 'max_intron_chr.pickle') )
+    ref_exon_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'ref_exon_sequences.pickle') )
 
-    return exon_id_to_choordinates, ref_exon_sequences, ref_flank_sequences, splices_to_transcripts, \
+    return segment_id_to_choordinates, ref_segment_sequences, ref_flank_sequences, splices_to_transcripts, \
             transcripts_to_splices, all_splice_pairs_annotations, \
-            all_splice_sites_annotations, parts_to_exons,\
-            exon_to_gene, gene_to_small_exons, max_intron_chr
+            all_splice_sites_annotations, parts_to_segments,\
+            segment_to_gene, gene_to_small_exons, max_intron_chr, exon_choordinates_to_id, ref_exon_sequences
 
 
 def batch(dictionary, size, batch_type):
