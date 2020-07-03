@@ -50,6 +50,7 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
     gene_to_small_segments = defaultdict(list)
     total_unique_segment_counter = 0
     total_segments_bad = 0
+    exon_ids_spanning_segments_point = defaultdict(dd_set)
     bad = 0
     for (chr_id, part_id) in part_to_canonical_pos:
         active_start, active_stop = part_count_to_choord[(chr_id, part_id)]
@@ -57,11 +58,13 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
         sorted_pos = sorted(part_to_canonical_pos[(chr_id, part_id)])
 
         open_starts_e_ids = set() #list( pos_to_exon_ids[(chr_id, part_id)][p, is_start] for p, is_start in pos_to_exon_ids[(chr_id, part_id)] if p < ) # exons spanning over the small segment
-        if chr_id == "SIRV5":
+        if chr_id == "SIRV3":
             print(sorted_pos)
         pos_tuples = [(p1, p2) for p1, p2 in zip(sorted_pos[:-1], sorted_pos[1:])]
         for (p1, p2) in pos_tuples:
-            open_starts_e_ids.update(pos_to_exon_ids[(chr_id, part_id)][p1, True])
+            open_starts_e_ids.update(pos_to_exon_ids[(chr_id, part_id)][p1, True]) # add the exons that start at this point 
+            open_starts_e_ids.difference_update(pos_to_exon_ids[(chr_id, part_id)][p1, False]) # remove the ones that ended here
+            exon_ids_spanning_segments_point[chr_id][p2] = open_starts_e_ids
             if p2 - p1 >= min_mem:
                 # print("here good", p2 - p1)
                 segment_name = "segm_{0}_{1}".format(p1,p2)
@@ -70,7 +73,7 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
                 parts_to_segments[chr_id][(active_start, active_stop)].add(segment_name)
                 segment_to_gene[segment_name] =  active_gene_ids 
                 total_unique_segment_counter += p2 - p1
-                
+
                 open_starts_e_ids.difference_update(pos_to_exon_ids[(chr_id, part_id)][p2, False])
                 # add small segments
                 if p2 - p1 <= small_segment_threshold:
@@ -81,7 +84,7 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
                 relevant_starts = list(pos_to_exon_ids[(chr_id, part_id)][p1, True])
                 relevant_ends = list(pos_to_exon_ids[(chr_id, part_id)][p2, False])
                 all_segm_spanning = set(relevant_starts + relevant_ends)
-                if chr_id == "SIRV5":
+                if chr_id == "SIRV3":
                     print("here bad", p1, p2)
                     print(relevant_starts)
                     print(relevant_ends)
@@ -112,8 +115,11 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
     print("total_unique_segment_counter", total_unique_segment_counter)
     print("total_segments_bad", total_segments_bad)
     print("bad", bad)
-
-    return parts_to_segments, segment_to_gene, segment_id_to_choordinates, segment_to_ref, gene_to_small_segments 
+    for e_id in segment_to_ref:
+        if segment_to_ref[e_id] == "SIRV3":
+            print(segment_id_to_choordinates[e_id])
+    # sys.exit()
+    return parts_to_segments, segment_to_gene, segment_id_to_choordinates, segment_to_ref, gene_to_small_segments, exon_ids_spanning_segments_point 
 
 
 def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_mem): 
@@ -252,7 +258,7 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_mem):
     parts_to_exons[chr_id][(active_start, active_stop)] = active_exons
     part_count_to_choord[(chr_id,part_counter)] = (active_start, active_stop)
 
-    parts_to_segments, segment_to_gene, segment_id_to_choordinates, segment_to_ref, gene_to_small_segments  = get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_active_gene, pos_to_exon_ids, exon_id_to_choordinates, small_exon_threshold, min_mem)
+    parts_to_segments, segment_to_gene, segment_id_to_choordinates, segment_to_ref, gene_to_small_segments, exon_ids_spanning_segments_point  = get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_active_gene, pos_to_exon_ids, exon_id_to_choordinates, small_exon_threshold, min_mem)
 
     print("total parts size:", sum( [stop - start for chrrr in parts_to_exons for start,stop in parts_to_exons[chrrr] ]))
     print("total exons size:", sum( [stop - start for start, stop in exon_id_to_choordinates.values() ]))
@@ -260,7 +266,7 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_mem):
     # sys.exit()
     parts_to_exons = parts_to_segments
     exon_to_gene = segment_to_gene
-    exon_id_to_choordinates = segment_id_to_choordinates
+    # exon_id_to_choordinates = segment_id_to_choordinates
     exons_to_ref = segment_to_ref
 
     # print("parts:", [(start, stop) for chrrr in parts_to_exons for start,stop in parts_to_exons[chrrr] ])
@@ -349,8 +355,8 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_mem):
 
     return  exons_to_ref, parts_to_exons, splices_to_transcripts, \
             transcripts_to_splices, all_splice_pairs_annotations, \
-            all_splice_sites_annotations, exon_id_to_choordinates, \
-            exon_to_gene, gene_to_small_exons, flanks_to_gene2, max_intron_chr, exon_choordinates_to_id
+            all_splice_sites_annotations, exon_id_to_choordinates, segment_id_to_choordinates, \
+            exon_to_gene, gene_to_small_exons, flanks_to_gene2, max_intron_chr, exon_choordinates_to_id, exon_ids_spanning_segments_point
 
 
 
@@ -390,9 +396,9 @@ def get_part_sequences_from_choordinates(parts_to_exons, flanks_to_gene, refs):
 
 def get_segment_sequences_from_segment_id(segment_id_to_choordinates, segments_to_ref, refs):
     segment_sequences = defaultdict(dict)
-    for exon_id in segment_id_to_choordinates:
-        start,stop = segment_id_to_choordinates[exon_id]
-        chr_id = segments_to_ref[exon_id]
+    for segment_id in segment_id_to_choordinates:
+        start,stop = segment_id_to_choordinates[segment_id]
+        chr_id = segments_to_ref[segment_id]
         if chr_id not in refs:
             continue
         else:

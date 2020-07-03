@@ -59,9 +59,9 @@ def prep_splicing(args):
 
     segments_to_ref, parts_to_segments, splices_to_transcripts, \
     transcripts_to_splices, all_splice_pairs_annotations, \
-    all_splice_sites_annotations, segment_id_to_choordinates, \
+    all_splice_sites_annotations, exon_id_to_choordinates, segment_id_to_choordinates, \
     segment_to_gene, gene_to_small_exons, flanks_to_gene, \
-    max_intron_chr, exon_choordinates_to_id = augmented_gene.create_graph_from_exon_parts(db, args.flank_size, args.small_exon_threshold, args.min_mem )
+    max_intron_chr, exon_choordinates_to_id, exon_ids_spanning_segments_point = augmented_gene.create_graph_from_exon_parts(db, args.flank_size, args.small_exon_threshold, args.min_mem )
 
     # dump to pickle here! Both graph and reference seqs
     # help_functions.pickle_dump(args, genes_to_ref, 'genes_to_ref.pickle')
@@ -71,12 +71,14 @@ def prep_splicing(args):
     help_functions.pickle_dump(args, parts_to_segments, 'parts_to_segments.pickle')
     help_functions.pickle_dump(args, all_splice_pairs_annotations, 'all_splice_pairs_annotations.pickle')
     help_functions.pickle_dump(args, all_splice_sites_annotations, 'all_splice_sites_annotations.pickle')
+    help_functions.pickle_dump(args, exon_id_to_choordinates, 'exon_id_to_choordinates.pickle')
     help_functions.pickle_dump(args, segment_id_to_choordinates, 'segment_id_to_choordinates.pickle')
     help_functions.pickle_dump(args, segment_to_gene, 'segment_to_gene.pickle')
     help_functions.pickle_dump(args, gene_to_small_exons, 'gene_to_small_exons.pickle')
     help_functions.pickle_dump(args, flanks_to_gene, 'flanks_to_gene.pickle')
     help_functions.pickle_dump(args, max_intron_chr, 'max_intron_chr.pickle')
     help_functions.pickle_dump(args, exon_choordinates_to_id, 'exon_choordinates_to_id.pickle')
+    help_functions.pickle_dump(args, exon_ids_spanning_segments_point, 'exon_ids_spanning_segments_point.pickle')
 
 
 def prep_seqs(args):
@@ -135,6 +137,7 @@ def prep_seqs(args):
 
 def import_data(args):
     segment_id_to_choordinates = help_functions.pickle_load( os.path.join(args.outfolder, 'segment_id_to_choordinates.pickle'))
+    exon_id_to_choordinates = help_functions.pickle_load( os.path.join(args.outfolder, 'exon_id_to_choordinates.pickle'))
     exon_choordinates_to_id = help_functions.pickle_load( os.path.join(args.outfolder, 'exon_choordinates_to_id.pickle'))
     ref_segment_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'ref_segment_sequences.pickle') )
     ref_flank_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'ref_flank_sequences.pickle') )
@@ -147,11 +150,13 @@ def import_data(args):
     gene_to_small_exons = help_functions.pickle_load( os.path.join(args.outfolder, 'gene_to_small_exons.pickle') )
     max_intron_chr = help_functions.pickle_load( os.path.join(args.outfolder, 'max_intron_chr.pickle') )
     ref_exon_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'ref_exon_sequences.pickle') )
+    exon_ids_spanning_segments_point = help_functions.pickle_load( os.path.join(args.outfolder, 'exon_ids_spanning_segments_point.pickle') )
 
     return segment_id_to_choordinates, ref_segment_sequences, ref_flank_sequences, splices_to_transcripts, \
             transcripts_to_splices, all_splice_pairs_annotations, \
             all_splice_sites_annotations, parts_to_segments,\
-            segment_to_gene, gene_to_small_exons, max_intron_chr, exon_choordinates_to_id, ref_exon_sequences
+            segment_to_gene, gene_to_small_exons, max_intron_chr, exon_choordinates_to_id, \
+            ref_exon_sequences, exon_id_to_choordinates, exon_ids_spanning_segments_point
 
 
 def batch(dictionary, size, batch_type):
