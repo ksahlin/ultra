@@ -100,10 +100,8 @@ def annotate_guaranteed_optimal_bound(mems, is_rc, max_intron_chr, max_global_in
 
 def find_exons(chr_id, mam_solution, exon_choordinates_to_id_chr, ref_exon_sequences, ref_segment_sequences, \
                  ref_flank_sequences, all_splice_pairs_annotations, exon_id_to_choordinates, exon_ids_spanning_segments_point):
-    print("BEFO:", [(m.x,m.y) for m in mam_solution])
+    # print("BEFO:", [(m.x,m.y) for m in mam_solution])
     valid_introns_sites = all_splice_pairs_annotations[chr_id]
-    # print(valid_introns_sites)
-    # print(exon_choordinates_to_id_chr)
 
     # identify known intron sites
     parts = []
@@ -115,13 +113,13 @@ def find_exons(chr_id, mam_solution, exon_choordinates_to_id_chr, ref_exon_seque
                 prev_split_index = i+1
         if mam_solution[prev_split_index:]:
             parts.append(mam_solution[prev_split_index:])
-        for p in parts:
-            print(p)
+        # for p in parts:
+        #     print(p)
     else:
         parts.append(mam_solution)
     
     # print(parts)
-    print()
+    # print()
     # identify likely intron sites too large to be a deletion
     parts2 = []
     for part in parts:
@@ -137,8 +135,8 @@ def find_exons(chr_id, mam_solution, exon_choordinates_to_id_chr, ref_exon_seque
         else:
             parts2.append(part)
 
-    for p in parts2:
-        print(p)
+    # for p in parts2:
+    #     print(p)
 
     # finally look for exact exons or enclosing exons if found
     exons = []
@@ -157,181 +155,63 @@ def find_exons(chr_id, mam_solution, exon_choordinates_to_id_chr, ref_exon_seque
             # check if there is an combination of segments and/or adjacent exons over the total region spanned by the exons 
 
             all_points = []
-            segm = set()
+            segm = {}
+            start_points = {}
+            end_points = {}
             for m in part:
                 all_points.append(m.x)
                 all_points.append(m.y)
-                segm.add( (m.x, m.y) )
+                segm[(m.x, m.y)] = m
+                start_points[m.x] = m
+                end_points[m.y] = m
             cover = {}
-            for i, p1 in enumerate(all_points):
+            for i, p1 in enumerate(sorted(all_points)):
                 cover[p1] = []
-                for j, p2 in enumerate(all_points):
+                for j, p2 in enumerate(sorted(all_points)):
                     if (p1, p2) in exon_choordinates_to_id_chr or  (p1, p2) in segm:
                         cover[p1].append(p2)
 
 
-            print("all_points", all_points)
-            print("all covers", cover)
-            
-            containing_start = exon_ids_spanning_segments_point[chr_id][p[0].x]
-            containing_end = exon_ids_spanning_segments_point[chr_id][p[-1].y]
-            enclosing_exons_IDs = containing_start & containing_end
-            print(enclosing_exons_IDs)
-            print(p[0].x, p[-1].y)
-            min_diff = 2**32
-            for e_id in enclosing_exons_IDs:
-                e_start, e_stop = exon_id_to_choordinates[e_id]
-                print(e_start, e_stop, p[0].x, p[-1].y )
-                assert e_start <= p[0].x <= p[-1].y <= e_stop
-                if (p[0].x - e_start) + (e_stop - p[-1].y) < min_diff:
-                    exon_id = e_id
-                    min_diff  = (curr_x - e_start) + (e_stop - mam.y)
-                    x = e_start
-                    y = e_stop
+            # print("all_points", all_points)
+            # print("all covers", cover)
+            paths = help_functions.find_all_paths(cover, part[0].x, part[-1].y)
+            # print(paths)
+            # print(start_points)
+            # print(end_points)
 
-            exons.append( (x, y, p[0].x, p[-1].y, exon_id) )
+            if len(paths) > 0:
+                path = paths[0]
+                for (p1, p2) in zip(path[:-1], path[1:]):
+                    if (p1, p2) in segm:
+                        mam = segm[(p1, p2)]
+                        exons.append((mam.x, mam.y, mam.c, mam.d, mam.ref_chr_id))
+                    else:
+                        if p1 in start_points:
+                            m = start_points[p1]
+                            c = m.c
+                            x = m.x
+                        else:
+                            m = end_points[p1]
+                            c = m.d
+                            x = m.y 
 
-            #if not, simply give up and put the small spurious intron caused by optimal solution is not containing adjacent segments
+                        if p2 in start_points:
+                            m = start_points[p2]
+                            d = m.c
+                            y = m.x
+                        else:
+                            m = end_points[p2]
+                            d = m.d
+                            y = m.y                            
+                        exon_id = exon_choordinates_to_id_chr[(p1, p2)].pop()
+                        exon_choordinates_to_id_chr[(p1, p2)].add(exon_id)
+                        exons.append((x, y, c, d, exon_id))
 
+            else:  #if not, simply give up and put the small spurious intron caused by optimal solution is not containing adjacent segments
+                for j, mam in enumerate(part):
+                    exons.append((mam.x, mam.y, mam.c, mam.d, mam.ref_chr_id))  
 
-        # i = 0
-        # print("p", p)
-        # while i < len(p):
-        #     curr_x = p[i].x
-        #     curr_c = p[i].c
-        #     last_y = p[i].y
-        #     last_d = p[i].d
-        #     exon_id = p[i].ref_chr_id
-        #     enclosing_exon_ids = exon_ids_spanning_segments_point[chr_id][last_y]
-        #     print(enclosing_exon_ids)
-        #     # find closing exon
-        #     approx_with_closest_exon = False
-        #     found_prefect_exon_match = False
-        #     j_last_exon = 0
-        #     for j, mam in enumerate(p[i:]):
-        #         print(mam, exon_ids_spanning_segments_point[chr_id][mam.y])
-        #         enclosing_exon_ids.intersection_update(exon_ids_spanning_segments_point[chr_id][mam.y])
-        #         print(curr_x, mam.y, j, enclosing_exon_ids)
-        #         if (curr_x, mam.y) in exon_choordinates_to_id_chr:
-        #             exon_id = exon_choordinates_to_id_chr[(curr_x, mam.y)].pop()
-        #             exon_choordinates_to_id_chr[(curr_x, mam.y)].add(exon_id)
-        #             j_last_exon = j
-        #             last_exon_id = exon_id
-        #             last_y = mam.y
-        #             last_d = mam.d
-        #             # approx_with_closest_exon = False
-        #             print("FOUND PERFECT")
-        #             found_prefect_exon_match = True
-
-        #         # ONLY INVOKE THIS IF STATMENT IF WE HAVE NOT OBSERVED A VALID EXON START AND END YET (ie not entered the if statement above! at all )
-        #         elif p[i].y != p[i+1].x and len(enclosing_exon_ids) > 0:
-        #             # segments are at least from the same exon
-        #             min_diff = 2**32
-        #             for e_id in enclosing_exon_ids:
-        #                 e_start, e_stop = exon_id_to_choordinates[e_id]
-        #                 print(e_start, e_stop, curr_x, mam.y )
-        #                 assert mam.y <= e_stop
-        #                 if e_start <= curr_x:
-        #                     if (curr_x - e_start) + (e_stop - mam.y) < min_diff:
-        #                         exon_id = e_id
-        #                         min_diff  = (curr_x - e_start) + (e_stop - mam.y)
-        #             # exon_id = enclosing_exon_ids.pop()
-        #             # enclosing_exon_ids.add(exon_id)
-        #             j_last_exon = j
-        #             tmp_last_exon_id = exon_id
-        #             tmp_last_y = e_stop
-        #             tmp_last_d = mam.d
-        #             tmp_curr_x = e_start
-        #             approx_with_closest_exon = True
-        #         else: # not an exon, no exon spanning
-        #             break
-
-        #     if found_prefect_exon_match or not approx_with_closest_exon:
-        #         exons.append((curr_x, last_y, curr_c, last_d, exon_id))
-        #     elif approx_with_closest_exon:
-        #         exons.append((tmp_curr_x, tmp_last_y, curr_c, tmp_last_d, tmp_last_exon_id))
-        #         # print("OMGG", exons)
-        #         # sys.exit()
-        #     else:
-        #         print("BUG")
-        #         sys.exit()
-        #     i += j_last_exon + 1
-
-    print("LOOL NEW",[ (x,y) for x, y, c, d, seq_id  in  exons])
-
-    # sys.exit()
-
-
-
-    # exons = []
-    # i = 0
-    # while i < len(mam_solution):
-    #     curr_x = mam_solution[i].x
-    #     curr_c = mam_solution[i].c
-    #     last_y = mam_solution[i].y
-    #     last_d = mam_solution[i].d
-    #     exon_id = mam_solution[i].ref_chr_id
-    #     enclosing_exon_ids = exon_ids_spanning_segments_point[chr_id][last_y]
-    #     print(enclosing_exon_ids)
-    #     # find closing exon
-    #     approx_with_closest_exon = False
-    #     found_prefect_exon_match = False
-    #     j_last_exon = 0
-    #     for j, mam in enumerate(mam_solution[i:]):
-    #         print(mam, exon_ids_spanning_segments_point[chr_id][mam.y])
-    #         enclosing_exon_ids.intersection_update(exon_ids_spanning_segments_point[chr_id][mam.y])
-    #         print(curr_x, mam.y, j, enclosing_exon_ids)
-    #         if (curr_x, mam.y) in exon_choordinates_to_id_chr:
-    #             exon_id = exon_choordinates_to_id_chr[(curr_x, mam.y)].pop()
-    #             exon_choordinates_to_id_chr[(curr_x, mam.y)].add(exon_id)
-    #             j_last_exon = j
-    #             last_exon_id = exon_id
-    #             last_y = mam.y
-    #             last_d = mam.d
-    #             # approx_with_closest_exon = False
-    #             print("FOUND PERFECT")
-    #             found_prefect_exon_match = True
-    #             if i + j + 1 < len(mam_solution) and (mam.y, mam_solution[i + j + 1].x ) in valid_introns_sites: # splitting because next one is a valid intron site
-    #                 print("VAAALID")
-    #                 break
-
-    #         # ONLY INVOKE THIS IF STATMENT IF WE HAVE NOT OBSERVED A VALID EXON START AND END YET (ie not entered the if statement above! at all )
-    #         elif not found_prefect_exon_match and mam_solution[i].y != mam_solution[i+1].x and len(enclosing_exon_ids) > 0:
-    #             # segments are at least from the same exon
-    #             min_diff = 2**32
-    #             for e_id in enclosing_exon_ids:
-    #                 e_start, e_stop = exon_id_to_choordinates[e_id]
-    #                 print(e_start, e_stop, curr_x, mam.y )
-    #                 assert mam.y <= e_stop
-    #                 if e_start <= curr_x:
-    #                     if (curr_x - e_start) + (e_stop - mam.y) < min_diff:
-    #                         exon_id = e_id
-    #                         min_diff  = (curr_x - e_start) + (e_stop - mam.y)
-    #             # exon_id = enclosing_exon_ids.pop()
-    #             # enclosing_exon_ids.add(exon_id)
-    #             j_last_exon = j
-    #             tmp_last_exon_id = exon_id
-    #             tmp_last_y = e_stop
-    #             tmp_last_d = mam.d
-    #             tmp_curr_x = e_start
-    #             approx_with_closest_exon = True
-    #         else: # not an exon, no exon spanning
-    #             break
-
-    #     if found_prefect_exon_match or not approx_with_closest_exon:
-    #         exons.append((curr_x, last_y, curr_c, last_d, exon_id))
-    #     elif approx_with_closest_exon:
-    #         exons.append((tmp_curr_x, tmp_last_y, curr_c, tmp_last_d, tmp_last_exon_id))
-    #         # print("OMGG", exons)
-    #         # sys.exit()
-    #     else:
-    #         print("BUG")
-    #         sys.exit()
-    #     i += j_last_exon + 1
-
-    #     print(exons)
-
-    # print("LOOL",[ (x,y) for x, y, c, d, seq_id  in  exons])
+    # print("LOOL NEW",[ (x,y) for x, y, c, d, seq_id  in  exons])
 
     chained_exon_seqs = []
     predicted_exons = []
@@ -361,7 +241,7 @@ def find_exons(chr_id, mam_solution, exon_choordinates_to_id_chr, ref_exon_seque
         chained_exon_seqs.append(seq)
     created_ref_seq = "".join([exon for exon in chained_exon_seqs])
     predicted_splices = [ (e1[1],e2[0]) for e1, e2 in zip(predicted_exons[:-1],predicted_exons[1:])]
-    return exons, created_ref_seq, predicted_exons, predicted_splices
+    return exons, created_ref_seq, predicted_exons, predicted_splices, covered
 
 
 def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
@@ -398,9 +278,9 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
             read_seq = help_functions.remove_read_polyA_ends(reads[read_acc], args.reduce_read_ployA, 1)
         # print("instance sizes fw:", [ (chr_id, len(mm)) for chr_id, mm in mems.items()])
         # print("instance sizes rc:", [ (chr_id, len(mm)) for chr_id, mm in mems_rc.items()])
-        print()
-        print()
-        print(read_acc)
+        # print()
+        # print()
+        # print(read_acc)
         upper_bound = annotate_guaranteed_optimal_bound(mems, False, max_intron_chr, max_global_intron)
         upper_bound_rc = annotate_guaranteed_optimal_bound(mems_rc, True, max_intron_chr, max_global_intron)
         # print()
@@ -417,8 +297,8 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                 break
             
             # print("Processing", chr_id, is_rc, upper_bound_cov, "best:", best_solution_value, "read length:", len(read_seq))
-            for mem in all_mems_to_chromosome:
-                print(mem.exon_part_id, mem.x, mem.y, mem.c, mem.d, '\t', mem.val)
+            # for mem in all_mems_to_chromosome:
+            #     print(mem.exon_part_id, mem.x, mem.y, mem.c, mem.d, '\t', mem.val)
             # print(len(all_mems_to_chromosome))
 
 
@@ -472,40 +352,16 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                                                                                                                     segment_id_to_choordinates, segment_to_gene, gene_to_small_exons, \
                                                                                                                     read_seq, warning_log_file, min_acc)
             # print("finished Mam solution:",mam_value, mam_solution)
-            for zzz2 in mam_solution:
-                print(zzz2)
-            print(non_covered_regions)
+            # for zzz2 in mam_solution:
+            #     print(zzz2)
+            # print(non_covered_regions)
             mam_sol_exons_length = sum([ mam.y - mam.x for mam in mam_solution])
             # print(max_intron_size)
             if mam_value > 0:
-                chained_exon_seqs = []
-                prev_ref_stop = -1
-                predicted_exons = []
-                tot_exons_len = 0
-                prev_y_coord = -1
-                prev_segm_id = ""
-                covered = 0
-                for mam in mam_solution:
-                    if (mam.x, mam.y) in ref_segment_sequences[mam.ref_chr_id]:
-                        seq = ref_segment_sequences[mam.ref_chr_id][(mam.x, mam.y)] 
-                        covered += mam.d - mam.c + 1
-                    elif (mam.x, mam.y) in ref_flank_sequences[mam.ref_chr_id]:
-                        seq = ref_flank_sequences[mam.ref_chr_id][(mam.x, mam.y)] 
-                        covered += mam.d - mam.c + 1
-                    else:
-                        print("Bug encountered, {0} is not in {1}".format((mam.x, mam.y), mam_solution))
+                exons, created_ref_seq, predicted_exons, predicted_splices, covered = find_exons(chr_id, mam_solution, exon_choordinates_to_id[chr_id], ref_exon_sequences, \
+                                                                                            ref_segment_sequences, ref_flank_sequences, all_splice_pairs_annotations, \
+                                                                                            exon_id_to_choordinates, exon_ids_spanning_segments_point)
 
-                    if prev_y_coord == mam.x: #adjacent segments means its a flank and we should not add an new exon (i.e., intron split)
-                        predicted_exons[-1] = (predicted_exons[-1][0], mam.y)  # update the last exon
-                    else:
-                        predicted_exons.append( (mam.x, mam.y) )
-
-                    prev_y_coord = mam.y
-                    prev_segm_id = mam.exon_id
-                    chained_exon_seqs.append(seq)
-                    prev_ref_stop = mam.y
-                created_ref_seq = "".join([exon for exon in chained_exon_seqs])
-                predicted_splices = [ (e1[1],e2[0]) for e1, e2 in zip(predicted_exons[:-1],predicted_exons[1:])]
 
                 classification, annotated_to_transcript_id = classify_alignment2.main(chr_id, predicted_splices, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations)
                 largest_intron_size = max([m2.x - m1.y for m1,m2 in zip(mam_solution[:-1], mam_solution[1:]) ]) if len(mam_solution) > 1 else 0
@@ -515,16 +371,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                     # print(classification, alignment_score/len(read_seq), "Score: {0}, old T: {1}, new T: {2}".format(alignment_score, 2*args.alignment_threshold*len(read_seq), len(read_seq)*8*args.alignment_threshold))
                     continue
 
-                exons, created_ref_seq2, predicted_exons2, predicted_splices2 = find_exons(chr_id, mam_solution, exon_choordinates_to_id[chr_id], ref_exon_sequences, \
-                                                                                            ref_segment_sequences, ref_flank_sequences, all_splice_pairs_annotations, \
-                                                                                            exon_id_to_choordinates, exon_ids_spanning_segments_point)
-                if created_ref_seq != created_ref_seq2:
-                    print(created_ref_seq)
-                    print(created_ref_seq2)
-                    created_ref_seq = created_ref_seq2
-                    predicted_splices = predicted_splices2
-                    predicted_exons = predicted_exons2
-                    print("MOD:", predicted_splices)
+
                 if len(created_ref_seq) > 20000 or len(read_seq) > 20000 or (1000 < len(read_seq) < mam_sol_exons_length/10):
                     # print("lenght ref: {0}, length query:{1}".format(len(created_ref_seq), len(read_seq)))
                     read_aln, ref_aln, edit_distance = help_functions.edlib_alignment(read_seq, created_ref_seq, aln_mode = "HW")
@@ -535,12 +382,12 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
 
                 else:
                     read_aln, ref_aln, cigar_string, cigar_tuples, alignment_score = help_functions.parasail_alignment(read_seq, created_ref_seq)
-                    print(read_aln)
-                    print(ref_aln)
-                    print("alignment_score:", alignment_score)
-                    print(predicted_exons)
-                    print(predicted_splices)
-                    print(cigar_string)
+                    # print(read_aln)
+                    # print(ref_aln)
+                    # print("alignment_score:", alignment_score)
+                    # print(predicted_exons)
+                    # print(predicted_splices)
+                    # print(cigar_string)
                 # matches = sum([1 for n1,n2 in zip(read_aln, ref_aln) if n1 == n2 ])
                 # substitutions = sum([1 for n1,n2 in zip(read_aln, ref_aln) if n1 != n2 and n1 != "-" and n2 != "-" ])
                 # deletions = sum([1 for n1,n2 in zip(read_aln, ref_aln) if n1 == "-" ])

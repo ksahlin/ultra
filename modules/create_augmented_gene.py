@@ -41,7 +41,7 @@ def dd_tuple(): # top level function declaration needed for multiprocessing
 #                 exon_to_gene[e_id + "_compl_end"] = exon_gene_ids 
 
 
-def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_active_gene, pos_to_exon_ids, exon_id_to_choordinates, small_segment_threshold, min_mem):
+def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_active_gene, pos_to_exon_ids, exon_id_to_choordinates, small_segment_threshold, min_segment_size):
     # parts_to_exons, exon_to_gene, exon_id_to_choordinates, exons_to_ref,
     segment_id_to_choordinates = {}
     segment_to_gene = {} 
@@ -58,14 +58,14 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
         sorted_pos = sorted(part_to_canonical_pos[(chr_id, part_id)])
 
         open_starts_e_ids = set() #list( pos_to_exon_ids[(chr_id, part_id)][p, is_start] for p, is_start in pos_to_exon_ids[(chr_id, part_id)] if p < ) # exons spanning over the small segment
-        if chr_id == "SIRV3":
-            print(sorted_pos)
+        # if chr_id == "SIRV3":
+        #     print(sorted_pos)
         pos_tuples = [(p1, p2) for p1, p2 in zip(sorted_pos[:-1], sorted_pos[1:])]
         for (p1, p2) in pos_tuples:
             open_starts_e_ids.update(pos_to_exon_ids[(chr_id, part_id)][p1, True]) # add the exons that start at this point 
             open_starts_e_ids.difference_update(pos_to_exon_ids[(chr_id, part_id)][p1, False]) # remove the ones that ended here
             exon_ids_spanning_segments_point[chr_id][p2] = open_starts_e_ids
-            if p2 - p1 >= min_mem:
+            if p2 - p1 >= min_segment_size:
                 # print("here good", p2 - p1)
                 segment_name = "segm_{0}_{1}".format(p1,p2)
                 segment_id_to_choordinates[segment_name] = (p1, p2)
@@ -84,15 +84,15 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
                 relevant_starts = list(pos_to_exon_ids[(chr_id, part_id)][p1, True])
                 relevant_ends = list(pos_to_exon_ids[(chr_id, part_id)][p2, False])
                 all_segm_spanning = set(relevant_starts + relevant_ends)
-                if chr_id == "SIRV3":
-                    print("here bad", p1, p2)
-                    print(relevant_starts)
-                    print(relevant_ends)
+                # if chr_id == "SIRV3":
+                #     print("here bad", p1, p2)
+                #     print(relevant_starts)
+                #     print(relevant_ends)
                 if not all_segm_spanning:
                     # print("BUG", open_starts_e_ids)
                     # if chr_id == "SIRV5":
-                    for e_id in open_starts_e_ids:
-                        print(exon_id_to_choordinates[e_id])
+                    # for e_id in open_starts_e_ids:
+                    #     print(exon_id_to_choordinates[e_id])
                     # sys.exit()
                     all_segm_spanning = open_starts_e_ids
                 # print(relevant_starts + relevant_ends)
@@ -115,14 +115,14 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
     print("total_unique_segment_counter", total_unique_segment_counter)
     print("total_segments_bad", total_segments_bad)
     print("bad", bad)
-    for e_id in segment_to_ref:
-        if segment_to_ref[e_id] == "SIRV3":
-            print(segment_id_to_choordinates[e_id])
+    # for e_id in segment_to_ref:
+    #     if segment_to_ref[e_id] == "SIRV3":
+    #         print(segment_id_to_choordinates[e_id])
     # sys.exit()
     return parts_to_segments, segment_to_gene, segment_id_to_choordinates, segment_to_ref, gene_to_small_segments, exon_ids_spanning_segments_point 
 
 
-def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_mem): 
+def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segment_size): 
     """
         We need to link parts --> exons and exons --> transcripts
     """
@@ -258,7 +258,7 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_mem):
     parts_to_exons[chr_id][(active_start, active_stop)] = active_exons
     part_count_to_choord[(chr_id,part_counter)] = (active_start, active_stop)
 
-    parts_to_segments, segment_to_gene, segment_id_to_choordinates, segment_to_ref, gene_to_small_segments, exon_ids_spanning_segments_point  = get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_active_gene, pos_to_exon_ids, exon_id_to_choordinates, small_exon_threshold, min_mem)
+    parts_to_segments, segment_to_gene, segment_id_to_choordinates, segment_to_ref, gene_to_small_segments, exon_ids_spanning_segments_point  = get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_active_gene, pos_to_exon_ids, exon_id_to_choordinates, small_exon_threshold, min_segment_size)
 
     print("total parts size:", sum( [stop - start for chrrr in parts_to_exons for start,stop in parts_to_exons[chrrr] ]))
     print("total exons size:", sum( [stop - start for start, stop in exon_id_to_choordinates.values() ]))

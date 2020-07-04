@@ -61,7 +61,7 @@ def prep_splicing(args):
     transcripts_to_splices, all_splice_pairs_annotations, \
     all_splice_sites_annotations, exon_id_to_choordinates, segment_id_to_choordinates, \
     segment_to_gene, gene_to_small_exons, flanks_to_gene, \
-    max_intron_chr, exon_choordinates_to_id, exon_ids_spanning_segments_point = augmented_gene.create_graph_from_exon_parts(db, args.flank_size, args.small_exon_threshold, args.min_mem )
+    max_intron_chr, exon_choordinates_to_id, exon_ids_spanning_segments_point = augmented_gene.create_graph_from_exon_parts(db, args.flank_size, args.small_exon_threshold, args.min_segm )
 
     # dump to pickle here! Both graph and reference seqs
     # help_functions.pickle_dump(args, genes_to_ref, 'genes_to_ref.pickle')
@@ -225,7 +225,7 @@ def align_reads(args):
 
     mummer_start = time()
     if args.nr_cores == 1:
-        print("Processing reads for mummer")
+        print("Processing reads for MEM finding")
         reads_tmp = open(os.path.join(args.outfolder, 'reads_tmp.fq'), 'w')
         for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r')):
             # print(seq)
@@ -233,14 +233,14 @@ def align_reads(args):
             reads_tmp.write('>{0}\n{1}\n'.format(acc, help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5)))
         reads_tmp.close()
         args.reads_tmp = reads_tmp.name
-        print("Finished processing reads for mummer ")
+        print("Finished processing reads for MEM finding ")
 
         mummer_out_path =  os.path.join( args.outfolder, "mummer_mems_batch_-1.txt" )
-        print("Running mummer forward") 
+        print("Running MEM finding forward") 
         mem_wrapper.find_mems_slamem(args.outfolder, args.reads_tmp, ref_path, mummer_out_path, args.min_mem)
-        print("Completed mummer forward")
+        print("Completed MEM finding forward")
 
-        print("Processing reverse complement reads for mummer")
+        print("Processing reverse complement reads for MEM finding")
         reads_rc = open(os.path.join(args.outfolder, 'reads_rc.fq'), 'w')
         for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r')):
             # print(help_functions.reverse_complement(seq))
@@ -248,12 +248,12 @@ def align_reads(args):
             reads_rc.write('>{0}\n{1}\n'.format(acc, help_functions.reverse_complement(help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5))))
         reads_rc.close()
         args.reads_rc = reads_rc.name
-        print("Finished processing reverse complement reads for mummer")
+        print("Finished processing reverse complement reads for MEM finding")
 
         mummer_out_path =  os.path.join(args.outfolder, "mummer_mems_batch_-1_rc.txt" )
-        print("Running mummer reverse")
+        print("Running MEM finding reverse")
         mem_wrapper.find_mems_slamem(args.outfolder, args.reads_rc, ref_path, mummer_out_path, args.min_mem)
-        print("Completed mummer reverse")
+        print("Completed MEM finding reverse")
     
     else:
         reads = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r'))}
@@ -388,16 +388,17 @@ if __name__ == '__main__':
     pipeline_parser.add_argument('ref', type=str, help='Reference genome (fasta)')
     pipeline_parser.add_argument('reads', type=str, help='Path to fasta/fastq file with reads.')
     pipeline_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
-    # group = pipeline_parser.add_mutually_exclusive_group()
-    # group.add_argument('--ont', action="store_true", help='Set parameters suitable for ONT (Currently sets: --min_mem 16, --min_acc 0.5).')
-    # group.add_argument('--isoseq', action="store_true", help='Set parameters suitable for IsoSeq (Currently only: --min_mem 20, --min_acc 0.7).')
+    group = pipeline_parser.add_mutually_exclusive_group()
+    group.add_argument('--ont', action="store_true", help='Set parameters suitable for ONT (Currently sets: --min_mem 17, --min_acc 0.6).')
+    group.add_argument('--isoseq', action="store_true", help='Set parameters suitable for IsoSeq (Currently only: --min_mem 20, --min_acc 0.8).')
     # group2 = pipeline_parser.add_mutually_exclusive_group()
     # group2.add_argument('--mummer', action="store_true", help='Use mummer to find mems. About 1.5-2x faster than slamem but consumes  >4x more memory (slamem is recommended for human and larger)')
     # group2.add_argument('--slamem', action="store_true", help='Use slaMEM to find mems. About 1.5-2x slower than mumer but consumes less than 25% of the memory compared to mummer')
 
     pipeline_parser.add_argument('--min_mem', type=int, default=17, help='Threshold for minimum mem size considered.')
+    pipeline_parser.add_argument('--min_segm', type=int, default=25, help='Threshold for minimum segment size considered.')
     pipeline_parser.add_argument('--min_acc', type=float, default=0.6, help='Minimum accuracy of MAM to be considered in mam chaining.')
-    pipeline_parser.add_argument('--flank_size', type=int, default=500, help='Size of genomic regions surrounding genes.')
+    pipeline_parser.add_argument('--flank_size', type=int, default=1000, help='Size of genomic regions surrounding genes.')
     pipeline_parser.add_argument('--max_intron', type=int, default=1200000, help='Set global maximum size between mems considered in chaining solution. This is otherwise inferred from GTF file per chromosome.')
     pipeline_parser.add_argument('--small_exon_threshold', type=int, default=200, help='Considered in MAM solution even if they cont contain MEMs.')
     pipeline_parser.add_argument('--reduce_read_ployA', type=int, default=8, help='Reduces polyA tails longer than X bases (default 10) in reads to 5bp before MEM finding. This helps MEM matching to spurios regions but does not affect final read alignments.')
@@ -411,14 +412,14 @@ if __name__ == '__main__':
     pipeline_parser.add_argument('--dropoff', type=float, default=0.95, help='Ignore alignment to hits with read coverage of this fraction less than the best hit.')
     pipeline_parser.add_argument('--ignore_rc', action='store_true', help='Ignore to map to reverse complement.')
     pipeline_parser.add_argument('--disable_infer', action='store_true', help='Makes splice creation step much faster. Thes parameter can be set if gene and transcript name fields are provided in gtf file.')
-    pipeline_parser.add_argument('--mask_threshold', type=int, default=500, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
+    pipeline_parser.add_argument('--mask_threshold', type=int, default=200, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
     pipeline_parser.set_defaults(which='pipeline')
 
 
     prep_splicing_parser.add_argument('gtf', type=str, help='Path to gtf or gtf file with gene models.')
     prep_splicing_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
-    prep_splicing_parser.add_argument('--min_mem', type=int, default=17, help='Threshold for minimum mem size considered.')
-    prep_splicing_parser.add_argument('--flank_size', type=int, default=500, help='Size of genomic regions surrounding genes.')
+    prep_splicing_parser.add_argument('--min_segm', type=int, default=25, help='Threshold for minimum segment size considered.')
+    prep_splicing_parser.add_argument('--flank_size', type=int, default=1000, help='Size of genomic regions surrounding genes.')
     prep_splicing_parser.add_argument('--small_exon_threshold', type=int, default=200, help='Considered in MAM solution even if they cont contain MEMs.')
     prep_splicing_parser.add_argument('--disable_infer', action='store_true', help='Makes splice creation step much faster. Thes parameter can be set if gene and transcript name fields are provided in gtf file.')
     prep_splicing_parser.set_defaults(which='prep_splicing')
@@ -426,7 +427,7 @@ if __name__ == '__main__':
     prep_seqs_parser.add_argument('ref', type=str, help='Reference genome (fasta)')
     prep_seqs_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
     prep_seqs_parser.add_argument('--min_mem', type=int, default=16, help='Threshold for minimum mem size considered.')
-    prep_seqs_parser.add_argument('--mask_threshold', type=int, default=500, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
+    prep_seqs_parser.add_argument('--mask_threshold', type=int, default=200, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
     prep_seqs_parser.set_defaults(which='prep_seqs')
 
 
@@ -446,6 +447,9 @@ if __name__ == '__main__':
     align_reads_parser.add_argument('--ignore_rc', action='store_true', help='Ignore to map to reverse complement.')
     align_reads_parser.add_argument('--min_mem', type=int, default=16, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
     align_reads_parser.add_argument('--min_acc', type=float, default=0.6, help='Minimum accuracy of MAM to be considered in mam chaining.')
+    group2 = align_reads_parser.add_mutually_exclusive_group()
+    group2.add_argument('--ont', action="store_true", help='Set parameters suitable for ONT (Currently sets: --min_mem 17, --min_acc 0.6).')
+    group2.add_argument('--isoseq', action="store_true", help='Set parameters suitable for IsoSeq (Currently only: --min_mem 20, --min_acc 0.8).')
 
 
     align_reads_parser.set_defaults(which='align_reads')
@@ -456,6 +460,14 @@ if __name__ == '__main__':
     if len(sys.argv)==1:
         parser.print_help()
         sys.exit()
+
+    if args.which == 'align_reads' or args.which == 'pipeline':
+        if args.ont:
+            args.min_mem = 17
+            args.min_acc = 0.6
+        if args.isoseq:
+            args.min_mem = 20
+            args.min_acc = 0.8
 
 
     if args.which == 'prep_splicing':
