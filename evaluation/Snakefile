@@ -350,21 +350,21 @@ rule graphmap2_gtf_align:
         if wildcards.dataset == "sirv":
             ref = config["SIRV"]
             annotation = config["ANNOTATION"] + "/SIRV_with_transcripts.gtf"
-            error_rate = 7
+            # error_rate = 7
         elif wildcards.dataset == "drosophila":
             ref =  config["drosophila97"]
             annotation = config["ANNOTATION"] + "/drosophila.gtf"
-            error_rate = 7
+            # error_rate = 7
         else:
             ref = config["HG38"]
             annotation = config["ANNOTATION"] + "/NA12878.gtf"
-            if wildcards.dataset == "simulated_ens" or wildcards.dataset == "pacbio_alzheimer":
-                error_rate = 0.5
-            else:
-                error_rate = 10
+            # if wildcards.dataset == "simulated_ens" or wildcards.dataset == "pacbio_alzheimer":
+            #     error_rate = 0.5
+            # else:
+            #     error_rate = 10
 
 
-        shell("/usr/bin/time -v  graphmap2 align  --error-rate {error_rate} --index {input.index} --gtf {annotation} --threads 62 -x rnaseq -r {ref} -d {input.fastq} -o {output.sam}  2>&1 | tee {output.time_and_mem} ")
+        shell("/usr/bin/time -v  graphmap2 align  --index {input.index} --gtf {annotation} --threads 62 -x rnaseq -r {ref} -d {input.fastq} -o {output.sam}  2>&1 | tee {output.time_and_mem} ")
 
 
 rule graphmap2_align:
@@ -376,18 +376,18 @@ rule graphmap2_align:
     run:
         if wildcards.dataset == "sirv":
             ref = config["SIRV"]
-            error_rate = 7
+            # error_rate = 7
         elif wildcards.dataset == "drosophila":
             ref =  config["drosophila97"]
-            error_rate = 7
+            # error_rate = 7
         else:
             ref = config["HG38"]
-            if wildcards.dataset == "simulated_ens" or wildcards.dataset == "pacbio_alzheimer":
-                error_rate = 0.5
-            else:
-                error_rate = 10
+        #     if wildcards.dataset == "simulated_ens" or wildcards.dataset == "pacbio_alzheimer":
+        #         error_rate = 0.5
+        #     else:
+        #         error_rate = 10
 
-        shell("/usr/bin/time -v  graphmap2 align --error-rate {error_rate} --index {input.index} --threads 62 -x rnaseq -r {ref} -d {input.fastq} -o {output.sam}  2>&1 | tee {output.time_and_mem} ")
+        shell("/usr/bin/time -v  graphmap2 align --index {input.index} --threads 62 -x rnaseq -r {ref} -d {input.fastq} -o {output.sam}  2>&1 | tee {output.time_and_mem} ")
 
 
 rule evaluate_sim:
