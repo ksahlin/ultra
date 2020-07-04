@@ -179,20 +179,26 @@ def get_unique_exon_and_flank_locations(solution, parts_to_exons, exon_id_to_cho
     for mem in solution:
         ref_chr_id, ref_start, ref_stop =  mem.exon_part_id.split('^')
         ref_start, ref_stop = int(ref_start), int(ref_stop)
-
+        # print("processing", mem)
         if len(unique_part_locations) == 0 or (ref_chr_id, ref_start, ref_stop) != unique_part_locations[-1]: # not to add repeated identical parts
             unique_part_locations.append((ref_chr_id, ref_start, ref_stop))
-
+            # print("Added to unique_part_locations", (ref_chr_id, ref_start, ref_stop))
         exon_ids = parts_to_exons[ref_chr_id][(ref_start, ref_stop)]
         if not exon_ids: # is a flank
+            # print("Is flank", (ref_chr_id, ref_start, ref_stop))
             flank_hit_locations.append((ref_chr_id, ref_start, ref_stop))  
             if ref_start - wiggle_overlap <= mem.x < mem.y <= ref_stop + wiggle_overlap:
+                # print("made wiggle", ref_start, mem.x , mem.y ,ref_stop)
                 if (ref_chr_id, ref_start, ref_stop) in segment_flank_hit_locations:
+                    # print("in segm, updating")
                     segment_flank_hit_locations[(ref_chr_id, ref_start, ref_stop)][1] =  mem.y
                     segment_flank_hit_locations[(ref_chr_id, ref_start, ref_stop)][3] =  mem.d
                 else: 
+                    # print("in segm")
                     segment_flank_hit_locations[(ref_chr_id, ref_start, ref_stop)] = [mem.x, mem.y, mem.c, mem.d]       
         else:
+            # print("Is not a flank, ie exon", (ref_chr_id, ref_start, ref_stop), exon_ids)
+
             # get all exons associated with the part and see if they are hit
             if ref_stop <= first_part_stop:
                 first_part_stop = ref_stop
@@ -203,16 +209,18 @@ def get_unique_exon_and_flank_locations(solution, parts_to_exons, exon_id_to_cho
                 # exon overlaps with mem
                 e_start, e_stop = exon_id_to_choordinates[exon_id]
                 choord_to_exon_id[(ref_chr_id, e_start, e_stop)] = exon_id
-
+                # print(e_start, e_stop)
                 # print(e_start,e_stop,  mem.x, mem.y )
+                exon_hit_locations.append( (ref_chr_id, e_start, e_stop) )
                 if e_start - wiggle_overlap <= mem.x < mem.y <= e_stop + wiggle_overlap:
-                    exon_hit_locations.append( (ref_chr_id, e_start, e_stop) )
-
+                    # print("Adding", (ref_chr_id, e_start, e_stop) )
                     if (ref_chr_id, e_start, e_stop) in segment_exon_hit_locations:
                         segment_exon_hit_locations[(ref_chr_id, e_start,e_stop)][1] =  mem.y
                         segment_exon_hit_locations[(ref_chr_id, e_start,e_stop)][3] =  mem.d
+                        # print("Upd", (mem.y, mem.d) )
                     else: 
                         segment_exon_hit_locations[(ref_chr_id, e_start,e_stop)] = [mem.x, mem.y, mem.c, mem.d]
+                        # print("Init", (mem.x, mem.y, mem.c, mem.d) )
 
 
         # if (ref_chr_id, ref_start, ref_stop) in approximate_hit_locations:
@@ -230,6 +238,8 @@ def get_unique_exon_and_flank_locations(solution, parts_to_exons, exon_id_to_cho
     # print(flank_hit_locations)
     # print(segment_flank_hit_locations)
     # print(approximate_hit_locations)
+    # print("exon_hit_locations", exon_hit_locations)
+    # print("unique_part_locations", unique_part_locations)
     return exon_hit_locations, segment_exon_hit_locations, flank_hit_locations, segment_flank_hit_locations, choord_to_exon_id, first_part_stop, last_part_start
 
 
@@ -249,8 +259,9 @@ def get_unique_exon_and_flank_choordinates(exon_hit_locations, segment_exon_hit_
         exon_id = choord_to_exon_id[(ref_chr_id, e_start, e_stop)]
         unique_exon_choordinates[ (ref_chr_id, e_start, e_stop) ].add(exon_id)
         
-        segm_ref_start, segm_ref_stop, segm_read_start, segm_read_stop = segment_exon_hit_locations[(ref_chr_id, e_start, e_stop)]
-        unique_exon_choordinates_segments[(ref_chr_id, e_start, e_stop) ] =  (ref_chr_id, segm_ref_start, segm_ref_stop, exon_id)
+        if (ref_chr_id, e_start, e_stop) in segment_exon_hit_locations:
+            segm_ref_start, segm_ref_stop, segm_read_start, segm_read_stop = segment_exon_hit_locations[(ref_chr_id, e_start, e_stop)]
+            unique_exon_choordinates_segments[(ref_chr_id, e_start, e_stop) ] =  (ref_chr_id, segm_ref_start, segm_ref_stop, exon_id)
 
         # also add all small exons that may be smaller than minimum MEM size
         # unique_genes = set(gene_id for exon_id in exon_ids for gene_id in exon_to_gene[exon_id])
@@ -297,36 +308,28 @@ def add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, ma
             # print(locations, edit_distance, accuracy)
             # if 'flank' in exon_id:
             # print(exon_seq)
-            if edit_distance >= 0:
+            if edit_distance >= 0 and accuracy > min_acc:
                 # calc_complessed_score(read_alignment, ref_alignment, len(read_seq), len(exon_seq))
                 # e_score = calc_evalue(read_alignment, ref_alignment, len(read_seq), len(exon_seq))
                 # start, stop = locations[0]
                 # if len(locations) > 1:
                 #     print("had more", e_stop - e_start, locations)
 
+                # print(accuracy)
+                # print((e_start, e_stop), locations, edit_distance, min_segment_length, accuracy, (min_segment_length - edit_distance)/float(min_segment_length), (stop - start + 1)*accuracy, (stop - start + 1 - edit_distance)* accuracy, (min_segment_length - edit_distance)/float(min_segment_length))
+                # print(exon_seq)
+                # only take unique start locations by taking the highest accuracy from each hit with the same position
+                considered_starts = set()
                 for start, stop in locations:
+                    if start in considered_starts:
+                        continue
                     min_segment_length = stop - start + 1 #Edlib end location is inclusive
-                    # print(accuracy)
-                    # print((e_start, e_stop), locations, edit_distance, min_segment_length, accuracy, (min_segment_length - edit_distance)/float(min_segment_length), (stop - start + 1)*accuracy, (stop - start + 1 - edit_distance)* accuracy, (min_segment_length - edit_distance)/float(min_segment_length))
-                    # print(exon_seq)
                     score = accuracy*(min_segment_length - edit_distance) # accuracy*min_segment_length
-                    if accuracy > min_acc: #(min_segment_length - edit_distance)/float(min_segment_length) > min_acc:
-                        # for exon_id in all_exon_ids: break # only need one of the redundant exon_ids
-                        # exon_id = all_exon_ids.pop()
-                        # covered_regions.append((start,stop, score, exon_id, ref_chr_id))
-                        mam_tuple = mam(e_start, e_stop, start, stop, 
-                                score, min_segment_length,  exon_id, ref_chr_id) 
-                        mam_instance.append(mam_tuple)
-                        # print(mam_tuple)
-            # else:
-            #     if len(read_seq) + len(exon_seq) < 40000:
-            #         read_aln, ref_aln, cigar_string, cigar_tuples, alignment_score = help_functions.parasail_local(read_seq, exon_seq)
-            #         locations, edit_distance, accuracy = edlib_alignment(exon_seq, read_seq, mode="HW", task = 'path', k = 0.4*min(len(read_seq), len(exon_seq)) )
-            #         print('read',read_seq)
-            #         print('Rref',exon_seq)
-            #         print(locations, edit_distance, accuracy)
-            #         # print(read_aln)
-            #         # print(ref_aln)
+                    mam_tuple = mam(e_start, e_stop, start, stop, 
+                            score, min_segment_length,  exon_id, ref_chr_id) 
+                    mam_instance.append(mam_tuple)
+                    considered_starts.add(start)
+
         
         else: # small exons between 5-9bp needs exact match otherwise too much noise
             locations, edit_distance, accuracy = edlib_alignment(exon_seq, read_seq, mode="HW", task = 'path', k = 0 )
@@ -338,13 +341,14 @@ def add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, ma
                 # e_score = calc_evalue(read_alignment, ref_alignment, len(read_seq), len(exon_seq))
                 # for exon_id in all_exon_ids: break # only need one of the redundant exon_ids
                 # exon_id = all_exon_ids.pop()
-
+                considered_starts = set()
                 for start, stop in locations:
-                    # covered_regions.append((start,stop, score, exon_id, ref_chr_id))
+                    if start in considered_starts:
+                        continue
                     mam_tuple = mam(e_start, e_stop, start, stop, 
                             score, score,  exon_id, ref_chr_id) 
                     mam_instance.append(mam_tuple)
-                    # print(mam_tuple)
+                    considered_starts.add(start)
     else:
         pass
         # warning_log_file.write("not aligning exons smaller than 5bp: {0}, {1}, {2}, {3}.\n".format(ref_chr_id, e_start, e_stop, ref_exon_sequences[ref_chr_id][(e_start, e_stop)])) # TODO: align these and take all locations
@@ -427,7 +431,7 @@ def main(solution, ref_exon_sequences, ref_flank_sequences, parts_to_exons, exon
     for (ref_chr_id, f_start, f_stop), _ in sorted(unique_flank_choordinates.items(), key=lambda x: x[0][1]):
         flank_seq = ref_flank_sequences[ref_chr_id][(f_start, f_stop)]
         flank_id = "flank_{0}_{1}".format(f_start, f_stop)
-        # print("adding full flank:", f_start, f_stop, flank_seq )
+        # print("Testing full flank:", f_start, f_stop, flank_seq )
         # if (f_stop <= exon_hit_locations[0][1]) or (exon_hit_locations[-1][2] <= f_start): # is start flank
         add_exon_to_mam(read_seq, ref_chr_id, flank_seq, f_start, f_stop, flank_id, mam_instance, min_acc)
 

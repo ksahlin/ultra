@@ -277,3 +277,19 @@ def parasail_local(s1, s2, match_score = 2, mismatch_penalty = -2, opening_penal
     # print(result.end_query, result.end_ref, result.len_query, result.len_ref, result.length, result.matches)
     # print()
     return s1_alignment, s2_alignment, cigar_string, cigar_tuples, result.score
+
+
+def find_all_paths(graph, start, end):
+    path  = []
+    paths = []
+    queue = [(start, end, path)]
+    while queue:
+        start, end, path = queue.pop()
+        # print( 'PATH', path)
+
+        path = path + [start]
+        if start == end:
+            paths.append(path)
+        for node in set(graph[start]).difference(path):
+            queue.append((node, end, path))
+    return paths
