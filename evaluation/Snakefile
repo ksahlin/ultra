@@ -304,7 +304,8 @@ rule desalt_align:
         if wildcards.dataset == "sirv":
             shell("/usr/bin/time -v  deSALT aln {index} {input.fastq} --noncan 4 -d 10  -s 2 -l 14  -t 48  -o {output.sam} -f {tempfile} 2>&1 | tee {output.time_and_mem} ") 
         else:
-            shell("/usr/bin/time -v  deSALT aln {index} {input.fastq} --max-intron-len 500000 -d 10  -s 2 -l 14  -t 48  -o {output.sam} -f {tempfile} 2>&1 | tee {output.time_and_mem} ") 
+            # --max-intron-len 500000 leads to >4days runtime on simulated_ens and simulated
+            shell("/usr/bin/time -v  deSALT aln {index} {input.fastq} -d 10  -s 2 -l 14  -t 48  -o {output.sam} -f {tempfile} 2>&1 | tee {output.time_and_mem} ") 
 
 
 rule desalt_gtf_align:
@@ -320,7 +321,8 @@ rule desalt_gtf_align:
         import tempfile
         work_dir = tempfile.mkdtemp()
         tempfile = os.path.join(work_dir, "desalt_gtf_temp_prefix")
-        shell("/usr/bin/time -v  deSALT aln {index} {input.fastq} --max-intron-len 500000 -d 10  -s 2 -l 14  -t 48 --gtf {input.desalt_gtf_annotation_outfile} -o {output.sam} -f {tempfile}  2>&1 | tee {output.time_and_mem} ") 
+        # --max-intron-len 500000 leads to >4days runtime on simulated_ens and simulated
+        shell("/usr/bin/time -v  deSALT aln {index} {input.fastq} -d 10  -s 2 -l 14  -t 48 --gtf {input.desalt_gtf_annotation_outfile} -o {output.sam} -f {tempfile}  2>&1 | tee {output.time_and_mem} ") 
 
 
 rule graphmap2_index:
