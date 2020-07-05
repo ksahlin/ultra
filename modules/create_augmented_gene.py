@@ -67,7 +67,7 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
             exon_ids_spanning_segments_point[chr_id][p2] = open_starts_e_ids
             if p2 - p1 >= min_segment_size:
                 # print("here good", p2 - p1)
-                segment_name = "segm_{0}_{1}".format(p1,p2)
+                segment_name = "segm_{0}_{1}_{2}".format(chr_id,p1,p2)
                 segment_id_to_choordinates[segment_name] = (p1, p2)
                 segment_to_ref[segment_name] = chr_id
                 parts_to_segments[chr_id][(active_start, active_stop)].add(segment_name)
@@ -109,7 +109,7 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
                 # add small segments
                 if p2 - p1 <= small_segment_threshold:
                     for gene_id in active_gene_ids:
-                        for e_id in relevant_starts + relevant_ends:
+                        for e_id in all_segm_spanning:
                             gene_to_small_segments[gene_id].append(e_id)
 
     print("total_unique_segment_counter", total_unique_segment_counter)
@@ -267,7 +267,7 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segme
     parts_to_exons = parts_to_segments
     exon_to_gene = segment_to_gene
     # exon_id_to_choordinates = segment_id_to_choordinates
-    exons_to_ref = segment_to_ref
+    # exons_to_ref = segment_to_ref
 
     # print("parts:", [(start, stop) for chrrr in parts_to_exons for start,stop in parts_to_exons[chrrr] ])
     # sys.exit()
@@ -324,39 +324,39 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segme
             for tr_id in tr_ids:
                 transcripts_to_splices[chr_id][tr_id] = unique_sp_sites
 
-    gene_to_small_exons = {} # gene_id : [exon_id ]
-    # flanks_to_gene = defaultdict(dict)   
-    # flanks_not_overlapping = 0
-    # total_flanks = 0
-    for gene in db.features_of_type('gene', order_by='seqid'):
-        gene_to_small_exons[gene.id] = []
-        exons_list = [exon for exon in  db.children(gene, featuretype='exon', order_by='start')]
-        # chr_id = gene.seqid
-        if exons_list:
-            # ovl = part_intervals[chr_id].overlaps(max(0, exons_list[0].start - flank_size), exons_list[0].start - 1)
-            # if not ovl:
-            #     flanks_to_gene[chr_id][(max(0, exons_list[0].start - flank_size), exons_list[0].start - 1)] = gene.id
-            #     flanks_not_overlapping +=1
-            # total_flanks +=1            
+    # gene_to_small_exons = {} # gene_id : [exon_id ]
+    # # flanks_to_gene = defaultdict(dict)   
+    # # flanks_not_overlapping = 0
+    # # total_flanks = 0
+    # for gene in db.features_of_type('gene', order_by='seqid'):
+    #     gene_to_small_exons[gene.id] = []
+    #     exons_list = [exon for exon in  db.children(gene, featuretype='exon', order_by='start')]
+    #     # chr_id = gene.seqid
+    #     if exons_list:
+    #         # ovl = part_intervals[chr_id].overlaps(max(0, exons_list[0].start - flank_size), exons_list[0].start - 1)
+    #         # if not ovl:
+    #         #     flanks_to_gene[chr_id][(max(0, exons_list[0].start - flank_size), exons_list[0].start - 1)] = gene.id
+    #         #     flanks_not_overlapping +=1
+    #         # total_flanks +=1            
 
-            # ovl = part_intervals[chr_id].overlaps(exons_list[-1].stop, exons_list[-1].stop + flank_size)
-            # if not ovl:
-            #     flanks_to_gene[chr_id][(exons_list[-1].stop, exons_list[-1].stop + flank_size)] = gene.id
-            #     flanks_not_overlapping +=1
-            # total_flanks +=1            
+    #         # ovl = part_intervals[chr_id].overlaps(exons_list[-1].stop, exons_list[-1].stop + flank_size)
+    #         # if not ovl:
+    #         #     flanks_to_gene[chr_id][(exons_list[-1].stop, exons_list[-1].stop + flank_size)] = gene.id
+    #         #     flanks_not_overlapping +=1
+    #         # total_flanks +=1            
 
-            for exon in exons_list:
-                if exon.stop - exon.start < small_exon_threshold:
-                    gene_to_small_exons[gene.id].append(exon.id)
+    #         for exon in exons_list:
+    #             if exon.stop - exon.start < small_exon_threshold:
+    #                 gene_to_small_exons[gene.id].append(exon.id)
 
-    # print(gene_to_small_segments["SIRV6"])
-    # sys.exit()
-    gene_to_small_exons = gene_to_small_segments
+    # # print(gene_to_small_segments["SIRV6"])
+    # # sys.exit()
+    # gene_to_small_exons = gene_to_small_segments
 
-    return  exons_to_ref, parts_to_exons, splices_to_transcripts, \
+    return  segment_to_ref, parts_to_exons, splices_to_transcripts, \
             transcripts_to_splices, all_splice_pairs_annotations, \
             all_splice_sites_annotations, exon_id_to_choordinates, segment_id_to_choordinates, \
-            exon_to_gene, gene_to_small_exons, flanks_to_gene2, max_intron_chr, exon_choordinates_to_id, exon_ids_spanning_segments_point
+            exon_to_gene, gene_to_small_segments, flanks_to_gene2, max_intron_chr, exon_choordinates_to_id, exon_ids_spanning_segments_point
 
 
 
