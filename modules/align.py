@@ -261,8 +261,8 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
 
     segment_id_to_choordinates, ref_segment_sequences, ref_flank_sequences, splices_to_transcripts, \
     transcripts_to_splices, all_splice_pairs_annotations, \
-    all_splice_sites_annotations, parts_to_exons, \
-    segment_to_gene, gene_to_small_exons, max_intron_chr, \
+    all_splice_sites_annotations, parts_to_segments, \
+    segment_to_gene, gene_to_small_segments, max_intron_chr, \
     exon_choordinates_to_id, ref_exon_sequences, \
     exon_id_to_choordinates, exon_ids_spanning_segments_point = auxillary_data
 
@@ -348,8 +348,8 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
             else:
                 read_seq = read_seq
             # print("mem solution:", is_rc, chaining_score, mem_solution)
-            non_covered_regions, mam_value, mam_solution = classify_read_with_mams.main(mem_solution, ref_segment_sequences, ref_flank_sequences, parts_to_exons, \
-                                                                                                                    segment_id_to_choordinates, segment_to_gene, gene_to_small_exons, \
+            non_covered_regions, mam_value, mam_solution = classify_read_with_mams.main(mem_solution, ref_segment_sequences, ref_flank_sequences, parts_to_segments, \
+                                                                                                                    segment_id_to_choordinates, segment_to_gene, gene_to_small_segments, \
                                                                                                                     read_seq, warning_log_file, min_acc)
             # print("finished Mam solution:",mam_value, mam_solution)
             # for zzz2 in mam_solution:
@@ -499,8 +499,8 @@ def align_parallel(read_data, auxillary_data, refs_lengths, args):
 
     start_multi = time()
     pool = Pool(processes=int(args.nr_cores))
-    # segment_id_to_choordinates, ref_segment_sequences, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations, parts_to_exons = import_data(args)
-    # auxillary_data = segment_id_to_choordinates, ref_segment_sequences, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations, parts_to_exons
+    # segment_id_to_choordinates, ref_segment_sequences, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations, parts_to_segments = import_data(args)
+    # auxillary_data = segment_id_to_choordinates, ref_segment_sequences, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations, parts_to_segments
     # read_data = batch([ (acc, reads[acc], mems[acc], mems_rc[acc], ) for i, acc in enumerate(mems)], batch_size)
     # alignment_outfiles = []
     # for i in range(args.nr_cores):
