@@ -180,7 +180,7 @@ def get_success_regions(data_for_success_cases, reads, outfolder):
         nr_fsm_reads = len(ultra_fsm_distribution[tr_id])
         if nr_fsm_reads >= 10:
             print("interesting success case:", tr_id, nr_fsm_reads)
-            for acc in ds_fsm_distribution[tr_id]:
+            for acc in ultra_fsm_distribution[tr_id]:
                 seq, qual = reads[acc]
                 fa_outfile.write(">{0}\n{1}\n".format(acc + "_" + tr_id, seq)) 
 

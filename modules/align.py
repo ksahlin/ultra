@@ -329,7 +329,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
         is_secondary =  False
         is_rc =  False
         if not all_chainings:
-            sam_output.main(read_acc, '*', 'unaligned', [], '*', '*', '*', alignment_outfile, is_rc, is_secondary, 0)
+            sam_output.main(read_acc, read_seq, '*', 'unaligned', [], '*', '*', '*', alignment_outfile, is_rc, is_secondary, 0)
             continue
 
         all_chainings = sorted(all_chainings, key=lambda x: x[2], reverse=True)
@@ -413,7 +413,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                 classification, annotated_to_transcript_id = classify_alignment2.main(chr_id, predicted_splices, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations)
                 
                 largest_intron_size = max([m2.x - m1.y for m1,m2 in zip(mam_solution[:-1], mam_solution[1:]) ]) if len(mam_solution) > 1 else 0
-                if alignment_score < 8*args.alignment_threshold*len(read_seq) and classification != 'FSM':
+                if alignment_score < 8*args.alignment_threshold*len(read_seq) and classification != 'FSM': # match score * aln_threshold
                     # print()
                     # print(read_acc)
                     # print(read_aln)
@@ -436,7 +436,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
 
         ##################  Process alignments and decide primary
         if len(read_alignments) == 0:
-            sam_output.main(read_acc, '*', 'unaligned', [], '*', '*', '*', alignment_outfile, is_rc, is_secondary, 0)
+            sam_output.main(read_acc, read_seq, '*', 'unaligned', [], '*', '*', '*', alignment_outfile, is_rc, is_secondary, 0)
         else:
             # sorted_wrt_alignement_score = sorted(read_alignments, key = lambda x: x[0], reverse = True)
             sorted_wrt_alignement_score = sorted(read_alignments, key = lambda x: (-x[0], x[3]))
@@ -465,7 +465,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                     map_score = 0
 
 
-                sam_output.main(read_acc, chr_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, alignment_outfile, is_rc, is_secondary, map_score, aln_score = alignment_score)
+                sam_output.main(read_acc, read_seq, chr_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, alignment_outfile, is_rc, is_secondary, map_score, aln_score = alignment_score)
                 read_accessions_with_mappings.add(read_acc)
 
 
