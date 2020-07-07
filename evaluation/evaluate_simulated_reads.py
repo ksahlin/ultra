@@ -420,9 +420,9 @@ def main(args):
         mm2_gtf_exon_sites = get_read_alignment_exon_sites(mm2_gtf_primary_locations, annotated_splice_coordinates_pairs)
         print('MINIMAP2')
         mm2_gtf_alignment_results, total_count_exon_sizes, correct_count_exon_sizes = get_alignment_classifications(true_exon_sites, mm2_gtf_exon_sites)
-        print_correctness_per_exon_size(correctness_per_exon_size_outfile, total_count_exon_sizes, correct_count_exon_sizes, "minimap2")
+        print_correctness_per_exon_size(correctness_per_exon_size_outfile, total_count_exon_sizes, correct_count_exon_sizes, "minimap2_GTF")
         reads_unaligned_in_mm2_gtf = set(reads.keys()) - set(mm2_gtf_primary_locations.keys()) 
-        print_detailed_values_to_file(error_rates, mm2_gtf_alignment_results, reads, detailed_results_outfile, "minimap2")    
+        print_detailed_values_to_file(error_rates, mm2_gtf_alignment_results, reads, detailed_results_outfile, "minimap2_GTF")    
         print("Reads successfully aligned mm2:", len(mm2_gtf_primary_locations))
         print("READS UNALIGNED mm2:", len(reads_unaligned_in_mm2_gtf) )
 
