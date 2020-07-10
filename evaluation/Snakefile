@@ -561,12 +561,12 @@ rule get_sam_files_success_cases:
 
         for (study, reads) in [('ultra_unique_FSMs', input.ultra_unique_FSMs),
                                ('ultra_diff_than_mm2_and_desalt', input.ultra_diff_than_mm2_and_desalt),
-                               ('ultra_unique_NICs', input.ultra_unique_NICs)]
-            for (tool, samfile)  in [('desalt', rules.output.desalt_gtf_align.sam),
-                                    ('minimap2', rules.output.minimap2_gtf_align.sam),
-                                    ('ultra', rules.output.ultra_align.sam)]:
+                               ('ultra_unique_NICs', input.ultra_unique_NICs)]:
+            for (tool, samfile)  in [('desalt', config["ROOT_OUT"] + "/alignments/desalt_gtf/{0}/reads.sam".format(wildcards.dataset)),
+                                    ('minimap2', config["ROOT_OUT"] + "/alignments/minimap2_gtf/{0}/reads.sam".format(wildcards.dataset)),
+                                    ('ultra', config["ROOT_OUT"] + "/alignments/ultra/{0}/reads.sam".format(wildcards.dataset))]:
                 tool_sam_filtered = config["ROOT_OUT"] + "/evaluation_bio/{0}/{1}_{2}_filtered.sam".format(wildcards.dataset, tool, study)
-                shell("python get_sam_records_from_fa {reads} {samfile} {tool_sam_filtered}")
+                shell("python get_sam_records_from_fa.py {reads} {samfile} {tool_sam_filtered}")
                 tool_sam_sorted = config["ROOT_OUT"] + "/evaluation_bio/{0}/{1}_{2}_sorted.sam".format(wildcards.dataset, tool, study)
                 shell("samtools sort {tool_sam_filtered} -o {tool_sam_sorted}")
         
