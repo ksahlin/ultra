@@ -1,0 +1,41 @@
+language: python
+python:
+  - "3.6"
+  
+before_install:
+
+  # Here we just install Miniconda, which you shouldn't have to change.
+
+  - wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
+  - chmod +x miniconda.sh
+  - ./miniconda.sh -b
+  - export PATH=/home/travis/miniconda2/bin:$PATH
+  - conda update --yes conda
+
+# command to install dependencies
+install:
+  - conda create --yes -n uLTRA python=$TRAVIS_PYTHON_VERSION pip 
+  - conda activate uLTRA
+  - pip install uLTRA
+  - git clone git@github.com:fjdf/slaMEM.git
+  - cd slaMEM
+  - make 
+  - export PATH=$PATH:$PWD/
+  #- conda install --yes -c conda-forge -c bioconda medaka openblas==0.3.3 spoa racon minimap2
+
+
+
+  # - pip install coveralls
+# os:
+#   - linux
+#   - osx
+# safelist
+branches:
+  only:
+  - master
+  # - develop
+# command to run tests
+script: 
+      - uLTRA --help
+# after_success:
+#  - coveralls  
