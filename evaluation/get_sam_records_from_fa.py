@@ -70,16 +70,12 @@ def reverse_complement(string):
 
 def main(args):
 
-    reads_isonalign, reads_minimap2, reads_desalt = parse_differing_location_reads(args.csvfile)
-    data_for_venn, data_for_success_cases = get_FSM_concordance( reads_isonalign, reads_minimap2, reads_desalt)
-    venn(data_for_venn, args.outfolder, "reads_to_FSM_concordance")
-    venn(data_for_success_cases, args.outfolder, "unique_FSM_concordance")
 
     reads = { acc.split()[0] : (seq, qual) for i, (acc, (seq, qual)) in enumerate(readfq(open(args.reads, 'r')))}
     print("Total reads", len(reads))
 
     samfile = pysam.AlignmentFile(args.samfile, "r")
-    sam_out = pysam.AlignmentFile("outfile", "w", template=samfile)
+    sam_out = pysam.AlignmentFile(args.outfile, "w", template=samfile)
     for read in samfile.fetch():
         if read.query_name in reads:
             sam_out.write(read)
@@ -97,8 +93,8 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    outfolder = args.outfolder
-    if not os.path.exists(outfolder):
-        os.makedirs(outfolder)
+    #outfolder = args.outfolder
+    #if not os.path.exists(outfolder):
+    #    os.makedirs(outfolder)
     main(args)
 

@@ -328,7 +328,7 @@ def get_ultra_categories_of_missed_likely_fsm_reads(data_for_venn, reads_isonali
     print("ULTRA categories of likely FMS reads (predicted by both mm2 and deSALT):", ultra_categories)
 
 
-def get_unique_NIC(reads_isonalign, reads_minimap2, reads_desalt, reads, args.outfolder):
+def get_unique_NIC(reads_isonalign, reads_minimap2, reads_desalt, reads, outfolder):
     ultra_NIC = defaultdict(set)
     for acc in reads_isonalign:
         # reads_isonalign[acc] =  (acc,algorithm,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_exonic) 
