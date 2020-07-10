@@ -37,5 +37,6 @@ branches:
 # command to run tests
 script: 
       - uLTRA --help
-# after_success:
+      - uLTRA pipeline test/SIRV_genes_C_170612a.gtf  test/SIRV_genes.fasta  test/reads.fa outfolder/
+# after_success: 
 #  - coveralls  
