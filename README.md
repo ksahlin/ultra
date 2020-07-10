@@ -76,7 +76,7 @@ Make sure the below listed dependencies are installed (installation links below)
 * [parasail](https://github.com/jeffdaily/parasail-python)
 * [pysam](http://pysam.readthedocs.io/en/latest/installation.html) (>= v0.11)
 * dill
-* [intervaltree](https://github.com/chaimleib/intervaltree)
+* [gffutils](https://pythonhosted.org/gffutils/)
 * [slaMEM](https://github.com/fjdf/slaMEM)
 
 
@@ -124,7 +124,7 @@ uLTRA align  genome.fasta  reads.[fa/fq] outfolder/  --k 14  --t 48 # PacBio dRN
 Perforns all the steps in one
 
 ```
-uLTRA pipeline  all_genes.gtf   genome.fasta  reads.fast[a/q] outfolder/  [parameters]
+uLTRA pipeline test/SIRV_genes_C_170612a.gtf  test/SIRV_genes.fasta  test/reads.fa outfolder/  [parameters]
 ```
 
 #### Output

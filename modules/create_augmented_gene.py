@@ -1,7 +1,7 @@
 
 from collections import defaultdict
 
-import intervaltree
+# import intervaltree
 
 from modules.help_functions import readfq
 

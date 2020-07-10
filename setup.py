@@ -78,8 +78,8 @@ setup(
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=['parasail',
                      'pysam',
-                     'intervaltree',
-                     'dill'],  # Optional
+                     'dill',
+                     'gffutils'],  # Optional
     # dependency_links=[], # Optional
     # List additional groups of dependencies here (e.g. development
     # dependencies). Users will be able to install these using the "extras"
