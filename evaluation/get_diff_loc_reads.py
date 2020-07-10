@@ -333,19 +333,19 @@ def get_unique_NIC(reads_isonalign, reads_minimap2, reads_desalt, reads, outfold
     for acc in reads_isonalign:
         # reads_isonalign[acc] =  (acc,algorithm,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_exonic) 
         ia_annot, splice_choords, ia_chr  = reads_isonalign[acc][7], reads_isonalign[acc][9], reads_isonalign[acc][11]
-        if ia_annot == 'NIC_novel':
+        if ia_annot == 'NIC':
             ultra_NIC[(splice_choords, ia_chr)].add(acc)
 
     minimap2_NIC = defaultdict(set)
     for acc in reads_minimap2:
         mm2_annot, splice_choords, ia_chr  = reads_minimap2[acc][7], reads_minimap2[acc][9], reads_minimap2[acc][11]
-        if mm2_annot == 'NIC_novel':
+        if mm2_annot == 'NIC':
             minimap2_NIC[(splice_choords, ia_chr)].add(acc)
 
     desalt_NIC = defaultdict(set)
     for acc in reads_desalt:
         ds_annot, splice_choords, ia_chr  = reads_desalt[acc][7], reads_desalt[acc][9], reads_desalt[acc][11]
-        if ds_annot == 'NIC_novel':
+        if ds_annot == 'NIC':
             desalt_NIC[(splice_choords, ia_chr)].add(acc)
 
     # find the NICs unique to uLTRA
