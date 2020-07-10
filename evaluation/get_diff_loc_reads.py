@@ -170,8 +170,8 @@ def get_success_regions(data_for_success_cases, reads, outfolder):
     ultra_fsm_distribution, ds_fsm_distribution, mm2_fsm_distribution = data_for_success_cases
 
     ultra_unique = set(ultra_fsm_distribution.keys()) - (set(ds_fsm_distribution.keys()) | set(mm2_fsm_distribution.keys()))
-    outfile = open(os.path.join(outfolder, "success.csv"), "w")
-    fa_outfile = open(os.path.join(outfolder, "success.fa"), "w")
+    outfile = open(os.path.join(outfolder, "ultra_unique_FSMs.csv"), "w")
+    fa_outfile = open(os.path.join(outfolder, "ultra_unique_FSMs.fa"), "w")
 
     for tr_id in ultra_unique:
         for acc in ultra_fsm_distribution[tr_id]:
@@ -182,18 +182,18 @@ def get_success_regions(data_for_success_cases, reads, outfolder):
             print("interesting success case:", tr_id, nr_fsm_reads)
             for acc in ultra_fsm_distribution[tr_id]:
                 seq, qual = reads[acc]
-                fa_outfile.write(">{0}\n{1}\n".format(acc + "_" + tr_id, seq)) 
+                fa_outfile.write(">{0}\n{1}\n".format(acc, seq)) 
 
     outfile.close()
     fa_outfile.close()
 
 
-def get_fail_regions(data_for_success_cases, reads, outfolder):
+def get_diff_regions(data_for_success_cases, reads, outfolder):
     ultra_fsm_distribution, ds_fsm_distribution, mm2_fsm_distribution = data_for_success_cases
 
     ultra_missed = (set(ds_fsm_distribution.keys()) & set(mm2_fsm_distribution.keys())) - set(ultra_fsm_distribution.keys())
-    outfile = open(os.path.join(outfolder, "completely_missed_fsm_transcripts.csv"), "w")
-    fa_outfile = open(os.path.join(outfolder, "completely_missed_fsm_transcripts.fa"), "w")
+    outfile = open(os.path.join(outfolder, "ultra_diff_than_mm2_and_desalt.csv"), "w")
+    fa_outfile = open(os.path.join(outfolder, "ultra_diff_than_mm2_and_desalt.fa"), "w")
     for tr_id in ultra_missed:
         for acc in ds_fsm_distribution[tr_id]:
             outfile.write("{0},{1}\n".format(tr_id, acc)) 
@@ -203,7 +203,7 @@ def get_fail_regions(data_for_success_cases, reads, outfolder):
             print("interesting missed case:", tr_id, nr_fsm_reads)
             for acc in ds_fsm_distribution[tr_id]:
                 seq,qual = reads[acc]
-                fa_outfile.write(">{0}\n{1}\n".format(acc + "_" + tr_id, seq)) 
+                fa_outfile.write(">{0}\n{1}\n".format(acc, seq)) 
 
     outfile.close()
     fa_outfile.close()
@@ -328,6 +328,47 @@ def get_ultra_categories_of_missed_likely_fsm_reads(data_for_venn, reads_isonali
     print("ULTRA categories of likely FMS reads (predicted by both mm2 and deSALT):", ultra_categories)
 
 
+def get_unique_NIC(reads_isonalign, reads_minimap2, reads_desalt, reads, args.outfolder):
+    ultra_NIC = defaultdict(set)
+    for acc in reads_isonalign:
+        # reads_isonalign[acc] =  (acc,algorithm,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_exonic) 
+        ia_annot, splice_choords, ia_chr  = reads_isonalign[acc][7], reads_isonalign[acc][9], reads_isonalign[acc][11]
+        if ia_annot == 'NIC_novel':
+            ultra_NIC[(splice_choords, ia_chr)].add(acc)
+
+    minimap2_NIC = defaultdict(set)
+    for acc in reads_minimap2:
+        mm2_annot, splice_choords, ia_chr  = reads_minimap2[acc][7], reads_minimap2[acc][9], reads_minimap2[acc][11]
+        if mm2_annot == 'NIC_novel':
+            minimap2_NIC[(splice_choords, ia_chr)].add(acc)
+
+    desalt_NIC = defaultdict(set)
+    for acc in reads_desalt:
+        ds_annot, splice_choords, ia_chr  = reads_desalt[acc][7], reads_desalt[acc][9], reads_desalt[acc][11]
+        if ds_annot == 'NIC_novel':
+            desalt_NIC[(splice_choords, ia_chr)].add(acc)
+
+    # find the NICs unique to uLTRA
+    ultra_unique_NICs = set(ultra_NIC.keys()) - (set(minimap2_NIC.keys()) | set(desalt_NIC.keys()))
+
+    outfile = open(os.path.join(outfolder, "ultra_unique_NICs.csv"), "w")
+    fa_outfile = open(os.path.join(outfolder, "ultra_unique_NICs.fa"), "w")
+
+
+    for nic_id in ultra_unique_NICs:
+        if len(ultra_NIC[nic_id]) >= 10:
+            print("interesting unique NIC case:", nic_id, len(ultra_NIC[nic_id]))
+            for acc in ultra_NIC[nic_id]:
+                seq, qual = reads[acc]
+                fa_outfile.write(">{0}\n{1}\n".format(acc, seq)) 
+                outfile.write("{0},{1}\n".format(nic_id, acc)) 
+
+    outfile.close()
+    fa_outfile.close()
+    return ultra_NIC
+
+
+
 def main(args):
 
     reads_isonalign, reads_minimap2, reads_desalt = parse_differing_location_reads(args.csvfile)
@@ -339,7 +380,8 @@ def main(args):
     print("Total reads", len(reads))
 
     get_success_regions(data_for_success_cases, reads, args.outfolder)
-    get_fail_regions(data_for_success_cases, reads, args.outfolder)
+    get_diff_regions(data_for_success_cases, reads, args.outfolder)
+    get_unique_NIC(reads_isonalign, reads_minimap2, reads_desalt, reads, args.outfolder)
     get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desalt, reads)
 
     get_ultra_categories_of_missed_likely_fsm_reads(data_for_venn, reads_isonalign, reads)

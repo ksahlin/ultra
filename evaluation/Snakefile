@@ -65,7 +65,11 @@ rule all:
             config["ROOT_IN"] + "/data/results/plots_sim.zip",
             config["ROOT_IN"] + "/data/results/plots_exon_size.zip",
             config["ROOT_IN"] + "/data/results/plots_sirv_analysis.zip",
-            config["ROOT_IN"] + "/data/results/map_concordance_bio.zip"
+            config["ROOT_IN"] + "/data/results/map_concordance_bio.zip",
+            config["ROOT_IN"] + "/data/results/pacbio_alzheimer_success_cases_sam_files.zip",
+            config["ROOT_IN"] + "/data/results/drosophila_success_cases_sam_files.zip",
+            config["ROOT_IN"] + "/data/results/ont_human_success_cases_sam_files.zip",
+
 
 
             #[config["ROOT_OUT"] + "/evaluation/{dataset}/results_per_read.csv".format(dataset=dataset) for dataset in ["ont_human", "pacbio_alzheimer", "sirv", "simulated", "simulated_nic", "simulated_ens"]],
@@ -531,7 +535,10 @@ rule mapping_concordance:
     input: csv = config["ROOT_OUT"] + "/evaluation_bio/{dataset}/results_per_read.csv",
             reads = config["ROOT_OUT"] + "/data/{dataset}/reads.fq"
     output: venn_file = config["ROOT_OUT"] + "/evaluation_bio/{dataset}/unique_FSM_concordance.pdf", # config["ROOT_IN"] + "/data/{dataset}/fsm_concordance.pdf"
-            summary = config["ROOT_OUT"] + "/evaluation_bio/{dataset}/summary.txt"
+            summary = config["ROOT_OUT"] + "/evaluation_bio/{dataset}/{dataset}_summary.txt",
+            ultra_unique_FSMs = config["ROOT_OUT"] + "/evaluation_bio/{dataset}/ultra_unique_FSMs.fa",
+            ultra_diff_than_mm2_and_desalt = config["ROOT_OUT"] + "/evaluation_bio/{dataset}/ultra_diff_than_mm2_and_desalt.fa",
+            ultra_unique_NICs = config["ROOT_OUT"] + "/evaluation_bio/{dataset}/ultra_unique_NICs.fa"
     run:
         outfolder = config["ROOT_OUT"] + "/evaluation_bio/{0}/".format(wildcards.dataset)
         shell("python get_diff_loc_reads.py {input.reads} {input.csv} {outfolder} > {output.summary}")
@@ -541,6 +548,54 @@ rule gzip_map_concordance:
     input: bio_pdfs = expand(rules.mapping_concordance.output.venn_file, dataset=["ont_human", "pacbio_alzheimer", "drosophila"]) #pdfs = expand(config["ROOT_OUT"] + "/evaluation/{dataset}/results.pdf", dataset=["ont_human", "pacbio_alzheimer", "sirv","simulated","simulated_nic", "simulated_ens"])
     output: zip_file = config["ROOT_IN"] + "/data/results/map_concordance_bio.zip"
     run:
-        shell("zip {output.zip_file}  /nfs/brubeck.bx.psu.edu/scratch4/ksahlin/ultra_eval/evaluation_bio/*/*concordance.pdf")
+        shell("zip {output.zip_file}  /nfs/brubeck.bx.psu.edu/scratch4/ksahlin/ultra_eval/evaluation_bio/*/*concordance.pdf /nfs/brubeck.bx.psu.edu/scratch4/ksahlin/ultra_eval/evaluation_bio/*/*_summary.txt")
+
+
+rule get_sam_files_success_cases:
+    input: ultra_unique_FSMs = rules.mapping_concordance.output.ultra_unique_FSMs,
+           ultra_diff_than_mm2_and_desalt = rules.mapping_concordance.output.ultra_diff_than_mm2_and_desalt,
+           ultra_unique_NICs = rules.mapping_concordance.output.ultra_unique_NICs
+    output: zip_file = config["ROOT_IN"] + "/data/results/{dataset}_success_cases_sam_files.zip"
+
+    run:
+
+        for (study, reads) in [('ultra_unique_FSMs', input.ultra_unique_FSMs),
+                               ('ultra_diff_than_mm2_and_desalt', input.ultra_diff_than_mm2_and_desalt),
+                               ('ultra_unique_NICs', input.ultra_unique_NICs)]
+            for (tool, samfile)  in [('desalt', rules.output.desalt_gtf_align.sam),
+                                    ('minimap2', rules.output.minimap2_gtf_align.sam),
+                                    ('ultra', rules.output.ultra_align.sam)]:
+                tool_sam_filtered = config["ROOT_OUT"] + "/evaluation_bio/{0}/{1}_{2}_filtered.sam".format(wildcards.dataset, tool, study)
+                shell("python get_sam_records_from_fa {reads} {samfile} {tool_sam_filtered}")
+                tool_sam_sorted = config["ROOT_OUT"] + "/evaluation_bio/{0}/{1}_{2}_sorted.sam".format(wildcards.dataset, tool, study)
+                shell("samtools sort {tool_sam_filtered} -o {tool_sam_sorted}")
+        
+        pattern = config["ROOT_OUT"] + "/evaluation_bio/{0}/*_filtered.sam".format(wildcards.dataset)
+        shell("zip {output.zip_file} {pattern}")
+
+
+        # # desalt
+        # desalt_sam = rules.output.desalt_gtf_align.sam
+        # desalt_sam_filtered = config["ROOT_OUT"] + "/evaluation_bio/{0}/desalt_ultra_unique_FSMs.sam".format(wildcards.dataset)
+        # shell("python get_sam_records_from_fa {input.ultra_unique_FSMs} {desalt_sam} {desalt_sam_filtered}")
+        # desalt_sam_filtered_sorted = config["ROOT_OUT"] + "/evaluation_bio/{0}/desalt_ultra_unique_FSMs_sorted.sam".format(wildcards.dataset)
+        # shell("samtools sort {desalt_sam_filtered} -o {desalt_sam_filtered_sorted}")
+
+        # # minimap2
+        # minimap2_sam = rules.output.minimap2_gtf_align.sam
+        # minimap2_sam_filtered = config["ROOT_OUT"] + "/evaluation_bio/{0}/minimap2_ultra_unique_FSMs.sam".format(wildcards.dataset)
+        # shell("python get_sam_records_from_fa {input.ultra_unique_FSMs} {minimap2_sam} {minimap2_sam_filtered}")
+        # minimap2_sam_filtered_sorted = config["ROOT_OUT"] + "/evaluation_bio/{0}/minimap2_ultra_unique_FSMs_sorted.sam".format(wildcards.dataset)
+        # shell("samtools sort {minimap2_sam_filtered} -o {minimap2_sam_filtered_sorted}")
+
+        # # uLTRA
+        # ultra_sam = rules.output.ultra_align.sam
+        # ultra_sam_filtered = config["ROOT_OUT"] + "/evaluation_bio/{0}/ultra_ultra_unique_FSMs.sam".format(wildcards.dataset)
+        # shell("python get_sam_records_from_fa {input.ultra_unique_FSMs} {ultra_sam} {ultra_sam_filtered}")
+        # ultra_sam_filtered_sorted = config["ROOT_OUT"] + "/evaluation_bio/{0}/ultra_ultra_unique_FSMs_sorted.sam".format(wildcards.dataset)
+        # shell("samtools sort {ultra_sam_filtered} -o {ultra_ssam_filtered_sorted}")
+
+
+
 
 
