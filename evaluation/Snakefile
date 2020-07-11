@@ -185,7 +185,7 @@ rule ultra_align:
         else:
             shell("/usr/bin/time -v /galaxy/home/ksahlin/prefix/source/torkel/uLTRA align {ref} {input.reads}  {outfolder} --min_mem 17 --min_acc 0.6 --t 62  2>&1 | tee {output.time_and_mem} ") # 2> {output.time_and_mem}
 
-        shell("mv {outfolder}/torkel.sam {output.sam}")
+        # shell("mv {outfolder}/torkel.sam {output.sam}")
 
 rule minimap2_index:
     input: #ref = config["HG38"]
