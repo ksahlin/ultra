@@ -304,6 +304,7 @@ def read_coverage_mam_score(mams):
 
         # linear scan -- replace with range max Q tree
         T_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if  mams[j_prime].d < v.c and j_prime < j]
+        # T_values2 = [(j_prime, c_val - max(0, mams[j_prime].y - v.x)) for j_prime, c_val in enumerate(C) if  mams[j_prime].d < v.c and j_prime < j] # Is this proper symmetric variant subtracting overlapping genomic positions?
         if T_values:
             # print(j, T_values)
             T_traceback_index, max_c_value_case_a = max(T_values, key=lambda x: x[1])
