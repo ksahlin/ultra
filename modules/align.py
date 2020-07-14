@@ -252,12 +252,12 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
     max_global_intron = args.max_intron
     min_acc = args.min_acc
     if batch_number == -1:
-        alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, "torkel.sam"), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
-        warning_log_file = open(os.path.join(args.outfolder, "torkel.stderr"), "w")
+        alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, "reads.sam"), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
+        warning_log_file = open(os.path.join(args.outfolder, "uLTRA.stderr"), "w")
 
     else:  
-        alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, "torkel_batch_{0}.sam".format(batch_number)), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
-        warning_log_file = open(os.path.join(args.outfolder, "torkel_batch_{0}.stderr".format(batch_number)), "w")
+        alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, "reads_batch_{0}.sam".format(batch_number)), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
+        warning_log_file = open(os.path.join(args.outfolder, "uLTRA_batch_{0}.stderr".format(batch_number)), "w")
 
     segment_id_to_choordinates, ref_segment_sequences, ref_flank_sequences, splices_to_transcripts, \
     transcripts_to_splices, all_splice_pairs_annotations, \
@@ -382,6 +382,7 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
 
                 else:
                     read_aln, ref_aln, cigar_string, cigar_tuples, alignment_score = help_functions.parasail_alignment(read_seq, created_ref_seq)
+                    # print(read_acc)
                     # print(read_aln)
                     # print(ref_aln)
                     # print("alignment_score:", alignment_score)

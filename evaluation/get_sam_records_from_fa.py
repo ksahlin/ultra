@@ -77,7 +77,7 @@ def main(args):
     samfile = pysam.AlignmentFile(args.samfile, "r")
     sam_out = pysam.AlignmentFile(args.outfile, "w", template=samfile)
     for read in samfile.fetch():
-        if read.query_name in reads:
+        if read.query_name in reads and (read.flag == 0 or read.flag == 16): # need to be primary alignment
             sam_out.write(read)
 
     sam_out.close()
