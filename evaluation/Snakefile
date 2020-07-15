@@ -555,7 +555,7 @@ rule get_sam_files_success_cases:
     input: ultra_unique_FSMs = rules.mapping_concordance.output.ultra_unique_FSMs,
            ultra_diff_than_mm2_and_desalt = rules.mapping_concordance.output.ultra_diff_than_mm2_and_desalt,
            ultra_unique_NICs = rules.mapping_concordance.output.ultra_unique_NICs
-    output: zip_file = config["ROOT_IN"] + "/data/results/{dataset}_success_cases_sam_files.zip"
+    output: zip_file = config["ROOT_IN"] + "/data/results/{dataset}_success_cases_sam_files.tar.bz2"
 
     run:
 
@@ -570,8 +570,9 @@ rule get_sam_files_success_cases:
                 tool_sam_sorted = config["ROOT_OUT"] + "/evaluation_bio/{0}/{1}_{2}_sorted.sam".format(wildcards.dataset, tool, study)
                 shell("samtools sort {tool_sam_filtered} -o {tool_sam_sorted}")
         
-        pattern = config["ROOT_OUT"] + "/evaluation_bio/{0}/*_filtered.sam".format(wildcards.dataset)
-        shell("zip {output.zip_file} {pattern}")
+        pattern = config["ROOT_OUT"] + "/evaluation_bio/{0}/*_sorted.sam".format(wildcards.dataset)
+        shell("tar -cvjf {output.zip_file} {pattern}")
+        shell("split -b 49M {output.zip_file} {output.zip_file}.part")
 
 
         # # desalt
