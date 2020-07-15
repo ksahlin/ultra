@@ -66,9 +66,9 @@ rule all:
             config["ROOT_IN"] + "/data/results/plots_exon_size.zip",
             config["ROOT_IN"] + "/data/results/plots_sirv_analysis.zip",
             config["ROOT_IN"] + "/data/results/map_concordance_bio.zip",
-            config["ROOT_IN"] + "/data/results/pacbio_alzheimer_success_cases_sam_files.zip",
-            config["ROOT_IN"] + "/data/results/drosophila_success_cases_sam_files.zip",
-            config["ROOT_IN"] + "/data/results/ont_human_success_cases_sam_files.zip",
+            config["ROOT_IN"] + "/data/results/pacbio_alzheimer_success_cases_sam_files.tar.bz2", 
+            config["ROOT_IN"] + "/data/results/drosophila_success_cases_sam_files.tar.bz2",
+            config["ROOT_IN"] + "/data/results/ont_human_success_cases_sam_files.tar.bz2",
 
 
 
