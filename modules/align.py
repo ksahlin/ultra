@@ -244,6 +244,24 @@ def find_exons(chr_id, mam_solution, exon_choordinates_to_id_chr, ref_exon_seque
     return exons, created_ref_seq, predicted_exons, predicted_splices, covered
 
 
+def get_exact_alignment(read_seq, created_ref_seq, mam_sol_exons_length):
+    # if statement: faster and more memory efficient alignments with edlib if sequences are very long. 
+    # However, much worse quality.
+    if len(created_ref_seq) > 20000 or len(read_seq) > 20000 or (1000 < len(read_seq) < mam_sol_exons_length/10): 
+        # print("lenght ref: {0}, length query:{1}".format(len(created_ref_seq), len(read_seq)))
+        read_aln, ref_aln, edit_distance = help_functions.edlib_alignment(read_seq, created_ref_seq, aln_mode = "HW")
+        match_score = sum([2 for n1,n2 in zip(read_aln, ref_aln) if n1 == n2 ])
+        # diff_score = sum([2 for n1,n2 in zip(read_aln, ref_aln) if n1 != n2 ])
+        alignment_score = match_score - 2*edit_distance
+        # print(read_seq)
+    else:
+        read_aln, ref_aln, cigar_string, cigar_tuples, alignment_score = help_functions.parasail_alignment(read_seq, created_ref_seq)
+        # print(read_acc)
+        print(read_aln)
+        print(ref_aln)
+
+    return read_aln, ref_aln, alignment_score 
+
 def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
     mems_path =  os.path.join( args.outfolder, "mummer_mems_batch_{0}.txt".format(batch_number) )
     mems_path_rc =  os.path.join( args.outfolder, "mummer_mems_batch_{0}_rc.txt".format(batch_number) )
@@ -264,7 +282,11 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
     all_splice_sites_annotations, parts_to_segments, \
     segment_to_gene, gene_to_small_segments, max_intron_chr, \
     exon_choordinates_to_id, ref_exon_sequences, \
-    exon_id_to_choordinates, exon_ids_spanning_segments_point = auxillary_data
+    exon_id_to_choordinates, exon_ids_spanning_segments_point, tiling_structures = auxillary_data
+
+    tiling_segment_id_to_choordinates, tiling_segment_to_gene, \
+    tiling_parts_to_segments, tiling_gene_to_small_segments, \
+    tiling_ref_segment_sequences = tiling_structures # unpacking tiling structures
 
     classifications = defaultdict(str)
     read_accessions_with_mappings = set()
@@ -371,49 +393,34 @@ def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
                     # print(classification, alignment_score/len(read_seq), "Score: {0}, old T: {1}, new T: {2}".format(alignment_score, 2*args.alignment_threshold*len(read_seq), len(read_seq)*8*args.alignment_threshold))
                     continue
 
+                read_aln, ref_aln, alignment_score = get_exact_alignment(read_seq, created_ref_seq, mam_sol_exons_length)
 
-                if len(created_ref_seq) > 20000 or len(read_seq) > 20000 or (1000 < len(read_seq) < mam_sol_exons_length/10):
-                    # print("lenght ref: {0}, length query:{1}".format(len(created_ref_seq), len(read_seq)))
-                    read_aln, ref_aln, edit_distance = help_functions.edlib_alignment(read_seq, created_ref_seq, aln_mode = "HW")
-                    match_score = sum([2 for n1,n2 in zip(read_aln, ref_aln) if n1 == n2 ])
-                    # diff_score = sum([2 for n1,n2 in zip(read_aln, ref_aln) if n1 != n2 ])
-                    alignment_score = match_score - 2*edit_distance
-                    # print(read_seq)
+                if classification != 'FSM' and len(non_covered_regions) >= 3 and (max(non_covered_regions[1:-1]) > args.non_covered_cutoff):
+                    non_covered_regions_tiling, mam_value_tiling, mam_solution_tiling = classify_read_with_mams.main(mem_solution, tiling_ref_segment_sequences, ref_flank_sequences, tiling_parts_to_segments, \
+                                                                                                                            tiling_segment_id_to_choordinates, tiling_segment_to_gene, tiling_gene_to_small_segments, \
+                                                                                                                            read_seq, warning_log_file, min_acc)
+                    # print("TILING finished Mam solution Tiling!!:",mam_value_tiling, mam_solution_tiling)
+                    # for zzz2 in mam_solution_tiling:
+                    #     print(zzz2)
+                    exons, tiling_created_ref_seq, predicted_exons, predicted_splices, covered = find_exons(chr_id, mam_solution_tiling, exon_choordinates_to_id[chr_id], ref_exon_sequences, \
+                                                                                            tiling_ref_segment_sequences, ref_flank_sequences, all_splice_pairs_annotations, \
+                                                                                            exon_id_to_choordinates, exon_ids_spanning_segments_point)
 
-                else:
-                    read_aln, ref_aln, cigar_string, cigar_tuples, alignment_score = help_functions.parasail_alignment(read_seq, created_ref_seq)
-                    # print(read_acc)
+                    tiling_classification, annotated_to_transcript_id = classify_alignment2.main(chr_id, predicted_splices, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations)
                     # print(read_aln)
                     # print(ref_aln)
-                    # print("alignment_score:", alignment_score)
-                    # print(predicted_exons)
-                    # print(predicted_splices)
-                    # print(cigar_string)
-                # matches = sum([1 for n1,n2 in zip(read_aln, ref_aln) if n1 == n2 ])
-                # substitutions = sum([1 for n1,n2 in zip(read_aln, ref_aln) if n1 != n2 and n1 != "-" and n2 != "-" ])
-                # deletions = sum([1 for n1,n2 in zip(read_aln, ref_aln) if n1 == "-" ])
-                # insertions = sum([1 for n1,n2 in zip(read_aln, ref_aln) if n2 == "-" ])
+                    # print(tiling_classification)
+                    tiling_read_aln, tiling_ref_aln, tiling_alignment_score = get_exact_alignment(read_seq, tiling_created_ref_seq, mam_sol_exons_length)
 
-                # print(read_acc, "alignment to:", chr_id, "best solution val mems:", mem_solution, 'best mam value:', mam_value, 'read length:', len(read_seq), "final_alignment_stats:" )
-                # print(read_aln)
-                # print(ref_aln)
-                # print("to chr", chr_id,  alignment_score, 2*args.alignment_threshold*len(read_seq))
-                # print("lenght ref: {0}, length query:{1}".format(len(created_ref_seq), len(read_seq)))
-                # print(created_ref_seq)
-                # print(read_seq)
-                # if alignment_score/len(read_seq) < 5:
-                #     print()
-                #     print(read_acc)
-                #     print(read_aln)
-                #     print(ref_aln)
-                #     print(alignment_score/len(read_seq), "Score: {0}, old T: {1}, new T: {2}".format(alignment_score, 2*args.alignment_threshold*len(read_seq), len(read_seq)*8*args.alignment_threshold))
-                
-                # if alignment_score < 8*args.alignment_threshold*len(read_seq):
-                #     continue
+                    # print("TILING")                    
+                    # print("BEFORE",non_covered_regions)
+                    # print("TILING", non_covered_regions_tiling)
+                    # print("read was", classification, "had aln score", alignment_score)
+                    # print("tiling read is ", tiling_classification, "has aln score", tiling_alignment_score)
 
-                classification, annotated_to_transcript_id = classify_alignment2.main(chr_id, predicted_splices, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations)
-                
-                largest_intron_size = max([m2.x - m1.y for m1,m2 in zip(mam_solution[:-1], mam_solution[1:]) ]) if len(mam_solution) > 1 else 0
+                    if tiling_alignment_score > alignment_score or tiling_classification == 'FSM':
+                        print(alignment_score, tiling_alignment_score)
+
                 if alignment_score < 8*args.alignment_threshold*len(read_seq) and classification != 'FSM': # match score * aln_threshold
                     # print()
                     # print(read_acc)
