@@ -41,6 +41,31 @@ def dd_tuple(): # top level function declaration needed for multiprocessing
 #                 exon_to_gene[e_id + "_compl_end"] = exon_gene_ids 
 
 
+def add_tiling(p1, p2, active_gene_ids, active_start, active_stop, min_segment_size, chr_id,
+                 tiling_segment_id_to_choordinates, tiling_segment_to_gene, tiling_segment_to_ref,
+                            tiling_parts_to_segments, tiling_gene_to_small_segments):
+    k = 0
+    while p2 - p1 - k > min_segment_size:
+        tiling_segment_name = "segm_{0}_{1}_{2}".format(chr_id, p1+k, p1 + k + min_segment_size)
+        tiling_segment_id_to_choordinates[tiling_segment_name] = (p1+k, p1 + k + min_segment_size)
+        tiling_segment_to_ref[tiling_segment_name] = chr_id
+        tiling_parts_to_segments[chr_id][(active_start, active_stop)].add(tiling_segment_name)
+        tiling_segment_to_gene[tiling_segment_name] =  active_gene_ids 
+        # total_unique_segment_counter += min_segment_size
+        k += min_segment_size
+        for gene_id in active_gene_ids:
+            tiling_gene_to_small_segments[gene_id].append(tiling_segment_name)
+    tiling_segment_name = "segm_{0}_{1}_{2}".format(chr_id, p1 + k - min_segment_size, p2)
+    tiling_segment_id_to_choordinates[tiling_segment_name] = (p1 + k - min_segment_size, p2)
+    tiling_segment_to_ref[tiling_segment_name] = chr_id
+    tiling_parts_to_segments[chr_id][(active_start, active_stop)].add(tiling_segment_name)
+    tiling_segment_to_gene[tiling_segment_name] =  active_gene_ids 
+    # total_unique_segment_counter += p2 - (p1 + k - min_segment_size)
+    for gene_id in active_gene_ids:
+        tiling_gene_to_small_segments[gene_id].append(tiling_segment_name)
+
+
+
 def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_active_gene, pos_to_exon_ids, exon_id_to_choordinates, small_segment_threshold, min_segment_size):
     # parts_to_exons, exon_to_gene, exon_id_to_choordinates, exons_to_ref,
     segment_id_to_choordinates = {}
@@ -52,6 +77,17 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
     total_segments_bad = 0
     exon_ids_spanning_segments_point = defaultdict(dd_set)
     bad = 0
+
+    # for all the poorly fitting reads to annotated start stop exon sites we employ a tiling segment structure and 
+    # align reads in a second pass
+    tiling_segment_id_to_choordinates = {}
+    tiling_segment_to_gene = {} 
+    tiling_segment_to_ref = {}
+    tiling_parts_to_segments = defaultdict(dd_set)
+    tiling_gene_to_small_segments = defaultdict(list)
+
+    tiling_structures = [tiling_segment_id_to_choordinates, tiling_segment_to_gene, tiling_segment_to_ref, tiling_parts_to_segments, tiling_gene_to_small_segments]
+
     for (chr_id, part_id) in part_to_canonical_pos:
         active_start, active_stop = part_count_to_choord[(chr_id, part_id)]
         active_gene_ids = part_to_active_gene[(chr_id, part_id)]
@@ -65,6 +101,9 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
             open_starts_e_ids.update(pos_to_exon_ids[(chr_id, part_id)][p1, True]) # add the exons that start at this point 
             open_starts_e_ids.difference_update(pos_to_exon_ids[(chr_id, part_id)][p1, False]) # remove the ones that ended here
             exon_ids_spanning_segments_point[chr_id][p2] = open_starts_e_ids
+            add_tiling(p1, p2, active_gene_ids, active_start, active_stop, min_segment_size, chr_id,
+                        tiling_segment_id_to_choordinates, tiling_segment_to_gene, tiling_segment_to_ref,
+                        tiling_parts_to_segments, tiling_gene_to_small_segments)
             if p2 - p1 >= min_segment_size:
                 # print("here good", p2 - p1)
                 segment_name = "segm_{0}_{1}_{2}".format(chr_id,p1,p2)
@@ -162,6 +201,10 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
                 bad += p2 - p1
                 for e_id in all_segm_spanning:
                     e_start, e_stop = exon_id_to_choordinates[e_id]
+                    add_tiling(e_start, e_stop, active_gene_ids, active_start, active_stop, min_segment_size, chr_id,
+                                tiling_segment_id_to_choordinates, tiling_segment_to_gene, tiling_segment_to_ref,
+                                tiling_parts_to_segments, tiling_gene_to_small_segments)
+
                     exon_name = "exon_{0}_{1}_{2}".format(chr_id,e_start,e_stop) 
                     if "segm_{0}_{1}_{2}".format(chr_id,e_start,e_stop) not in segment_id_to_choordinates:                
                         segment_id_to_choordinates[exon_name] = (e_start, e_stop) 
@@ -226,7 +269,7 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
     #     if p_id[0] > 34860000 and p_id[1] < 34980000:
     #         print(p_id)
     # sys.exit()
-    return parts_to_segments, segment_to_gene, segment_id_to_choordinates, segment_to_ref, gene_to_small_segments, exon_ids_spanning_segments_point 
+    return parts_to_segments, segment_to_gene, segment_id_to_choordinates, segment_to_ref, gene_to_small_segments, exon_ids_spanning_segments_point, tiling_structures 
 
 
 def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segment_size): 
@@ -365,7 +408,9 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segme
     parts_to_exons[chr_id][(active_start, active_stop)] = active_exons
     part_count_to_choord[(chr_id,part_counter)] = (active_start, active_stop)
 
-    parts_to_segments, segment_to_gene, segment_id_to_choordinates, segment_to_ref, gene_to_small_segments, exon_ids_spanning_segments_point  = get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_active_gene, pos_to_exon_ids, exon_id_to_choordinates, small_exon_threshold, min_segment_size)
+    parts_to_segments, segment_to_gene, \
+    segment_id_to_choordinates, segment_to_ref, \
+    gene_to_small_segments, exon_ids_spanning_segments_point, tiling_structures  = get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_active_gene, pos_to_exon_ids, exon_id_to_choordinates, small_exon_threshold, min_segment_size)
 
     print("total parts size:", sum( [stop - start for chrrr in parts_to_exons for start,stop in parts_to_exons[chrrr] ]))
     print("total exons size:", sum( [stop - start for start, stop in exon_id_to_choordinates.values() ]))
@@ -463,7 +508,8 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segme
     return  segment_to_ref, parts_to_exons, splices_to_transcripts, \
             transcripts_to_splices, all_splice_pairs_annotations, \
             all_splice_sites_annotations, exon_id_to_choordinates, segment_id_to_choordinates, \
-            exon_to_gene, gene_to_small_segments, flanks_to_gene2, max_intron_chr, exon_choordinates_to_id, exon_ids_spanning_segments_point
+            exon_to_gene, gene_to_small_segments, flanks_to_gene2, max_intron_chr, \
+            exon_choordinates_to_id, exon_ids_spanning_segments_point, tiling_structures
 
 
 
