@@ -79,7 +79,8 @@ setup(
     install_requires=['parasail',
                      'pysam',
                      'dill',
-                     'gffutils'],  # Optional
+                     'gffutils',
+                     'edlib'],  # Optional
     # dependency_links=[], # Optional
     # List additional groups of dependencies here (e.g. development
     # dependencies). Users will be able to install these using the "extras"

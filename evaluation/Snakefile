@@ -333,7 +333,7 @@ rule graphmap2_index:
     input:  #ref = config["HG38"],
             fastq =  config["ROOT_OUT"] + "/data/{dataset}/reads.fq"
     output: index =  config["ROOT_OUT"] + "/alignments/graphmap2/{dataset}/index.gmidx",
-            time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2/{dataset}/aligning_time_and_mem.txt"
+            time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2/{dataset}/indexing_time_and_mem.txt"
     run:
 
         if wildcards.dataset == "sirv":
