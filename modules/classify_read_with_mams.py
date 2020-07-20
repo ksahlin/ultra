@@ -12,7 +12,7 @@ from modules import colinear_solver
 from modules import help_functions
 
 
-mam = namedtuple('Mam', ['x', 'y', 'c', 'd', 'val', "min_segment_length", "exon_id", "ref_chr_id"])
+mam = namedtuple('Mam', ['x', 'y', 'c', 'd', 'val', 'j', "min_segment_length", "mam_id", "ref_chr_id"])
 globals()[mam.__name__] = mam # Global needed for multiprocessing
 
 
@@ -60,6 +60,7 @@ def cigar_to_seq(cigar, query, ref):
     return  "".join([s for s in q_aln]), "".join([s for s in r_aln]), cigar_tuples
 
 def cigar_to_accuracy(cigar_string):
+    # score = 0
     cigar_tuples = []
     result = re.split(r'[=DXSMI]+', cigar_string)
     i = 0
@@ -75,9 +76,13 @@ def cigar_to_accuracy(cigar_string):
         if type_ == "=":
             matches += length_
             aln_length += length_
-        else :
+            # score += length_
+        elif type_ == "X":
+            # score += length_*0.1
             aln_length += length_
-    return matches / float(aln_length)
+        else:
+            aln_length += length_
+    return matches / float(aln_length) #,score/float(aln_length)
 
 
 
@@ -320,7 +325,7 @@ def add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, ma
         # align them to the read and get the best approxinate match
         if e_stop - e_start >= 9:
             locations, edit_distance, accuracy = edlib_alignment(exon_seq, read_seq, mode="HW", task = 'path', k = 0.4*min(len(read_seq), len(exon_seq)) ) 
-            # print(locations, edit_distance, accuracy)
+            # print("{0}_{1}_{2}".format(e_start,e_stop, annot_label), locations, edit_distance, accuracy)
             # if 'flank' in exon_id:
             # print(exon_seq)
             if edit_distance >= 0 and accuracy > min_acc:
@@ -353,14 +358,14 @@ def add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, ma
                         max_score = score
                     # score = accuracy*matches #(min_segment_length - edit_distance) # accuracy*min_segment_length
                     mam_tuple = mam(e_start, e_stop, start, stop, 
-                            score, min_segment_length,  exon_id + annot_label, ref_chr_id) 
+                            score, 0 , min_segment_length,  exon_id + annot_label, ref_chr_id) 
                     mam_instance.append(mam_tuple)
                     considered_starts.add(start)
                     max_score = score
 
         
         else: # small exons between 5-9bp needs exact match otherwise too much noise
-            locations, edit_distance, accuracy= edlib_alignment(exon_seq, read_seq, mode="HW", task = 'path', k = 0 )
+            locations, edit_distance, accuracy = edlib_alignment(exon_seq, read_seq, mode="HW", task = 'path', k = 0 )
             # print("HEEERE", exon_seq, locations, e_start, e_stop,ref_chr_id)
             if edit_distance == 0:
                 # print("perfect matches:",exon_seq, locations)
@@ -374,7 +379,7 @@ def add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, ma
                     if start in considered_starts:
                         continue
                     mam_tuple = mam(e_start, e_stop, start, stop, 
-                            score, score,  exon_id + annot_label, ref_chr_id) 
+                            score, score, 0, exon_id + annot_label, ref_chr_id) 
                     mam_instance.append(mam_tuple)
                     considered_starts.add(start)
     else:
@@ -408,12 +413,12 @@ def add_exon_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, exon_id, ma
                 # for exon_id in all_exon_ids: break
                 # exon_id = all_exon_ids.pop()
                 mam_tuple = mam(e_start, e_stop, start, stop, 
-                        score, min_segment_length,  exon_id + annot_label, ref_chr_id)
+                        score, 0, min_segment_length,  exon_id + annot_label, ref_chr_id)
                 mam_instance.append(mam_tuple)
     
 
 
-def main(solution, ref_segment_sequences, ref_flank_sequences, parts_to_segments, segment_id_to_choordinates, segment_to_gene, gene_to_small_segments, read_seq, warning_log_file, min_acc):
+def main(solution, ref_segment_sequences, ref_flank_sequences, parts_to_segments, segment_id_to_choordinates, segment_to_gene, gene_to_small_segments, read_seq, warning_log_file, min_acc, is_tiling_instance = False):
     """
         NOTE: if paramerer task = 'path' is given to edlib_alignment function calls below, it will give exact accuracy of the aligmnent but the program will be ~40% slower to calling task = 'locations'
             Now we are approxmating accuracy by dividing by start and end of the reference coordinates of the alignment. This is not good approw if there is a large instertion
@@ -468,7 +473,7 @@ def main(solution, ref_segment_sequences, ref_flank_sequences, parts_to_segments
     # all exons/flanks with start/ end coordinate after the choort of the last valid MAM added!
 
     # Do not allow partial hits of internal exons yet (ONLY START and END EXON FOR NOW) because these can generate spurious optimal alignments.
-    # print(unique_segment_choordinates_partial_hits)
+    # print("unique_segment_choordinates_partial_hits" ,unique_segment_choordinates_partial_hits)
     # print(segment_hit_locations)
     # print("first segment_hit_locations:", first_part_stop, segment_hit_locations[0][2])
     # print("Last segment_hit_locations:", last_part_start, segment_hit_locations[-1][1])
@@ -528,14 +533,30 @@ def main(solution, ref_segment_sequences, ref_flank_sequences, parts_to_segments
             segm_already_tried.add(segment_seq)
 
 
-    mam_instance = list(filter(lambda x: not("_start" in x.exon_id and x.c >= 50) and not("_end" in x.exon_id and x.d <= len(read_seq) - 50), mam_instance))
-
+    mam_instance = list(filter(lambda x: not("_start" in x.mam_id and x.c >= 50) and not("_end" in x.mam_id and x.d <= len(read_seq) - 50), mam_instance))
+    mam_instance = sorted(mam_instance, key = lambda x: x.y )
+    #  sorted_mems = [ mem(x,y,c,d,val,j,e_id) for j, (x, y, c, d, val, e_id) in enumerate(coordinate_sorted_tuples) ]
+    mam_instance  = [mam(m.x, m.y, m.c, m.d, m.val, j, m.min_segment_length, m.mam_id, m.ref_chr_id) for j, m in enumerate(mam_instance) ]  # assingn an index j based on the hit choordinate
     ###################################################################################################
     ###################################################################################################
     ###################################################################################################
     # print("MAM INSTANCE", mam_instance)
     if mam_instance:
-        mam_solution, value, unique = colinear_solver.read_coverage_mam_score(mam_instance)
+        if is_tiling_instance and len(mam_instance) > 100:
+            # mam_solution_old, value_old, unique_old = colinear_solver.read_coverage_mam_score(mam_instance, overlap_threshold = 5)
+            mam_solution, value, unique = colinear_solver.n_logn_read_coverage_mams(mam_instance, overlap_threshold = 5)
+            # if mam_solution != mam_solution2:
+            #     print("OLD")
+            #     for zzz2 in mam_solution:
+            #         print(zzz2)
+            #     print()
+            #     print("NEW")
+            #     for zzz2 in mam_solution2:
+            #         print(zzz2)
+            #     print(value)
+            #     print(value2)
+        else:
+            mam_solution, value, unique = colinear_solver.read_coverage_mam_score(mam_instance, overlap_threshold = 20)
     else:
         return [], -1, []
     # print(mam_solution)
