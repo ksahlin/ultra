@@ -19,6 +19,40 @@ from modules import classify_alignment2
 from modules import sam_output
 from modules import mem_wrapper
 
+
+
+def import_data(args):
+    segment_id_to_choordinates = help_functions.pickle_load( os.path.join(args.outfolder, 'segment_id_to_choordinates.pickle'))
+    exon_id_to_choordinates = help_functions.pickle_load( os.path.join(args.outfolder, 'exon_id_to_choordinates.pickle'))
+    exon_choordinates_to_id = help_functions.pickle_load( os.path.join(args.outfolder, 'exon_choordinates_to_id.pickle'))
+    ref_segment_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'ref_segment_sequences.pickle') )
+    ref_flank_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'ref_flank_sequences.pickle') )
+    splices_to_transcripts = help_functions.pickle_load( os.path.join(args.outfolder, 'splices_to_transcripts.pickle') )
+    transcripts_to_splices = help_functions.pickle_load( os.path.join(args.outfolder, 'transcripts_to_splices.pickle') )
+    all_splice_pairs_annotations = help_functions.pickle_load( os.path.join(args.outfolder, 'all_splice_pairs_annotations.pickle') )
+    all_splice_sites_annotations = help_functions.pickle_load( os.path.join(args.outfolder, 'all_splice_sites_annotations.pickle') )
+    parts_to_segments = help_functions.pickle_load( os.path.join(args.outfolder, 'parts_to_segments.pickle') )
+    segment_to_gene = help_functions.pickle_load( os.path.join(args.outfolder, 'segment_to_gene.pickle') )
+    gene_to_small_segments = help_functions.pickle_load( os.path.join(args.outfolder, 'gene_to_small_segments.pickle') )
+    max_intron_chr = help_functions.pickle_load( os.path.join(args.outfolder, 'max_intron_chr.pickle') )
+    ref_exon_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'ref_exon_sequences.pickle') )
+    exon_ids_spanning_segments_point = help_functions.pickle_load( os.path.join(args.outfolder, 'exon_ids_spanning_segments_point.pickle') )
+
+
+    tiling_segment_id_to_choordinates = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_segment_id_to_choordinates.pickle'))
+    tiling_ref_segment_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_ref_segment_sequences.pickle') )
+    tiling_parts_to_segments = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_parts_to_segments.pickle') )
+    tiling_segment_to_gene = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_segment_to_gene.pickle') )
+    tiling_gene_to_small_segments = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_gene_to_small_segments.pickle') )
+    tiling_structures = [tiling_segment_id_to_choordinates, tiling_segment_to_gene, tiling_parts_to_segments, tiling_gene_to_small_segments, tiling_ref_segment_sequences]
+
+    return segment_id_to_choordinates, ref_segment_sequences, ref_flank_sequences, splices_to_transcripts, \
+            transcripts_to_splices, all_splice_pairs_annotations, \
+            all_splice_sites_annotations, parts_to_segments,\
+            segment_to_gene, gene_to_small_segments, max_intron_chr, exon_choordinates_to_id, \
+            ref_exon_sequences, exon_id_to_choordinates, exon_ids_spanning_segments_point, tiling_structures
+
+
 def annotate_guaranteed_optimal_bound(mems, is_rc, max_intron_chr, max_global_intron):
     """
         Calculate the maximum coverage (mem-score) that a read can get per chromosome
@@ -306,7 +340,8 @@ def run_tiling_solution(mem_solution, tiling_ref_segment_sequences, ref_flank_se
                 read_aln, ref_aln, predicted_exons, annotated_to_transcript_id, covered
 
 
-def align_single(reads, auxillary_data, refs_lengths, args,  batch_number):
+def align_single(reads, refs_lengths, args,  batch_number):
+    auxillary_data = import_data(args)
     mems_path =  os.path.join( args.outfolder, "mummer_mems_batch_{0}.txt".format(batch_number) )
     mems_path_rc =  os.path.join( args.outfolder, "mummer_mems_batch_{0}_rc.txt".format(batch_number) )
     nlog_n_instance_counter = 0
@@ -531,7 +566,7 @@ def align_single_helper(arguments):
 
 
 
-def align_parallel(read_data, auxillary_data, refs_lengths, args):
+def align_parallel(read_data, refs_lengths, args):
     ####### parallelize alignment #########
     # pool = Pool(processes=mp.cpu_count())
     original_sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -548,8 +583,7 @@ def align_parallel(read_data, auxillary_data, refs_lengths, args):
     #     # alignment_outfiles.append(alignment_outfile)
     #     alignment_outfiles.append(alignment_outfile)
     try:
-
-        res = pool.map_async(align_single_helper, [ (d, auxillary_data, refs_lengths, args, i) for i,d in enumerate(read_data)] )
+        res = pool.map_async(align_single_helper, [ (d, refs_lengths, args, i) for i,d in enumerate(read_data)] )
         results =res.get(999999999) # Without the timeout this blocking call ignores all signals.
     except KeyboardInterrupt:
         print("Caught KeyboardInterrupt, terminating workers")
