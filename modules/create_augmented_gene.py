@@ -1,5 +1,6 @@
 
 from collections import defaultdict
+from array import array
 
 # import intervaltree
 
@@ -18,51 +19,39 @@ def dd_set(): # top level function declaration needed for multiprocessing
 def dd_tuple(): # top level function declaration needed for multiprocessing
     return defaultdict(tuple)
 
-# def get_complementary_exon_seq_per_part(parts_to_exons, exon_to_gene, exon_id_to_choordinates, exons_to_ref, active_exons, active_start, active_stop, chr_id):
-#     chords_to_e_id = {v: k for k,v in exon_id_to_choordinates.items()}
-#     for e_id in list(active_exons):
-#         e_start, e_stop = exon_id_to_choordinates[e_id]
-#         exon_gene_ids = exon_to_gene[e_id]
-#         if active_start < e_start:
-#             if (active_start, e_stop) not in chords_to_e_id:
-#                 # print("here1",(active_start, e_stop) )
-#                 # continue
-#                 exon_id_to_choordinates[e_id + "_compl_beg"] = (active_start, e_start)
-#                 exons_to_ref[e_id + "_compl_beg"] = chr_id
-#                 parts_to_exons[chr_id][(active_start, active_stop)].add(e_id + "_compl_beg")
-#                 exon_to_gene[e_id + "_compl_beg"] = exon_gene_ids 
-#         if e_stop < active_stop:
-#             if (e_start, active_stop) not in chords_to_e_id:
-#                 # print("here2",(e_start, active_stop) )
-#                 # continue
-#                 exon_id_to_choordinates[e_id + "_compl_end"] = (e_stop, active_stop)
-#                 exons_to_ref[e_id + "_compl_end"] = chr_id
-#                 parts_to_exons[chr_id][(active_start, active_stop)].add(e_id + "_compl_end")
-#                 exon_to_gene[e_id + "_compl_end"] = exon_gene_ids 
+def dd_array(): # top level function declaration needed for multiprocessing
+    return defaultdict(lambda :array("L"))
 
 
-def add_tiling(p1, p2, active_gene_ids, active_start, active_stop, min_segment_size, chr_id,
+def add_tiling(tiling_segment_id, p1, p2, active_gene_ids, active_start, active_stop, min_segment_size, chr_id,
                  tiling_segment_id_to_choordinates, tiling_segment_to_gene, tiling_segment_to_ref,
                             tiling_parts_to_segments, tiling_gene_to_small_segments):
     k = 0
     while p2 - p1 - k > min_segment_size:
-        tiling_segment_name = "segm_{0}_{1}_{2}".format(chr_id, p1+k, p1 + k + min_segment_size)
+        # tiling_segment_name = "segm_{0}_{1}_{2}".format(chr_id, p1+k, p1 + k + min_segment_size)
+        tiling_segment_name = tiling_segment_id
         tiling_segment_id_to_choordinates[tiling_segment_name] = (p1+k, p1 + k + min_segment_size)
         tiling_segment_to_ref[tiling_segment_name] = chr_id
-        tiling_parts_to_segments[chr_id][(active_start, active_stop)].add(tiling_segment_name)
+        tiling_parts_to_segments[chr_id][(active_start, active_stop)].append(tiling_segment_name)
         tiling_segment_to_gene[tiling_segment_name] =  active_gene_ids 
         # total_unique_segment_counter += min_segment_size
         k += min_segment_size
         for gene_id in active_gene_ids:
             tiling_gene_to_small_segments[gene_id].append(tiling_segment_name)
-    tiling_segment_name = "segm_{0}_{1}_{2}".format(chr_id, p1 + k - min_segment_size, p2)
+        tiling_segment_id += 1
+
+    # tiling_segment_name = "segm_{0}_{1}_{2}".format(chr_id, p1 + k - min_segment_size, p2)
+    tiling_segment_name = tiling_segment_id
     tiling_segment_id_to_choordinates[tiling_segment_name] = (p1 + k - min_segment_size, p2)
     tiling_segment_to_ref[tiling_segment_name] = chr_id
-    tiling_parts_to_segments[chr_id][(active_start, active_stop)].add(tiling_segment_name)
+    # tiling_parts_to_segments[chr_id][(active_start, active_stop)].add(tiling_segment_name)
+    tiling_parts_to_segments[chr_id][(active_start, active_stop)].append(tiling_segment_name)
     tiling_segment_to_gene[tiling_segment_name] =  active_gene_ids 
     # total_unique_segment_counter += p2 - (p1 + k - min_segment_size)
     for gene_id in active_gene_ids:
         tiling_gene_to_small_segments[gene_id].append(tiling_segment_name)
+    tiling_segment_id += 1
+    return tiling_segment_id # need to return cause immutable
 
 
 
@@ -71,23 +60,33 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
     segment_id_to_choordinates = {}
     segment_to_gene = {} 
     segment_to_ref = {}
-    parts_to_segments = defaultdict(dd_set)
-    gene_to_small_segments = defaultdict(list)
+    # parts_to_segments = defaultdict(dd_set)
+    # gene_to_small_segments = defaultdict(list)
+    parts_to_segments = defaultdict(dd_array)
+    gene_to_small_segments = defaultdict(lambda :array("L"))
+    temp_already_added_choord = set()
     total_unique_segment_counter = 0
     total_segments_bad = 0
-    exon_ids_spanning_segments_point = defaultdict(dd_set)
     bad = 0
 
     # for all the poorly fitting reads to annotated start stop exon sites we employ a tiling segment structure and 
     # align reads in a second pass
+    # M2 = defaultdict(lambda: defaultdict(lambda :array("I")))
     tiling_segment_id_to_choordinates = {}
     tiling_segment_to_gene = {} 
     tiling_segment_to_ref = {}
-    tiling_parts_to_segments = defaultdict(dd_set)
-    tiling_gene_to_small_segments = defaultdict(list)
+    tiling_parts_to_segments = defaultdict(dd_array)
+    tiling_gene_to_small_segments = defaultdict(lambda :array("L"))
+
+    # tiling_segment_id_to_choordinates = {}
+    # tiling_segment_to_gene = {} 
+    # tiling_segment_to_ref = {}
+    # tiling_parts_to_segments = defaultdict(dd_set)
+    # tiling_gene_to_small_segments = defaultdict(list)
 
     tiling_structures = [tiling_segment_id_to_choordinates, tiling_segment_to_gene, tiling_segment_to_ref, tiling_parts_to_segments, tiling_gene_to_small_segments]
-
+    tiling_segment_id = 0
+    segment_id = 0
     for (chr_id, part_id) in part_to_canonical_pos:
         active_start, active_stop = part_count_to_choord[(chr_id, part_id)]
         active_gene_ids = part_to_active_gene[(chr_id, part_id)]
@@ -100,24 +99,26 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
         for i, (p1, p2) in enumerate(pos_tuples):
             open_starts_e_ids.update(pos_to_exon_ids[(chr_id, part_id)][p1, True]) # add the exons that start at this point 
             open_starts_e_ids.difference_update(pos_to_exon_ids[(chr_id, part_id)][p1, False]) # remove the ones that ended here
-            exon_ids_spanning_segments_point[chr_id][p2] = open_starts_e_ids
-            add_tiling(p1, p2, active_gene_ids, active_start, active_stop, min_segment_size, chr_id,
+            tiling_segment_id = add_tiling(tiling_segment_id, p1, p2, active_gene_ids, active_start, active_stop, min_segment_size, chr_id,
                         tiling_segment_id_to_choordinates, tiling_segment_to_gene, tiling_segment_to_ref,
                         tiling_parts_to_segments, tiling_gene_to_small_segments)
             if p2 - p1 >= min_segment_size:
                 # print("here good", p2 - p1)
-                segment_name = "segm_{0}_{1}_{2}".format(chr_id,p1,p2)
+                # segment_name = "segm_{0}_{1}_{2}".format(chr_id,p1,p2)
+                segment_name = segment_id
+                temp_already_added_choord.add((chr_id, p1, p2))
                 segment_id_to_choordinates[segment_name] = (p1, p2)
                 segment_to_ref[segment_name] = chr_id
-                parts_to_segments[chr_id][(active_start, active_stop)].add(segment_name)
+                parts_to_segments[chr_id][(active_start, active_stop)].append(segment_name)
                 segment_to_gene[segment_name] =  active_gene_ids 
                 total_unique_segment_counter += p2 - p1
-
+                # print("Std:", segment_name, (chr_id, p1, p2))
                 open_starts_e_ids.difference_update(pos_to_exon_ids[(chr_id, part_id)][p2, False])
                 # add small segments
                 if p2 - p1 <= small_segment_threshold:
                     for gene_id in active_gene_ids:
                         gene_to_small_segments[gene_id].append(segment_name)
+                segment_id += 1
 
             else:
                 # add_earlier = False
@@ -125,17 +126,22 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
                     k = 1
                     while i - k >= 0:
                         if p2 - pos_tuples[i-k][0] >= min_segment_size: # or i - k == 0: # last case is i - k == 0 and we still have not added anything
-                            segment_name = "segm_{0}_{1}_{2}".format(chr_id, pos_tuples[i-k][0],p2)
-                            exon_name = "exon_{0}_{1}_{2}".format(chr_id, pos_tuples[i-k][0], p2) 
+                            # segment_name = "segm_{0}_{1}_{2}".format(chr_id, pos_tuples[i-k][0],p2)
+                            # exon_name = "exon_{0}_{1}_{2}".format(chr_id, pos_tuples[i-k][0], p2) 
+                            segment_name = segment_id
 
-                            if segment_name not in segment_id_to_choordinates and exon_name not in segment_id_to_choordinates:
+                            if (chr_id, pos_tuples[i-k][0],p2) not in temp_already_added_choord: #segment_id_to_choordinates and exon_name not in segment_id_to_choordinates:
                                 # print("Added 1:", k, p2 - p1, p2 - pos_tuples[i-k][0])
                                 total_segments_bad += p2 - pos_tuples[i-k][0]
 
                                 segment_id_to_choordinates[segment_name] = (pos_tuples[i-k][0], p2)
                                 segment_to_ref[segment_name] = chr_id
-                                parts_to_segments[chr_id][(active_start, active_stop)].add(segment_name)
+                                parts_to_segments[chr_id][(active_start, active_stop)].append(segment_name)
                                 segment_to_gene[segment_name] =  active_gene_ids 
+                                temp_already_added_choord.add( (chr_id, pos_tuples[i-k][0],p2) )
+                                # print("while before:", segment_name,(chr_id, pos_tuples[i-k][0],p2))
+                                segment_id += 1
+
                                 # add_earlier = True
                                 # add small segments
                                 if p2 - pos_tuples[i-k][0] <= small_segment_threshold:
@@ -153,16 +159,23 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
                     k = 1
                     while i + k <= len(pos_tuples) - 1: 
                         if pos_tuples[i+k][1] - p1 >= min_segment_size: # or i + k == len(pos_tuples) - 1:  # last case is i - k == 0 and we still have not added anything
-                            segment_name = "segm_{0}_{1}_{2}".format(chr_id,p1,pos_tuples[i+k][1])
-                            exon_name = "exon_{0}_{1}_{2}".format(chr_id,p1,pos_tuples[i+k][1]) 
-                            if segment_name not in segment_id_to_choordinates and exon_name not in segment_id_to_choordinates: 
+                            # segment_name = "segm_{0}_{1}_{2}".format(chr_id,p1,pos_tuples[i+k][1])
+                            # exon_name = "exon_{0}_{1}_{2}".format(chr_id,p1,pos_tuples[i+k][1]) 
+                            segment_name = segment_id
+
+                            if (chr_id, p1, pos_tuples[i+k][1]) not in temp_already_added_choord: # segment_name not in segment_id_to_choordinates and exon_name not in segment_id_to_choordinates: 
                                 # print("Added 2:", k, p2 - p1, pos_tuples[i+k][1] - p1)
                                 total_segments_bad += pos_tuples[i+k][1] - p1
 
                                 segment_id_to_choordinates[segment_name] = (p1, pos_tuples[i+k][1])
                                 segment_to_ref[segment_name] = chr_id
-                                parts_to_segments[chr_id][(active_start, active_stop)].add(segment_name)
+                                parts_to_segments[chr_id][(active_start, active_stop)].append(segment_name)
                                 segment_to_gene[segment_name] =  active_gene_ids 
+                                temp_already_added_choord.add( (chr_id, p1, pos_tuples[i+k][1]) )
+                                # print("while after:", segment_name, (chr_id, p1, pos_tuples[i+k][1]))
+
+                                segment_id += 1
+
                                 # add_later = True
                                 # add small segments
                                 if pos_tuples[i+k][1] - p1 <= small_segment_threshold:
@@ -175,12 +188,17 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
                         k += 1
 
                 if len(pos_tuples) == 1:
-                    segment_name = "segm_{0}_{1}_{2}".format(chr_id,p1,p2)
+                    # segment_name = "segm_{0}_{1}_{2}".format(chr_id,p1,p2)
+                    segment_name = segment_id
+
                     segment_id_to_choordinates[segment_name] = (p1, p2)
                     segment_to_ref[segment_name] = chr_id
-                    parts_to_segments[chr_id][(active_start, active_stop)].add(segment_name)
+                    parts_to_segments[chr_id][(active_start, active_stop)].append(segment_name)
                     segment_to_gene[segment_name] =  active_gene_ids 
                     total_unique_segment_counter += p2 - p1
+                    temp_already_added_choord.add( (chr_id, p1, p2) )
+                    # print("Third:", segment_name,  (chr_id, p1, p2))
+                    segment_id += 1
 
                     # add small segments
                     if p2 - p1 <= small_segment_threshold:
@@ -201,19 +219,26 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
                 bad += p2 - p1
                 for e_id in all_segm_spanning:
                     e_start, e_stop = exon_id_to_choordinates[e_id]
-                    add_tiling(e_start, e_stop, active_gene_ids, active_start, active_stop, min_segment_size, chr_id,
+                    tiling_segment_id = add_tiling(tiling_segment_id, e_start, e_stop, active_gene_ids, active_start, active_stop, min_segment_size, chr_id,
                                 tiling_segment_id_to_choordinates, tiling_segment_to_gene, tiling_segment_to_ref,
                                 tiling_parts_to_segments, tiling_gene_to_small_segments)
 
-                    exon_name = "exon_{0}_{1}_{2}".format(chr_id,e_start,e_stop) 
-                    if "segm_{0}_{1}_{2}".format(chr_id,e_start,e_stop) not in segment_id_to_choordinates:                
-                        segment_id_to_choordinates[exon_name] = (e_start, e_stop) 
-                        segment_to_ref[exon_name] = chr_id
-                        parts_to_segments[chr_id][(active_start, active_stop)].add(exon_name)
-                        segment_to_gene[exon_name] = active_gene_ids
+                    # exon_name = "exon_{0}_{1}_{2}".format(chr_id,e_start,e_stop) 
+                    segment_name = segment_id
+
+                    if (chr_id, e_start, e_stop) not in temp_already_added_choord: #"segm_{0}_{1}_{2}".format(chr_id,e_start,e_stop) not in segment_id_to_choordinates:                
+                        segment_id_to_choordinates[segment_name] = (e_start, e_stop) 
+                        segment_to_ref[segment_name] = chr_id
+                        parts_to_segments[chr_id][(active_start, active_stop)].append(segment_name)
+                        segment_to_gene[segment_name] = active_gene_ids
                         total_segments_bad += e_stop - e_start
+                        temp_already_added_choord.add( (chr_id, e_start, e_stop) )
+                        # print("Fourth:", segment_name,  (chr_id, e_start, e_stop))
+
+                        segment_id += 1
+
                         if e_stop - e_start <= small_segment_threshold:
-                            gene_to_small_segments[gene_id].append(exon_name)
+                            gene_to_small_segments[gene_id].append(segment_name)
                     else:
                         pass
                         # print("LOOOOOOL", e_stop - e_start)
@@ -269,7 +294,7 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
     #     if p_id[0] > 34860000 and p_id[1] < 34980000:
     #         print(p_id)
     # sys.exit()
-    return parts_to_segments, segment_to_gene, segment_id_to_choordinates, segment_to_ref, gene_to_small_segments, exon_ids_spanning_segments_point, tiling_structures 
+    return parts_to_segments, segment_to_gene, segment_id_to_choordinates, segment_to_ref, gene_to_small_segments, tiling_structures 
 
 
 def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segment_size): 
@@ -410,14 +435,14 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segme
 
     parts_to_segments, segment_to_gene, \
     segment_id_to_choordinates, segment_to_ref, \
-    gene_to_small_segments, exon_ids_spanning_segments_point, tiling_structures  = get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_active_gene, pos_to_exon_ids, exon_id_to_choordinates, small_exon_threshold, min_segment_size)
+    gene_to_small_segments, tiling_structures  = get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_active_gene, pos_to_exon_ids, exon_id_to_choordinates, small_exon_threshold, min_segment_size)
 
     print("total parts size:", sum( [stop - start for chrrr in parts_to_exons for start,stop in parts_to_exons[chrrr] ]))
     print("total exons size:", sum( [stop - start for start, stop in exon_id_to_choordinates.values() ]))
     # print( 'parts_to_segments', parts_to_segments["SIRV5"])
     # sys.exit()
-    parts_to_exons = parts_to_segments
-    exon_to_gene = segment_to_gene
+    # parts_to_exons = parts_to_segments
+    # exon_to_gene = segment_to_gene
     # exon_id_to_choordinates = segment_id_to_choordinates
     # exons_to_ref = segment_to_ref
 
@@ -505,25 +530,25 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segme
     # # sys.exit()
     # gene_to_small_exons = gene_to_small_segments
 
-    return  segment_to_ref, parts_to_exons, splices_to_transcripts, \
+    return  segment_to_ref, parts_to_segments, splices_to_transcripts, \
             transcripts_to_splices, all_splice_pairs_annotations, \
-            all_splice_sites_annotations, exon_id_to_choordinates, segment_id_to_choordinates, \
-            exon_to_gene, gene_to_small_segments, flanks_to_gene2, max_intron_chr, \
-            exon_choordinates_to_id, exon_ids_spanning_segments_point, tiling_structures
+            all_splice_sites_annotations, segment_id_to_choordinates, \
+            segment_to_gene, gene_to_small_segments, flanks_to_gene2, max_intron_chr, \
+            exon_choordinates_to_id, tiling_structures
 
 
 
-def get_part_sequences_from_choordinates(parts_to_exons, flanks_to_gene, refs):
+def get_part_sequences_from_choordinates(parts_to_segments, flanks_to_gene, refs):
     part_segments = {}
     flank_segments = {}
     tot_flanks = 0
     tot_parts = 0
 
-    for chr_id in parts_to_exons:
+    for chr_id in parts_to_segments:
         if chr_id not in refs:
             continue
         else:
-            parts_instance = parts_to_exons[chr_id]
+            parts_instance = parts_to_segments[chr_id]
             # chromosome = genes_to_ref[chr_id]
             part_segments[chr_id] = {}
             for part in parts_instance:
