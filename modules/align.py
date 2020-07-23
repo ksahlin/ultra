@@ -23,9 +23,10 @@ from modules import mem_wrapper
 
 def import_data(args):
     segment_id_to_choordinates = help_functions.pickle_load( os.path.join(args.outfolder, 'segment_id_to_choordinates.pickle'))
-    exon_id_to_choordinates = help_functions.pickle_load( os.path.join(args.outfolder, 'exon_id_to_choordinates.pickle'))
-    exon_choordinates_to_id = help_functions.pickle_load( os.path.join(args.outfolder, 'exon_choordinates_to_id.pickle'))
+    # exon_id_to_choordinates = help_functions.pickle_load( os.path.join(args.outfolder, 'exon_id_to_choordinates.pickle'))
+    # exon_choordinates_to_id = help_functions.pickle_load( os.path.join(args.outfolder, 'exon_choordinates_to_id.pickle'))
     ref_segment_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'ref_segment_sequences.pickle') )
+    ref_exon_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'ref_exon_sequences.pickle') )
     ref_flank_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'ref_flank_sequences.pickle') )
     splices_to_transcripts = help_functions.pickle_load( os.path.join(args.outfolder, 'splices_to_transcripts.pickle') )
     transcripts_to_splices = help_functions.pickle_load( os.path.join(args.outfolder, 'transcripts_to_splices.pickle') )
@@ -35,9 +36,6 @@ def import_data(args):
     segment_to_gene = help_functions.pickle_load( os.path.join(args.outfolder, 'segment_to_gene.pickle') )
     gene_to_small_segments = help_functions.pickle_load( os.path.join(args.outfolder, 'gene_to_small_segments.pickle') )
     max_intron_chr = help_functions.pickle_load( os.path.join(args.outfolder, 'max_intron_chr.pickle') )
-    ref_exon_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'ref_exon_sequences.pickle') )
-    exon_ids_spanning_segments_point = help_functions.pickle_load( os.path.join(args.outfolder, 'exon_ids_spanning_segments_point.pickle') )
-
 
     tiling_segment_id_to_choordinates = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_segment_id_to_choordinates.pickle'))
     tiling_ref_segment_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_ref_segment_sequences.pickle') )
@@ -45,12 +43,13 @@ def import_data(args):
     tiling_segment_to_gene = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_segment_to_gene.pickle') )
     tiling_gene_to_small_segments = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_gene_to_small_segments.pickle') )
     tiling_structures = [tiling_segment_id_to_choordinates, tiling_segment_to_gene, tiling_parts_to_segments, tiling_gene_to_small_segments, tiling_ref_segment_sequences]
+    # tiling_structures = []
 
     return segment_id_to_choordinates, ref_segment_sequences, ref_flank_sequences, splices_to_transcripts, \
             transcripts_to_splices, all_splice_pairs_annotations, \
             all_splice_sites_annotations, parts_to_segments,\
-            segment_to_gene, gene_to_small_segments, max_intron_chr, exon_choordinates_to_id, \
-            ref_exon_sequences, exon_id_to_choordinates, exon_ids_spanning_segments_point, tiling_structures
+            segment_to_gene, gene_to_small_segments, max_intron_chr, \
+            ref_exon_sequences, tiling_structures
 
 
 def annotate_guaranteed_optimal_bound(mems, is_rc, max_intron_chr, max_global_intron):
@@ -132,8 +131,8 @@ def annotate_guaranteed_optimal_bound(mems, is_rc, max_intron_chr, max_global_in
     return upper_bound
 
 
-def find_exons(chr_id, mam_solution, exon_choordinates_to_id_chr, ref_exon_sequences, ref_segment_sequences, \
-                 ref_flank_sequences, all_splice_pairs_annotations, exon_id_to_choordinates, exon_ids_spanning_segments_point):
+def find_exons(chr_id, mam_solution, ref_exon_sequences, ref_segment_sequences, \
+                 ref_flank_sequences, all_splice_pairs_annotations):
     # print("BEFO:", [(m.x,m.y) for m in mam_solution])
     valid_introns_sites = all_splice_pairs_annotations[chr_id]
     # print("valid_introns_sites", valid_introns_sites)
@@ -202,7 +201,7 @@ def find_exons(chr_id, mam_solution, exon_choordinates_to_id_chr, ref_exon_seque
             for i, p1 in enumerate(sorted(all_points)):
                 cover[p1] = []
                 for j, p2 in enumerate(sorted(all_points)):
-                    if (p1, p2) in exon_choordinates_to_id_chr or  (p1, p2) in segm:
+                    if (p1, p2) in ref_exon_sequences[chr_id] or  (p1, p2) in segm: #exon_choordinates_to_id_chr
                         cover[p1].append(p2)
 
 
@@ -237,9 +236,9 @@ def find_exons(chr_id, mam_solution, exon_choordinates_to_id_chr, ref_exon_seque
                             m = end_points[p2]
                             d = m.d
                             y = m.y                            
-                        exon_id = exon_choordinates_to_id_chr[(p1, p2)].pop()
-                        exon_choordinates_to_id_chr[(p1, p2)].add(exon_id)
-                        exons.append((x, y, c, d, exon_id))
+                        # exon_id = exon_choordinates_to_id_chr[(p1, p2)].pop()
+                        # exon_choordinates_to_id_chr[(p1, p2)].add(exon_id)
+                        exons.append((x, y, c, d, chr_id))
 
             else:  #if not, simply give up and put the small spurious intron caused by optimal solution is not containing adjacent segments
                 for j, mam in enumerate(part):
@@ -253,8 +252,8 @@ def find_exons(chr_id, mam_solution, exon_choordinates_to_id_chr, ref_exon_seque
     covered = 0
     # for mam in mam_solution:
     for x, y, c, d, seq_id in exons:
-        if (x, y) in ref_exon_sequences[chr_id]:
-            seq = ref_exon_sequences[chr_id][(x, y)] 
+        if (x, y) in ref_exon_sequences[seq_id]:
+            seq = ref_exon_sequences[seq_id][(x, y)] 
             covered += d - c + 1
         else: 
             if (x, y) in ref_segment_sequences[seq_id]:
@@ -300,8 +299,8 @@ def get_exact_alignment(read_seq, created_ref_seq, mam_sol_exons_length):
 def run_tiling_solution(mem_solution, tiling_ref_segment_sequences, ref_flank_sequences, tiling_parts_to_segments, \
                         tiling_segment_id_to_choordinates, tiling_segment_to_gene, tiling_gene_to_small_segments, \
                         read_seq, warning_log_file, min_acc, \
-                        chr_id, exon_choordinates_to_id, ref_exon_sequences, \
-                        all_splice_pairs_annotations, exon_id_to_choordinates, exon_ids_spanning_segments_point,
+                        chr_id, ref_exon_sequences, \
+                        all_splice_pairs_annotations,
                         splices_to_transcripts, transcripts_to_splices, \
                         all_splice_sites_annotations, mam_sol_exons_length, \
                         alignment_score, read_aln, ref_aln, current_classification, non_covered_regions, covered,
@@ -314,9 +313,8 @@ def run_tiling_solution(mem_solution, tiling_ref_segment_sequences, ref_flank_se
     # print("TILING finished Mam solution Tiling!!:",mam_value_tiling, mam_solution_tiling)
     # for zzz2 in mam_solution_tiling:
     #     print(zzz2)
-    exons, tiling_created_ref_seq, tiling_predicted_exons, tiling_predicted_splices, tiling_covered = find_exons(chr_id, mam_solution_tiling, exon_choordinates_to_id[chr_id], ref_exon_sequences, \
-                                                                            tiling_ref_segment_sequences, ref_flank_sequences, all_splice_pairs_annotations, \
-                                                                            exon_id_to_choordinates, exon_ids_spanning_segments_point)
+    exons, tiling_created_ref_seq, tiling_predicted_exons, tiling_predicted_splices, tiling_covered = find_exons(chr_id, mam_solution_tiling, ref_exon_sequences, \
+                                                                            tiling_ref_segment_sequences, ref_flank_sequences, all_splice_pairs_annotations)
 
     tiling_classification, tiling_annotated_to_transcript_id = classify_alignment2.main(chr_id, tiling_predicted_splices, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations)
 
@@ -360,9 +358,8 @@ def align_single(reads, refs_lengths, args,  batch_number):
     transcripts_to_splices, all_splice_pairs_annotations, \
     all_splice_sites_annotations, parts_to_segments, \
     segment_to_gene, gene_to_small_segments, max_intron_chr, \
-    exon_choordinates_to_id, ref_exon_sequences, \
-    exon_id_to_choordinates, exon_ids_spanning_segments_point, tiling_structures = auxillary_data
-    # all_splice_pairs_annotations_frozen = copy.deepcopy(all_splice_pairs_annotations)
+    ref_exon_sequences, tiling_structures = auxillary_data
+
     tiling_segment_id_to_choordinates, tiling_segment_to_gene, \
     tiling_parts_to_segments, tiling_gene_to_small_segments, \
     tiling_ref_segment_sequences = tiling_structures # unpacking tiling structures
@@ -459,9 +456,8 @@ def align_single(reads, refs_lengths, args,  batch_number):
             mam_sol_exons_length = sum([ mam.y - mam.x for mam in mam_solution])
             # print(max_intron_size)
             if mam_value > 0:
-                exons, created_ref_seq, predicted_exons, predicted_splices, covered = find_exons(chr_id, mam_solution, exon_choordinates_to_id[chr_id], ref_exon_sequences, \
-                                                                                            ref_segment_sequences, ref_flank_sequences, all_splice_pairs_annotations, \
-                                                                                            exon_id_to_choordinates, exon_ids_spanning_segments_point)
+                exons, created_ref_seq, predicted_exons, predicted_splices, covered = find_exons(chr_id, mam_solution, ref_exon_sequences, \
+                                                                                            ref_segment_sequences, ref_flank_sequences, all_splice_pairs_annotations)
 
 
                 classification, annotated_to_transcript_id = classify_alignment2.main(chr_id, predicted_splices, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations)
@@ -480,14 +476,14 @@ def align_single(reads, refs_lengths, args,  batch_number):
                     classification, alignment_score, non_covered_regions, \
                     read_aln, ref_aln, predicted_exons, annotated_to_transcript_id, covered = run_tiling_solution(mem_solution, tiling_ref_segment_sequences, ref_flank_sequences, tiling_parts_to_segments, \
                                         tiling_segment_id_to_choordinates, tiling_segment_to_gene, tiling_gene_to_small_segments, \
-                                        read_seq, warning_log_file, min_acc, chr_id, exon_choordinates_to_id, ref_exon_sequences, \
-                                        all_splice_pairs_annotations, exon_id_to_choordinates, exon_ids_spanning_segments_point,
+                                        read_seq, warning_log_file, min_acc, chr_id, ref_exon_sequences, \
+                                        all_splice_pairs_annotations,
                                         splices_to_transcripts, transcripts_to_splices, \
                                         all_splice_sites_annotations, mam_sol_exons_length, alignment_score, \
                                         read_aln, ref_aln, classification, non_covered_regions, covered, predicted_exons, annotated_to_transcript_id)
 
 
-                if alignment_score < 8*args.alignment_threshold*len(read_seq) and classification != 'FSM': # match score * aln_threshold
+                if alignment_score < 2*args.alignment_threshold*len(read_seq) and classification != 'FSM': # match score * aln_threshold
                     # print()
                     # print(read_acc)
                     # print(read_aln)
@@ -574,14 +570,6 @@ def align_parallel(read_data, refs_lengths, args):
 
     start_multi = time()
     pool = Pool(processes=int(args.nr_cores))
-    # segment_id_to_choordinates, ref_segment_sequences, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations, parts_to_segments = import_data(args)
-    # auxillary_data = segment_id_to_choordinates, ref_segment_sequences, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations, parts_to_segments
-    # read_data = batch([ (acc, reads[acc], mems[acc], mems_rc[acc], ) for i, acc in enumerate(mems)], batch_size)
-    # alignment_outfiles = []
-    # for i in range(args.nr_cores):
-    #     # alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, "torkel_batch_{0}.sam".format(i)), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
-    #     # alignment_outfiles.append(alignment_outfile)
-    #     alignment_outfiles.append(alignment_outfile)
     try:
         res = pool.map_async(align_single_helper, [ (d, refs_lengths, args, i) for i,d in enumerate(read_data)] )
         results =res.get(999999999) # Without the timeout this blocking call ignores all signals.
