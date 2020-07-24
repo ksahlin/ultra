@@ -56,7 +56,7 @@ def add_tiling(tiling_segment_id, p1, p2, active_gene_ids, active_start, active_
 
 
 def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_active_gene, pos_to_exon_ids, exon_id_to_choordinates, small_segment_threshold, min_segment_size):
-    # parts_to_exons, exon_to_gene, exon_id_to_choordinates, exons_to_ref,
+    # parts_to_exons, exon_to_gene, exon_id_to_choordinates,
     segment_id_to_choordinates = {}
     segment_to_gene = {} 
     segment_to_ref = {}
@@ -297,14 +297,30 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
     return parts_to_segments, segment_to_gene, segment_id_to_choordinates, segment_to_ref, gene_to_small_segments, tiling_structures 
 
 
+def add_to_chr_mapping(chr_name, chr_to_id, id_to_chr):
+    hash_id = len(chr_to_id)
+    if chr_name in chr_to_id:
+        return chr_to_id[chr_name]
+    else:
+        hash_id += 1
+        chr_to_id[chr_name] = hash_id
+        id_to_chr[hash_id] = chr_name
+        return hash_id
+
+        
 def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segment_size): 
     """
         We need to link parts --> exons and exons --> transcripts
     """
     # print(dir(db))
+    # print([c for c in db.features_of_type('chr', order_by='seqid')])
+    # print( [c for c in db.all_features()])
+    # sys.exit()
+    chr_to_id = {}
+    id_to_chr = {}
     # genes_to_ref = {} # gene_id : { (exon_start, exon_stop) : set() }
-    exons_to_ref = {} # gene_id : { (exon_start, exon_stop) : set() }
-    exon_to_gene = {} # exon_id : [gene_id ]
+    # exons_to_ref = {} # gene_id : { (exon_start, exon_stop) : set() }
+    # exon_to_gene = {} # exon_id : [gene_id ]
 
     flanks_to_gene2 = defaultdict(dict)  
     total_flanks2 = 0
@@ -326,12 +342,13 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segme
     exon_choordinates_to_id = defaultdict(dd_set)
 
     for i, exon in enumerate(db.features_of_type('exon', order_by='seqid')):
-        chr_id = exon.seqid
-        exons_to_ref[exon.id] = chr_id
+        chr_name = exon.seqid
+        chr_id = add_to_chr_mapping(chr_name, chr_to_id, id_to_chr)
+        # exons_to_ref[exon.id] = chr_id
         # print(dir(exon))
         # print(exon.attributes["gene_id"])
         exon_gene_ids = exon.attributes["gene_id"] # is a list of strings
-        exon_to_gene[exon.id] = exon_gene_ids
+        # exon_to_gene[exon.id] = exon_gene_ids
         exon_id_to_choordinates[exon.id] = (exon.start - 1, exon.stop)
         exon_choordinates_to_id[chr_id][(exon.start - 1, exon.stop)].add(exon.id)
         # creating the augmentation
@@ -426,7 +443,7 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segme
 
         assert active_start <= exon.start - 1
 
-    print("NR EXONS + COMPL:", len(exon_to_gene))
+    # print("NR EXONS + COMPL:", len(exon_to_gene))
     print("total_flanks2:", total_flanks2)
     print("total_flank_size", total_flank_size)
     # print(flanks_to_gene2)
@@ -439,28 +456,17 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segme
 
     print("total parts size:", sum( [stop - start for chrrr in parts_to_exons for start,stop in parts_to_exons[chrrr] ]))
     print("total exons size:", sum( [stop - start for start, stop in exon_id_to_choordinates.values() ]))
-    # print( 'parts_to_segments', parts_to_segments["SIRV5"])
-    # sys.exit()
-    # parts_to_exons = parts_to_segments
-    # exon_to_gene = segment_to_gene
-    # exon_id_to_choordinates = segment_id_to_choordinates
-    # exons_to_ref = segment_to_ref
 
-    # print("parts:", [(start, stop) for chrrr in parts_to_exons for start,stop in parts_to_exons[chrrr] ])
-    # sys.exit()
-
-    # print(parts_to_exons)
-    # part_intervals[prev_seq_id].addi(active_start, active_stop, None)
     min_intron = 2**32
 
     for transcript in db.features_of_type('transcript', order_by='seqid'): #db.children(gene, featuretype='transcript', order_by='start'):
         # if transcript.seqid.isdigit() or transcript.seqid == 'X' or transcript.seqid == 'Y':
-        #     chr_id = 'chr'+ transcript.seqid
+        #     chr_name = 'chr'+ transcript.seqid
         # elif transcript.seqid == 'MT':
-        #     chr_id = 'chrM'
+        #     chr_name = 'chrM'
         # else:
-        chr_id = transcript.seqid
-
+        chr_name = transcript.seqid
+        chr_id = chr_to_id[chr_name]
         # print("here", transcript.id,  str(chr_id))  
         transcript_exons = []
         for exon in db.children(transcript, featuretype='exon', order_by='start'):
@@ -477,18 +483,18 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segme
         # internal transcript splices
         splices_to_transcripts[chr_id][ tuple(internal_transcript_splices)].add(transcript.id)
         for site1, site2 in internal_transcript_splices:
-            all_splice_pairs_annotations[str(chr_id)][(site1, site2)].add( transcript.id )
+            all_splice_pairs_annotations[chr_id][(site1, site2)].add( transcript.id )
             # if site2 == 3105:
             #     print('LOOOL',chr_id)
             #     ccc.add(chr_id)
 
-            all_splice_sites_annotations[str(chr_id)].add(site1)
-            all_splice_sites_annotations[str(chr_id)].add(site2)
+            all_splice_sites_annotations[chr_id].add(site1)
+            all_splice_sites_annotations[chr_id].add(site2)
         
         # add start and end splice to all_splice_sites_annotations 
         if transcript_exons:
-            all_splice_sites_annotations[str(chr_id)].add(transcript_exons[0][0])
-            all_splice_sites_annotations[str(chr_id)].add(transcript_exons[-1][-1])
+            all_splice_sites_annotations[chr_id].add(transcript_exons[0][0])
+            all_splice_sites_annotations[chr_id].add(transcript_exons[-1][-1])
         else:
             print("Something is wrong with transcript annotation: {0} on gene: {1}, and could not be added. Check that the gene ID and transcript ID is not the same!".format(transcript.id, transcript.seqid))
             # sys.exit()
@@ -501,40 +507,13 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segme
             for tr_id in tr_ids:
                 transcripts_to_splices[chr_id][tr_id] = unique_sp_sites
 
-    # gene_to_small_exons = {} # gene_id : [exon_id ]
-    # # flanks_to_gene = defaultdict(dict)   
-    # # flanks_not_overlapping = 0
-    # # total_flanks = 0
-    # for gene in db.features_of_type('gene', order_by='seqid'):
-    #     gene_to_small_exons[gene.id] = []
-    #     exons_list = [exon for exon in  db.children(gene, featuretype='exon', order_by='start')]
-    #     # chr_id = gene.seqid
-    #     if exons_list:
-    #         # ovl = part_intervals[chr_id].overlaps(max(0, exons_list[0].start - flank_size), exons_list[0].start - 1)
-    #         # if not ovl:
-    #         #     flanks_to_gene[chr_id][(max(0, exons_list[0].start - flank_size), exons_list[0].start - 1)] = gene.id
-    #         #     flanks_not_overlapping +=1
-    #         # total_flanks +=1            
-
-    #         # ovl = part_intervals[chr_id].overlaps(exons_list[-1].stop, exons_list[-1].stop + flank_size)
-    #         # if not ovl:
-    #         #     flanks_to_gene[chr_id][(exons_list[-1].stop, exons_list[-1].stop + flank_size)] = gene.id
-    #         #     flanks_not_overlapping +=1
-    #         # total_flanks +=1            
-
-    #         for exon in exons_list:
-    #             if exon.stop - exon.start < small_exon_threshold:
-    #                 gene_to_small_exons[gene.id].append(exon.id)
-
-    # # print(gene_to_small_segments["SIRV6"])
-    # # sys.exit()
-    # gene_to_small_exons = gene_to_small_segments
-
+    # print(chr_to_id)
+    # print(id_to_chr)
     return  segment_to_ref, parts_to_segments, splices_to_transcripts, \
             transcripts_to_splices, all_splice_pairs_annotations, \
             all_splice_sites_annotations, segment_id_to_choordinates, \
             segment_to_gene, gene_to_small_segments, flanks_to_gene2, max_intron_chr, \
-            exon_choordinates_to_id, tiling_structures
+            exon_choordinates_to_id, chr_to_id, id_to_chr, tiling_structures
 
 
 
@@ -581,7 +560,8 @@ def get_segment_sequences_from_segment_id(segment_id_to_choordinates, segments_t
             continue
         else:
             seq = refs[chr_id][start : stop] 
-            segment_sequences[chr_id][(start,stop)] = seq
+            key = array("L", [chr_id,start,stop]).tobytes()
+            segment_sequences[key] = seq
     # print(segments)
     return segment_sequences
 
@@ -593,11 +573,12 @@ def get_sequences_from_choordinates(flanks_to_gene, refs):
         if chr_id not in refs:
             continue
         else:
-            flank_sequences[chr_id] = {}
+            # flank_sequences[chr_id] = {}
             for flank in flanks_to_gene[chr_id]:
                 start, stop = flank[0], flank[1]
                 seq = refs[chr_id][start : stop] 
-                flank_sequences[chr_id][flank] = seq
+                key = array("L", [chr_id,start,stop]).tobytes()
+                flank_sequences[key] = seq
 
     return flank_sequences
 

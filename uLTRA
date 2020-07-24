@@ -61,7 +61,7 @@ def prep_splicing(args):
     transcripts_to_splices, all_splice_pairs_annotations, \
     all_splice_sites_annotations, segment_id_to_choordinates, \
     segment_to_gene, gene_to_small_segments, flanks_to_gene, \
-    max_intron_chr, exon_choordinates_to_id, tiling_structures = augmented_gene.create_graph_from_exon_parts(db, args.flank_size, args.small_exon_threshold, args.min_segm )
+    max_intron_chr, exon_choordinates_to_id, chr_to_id, id_to_chr, tiling_structures = augmented_gene.create_graph_from_exon_parts(db, args.flank_size, args.small_exon_threshold, args.min_segm )
 
     # dump to pickle here! Both graph and reference seqs
     # help_functions.pickle_dump(args, genes_to_ref, 'genes_to_ref.pickle')
@@ -78,6 +78,8 @@ def prep_splicing(args):
     help_functions.pickle_dump(args, flanks_to_gene, 'flanks_to_gene.pickle')
     help_functions.pickle_dump(args, max_intron_chr, 'max_intron_chr.pickle')
     help_functions.pickle_dump(args, exon_choordinates_to_id, 'exon_choordinates_to_id.pickle')
+    help_functions.pickle_dump(args, chr_to_id, 'chr_to_id.pickle')
+    help_functions.pickle_dump(args, id_to_chr, 'id_to_chr.pickle')
 
     tiling_segment_id_to_choordinates, tiling_segment_to_gene, tiling_segment_to_ref, tiling_parts_to_segments, tiling_gene_to_small_segments = tiling_structures # unpacking tiling structures
     help_functions.pickle_dump(args, tiling_segment_id_to_choordinates, 'tiling_segment_id_to_choordinates.pickle')
@@ -94,6 +96,8 @@ def prep_seqs(args):
     segment_to_ref = help_functions.pickle_load( os.path.join(args.outfolder, 'segment_to_ref.pickle') )
     flanks_to_gene = help_functions.pickle_load( os.path.join(args.outfolder, 'flanks_to_gene.pickle') )
     exon_choordinates_to_id = help_functions.pickle_load( os.path.join(args.outfolder, 'exon_choordinates_to_id.pickle') )
+    chr_to_id = help_functions.pickle_load( os.path.join(args.outfolder, 'chr_to_id.pickle') )
+    id_to_chr = help_functions.pickle_load( os.path.join(args.outfolder, 'id_to_chr.pickle') )
 
     tiling_parts_to_segments = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_parts_to_segments.pickle') )
     tiling_segment_id_to_choordinates = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_segment_id_to_choordinates.pickle') )
@@ -101,23 +105,36 @@ def prep_seqs(args):
     
     print( "Number of ref seqs in gff:", len(parts_to_segments.keys()))
     refs = {acc : seq for acc, (seq, _) in help_functions.readfq(open(args.ref,"r"))}
+
+    refs_id = {}
+
+    not_in_annot = set()
+    for acc, seq in refs.items():
+        if acc not in chr_to_id:
+            not_in_annot.add(acc)
+        else:
+            acc_id = chr_to_id[acc]
+            refs_id[acc_id] = seq
+
+    refs_lengths = { acc_id : len(seq) for acc_id, seq in refs_id.items()} 
+    help_functions.pickle_dump(args, refs_lengths, 'refs_lengths.pickle')
+
     # modified = help_functions.check_reference_headers(refs)
     # if modified:
     #     print("Detected 1,..,22, MT, X, Y as header labels, treating these headers as: chr1,...,chr22, chrM, chrX, chrY")
     print( "Number of ref seqs in fasta:", len(refs.keys()))
 
-    not_in_ref = set(parts_to_segments.keys()) - set(refs.keys())
-    not_in_annot = set(refs.keys()) - set(parts_to_segments.keys()) 
+    not_in_ref = set(parts_to_segments.keys()) - set(refs_id.keys())
     if not_in_ref:
         print("Warning: Detected {0} sequences that are in annotation but not in reference fasta. Using only sequences present in fasta. The following annotations cannot be detected:\n".format(len(not_in_ref)))
         for s in not_in_ref:
-            print(s)
+            print(id_to_chr[s])
     if not_in_annot:
         print("Warning: Detected {0} sequences in reference fasta that are not in annotation. Will not be able to infer annotations from alignments on the following refernece sequences:\n".format(len(not_in_annot)))
         for s in not_in_annot:
-            print(s, "with length:{0}".format(len(refs[s])))
+            print(s, "with length:{0}".format(refs_lengths[chr_to_id[s]]))
     # print(flanks_to_gene)
-    ref_part_sequences, ref_flank_sequences = augmented_gene.get_part_sequences_from_choordinates(parts_to_segments, flanks_to_gene, refs)
+    ref_part_sequences, ref_flank_sequences = augmented_gene.get_part_sequences_from_choordinates(parts_to_segments, flanks_to_gene, refs_id)
     # print(len(ref_part_sequences))
     # print(len(ref_flank_sequences))
 
@@ -127,9 +144,9 @@ def prep_seqs(args):
     ref_part_sequences = help_functions.update_nested(ref_part_sequences, ref_flank_sequences)
     # print()
     # print(ref_part_sequences)
-    ref_segment_sequences = augmented_gene.get_segment_sequences_from_segment_id(segment_id_to_choordinates, segment_to_ref, refs)
-    ref_flank_sequences = augmented_gene.get_sequences_from_choordinates(flanks_to_gene, refs)
-    ref_exon_sequences = augmented_gene.get_sequences_from_choordinates(exon_choordinates_to_id, refs)
+    ref_segment_sequences = augmented_gene.get_segment_sequences_from_segment_id(segment_id_to_choordinates, segment_to_ref, refs_id)
+    ref_flank_sequences = augmented_gene.get_sequences_from_choordinates(flanks_to_gene, refs_id)
+    ref_exon_sequences = augmented_gene.get_sequences_from_choordinates(exon_choordinates_to_id, refs_id)
     # print("ref_segment_sequences", ref_segment_sequences)
     help_functions.pickle_dump(args, segment_id_to_choordinates, 'segment_id_to_choordinates.pickle')
     help_functions.pickle_dump(args, ref_part_sequences, 'ref_part_sequences.pickle')
@@ -137,7 +154,7 @@ def prep_seqs(args):
     help_functions.pickle_dump(args, ref_flank_sequences, 'ref_flank_sequences.pickle')
     help_functions.pickle_dump(args, ref_exon_sequences, 'ref_exon_sequences.pickle')
 
-    tiling_ref_segment_sequences = augmented_gene.get_segment_sequences_from_segment_id(tiling_segment_id_to_choordinates, tiling_segment_to_ref, refs)
+    tiling_ref_segment_sequences = augmented_gene.get_segment_sequences_from_segment_id(tiling_segment_id_to_choordinates, tiling_segment_to_ref, refs_id)
     help_functions.pickle_dump(args, tiling_ref_segment_sequences, 'tiling_ref_segment_sequences.pickle')
     # gene_graphs, splices_to_transcripts, annotated_transcripts = splice_graph.create_graph(db)
     # topological_sorts = splice_graph.create_global_source_sink(gene_graphs)    
@@ -197,15 +214,17 @@ def align_reads(args):
     # path_covers = help_functions.pickle_load( os.path.join(args.outfolder, 'paths.pickle') )
 
     ref_part_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'ref_part_sequences.pickle') )
+    refs_lengths = help_functions.pickle_load( os.path.join(args.outfolder, 'refs_lengths.pickle') )
+
     # print(ref_part_sequences)
     ref_path = os.path.join(args.outfolder, "refs_sequences.fa")
     refs_file = open(ref_path, 'w') #open(os.path.join(outfolder, "refs_sequences_tmp.fa"), "w")
     for chr_id  in ref_part_sequences:
         for (start,stop), seq  in ref_part_sequences[chr_id].items():
-            refs_file.write(">{0}\n{1}\n".format(chr_id + str("^") + str(start) + "^" + str(stop), seq))
+            refs_file.write(">{0}\n{1}\n".format(str(chr_id) + str("^") + str(start) + "^" + str(stop), seq))
     refs_file.close()
 
-
+    del ref_part_sequences
 
     ######### FIND MEMS WITH MUMMER #############
     #############################################
@@ -285,18 +304,6 @@ def align_reads(args):
     #############################################
     #############################################
     #############################################
-
-
-
-    print("Read reference")
-    refs = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.ref, 'r'))} 
-    # modified = help_functions.check_reference_headers(refs)
-    # if modified:
-    #     print("Detected 1,..,22, MT, X, Y as header labels, treating these headers as: chr1,...,chr22, chrM, chrX, chrY")
-    refs_lengths = { acc : len(seq) for acc, seq in refs.items()} 
-    del refs
- 
-    print("Completed reading reference")
 
 
     print("Starting aligning reads.")

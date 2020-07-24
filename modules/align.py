@@ -3,6 +3,7 @@ import sys
 
 from collections import defaultdict
 from time import time
+from array import array
 import dill as pickle 
 import gffutils
 import pysam
@@ -20,6 +21,33 @@ from modules import sam_output
 from modules import mem_wrapper
 
 
+############### TMP #######
+from types import ModuleType, FunctionType
+from gc import get_referents
+
+# Custom objects know their class.
+# Function objects seem to know way too much, including modules.
+# Exclude modules as well.
+BLACKLIST = type, ModuleType, FunctionType
+
+
+def getsize(obj):
+    """sum size of object & members."""
+    if isinstance(obj, BLACKLIST):
+        raise TypeError('getsize() does not take argument of type: '+ str(type(obj)))
+    seen_ids = set()
+    size = 0
+    objects = [obj]
+    while objects:
+        need_referents = []
+        for obj in objects:
+            if not isinstance(obj, BLACKLIST) and id(obj) not in seen_ids:
+                seen_ids.add(id(obj))
+                size += sys.getsizeof(obj)
+                need_referents.append(obj)
+        objects = get_referents(*need_referents)
+    return size
+######################
 
 def import_data(args):
     segment_id_to_choordinates = help_functions.pickle_load( os.path.join(args.outfolder, 'segment_id_to_choordinates.pickle'))
@@ -37,6 +65,9 @@ def import_data(args):
     gene_to_small_segments = help_functions.pickle_load( os.path.join(args.outfolder, 'gene_to_small_segments.pickle') )
     max_intron_chr = help_functions.pickle_load( os.path.join(args.outfolder, 'max_intron_chr.pickle') )
 
+    chr_to_id = help_functions.pickle_load( os.path.join(args.outfolder, 'chr_to_id.pickle') )
+    id_to_chr = help_functions.pickle_load( os.path.join(args.outfolder, 'id_to_chr.pickle') )
+
     tiling_segment_id_to_choordinates = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_segment_id_to_choordinates.pickle'))
     tiling_ref_segment_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_ref_segment_sequences.pickle') )
     tiling_parts_to_segments = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_parts_to_segments.pickle') )
@@ -45,11 +76,30 @@ def import_data(args):
     tiling_structures = [tiling_segment_id_to_choordinates, tiling_segment_to_gene, tiling_parts_to_segments, tiling_gene_to_small_segments, tiling_ref_segment_sequences]
     # tiling_structures = []
 
+    # print("segment_id_to_choordinates:", getsize(segment_id_to_choordinates)//1000000)
+    # print("ref_segment_sequences:", getsize(ref_segment_sequences)//1000000)
+    # print("ref_exon_sequences:", getsize(ref_exon_sequences)//1000000)
+    # print("ref_flank_sequences:", getsize(ref_flank_sequences)//1000000)
+    # print("splices_to_transcripts:", getsize(splices_to_transcripts)//1000000)
+    # print("transcripts_to_splices:", getsize(transcripts_to_splices)//1000000)
+    # print("all_splice_pairs_annotations:", getsize(all_splice_pairs_annotations)//1000000)
+    # print("all_splice_sites_annotations:", getsize(all_splice_sites_annotations)//1000000)
+    # print("parts_to_segments:", getsize(parts_to_segments)//1000000)
+    # print("segment_to_gene:", getsize(segment_to_gene)//1000000)
+    # print("gene_to_small_segments:", getsize(gene_to_small_segments)//1000000)
+    # print("max_intron_chr:", getsize(max_intron_chr)//1000000)
+
+    # print("tiling_segment_id_to_choordinates:", getsize(tiling_segment_id_to_choordinates)//1000000)
+    # print("tiling_ref_segment_sequences:", getsize(tiling_ref_segment_sequences)//1000000)
+    # print("tiling_parts_to_segments:", getsize(tiling_parts_to_segments)//1000000)
+    # print("tiling_segment_to_gene:", getsize(tiling_segment_to_gene)//1000000)
+    # print("tiling_gene_to_small_segments:", getsize(tiling_gene_to_small_segments)//1000000)
+
     return segment_id_to_choordinates, ref_segment_sequences, ref_flank_sequences, splices_to_transcripts, \
             transcripts_to_splices, all_splice_pairs_annotations, \
             all_splice_sites_annotations, parts_to_segments,\
             segment_to_gene, gene_to_small_segments, max_intron_chr, \
-            ref_exon_sequences, tiling_structures
+            ref_exon_sequences, chr_to_id, id_to_chr, tiling_structures
 
 
 def annotate_guaranteed_optimal_bound(mems, is_rc, max_intron_chr, max_global_intron):
@@ -194,14 +244,15 @@ def find_exons(chr_id, mam_solution, ref_exon_sequences, ref_segment_sequences, 
             for m in part:
                 all_points.append(m.x)
                 all_points.append(m.y)
-                segm[(m.x, m.y)] = m
+                segm[(chr_id, m.x, m.y)] = m
                 start_points[m.x] = m
                 end_points[m.y] = m
             cover = {}
             for i, p1 in enumerate(sorted(all_points)):
                 cover[p1] = []
                 for j, p2 in enumerate(sorted(all_points)):
-                    if (p1, p2) in ref_exon_sequences[chr_id] or  (p1, p2) in segm: #exon_choordinates_to_id_chr
+                    key = array('L', [chr_id, p1, p2])
+                    if key.tobytes() in ref_exon_sequences or  (chr_id, p1, p2) in segm: #exon_choordinates_to_id_chr
                         cover[p1].append(p2)
 
 
@@ -215,8 +266,8 @@ def find_exons(chr_id, mam_solution, ref_exon_sequences, ref_segment_sequences, 
                 # print("paths[0]" , paths[0])
                 path = paths[0]
                 for (p1, p2) in zip(path[:-1], path[1:]):
-                    if (p1, p2) in segm:
-                        mam = segm[(p1, p2)]
+                    if (chr_id, p1, p2) in segm:
+                        mam = segm[(chr_id, p1, p2)]
                         exons.append((mam.x, mam.y, mam.c, mam.d, mam.ref_chr_id))
                     else:
                         if p1 in start_points:
@@ -252,15 +303,17 @@ def find_exons(chr_id, mam_solution, ref_exon_sequences, ref_segment_sequences, 
     covered = 0
     # for mam in mam_solution:
     for x, y, c, d, seq_id in exons:
-        if (x, y) in ref_exon_sequences[seq_id]:
-            seq = ref_exon_sequences[seq_id][(x, y)] 
+        key_tmp = array('L', [seq_id, x, y])
+        key = key_tmp.tobytes()
+        if key in ref_exon_sequences:
+            seq = ref_exon_sequences[key] 
             covered += d - c + 1
         else: 
-            if (x, y) in ref_segment_sequences[seq_id]:
-                seq = ref_segment_sequences[seq_id][(x, y)] 
+            if key in ref_segment_sequences:
+                seq = ref_segment_sequences[key] 
                 covered += d - c + 1
-            elif (x, y) in ref_flank_sequences[seq_id]:
-                seq = ref_flank_sequences[seq_id][(x, y)] 
+            elif key in ref_flank_sequences:
+                seq = ref_flank_sequences[key] 
                 covered += d - c + 1
             else:
                 print("Bug encountered, {0} is not in {1}".format((x, y), mam_solution))
@@ -339,6 +392,7 @@ def run_tiling_solution(mem_solution, tiling_ref_segment_sequences, ref_flank_se
 
 
 def align_single(reads, refs_lengths, args,  batch_number):
+    # print("reads:", getsize(reads)//1000000)
     auxillary_data = import_data(args)
     mems_path =  os.path.join( args.outfolder, "mummer_mems_batch_{0}.txt".format(batch_number) )
     mems_path_rc =  os.path.join( args.outfolder, "mummer_mems_batch_{0}_rc.txt".format(batch_number) )
@@ -346,19 +400,21 @@ def align_single(reads, refs_lengths, args,  batch_number):
     quadratic_instance_counter = 0
     max_global_intron = args.max_intron
     min_acc = args.min_acc
-    if batch_number == -1:
-        alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, "reads.sam"), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
-        warning_log_file = open(os.path.join(args.outfolder, "uLTRA.stderr"), "w")
-
-    else:  
-        alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, "reads_batch_{0}.sam".format(batch_number)), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
-        warning_log_file = open(os.path.join(args.outfolder, "uLTRA_batch_{0}.stderr".format(batch_number)), "w")
-
     segment_id_to_choordinates, ref_segment_sequences, ref_flank_sequences, splices_to_transcripts, \
     transcripts_to_splices, all_splice_pairs_annotations, \
     all_splice_sites_annotations, parts_to_segments, \
     segment_to_gene, gene_to_small_segments, max_intron_chr, \
-    ref_exon_sequences, tiling_structures = auxillary_data
+    ref_exon_sequences, chr_to_id, id_to_chr, tiling_structures = auxillary_data
+    # print(ref_flank_sequences.keys())
+    if batch_number == -1:
+        alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, "reads.sam"), "w", reference_names=list([id_to_chr[id_] for id_ in refs_lengths.keys()]), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
+        warning_log_file = open(os.path.join(args.outfolder, "uLTRA.stderr"), "w")
+
+    else:  
+        alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, "reads_batch_{0}.sam".format(batch_number)), "w", reference_names=list([id_to_chr[id_] for id_ in refs_lengths.keys()]), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
+        warning_log_file = open(os.path.join(args.outfolder, "uLTRA_batch_{0}.stderr".format(batch_number)), "w")
+
+
 
     tiling_segment_id_to_choordinates, tiling_segment_to_gene, \
     tiling_parts_to_segments, tiling_gene_to_small_segments, \
@@ -536,7 +592,7 @@ def align_single(reads, refs_lengths, args,  batch_number):
                     map_score = 0
 
 
-                sam_output.main(read_acc, read_seq, chr_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, alignment_outfile, is_rc, is_secondary, map_score, aln_score = alignment_score)
+                sam_output.main(read_acc, read_seq, id_to_chr[chr_id], classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, alignment_outfile, is_rc, is_secondary, map_score, aln_score = alignment_score)
                 read_accessions_with_mappings.add(read_acc)
 
 

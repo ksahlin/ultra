@@ -3,6 +3,7 @@ import sys
 import re
 import math
 from itertools import groupby 
+from array import array
 # import parasail
 import edlib
 
@@ -187,7 +188,7 @@ def get_unique_exon_and_flank_locations(solution, parts_to_segments, segment_id_
     # print(solution)
     for mem in solution:
         ref_chr_id, ref_start, ref_stop =  mem.exon_part_id.split('^')
-        ref_start, ref_stop = int(ref_start), int(ref_stop)
+        ref_chr_id, ref_start, ref_stop = int(ref_chr_id), int(ref_start), int(ref_stop)
         # print("processing", mem)
         if len(unique_part_locations) == 0 or (ref_chr_id, ref_start, ref_stop) != unique_part_locations[-1]: # not to add repeated identical parts
             unique_part_locations.append((ref_chr_id, ref_start, ref_stop))
@@ -284,18 +285,6 @@ def get_unique_segment_and_flank_choordinates(segment_hit_locations, partial_seg
         if (ref_chr_id, s_start, s_stop) in partial_segment_hit_locations:
             segm_ref_start, segm_ref_stop, segm_read_start, segm_read_stop = partial_segment_hit_locations[(ref_chr_id, s_start, s_stop)]
             unique_segment_choordinates_partial_hits[(ref_chr_id, s_start, s_stop) ] =  (ref_chr_id, segm_ref_start, segm_ref_stop, exon_id)
-
-        # also add all small exons that may be smaller than minimum MEM size
-        # unique_genes = set(gene_id for exon_id in exon_ids for gene_id in segment_to_gene[exon_id])
-        
-        # unique_genes = set(gene_id for gene_id in segment_to_gene[exon_id])
-        # small_segments = set(small_segment_id for gene_id in unique_genes for small_segment_id in gene_to_small_segments[gene_id]) 
-        # # print(small_segments)
-        # for small_segment_id in small_segments:
-        #     small_s_start, small_s_stop = segment_id_to_choordinates[small_segment_id]
-        #     if (ref_chr_id,small_s_start, small_s_stop) not in unique_segment_choordinates_old:
-        #         # print("adding small exon,", small_s_stop - small_s_start)
-        #         unique_segment_choordinates_old[ (ref_chr_id, small_s_start, small_s_stop) ].add(small_segment_id)
 
     for (ref_chr_id, ref_start, ref_stop) in flank_hit_locations:
         # print((ref_start, ref_stop), exon_ids)
@@ -456,7 +445,9 @@ def main(solution, ref_segment_sequences, ref_flank_sequences, parts_to_segments
     # as [1:11], therefore we subtract 1 from the end of the interval before adding it to MAM instance
     mam_instance = []
     for (ref_chr_id, s_start, s_stop), all_segm_ids in sorted(unique_segment_choordinates.items(), key=lambda x: x[0][1]):
-        segment_seq = ref_segment_sequences[ref_chr_id][(s_start, s_stop)]
+        key_tmp = array('L', [ref_chr_id, s_start, s_stop])
+        key = key_tmp.tobytes()
+        segment_seq = ref_segment_sequences[key]
         segm_id = all_segm_ids.pop()
         # print("Testing full segment", s_start, s_stop, segm_id, segment_seq)
         add_segment_to_mam(read_seq, ref_chr_id, segment_seq, s_start, s_stop, segm_id, mam_instance, min_acc, annot_label = '_full_segment' )
@@ -464,7 +455,9 @@ def main(solution, ref_segment_sequences, ref_flank_sequences, parts_to_segments
 
     # add the flanks if any in the solution But they are required to be start and end flanks of the part MEMs and not overlapping any exons (i.e., the exon hits to be considered)
     for (ref_chr_id, f_start, f_stop), _ in sorted(unique_flank_choordinates.items(), key=lambda x: x[0][1]):
-        flank_seq = ref_flank_sequences[ref_chr_id][(f_start, f_stop)]
+        key_tmp = array('L', [ref_chr_id, f_start, f_stop])
+        key = key_tmp.tobytes()
+        flank_seq = ref_flank_sequences[key]
         flank_id = "flank_{0}_{1}".format(f_start, f_stop)
         # print("Testing full flank:", f_start, f_stop, flank_seq )
         # if (f_stop <= segment_hit_locations[0][1]) or (segment_hit_locations[-1][2] <= f_start): # is start flank
@@ -491,12 +484,10 @@ def main(solution, ref_segment_sequences, ref_flank_sequences, parts_to_segments
     # print(last_part_start <= last_valid_mam_start, "OMG2")
     segm_already_tried = set()
     for (ref_chr_id, e_start, e_stop) in unique_segment_choordinates_partial_hits:
-        # ref_chr_id, e_start, e_stop, exon_id = unique_segment_choordinates_partial_hits[(ref_chr_id, s_start, s_stop)]
+        key_tmp = array('L', [ref_chr_id, e_start, e_stop])
+        key = key_tmp.tobytes()
         ref_chr_id, s_start, s_stop, exon_id = unique_segment_choordinates_partial_hits[(ref_chr_id, e_start, e_stop)]
-        # is first or last hit exon only
-        # print(e_stop, first_valid_mam_stop, first_part_stop, segment_hit_locations[0][2])
-        # print(e_start, last_valid_mam_start, last_part_start, segment_hit_locations[-1][1])
-        segment_seq = ref_segment_sequences[ref_chr_id][(e_start, e_stop)]        
+        segment_seq = ref_segment_sequences[key]        
         if e_stop <= final_first_stop: # is start exon
             partial_segm_seq = segment_seq[s_start - e_start:  ]  # We allow only semi global hit towards one end (the upstream end of the read)
             # print()
@@ -518,8 +509,11 @@ def main(solution, ref_segment_sequences, ref_flank_sequences, parts_to_segments
     # finally add eventual partial hits of the flanks if any in the solution But they are required not to overlap any exons 
     segm_already_tried = set()
     for (ref_chr_id, f_start, f_stop) in unique_flank_choordinates_partial_hits:
+        key_tmp = array('L', [ref_chr_id, f_start, f_stop])
+        key = key_tmp.tobytes()
+
         ref_chr_id, s_start, s_stop = unique_flank_choordinates_partial_hits[(ref_chr_id, f_start, f_stop)]
-        flank_seq = ref_flank_sequences[ref_chr_id][(f_start, f_stop)]
+        flank_seq = ref_flank_sequences[key]
         flank_id = "flank_{0}_{1}".format(f_start, f_stop)
 
         partial_flank_seq = flank_seq[s_start - f_start:  ]   # segment is MEM coordinated i.e. inclusive, so we subtract one here
