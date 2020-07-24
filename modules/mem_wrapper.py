@@ -105,6 +105,7 @@ def get_mem_records(mems_path, reads):
                 vals =  line.split() #11404_11606           1     11405       202
                 exon_part_id = vals[0]
                 chr_id, ref_coord_start, ref_coord_end = exon_part_id.split('^')
+                chr_id = int(chr_id)
                 mem_len = int(vals[3])
                 # convert to 0-indexed reference as in python
                 # however, for MEM length last coordinate is inclusive of the hit in MEM solvers, not as in python end-indexing
