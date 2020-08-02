@@ -42,7 +42,7 @@ def add_tiling(tiling_segment_id, p1, p2, active_gene_ids, active_start, active_
 
     # tiling_segment_name = "segm_{0}_{1}_{2}".format(chr_id, p1 + k - min_segment_size, p2)
     tiling_segment_name = tiling_segment_id
-    tiling_segment_id_to_choordinates[tiling_segment_name] = (p1 + k - min_segment_size, p2)
+    tiling_segment_id_to_choordinates[tiling_segment_name] = (max(0, p1 + k - min_segment_size), p2)
     tiling_segment_to_ref[tiling_segment_name] = chr_id
     # tiling_parts_to_segments[chr_id][(active_start, active_stop)].add(tiling_segment_name)
     tiling_parts_to_segments[chr_id][(active_start, active_stop)].append(tiling_segment_name)
