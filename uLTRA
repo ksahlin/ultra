@@ -7,6 +7,7 @@ import os
 from time import time
 import itertools
 from itertools import islice, chain
+from struct import *
 
 import argparse
 import errno
@@ -60,7 +61,7 @@ def prep_splicing(args):
     segment_to_ref, parts_to_segments, splices_to_transcripts, \
     transcripts_to_splices, all_splice_pairs_annotations, \
     all_splice_sites_annotations, segment_id_to_choordinates, \
-    segment_to_gene, gene_to_small_segments, flanks_to_gene, \
+    segment_to_gene, gene_to_small_segments, flank_choordinates, \
     max_intron_chr, exon_choordinates_to_id, chr_to_id, id_to_chr, tiling_structures = augmented_gene.create_graph_from_exon_parts(db, args.flank_size, args.small_exon_threshold, args.min_segm )
 
     # dump to pickle here! Both graph and reference seqs
@@ -75,7 +76,7 @@ def prep_splicing(args):
     help_functions.pickle_dump(args, segment_id_to_choordinates, 'segment_id_to_choordinates.pickle')
     help_functions.pickle_dump(args, segment_to_gene, 'segment_to_gene.pickle')
     help_functions.pickle_dump(args, gene_to_small_segments, 'gene_to_small_segments.pickle')
-    help_functions.pickle_dump(args, flanks_to_gene, 'flanks_to_gene.pickle')
+    help_functions.pickle_dump(args, flank_choordinates, 'flank_choordinates.pickle')
     help_functions.pickle_dump(args, max_intron_chr, 'max_intron_chr.pickle')
     help_functions.pickle_dump(args, exon_choordinates_to_id, 'exon_choordinates_to_id.pickle')
     help_functions.pickle_dump(args, chr_to_id, 'chr_to_id.pickle')
@@ -90,11 +91,10 @@ def prep_splicing(args):
 
 
 def prep_seqs(args):
-    # genes_to_ref = help_functions.pickle_load( os.path.join(args.outfolder, 'genes_to_ref.pickle') )
     parts_to_segments = help_functions.pickle_load( os.path.join(args.outfolder, 'parts_to_segments.pickle') )
     segment_id_to_choordinates = help_functions.pickle_load( os.path.join(args.outfolder, 'segment_id_to_choordinates.pickle') )
     segment_to_ref = help_functions.pickle_load( os.path.join(args.outfolder, 'segment_to_ref.pickle') )
-    flanks_to_gene = help_functions.pickle_load( os.path.join(args.outfolder, 'flanks_to_gene.pickle') )
+    flank_choordinates = help_functions.pickle_load( os.path.join(args.outfolder, 'flank_choordinates.pickle') )
     exon_choordinates_to_id = help_functions.pickle_load( os.path.join(args.outfolder, 'exon_choordinates_to_id.pickle') )
     chr_to_id = help_functions.pickle_load( os.path.join(args.outfolder, 'chr_to_id.pickle') )
     id_to_chr = help_functions.pickle_load( os.path.join(args.outfolder, 'id_to_chr.pickle') )
@@ -119,49 +119,38 @@ def prep_seqs(args):
     refs_lengths = { acc_id : len(seq) for acc_id, seq in refs_id.items()} 
     help_functions.pickle_dump(args, refs_lengths, 'refs_lengths.pickle')
 
-    # modified = help_functions.check_reference_headers(refs)
-    # if modified:
-    #     print("Detected 1,..,22, MT, X, Y as header labels, treating these headers as: chr1,...,chr22, chrM, chrX, chrY")
     print( "Number of ref seqs in fasta:", len(refs.keys()))
 
-    not_in_ref = set(parts_to_segments.keys()) - set(refs_id.keys())
-    if not_in_ref:
-        print("Warning: Detected {0} sequences that are in annotation but not in reference fasta. Using only sequences present in fasta. The following annotations cannot be detected:\n".format(len(not_in_ref)))
-        for s in not_in_ref:
-            print(id_to_chr[s])
+    # not_in_ref = set(parts_to_segments.keys()) - set(refs_id.keys())
+    # if not_in_ref:
+    #     print("Warning: Detected {0} sequences that are in annotation but not in reference fasta. Using only sequences present in fasta. The following annotations cannot be detected:\n".format(len(not_in_ref)))
+    #     for s in not_in_ref:
+    #         print(id_to_chr[s])
     if not_in_annot:
         print("Warning: Detected {0} sequences in reference fasta that are not in annotation. Will not be able to infer annotations from alignments on the following refernece sequences:\n".format(len(not_in_annot)))
         for s in not_in_annot:
-            print(s, "with length:{0}".format(refs_lengths[chr_to_id[s]]))
-    # print(flanks_to_gene)
-    ref_part_sequences, ref_flank_sequences = augmented_gene.get_part_sequences_from_choordinates(parts_to_segments, flanks_to_gene, refs_id)
-    # print(len(ref_part_sequences))
-    # print(len(ref_flank_sequences))
+            print(s, "with length:{0}".format(len(refs[s])))
+    # ref_part_sequences, ref_flank_sequences = augmented_gene.get_part_sequences_from_choordinates(parts_to_segments, flank_choordinates, refs_id)
+    ref_part_sequences = augmented_gene.get_sequences_from_choordinates(parts_to_segments, refs_id)
+    ref_flank_sequences = augmented_gene.get_sequences_from_choordinates(flank_choordinates, refs_id)
+
 
     augmented_gene.mask_abundant_kmers(ref_part_sequences, args.min_mem, args.mask_threshold)
     augmented_gene.mask_abundant_kmers(ref_flank_sequences, args.min_mem, args.mask_threshold)
 
     ref_part_sequences = help_functions.update_nested(ref_part_sequences, ref_flank_sequences)
-    # print()
-    # print(ref_part_sequences)
-    ref_segment_sequences = augmented_gene.get_segment_sequences_from_segment_id(segment_id_to_choordinates, segment_to_ref, refs_id)
-    ref_flank_sequences = augmented_gene.get_sequences_from_choordinates(flanks_to_gene, refs_id)
+    ref_segment_sequences = augmented_gene.get_sequences_from_choordinates(segment_id_to_choordinates, refs_id)
+    # ref_flank_sequences = augmented_gene.get_sequences_from_choordinates(flank_choordinates, refs_id)
     ref_exon_sequences = augmented_gene.get_sequences_from_choordinates(exon_choordinates_to_id, refs_id)
-    # print("ref_segment_sequences", ref_segment_sequences)
     help_functions.pickle_dump(args, segment_id_to_choordinates, 'segment_id_to_choordinates.pickle')
     help_functions.pickle_dump(args, ref_part_sequences, 'ref_part_sequences.pickle')
     help_functions.pickle_dump(args, ref_segment_sequences, 'ref_segment_sequences.pickle')
     help_functions.pickle_dump(args, ref_flank_sequences, 'ref_flank_sequences.pickle')
     help_functions.pickle_dump(args, ref_exon_sequences, 'ref_exon_sequences.pickle')
 
-    tiling_ref_segment_sequences = augmented_gene.get_segment_sequences_from_segment_id(tiling_segment_id_to_choordinates, tiling_segment_to_ref, refs_id)
+    tiling_ref_segment_sequences = augmented_gene.get_sequences_from_choordinates(tiling_segment_id_to_choordinates, refs_id)
     help_functions.pickle_dump(args, tiling_ref_segment_sequences, 'tiling_ref_segment_sequences.pickle')
-    # gene_graphs, splices_to_transcripts, annotated_transcripts = splice_graph.create_graph(db)
-    # topological_sorts = splice_graph.create_global_source_sink(gene_graphs)    
-    # paths = splice_graph.derive_path_cover(gene_graphs, topological_sorts)
-    # ref_part_sequences = splice_graph.get_sequences_from_choordinates(gene_graphs, args.ref)
-    # help_functions.pickle_dump(args, topological_sorts, 'top_sorts.pickle')
-    # help_functions.pickle_dump(args, paths, 'paths.pickle')
+
 
 
 def batch(dictionary, size, batch_type):
@@ -219,91 +208,92 @@ def align_reads(args):
     # print(ref_part_sequences)
     ref_path = os.path.join(args.outfolder, "refs_sequences.fa")
     refs_file = open(ref_path, 'w') #open(os.path.join(outfolder, "refs_sequences_tmp.fa"), "w")
-    for chr_id  in ref_part_sequences:
-        for (start,stop), seq  in ref_part_sequences[chr_id].items():
-            refs_file.write(">{0}\n{1}\n".format(str(chr_id) + str("^") + str(start) + "^" + str(stop), seq))
+    for sequence_id, seq  in ref_part_sequences.items():
+        chr_id, start, stop = unpack('LLL',sequence_id)
+        # for (start,stop), seq  in ref_part_sequences[chr_id].items():
+        refs_file.write(">{0}\n{1}\n".format(str(chr_id) + str("^") + str(start) + "^" + str(stop), seq))
     refs_file.close()
 
     del ref_part_sequences
 
-    ######### FIND MEMS WITH MUMMER #############
-    #############################################
-    #############################################
+    # ######### FIND MEMS WITH MUMMER #############
+    # #############################################
+    # #############################################
 
-    mummer_start = time()
-    if args.nr_cores == 1:
-        print("Processing reads for MEM finding")
-        reads_tmp = open(os.path.join(args.outfolder, 'reads_tmp.fq'), 'w')
-        for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r')):
-            # print(seq)
-            # print(help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA))
-            reads_tmp.write('>{0}\n{1}\n'.format(acc, help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5)))
-        reads_tmp.close()
-        args.reads_tmp = reads_tmp.name
-        print("Finished processing reads for MEM finding ")
+    # mummer_start = time()
+    # if args.nr_cores == 1:
+    #     print("Processing reads for MEM finding")
+    #     reads_tmp = open(os.path.join(args.outfolder, 'reads_tmp.fq'), 'w')
+    #     for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r')):
+    #         # print(seq)
+    #         # print(help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA))
+    #         reads_tmp.write('>{0}\n{1}\n'.format(acc, help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5)))
+    #     reads_tmp.close()
+    #     args.reads_tmp = reads_tmp.name
+    #     print("Finished processing reads for MEM finding ")
 
-        mummer_out_path =  os.path.join( args.outfolder, "mummer_mems_batch_-1.txt" )
-        print("Running MEM finding forward") 
-        mem_wrapper.find_mems_slamem(args.outfolder, args.reads_tmp, ref_path, mummer_out_path, args.min_mem)
-        print("Completed MEM finding forward")
+    #     mummer_out_path =  os.path.join( args.outfolder, "mummer_mems_batch_-1.txt" )
+    #     print("Running MEM finding forward") 
+    #     mem_wrapper.find_mems_slamem(args.outfolder, args.reads_tmp, ref_path, mummer_out_path, args.min_mem)
+    #     print("Completed MEM finding forward")
 
-        print("Processing reverse complement reads for MEM finding")
-        reads_rc = open(os.path.join(args.outfolder, 'reads_rc.fq'), 'w')
-        for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r')):
-            # print(help_functions.reverse_complement(seq))
-            # print(help_functions.remove_read_polyA_ends(help_functions.reverse_complement(seq), args.reduce_read_ployA))
-            reads_rc.write('>{0}\n{1}\n'.format(acc, help_functions.reverse_complement(help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5))))
-        reads_rc.close()
-        args.reads_rc = reads_rc.name
-        print("Finished processing reverse complement reads for MEM finding")
+    #     print("Processing reverse complement reads for MEM finding")
+    #     reads_rc = open(os.path.join(args.outfolder, 'reads_rc.fq'), 'w')
+    #     for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r')):
+    #         # print(help_functions.reverse_complement(seq))
+    #         # print(help_functions.remove_read_polyA_ends(help_functions.reverse_complement(seq), args.reduce_read_ployA))
+    #         reads_rc.write('>{0}\n{1}\n'.format(acc, help_functions.reverse_complement(help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5))))
+    #     reads_rc.close()
+    #     args.reads_rc = reads_rc.name
+    #     print("Finished processing reverse complement reads for MEM finding")
 
-        mummer_out_path =  os.path.join(args.outfolder, "mummer_mems_batch_-1_rc.txt" )
-        print("Running MEM finding reverse")
-        mem_wrapper.find_mems_slamem(args.outfolder, args.reads_rc, ref_path, mummer_out_path, args.min_mem)
-        print("Completed MEM finding reverse")
+    #     mummer_out_path =  os.path.join(args.outfolder, "mummer_mems_batch_-1_rc.txt" )
+    #     print("Running MEM finding reverse")
+    #     mem_wrapper.find_mems_slamem(args.outfolder, args.reads_rc, ref_path, mummer_out_path, args.min_mem)
+    #     print("Completed MEM finding reverse")
     
-    else:
-        reads = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r'))}
-        total_nt = sum([len(seq) for seq in reads.values() ])
-        batch_size = int(total_nt/int(args.nr_cores) + 1)
-        print("batch nt:", batch_size, "total_nt:", total_nt)
-        read_batches = batch(reads, batch_size, 'nt')
+    # else:
+    #     reads = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r'))}
+    #     total_nt = sum([len(seq) for seq in reads.values() ])
+    #     batch_size = int(total_nt/int(args.nr_cores) + 1)
+    #     print("batch nt:", batch_size, "total_nt:", total_nt)
+    #     read_batches = batch(reads, batch_size, 'nt')
         
-        #### TMP remove not to call mummer repeatedly when bugfixing #### 
+    #     #### TMP remove not to call mummer repeatedly when bugfixing #### 
         
-        batch_args = []
-        for i, read_batch_dict in enumerate(read_batches):
-            print(len(read_batch_dict))
-            read_batch_temp_file = open(os.path.join(args.outfolder, "reads_batch_{0}.fa".format(i)), "w")
-            read_batch_temp_file_rc = open(os.path.join(args.outfolder, "reads_batch_{0}_rc.fa".format(i) ), "w")
-            for acc, seq in read_batch_dict.items():
-                read_batch_temp_file.write('>{0}\n{1}\n'.format(acc, help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5)))
-            read_batch_temp_file.close()
+    #     batch_args = []
+    #     for i, read_batch_dict in enumerate(read_batches):
+    #         print(len(read_batch_dict))
+    #         read_batch_temp_file = open(os.path.join(args.outfolder, "reads_batch_{0}.fa".format(i)), "w")
+    #         read_batch_temp_file_rc = open(os.path.join(args.outfolder, "reads_batch_{0}_rc.fa".format(i) ), "w")
+    #         for acc, seq in read_batch_dict.items():
+    #             read_batch_temp_file.write('>{0}\n{1}\n'.format(acc, help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5)))
+    #         read_batch_temp_file.close()
 
-            for acc, seq in read_batch_dict.items():
-                read_batch_temp_file_rc.write('>{0}\n{1}\n'.format(acc, help_functions.reverse_complement(help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5))))
-            read_batch_temp_file_rc.close()
+    #         for acc, seq in read_batch_dict.items():
+    #             read_batch_temp_file_rc.write('>{0}\n{1}\n'.format(acc, help_functions.reverse_complement(help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5))))
+    #         read_batch_temp_file_rc.close()
             
-            read_batch = read_batch_temp_file.name
-            read_batch_rc = read_batch_temp_file_rc.name
-            mummer_batch_out_path =  os.path.join( args.outfolder, "mummer_mems_batch_{0}.txt".format(i) )
-            mummer_batch_out_path_rc =  os.path.join(args.outfolder, "mummer_mems_batch_{0}_rc.txt".format(i) )
-            batch_args.append( (args.outfolder, read_batch, ref_path, mummer_batch_out_path, args.min_mem ) )
-            batch_args.append( (args.outfolder, read_batch_rc, ref_path, mummer_batch_out_path_rc, args.min_mem ) )
+    #         read_batch = read_batch_temp_file.name
+    #         read_batch_rc = read_batch_temp_file_rc.name
+    #         mummer_batch_out_path =  os.path.join( args.outfolder, "mummer_mems_batch_{0}.txt".format(i) )
+    #         mummer_batch_out_path_rc =  os.path.join(args.outfolder, "mummer_mems_batch_{0}_rc.txt".format(i) )
+    #         batch_args.append( (args.outfolder, read_batch, ref_path, mummer_batch_out_path, args.min_mem ) )
+    #         batch_args.append( (args.outfolder, read_batch_rc, ref_path, mummer_batch_out_path_rc, args.min_mem ) )
 
-        pool = Pool(processes=int(args.nr_cores))
-        results = pool.starmap(mem_wrapper.find_mems_slamem, batch_args)
-        pool.close()
-        pool.join() 
+    #     pool = Pool(processes=int(args.nr_cores))
+    #     results = pool.starmap(mem_wrapper.find_mems_slamem, batch_args)
+    #     pool.close()
+    #     pool.join() 
         
-        ####################################################################
+    #     ####################################################################
 
-        pass
+    #     pass
 
-    print("Time for mummer to find mems:{0} seconds.".format(time()-mummer_start))
-    #############################################
-    #############################################
-    #############################################
+    # print("Time for mummer to find mems:{0} seconds.".format(time()-mummer_start))
+    # #############################################
+    # #############################################
+    # #############################################
 
 
     print("Starting aligning reads.")
