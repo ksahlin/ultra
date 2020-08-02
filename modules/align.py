@@ -50,9 +50,7 @@ def getsize(obj):
 ######################
 
 def import_data(args):
-    segment_id_to_choordinates = help_functions.pickle_load( os.path.join(args.outfolder, 'segment_id_to_choordinates.pickle'))
-    # exon_id_to_choordinates = help_functions.pickle_load( os.path.join(args.outfolder, 'exon_id_to_choordinates.pickle'))
-    # exon_choordinates_to_id = help_functions.pickle_load( os.path.join(args.outfolder, 'exon_choordinates_to_id.pickle'))
+    # segment_id_to_choordinates = help_functions.pickle_load( os.path.join(args.outfolder, 'segment_id_to_choordinates.pickle'))
     ref_segment_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'ref_segment_sequences.pickle') )
     ref_exon_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'ref_exon_sequences.pickle') )
     ref_flank_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'ref_flank_sequences.pickle') )
@@ -68,34 +66,36 @@ def import_data(args):
     chr_to_id = help_functions.pickle_load( os.path.join(args.outfolder, 'chr_to_id.pickle') )
     id_to_chr = help_functions.pickle_load( os.path.join(args.outfolder, 'id_to_chr.pickle') )
 
-    tiling_segment_id_to_choordinates = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_segment_id_to_choordinates.pickle'))
+    # tiling_segment_id_to_choordinates = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_segment_id_to_choordinates.pickle'))
     tiling_ref_segment_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_ref_segment_sequences.pickle') )
     tiling_parts_to_segments = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_parts_to_segments.pickle') )
     tiling_segment_to_gene = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_segment_to_gene.pickle') )
     tiling_gene_to_small_segments = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_gene_to_small_segments.pickle') )
-    tiling_structures = [tiling_segment_id_to_choordinates, tiling_segment_to_gene, tiling_parts_to_segments, tiling_gene_to_small_segments, tiling_ref_segment_sequences]
+    tiling_structures = [tiling_segment_to_gene, tiling_parts_to_segments, tiling_gene_to_small_segments, tiling_ref_segment_sequences]
     # tiling_structures = []
 
     # print("segment_id_to_choordinates:", getsize(segment_id_to_choordinates)//1000000)
-    # print("ref_segment_sequences:", getsize(ref_segment_sequences)//1000000)
-    # print("ref_exon_sequences:", getsize(ref_exon_sequences)//1000000)
-    # print("ref_flank_sequences:", getsize(ref_flank_sequences)//1000000)
-    # print("splices_to_transcripts:", getsize(splices_to_transcripts)//1000000)
-    # print("transcripts_to_splices:", getsize(transcripts_to_splices)//1000000)
-    # print("all_splice_pairs_annotations:", getsize(all_splice_pairs_annotations)//1000000)
-    # print("all_splice_sites_annotations:", getsize(all_splice_sites_annotations)//1000000)
-    # print("parts_to_segments:", getsize(parts_to_segments)//1000000)
-    # print("segment_to_gene:", getsize(segment_to_gene)//1000000)
-    # print("gene_to_small_segments:", getsize(gene_to_small_segments)//1000000)
-    # print("max_intron_chr:", getsize(max_intron_chr)//1000000)
+    print("ref_segment_sequences:", getsize(ref_segment_sequences)//1000000)
+    print("ref_exon_sequences:", getsize(ref_exon_sequences)//1000000)
+    print("ref_flank_sequences:", getsize(ref_flank_sequences)//1000000)
+    print("splices_to_transcripts:", getsize(splices_to_transcripts)//1000000)
+    print("transcripts_to_splices:", getsize(transcripts_to_splices)//1000000)
+    print("all_splice_pairs_annotations:", getsize(all_splice_pairs_annotations)//1000000)
+    print("all_splice_sites_annotations:", getsize(all_splice_sites_annotations)//1000000)
+    print("parts_to_segments:", getsize(parts_to_segments)//1000000)
+    print("segment_to_gene:", getsize(segment_to_gene)//1000000)
+    print("gene_to_small_segments:", getsize(gene_to_small_segments)//1000000)
+    print("max_intron_chr:", getsize(max_intron_chr)//1000000)
+    print("chr_to_id:", getsize(chr_to_id)//1000000)
+    print("id_to_chr:", getsize(id_to_chr)//1000000)
 
     # print("tiling_segment_id_to_choordinates:", getsize(tiling_segment_id_to_choordinates)//1000000)
-    # print("tiling_ref_segment_sequences:", getsize(tiling_ref_segment_sequences)//1000000)
-    # print("tiling_parts_to_segments:", getsize(tiling_parts_to_segments)//1000000)
-    # print("tiling_segment_to_gene:", getsize(tiling_segment_to_gene)//1000000)
-    # print("tiling_gene_to_small_segments:", getsize(tiling_gene_to_small_segments)//1000000)
+    print("tiling_ref_segment_sequences:", getsize(tiling_ref_segment_sequences)//1000000)
+    print("tiling_parts_to_segments:", getsize(tiling_parts_to_segments)//1000000)
+    print("tiling_segment_to_gene:", getsize(tiling_segment_to_gene)//1000000)
+    print("tiling_gene_to_small_segments:", getsize(tiling_gene_to_small_segments)//1000000)
 
-    return segment_id_to_choordinates, ref_segment_sequences, ref_flank_sequences, splices_to_transcripts, \
+    return ref_segment_sequences, ref_flank_sequences, splices_to_transcripts, \
             transcripts_to_splices, all_splice_pairs_annotations, \
             all_splice_sites_annotations, parts_to_segments,\
             segment_to_gene, gene_to_small_segments, max_intron_chr, \
@@ -252,7 +252,7 @@ def find_exons(chr_id, mam_solution, ref_exon_sequences, ref_segment_sequences, 
                 cover[p1] = []
                 for j, p2 in enumerate(sorted(all_points)):
                     key = array('L', [chr_id, p1, p2])
-                    if key.tobytes() in ref_exon_sequences or  (chr_id, p1, p2) in segm: #exon_choordinates_to_id_chr
+                    if key.tobytes() in ref_exon_sequences or  (chr_id, p1, p2) in segm:
                         cover[p1].append(p2)
 
 
@@ -287,8 +287,6 @@ def find_exons(chr_id, mam_solution, ref_exon_sequences, ref_segment_sequences, 
                             m = end_points[p2]
                             d = m.d
                             y = m.y                            
-                        # exon_id = exon_choordinates_to_id_chr[(p1, p2)].pop()
-                        # exon_choordinates_to_id_chr[(p1, p2)].add(exon_id)
                         exons.append((x, y, c, d, chr_id))
 
             else:  #if not, simply give up and put the small spurious intron caused by optimal solution is not containing adjacent segments
@@ -350,7 +348,7 @@ def get_exact_alignment(read_seq, created_ref_seq, mam_sol_exons_length):
 
 
 def run_tiling_solution(mem_solution, tiling_ref_segment_sequences, ref_flank_sequences, tiling_parts_to_segments, \
-                        tiling_segment_id_to_choordinates, tiling_segment_to_gene, tiling_gene_to_small_segments, \
+                        tiling_segment_to_gene, tiling_gene_to_small_segments, \
                         read_seq, warning_log_file, min_acc, \
                         chr_id, ref_exon_sequences, \
                         all_splice_pairs_annotations,
@@ -360,7 +358,7 @@ def run_tiling_solution(mem_solution, tiling_ref_segment_sequences, ref_flank_se
                         predicted_exons, annotated_to_transcript_id):
 
     non_covered_regions_tiling, mam_value_tiling, mam_solution_tiling = classify_read_with_mams.main(mem_solution, tiling_ref_segment_sequences, ref_flank_sequences, tiling_parts_to_segments, \
-                                                                                                            tiling_segment_id_to_choordinates, tiling_segment_to_gene, tiling_gene_to_small_segments, \
+                                                                                                            tiling_segment_to_gene, tiling_gene_to_small_segments, \
                                                                                                             read_seq, warning_log_file, min_acc, is_tiling_instance = True)
 
     # print("TILING finished Mam solution Tiling!!:",mam_value_tiling, mam_solution_tiling)
@@ -394,13 +392,15 @@ def run_tiling_solution(mem_solution, tiling_ref_segment_sequences, ref_flank_se
 def align_single(reads, refs_lengths, args,  batch_number):
     # print("reads:", getsize(reads)//1000000)
     auxillary_data = import_data(args)
+    import time
+    time.sleep(1000)
     mems_path =  os.path.join( args.outfolder, "mummer_mems_batch_{0}.txt".format(batch_number) )
     mems_path_rc =  os.path.join( args.outfolder, "mummer_mems_batch_{0}_rc.txt".format(batch_number) )
     nlog_n_instance_counter = 0
     quadratic_instance_counter = 0
     max_global_intron = args.max_intron
     min_acc = args.min_acc
-    segment_id_to_choordinates, ref_segment_sequences, ref_flank_sequences, splices_to_transcripts, \
+    ref_segment_sequences, ref_flank_sequences, splices_to_transcripts, \
     transcripts_to_splices, all_splice_pairs_annotations, \
     all_splice_sites_annotations, parts_to_segments, \
     segment_to_gene, gene_to_small_segments, max_intron_chr, \
@@ -416,7 +416,7 @@ def align_single(reads, refs_lengths, args,  batch_number):
 
 
 
-    tiling_segment_id_to_choordinates, tiling_segment_to_gene, \
+    tiling_segment_to_gene, \
     tiling_parts_to_segments, tiling_gene_to_small_segments, \
     tiling_ref_segment_sequences = tiling_structures # unpacking tiling structures
 
@@ -503,7 +503,7 @@ def align_single(reads, refs_lengths, args,  batch_number):
                 read_seq = read_seq
             # print("mem solution:", is_rc, chaining_score, mem_solution)
             non_covered_regions, mam_value, mam_solution = classify_read_with_mams.main(mem_solution, ref_segment_sequences, ref_flank_sequences, parts_to_segments, \
-                                                                                                                    segment_id_to_choordinates, segment_to_gene, gene_to_small_segments, \
+                                                                                                                    segment_to_gene, gene_to_small_segments, \
                                                                                                                     read_seq, warning_log_file, min_acc)
             # print("finished Mam solution:",mam_value, mam_solution)
             # for zzz2 in mam_solution:
@@ -531,7 +531,7 @@ def align_single(reads, refs_lengths, args,  batch_number):
                 # if "NIC" in classification or (classification != 'FSM' and len(non_covered_regions) >= 3 and (max(non_covered_regions[1:-1]) > args.non_covered_cutoff)):
                     classification, alignment_score, non_covered_regions, \
                     read_aln, ref_aln, predicted_exons, annotated_to_transcript_id, covered = run_tiling_solution(mem_solution, tiling_ref_segment_sequences, ref_flank_sequences, tiling_parts_to_segments, \
-                                        tiling_segment_id_to_choordinates, tiling_segment_to_gene, tiling_gene_to_small_segments, \
+                                        tiling_segment_to_gene, tiling_gene_to_small_segments, \
                                         read_seq, warning_log_file, min_acc, chr_id, ref_exon_sequences, \
                                         all_splice_pairs_annotations,
                                         splices_to_transcripts, transcripts_to_splices, \
