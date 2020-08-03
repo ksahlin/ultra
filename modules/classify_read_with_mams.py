@@ -2,7 +2,7 @@
 import sys
 import re
 import math
-from itertools import groupby 
+from itertools import groupby, zip_longest
 from array import array
 from struct import *
 # import parasail
@@ -16,6 +16,13 @@ from modules import help_functions
 
 mam = namedtuple('Mam', ['x', 'y', 'c', 'd', 'val', 'j', "min_segment_length", "mam_id", "ref_chr_id"])
 globals()[mam.__name__] = mam # Global needed for multiprocessing
+
+
+def grouper(iterable, n, fillvalue=None):
+    "Collect data into fixed-length chunks or blocks"
+    # grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx"
+    args = [iter(iterable)] * n
+    return zip_longest(*args, fillvalue=fillvalue)
 
 
 def cigar_to_seq(cigar, query, ref):
@@ -206,17 +213,18 @@ def get_unique_exon_and_flank_locations(solution, parts_to_segments):
         else:
             # print("Is not a flank, ie exon", (ref_chr_id, ref_start, ref_stop), segm_ids)
             segm_ids = parts_to_segments[key]
-
+            # print(parts_to_segments[key])
             # get all exons associated with the part and see if they are hit
             if ref_stop <= first_part_stop:
                 first_part_stop = ref_stop
             if ref_start >= last_part_start:
                 last_part_start = ref_start
 
-            for segm_id in segm_ids:
+            for chr_id, s_start, s_stop in grouper(segm_ids, 3):
                 # exon overlaps with mem
-                chr_id, s_start, s_stop = unpack('LLL', segm_id)
+                # chr_id, s_start, s_stop = unpack('LLL', segm_id)
                 if is_overlapping(s_start,s_stop, mem.x, mem.y):
+                    segm_id = pack('LLL', chr_id, s_start, s_stop)
                     choord_to_exon_id[(ref_chr_id, s_start, s_stop)] = segm_id
                     # print(s_start, s_stop)
                     # print(s_start,s_stop,  mem.x, mem.y )
@@ -245,7 +253,7 @@ def get_unique_exon_and_flank_locations(solution, parts_to_segments):
     return segment_hit_locations, partial_segment_hit_locations, flank_hit_locations, partial_flank_hit_locations, choord_to_exon_id, first_part_stop, last_part_start
 
 
-def get_unique_segment_and_flank_choordinates(segment_hit_locations, partial_segment_hit_locations, flank_hit_locations, partial_flank_hit_locations, choord_to_exon_id, parts_to_segments, segment_to_gene, gene_to_small_segments):
+def get_unique_segment_and_flank_choordinates(segment_hit_locations, partial_segment_hit_locations, flank_hit_locations, partial_flank_hit_locations, choord_to_exon_id, segment_to_gene, gene_to_small_segments):
     # compress unique exons to only do alignment once 
     unique_segment_choordinates = defaultdict(set)
     unique_segment_choordinates_partial_hits = defaultdict(set)
@@ -255,15 +263,14 @@ def get_unique_segment_and_flank_choordinates(segment_hit_locations, partial_seg
     # add all small segments here at once
     if segment_hit_locations:
         unique_genes = set(gene_id for (ref_chr_id, s_start, s_stop) in segment_hit_locations for gene_id in segment_to_gene[choord_to_exon_id[(ref_chr_id, s_start, s_stop)]])
-        small_segments = set(small_segment_id for gene_id in unique_genes for small_segment_id in gene_to_small_segments[gene_id])
+        small_segments = set((small_chr_id, small_start,small_stop) for gene_id in unique_genes for (small_chr_id, small_start,small_stop) in grouper(gene_to_small_segments[gene_id], 3))
         ref_chr_id = segment_hit_locations[0][0]
-        for small_segment_id in small_segments:
-            chr_id, s_start, s_stop = unpack('LLL', small_segment_id)
+        for chr_id, s_start, s_stop in small_segments:
+            # chr_id, s_start, s_stop = unpack('LLL', small_segment_id)
+            small_segment_id = pack('LLL', chr_id, s_start, s_stop)
             unique_segment_choordinates[ (chr_id, s_start, s_stop) ].add(small_segment_id)
-
+    # print(sorted(segment_hit_locations))
     for (ref_chr_id, s_start, s_stop) in segment_hit_locations:
-        # exon_ids = parts_to_segments[ref_chr_id][(s_start, s_stop)]
-        # print(parts_to_segments)
         exon_id = choord_to_exon_id[(ref_chr_id, s_start, s_stop)]
         unique_segment_choordinates[ (ref_chr_id, s_start, s_stop) ].add(exon_id)
         
@@ -286,6 +293,8 @@ def get_unique_segment_and_flank_choordinates(segment_hit_locations, partial_seg
         if (ref_stop - segm_ref_stop ) > 0.05*(ref_stop - ref_start):
             unique_flank_choordinates_partial_hits[(ref_chr_id,  ref_start, ref_stop) ] =  (ref_chr_id, segm_ref_start, segm_ref_stop)
     # print(unique_segment_choordinates)
+    # for u in sorted(unique_segment_choordinates):
+    #     print('u',u)
     # sys.exit()
     # assert unique_segment_choordinates_old == unique_segment_choordinates_new
     return unique_segment_choordinates, unique_segment_choordinates_partial_hits, unique_flank_choordinates, unique_flank_choordinates_partial_hits
@@ -414,7 +423,7 @@ def main(solution, ref_segment_sequences, ref_flank_sequences, parts_to_segments
 
     unique_segment_choordinates, unique_segment_choordinates_partial_hits, \
     unique_flank_choordinates, unique_flank_choordinates_partial_hits = get_unique_segment_and_flank_choordinates(segment_hit_locations, partial_segment_hit_locations, flank_hit_locations, partial_flank_hit_locations, \
-                                                                                                     choord_to_exon_id, parts_to_segments, segment_to_gene, gene_to_small_segments)
+                                                                                                     choord_to_exon_id, segment_to_gene, gene_to_small_segments)
     # print()
     # print('unique_exon_choordinate segments', unique_segment_choordinates_partial_hits)
     # for t in sorted(unique_segment_choordinates_partial_hits):
@@ -434,7 +443,7 @@ def main(solution, ref_segment_sequences, ref_flank_sequences, parts_to_segments
         key = key_tmp.tobytes()
         segment_seq = ref_segment_sequences[key]
         segm_id = all_segm_ids.pop()
-        # print("Testing full segment", s_start, s_stop, segm_id, segment_seq)
+        # print("Testing full segment", s_start, s_stop, segm_id, segment_seq, key_tmp)
         add_segment_to_mam(read_seq, ref_chr_id, segment_seq, s_start, s_stop, segm_id, mam_instance, min_acc, annot_label = '_full_segment' )
 
 
