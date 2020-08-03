@@ -19,9 +19,10 @@ def dd_set(): # top level function declaration needed for multiprocessing
 def dd_tuple(): # top level function declaration needed for multiprocessing
     return defaultdict(tuple)
 
-def dd_array(): # top level function declaration needed for multiprocessing
-    return defaultdict(lambda :lambda :array("L"))
-
+def add_items(array, chr_id, p1, p2):
+    array.append(chr_id)
+    array.append(p1)
+    array.append(p2)
 
 def add_tiling(p1, p2, active_gene_ids, active_start, active_stop, min_segment_size, chr_id,
                  tiling_segment_id_to_choordinates, tiling_segment_to_gene, tiling_segment_to_ref,
@@ -34,24 +35,28 @@ def add_tiling(p1, p2, active_gene_ids, active_start, active_stop, min_segment_s
         tiling_segment_key = array("L", [chr_id, p1+k, p1 + k + min_segment_size]).tobytes()
         tiling_segment_id_to_choordinates[tiling_segment_key] = (p1+k, p1 + k + min_segment_size)
         tiling_segment_to_ref[tiling_segment_key] = chr_id
-        tiling_parts_to_segments[part_name].append(tiling_segment_key)
+        # tiling_parts_to_segments[part_name].append(tiling_segment_key)
+        add_items(tiling_parts_to_segments[part_name], chr_id, p1+k, p1 + k + min_segment_size)
         tiling_segment_to_gene[tiling_segment_key] =  active_gene_ids 
         # total_unique_segment_counter += min_segment_size
-        k += min_segment_size
         for gene_id in active_gene_ids:
-            tiling_gene_to_small_segments[gene_id].append(tiling_segment_key)
-        # tiling_segment_id += 1
+            # tiling_gene_to_small_segments[gene_id].append(tiling_segment_key)
+            add_items(tiling_gene_to_small_segments[gene_id], chr_id, p1+k, p1 + k + min_segment_size)
+        k += min_segment_size
 
     # tiling_segment_name = "segm_{0}_{1}_{2}".format(chr_id, p1 + k - min_segment_size, p2)
     # tiling_segment_name = tiling_segment_id
     tiling_segment_key = array("L", [chr_id, max(0, p1 + k - min_segment_size), p2]).tobytes()
     tiling_segment_id_to_choordinates[tiling_segment_key] = (max(0, p1 + k - min_segment_size), p2)
     tiling_segment_to_ref[tiling_segment_key] = chr_id
-    tiling_parts_to_segments[part_name].append(tiling_segment_key)
+    # tiling_parts_to_segments[part_name].append(tiling_segment_key)
+    add_items(tiling_parts_to_segments[part_name], chr_id, max(0, p1 + k - min_segment_size), p2)
     tiling_segment_to_gene[tiling_segment_key] =  active_gene_ids 
     # total_unique_segment_counter += p2 - (p1 + k - min_segment_size)
     for gene_id in active_gene_ids:
-        tiling_gene_to_small_segments[gene_id].append(tiling_segment_key)
+        # tiling_gene_to_small_segments[gene_id].append(tiling_segment_key)
+        add_items(tiling_gene_to_small_segments[gene_id], chr_id, max(0, p1 + k - min_segment_size), p2)
+
     # tiling_segment_id += 1
     # return tiling_segment_id # need to return cause immutable
 
@@ -62,8 +67,8 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
     segment_id_to_choordinates = {}
     segment_to_gene = {} 
     segment_to_ref = {}
-    parts_to_segments = defaultdict(list) #defaultdict(dd_array)
-    gene_to_small_segments = defaultdict(list) #defaultdict(lambda :array("b"))
+    parts_to_segments = defaultdict(lambda :array("L")) #defaultdict(dd_array)
+    gene_to_small_segments = defaultdict(lambda :array("L")) #defaultdict(lambda :array("b"))
     total_unique_segment_counter = 0
     total_segments_bad = 0
     bad = 0
@@ -74,8 +79,8 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
     tiling_segment_id_to_choordinates = {}
     tiling_segment_to_gene = {} 
     tiling_segment_to_ref = {}
-    tiling_parts_to_segments = defaultdict(list) #defaultdict(dd_array)
-    tiling_gene_to_small_segments = defaultdict(list) #= defaultdict(lambda :array("b"))
+    tiling_parts_to_segments = defaultdict(lambda :array("L")) #defaultdict(dd_array)
+    tiling_gene_to_small_segments = defaultdict(lambda :array("L")) #= defaultdict(lambda :array("b"))
 
 
     tiling_structures = [tiling_segment_id_to_choordinates, tiling_segment_to_gene, tiling_segment_to_ref, tiling_parts_to_segments, tiling_gene_to_small_segments]
@@ -103,7 +108,8 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
                 # temp_already_added_choord.add((chr_id, p1, p2))
                 segment_id_to_choordinates[segment_name] = (p1, p2)
                 segment_to_ref[segment_name] = chr_id
-                parts_to_segments[part_name].append(segment_name)
+                # parts_to_segments[part_name].append(segment_name)
+                add_items(parts_to_segments[part_name], chr_id, p1, p2)
                 segment_to_gene[segment_name] =  active_gene_ids 
                 total_unique_segment_counter += p2 - p1
                 # print("Std:", segment_name, (chr_id, p1, p2))
@@ -111,7 +117,8 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
                 # add small segments
                 if p2 - p1 <= small_segment_threshold:
                     for gene_id in active_gene_ids:
-                        gene_to_small_segments[gene_id].append(segment_name)
+                        # gene_to_small_segments[gene_id].append(segment_name)
+                        add_items(gene_to_small_segments[gene_id], chr_id, p1, p2)
                 # segment_id += 1
 
             else:
@@ -131,7 +138,8 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
 
                                 segment_id_to_choordinates[segment_name] = (pos_tuples[i-k][0], p2)
                                 segment_to_ref[segment_name] = chr_id
-                                parts_to_segments[part_name].append(segment_name)
+                                # parts_to_segments[part_name].append(segment_name)
+                                add_items(parts_to_segments[part_name], chr_id, pos_tuples[i-k][0], p2)
                                 segment_to_gene[segment_name] =  active_gene_ids 
                                 # temp_already_added_choord.add( (chr_id, pos_tuples[i-k][0],p2) )
                                 # print("while before:", segment_name,(chr_id, pos_tuples[i-k][0],p2))
@@ -141,7 +149,8 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
                                 # add small segments
                                 if p2 - pos_tuples[i-k][0] <= small_segment_threshold:
                                     for gene_id in active_gene_ids:
-                                        gene_to_small_segments[gene_id].append(segment_name)
+                                        # gene_to_small_segments[gene_id].append(segment_name)
+                                        add_items(gene_to_small_segments[gene_id], chr_id, pos_tuples[i-k][0], p2)
                             break
                         else:
                             pass
@@ -165,7 +174,8 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
 
                                 segment_id_to_choordinates[segment_name] = (p1, pos_tuples[i+k][1])
                                 segment_to_ref[segment_name] = chr_id
-                                parts_to_segments[part_name].append(segment_name)
+                                # parts_to_segments[part_name].append(segment_name)
+                                add_items(parts_to_segments[part_name], chr_id, p1, pos_tuples[i+k][1])
                                 segment_to_gene[segment_name] =  active_gene_ids 
                                 # temp_already_added_choord.add( (chr_id, p1, pos_tuples[i+k][1]) )
                                 # print("while after:", segment_name, (chr_id, p1, pos_tuples[i+k][1]))
@@ -176,7 +186,8 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
                                 # add small segments
                                 if pos_tuples[i+k][1] - p1 <= small_segment_threshold:
                                     for gene_id in active_gene_ids:
-                                        gene_to_small_segments[gene_id].append(segment_name)
+                                        # gene_to_small_segments[gene_id].append(segment_name)
+                                        add_items(gene_to_small_segments[gene_id], chr_id, p1, pos_tuples[i+k][1])
                             break
                         else:
                             pass
@@ -190,7 +201,8 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
 
                     segment_id_to_choordinates[segment_name] = (p1, p2)
                     segment_to_ref[segment_name] = chr_id
-                    parts_to_segments[part_name].append(segment_name)
+                    # parts_to_segments[part_name].append(segment_name)
+                    add_items(parts_to_segments[part_name], chr_id, p1, p2)
                     segment_to_gene[segment_name] =  active_gene_ids 
                     total_unique_segment_counter += p2 - p1
                     # temp_already_added_choord.add( (chr_id, p1, p2) )
@@ -200,7 +212,8 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
                     # add small segments
                     if p2 - p1 <= small_segment_threshold:
                         for gene_id in active_gene_ids:
-                            gene_to_small_segments[gene_id].append(segment_name)
+                            # gene_to_small_segments[gene_id].append(segment_name)
+                            add_items(gene_to_small_segments[gene_id], chr_id, p1, p2)
 
 
                 # either part consists only of a small exon (e7 in fig in paper) or 
@@ -227,7 +240,8 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
                     if segment_name not in segment_id_to_choordinates: #(chr_id, e_start, e_stop) not in temp_already_added_choord: #"segm_{0}_{1}_{2}".format(chr_id,e_start,e_stop) not in segment_id_to_choordinates:                
                         segment_id_to_choordinates[segment_name] = (e_start, e_stop) 
                         segment_to_ref[segment_name] = chr_id
-                        parts_to_segments[part_name].append(segment_name)
+                        # parts_to_segments[part_name].append(segment_name)
+                        add_items(parts_to_segments[part_name], chr_id, e_start, e_stop)
                         segment_to_gene[segment_name] = active_gene_ids
                         total_segments_bad += e_stop - e_start
                         # temp_already_added_choord.add( (chr_id, e_start, e_stop) )
@@ -236,7 +250,8 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
                         # segment_id += 1
 
                         if e_stop - e_start <= small_segment_threshold:
-                            gene_to_small_segments[gene_id].append(segment_name)
+                            # gene_to_small_segments[gene_id].append(segment_name)
+                            add_items(gene_to_small_segments[gene_id], chr_id, e_start, e_stop)
                     else:
                         pass
                         # print("LOOOOOOL", e_stop - e_start)
@@ -416,6 +431,8 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segme
 
     print("total parts size:", sum( [stop - start for chrrr in parts_to_exons for start,stop in parts_to_exons[chrrr] ]))
     print("total exons size:", sum( [stop - start for start, stop in exon_id_to_choordinates.values() ]))
+    # print(chr_to_id)
+    # print(id_to_chr)
 
     min_intron = 2**32
 
@@ -467,8 +484,6 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segme
             for tr_id in tr_ids:
                 transcripts_to_splices[chr_id][tr_id] = unique_sp_sites
 
-    # print(chr_to_id)
-    # print(id_to_chr)
     return  segment_to_ref, parts_to_segments, splices_to_transcripts, \
             transcripts_to_splices, all_splice_pairs_annotations, \
             all_splice_sites_annotations, segment_id_to_choordinates, \

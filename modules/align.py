@@ -50,7 +50,6 @@ def getsize(obj):
 ######################
 
 def import_data(args):
-    # segment_id_to_choordinates = help_functions.pickle_load( os.path.join(args.outfolder, 'segment_id_to_choordinates.pickle'))
     ref_segment_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'ref_segment_sequences.pickle') )
     ref_exon_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'ref_exon_sequences.pickle') )
     ref_flank_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'ref_flank_sequences.pickle') )
@@ -66,34 +65,30 @@ def import_data(args):
     chr_to_id = help_functions.pickle_load( os.path.join(args.outfolder, 'chr_to_id.pickle') )
     id_to_chr = help_functions.pickle_load( os.path.join(args.outfolder, 'id_to_chr.pickle') )
 
-    # tiling_segment_id_to_choordinates = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_segment_id_to_choordinates.pickle'))
     tiling_ref_segment_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_ref_segment_sequences.pickle') )
     tiling_parts_to_segments = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_parts_to_segments.pickle') )
     tiling_segment_to_gene = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_segment_to_gene.pickle') )
     tiling_gene_to_small_segments = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_gene_to_small_segments.pickle') )
     tiling_structures = [tiling_segment_to_gene, tiling_parts_to_segments, tiling_gene_to_small_segments, tiling_ref_segment_sequences]
-    # tiling_structures = []
 
-    # print("segment_id_to_choordinates:", getsize(segment_id_to_choordinates)//1000000)
-    print("ref_segment_sequences:", getsize(ref_segment_sequences)//1000000)
-    print("ref_exon_sequences:", getsize(ref_exon_sequences)//1000000)
-    print("ref_flank_sequences:", getsize(ref_flank_sequences)//1000000)
-    print("splices_to_transcripts:", getsize(splices_to_transcripts)//1000000)
-    print("transcripts_to_splices:", getsize(transcripts_to_splices)//1000000)
-    print("all_splice_pairs_annotations:", getsize(all_splice_pairs_annotations)//1000000)
-    print("all_splice_sites_annotations:", getsize(all_splice_sites_annotations)//1000000)
-    print("parts_to_segments:", getsize(parts_to_segments)//1000000)
-    print("segment_to_gene:", getsize(segment_to_gene)//1000000)
-    print("gene_to_small_segments:", getsize(gene_to_small_segments)//1000000)
-    print("max_intron_chr:", getsize(max_intron_chr)//1000000)
-    print("chr_to_id:", getsize(chr_to_id)//1000000)
-    print("id_to_chr:", getsize(id_to_chr)//1000000)
+    # print("ref_segment_sequences:", getsize(ref_segment_sequences)//1000000)
+    # print("ref_exon_sequences:", getsize(ref_exon_sequences)//1000000)
+    # print("ref_flank_sequences:", getsize(ref_flank_sequences)//1000000)
+    # print("splices_to_transcripts:", getsize(splices_to_transcripts)//1000000)
+    # print("transcripts_to_splices:", getsize(transcripts_to_splices)//1000000)
+    # print("all_splice_pairs_annotations:", getsize(all_splice_pairs_annotations)//1000000)
+    # print("all_splice_sites_annotations:", getsize(all_splice_sites_annotations)//1000000)
+    # print("parts_to_segments:", getsize(parts_to_segments)//1000000)
+    # print("segment_to_gene:", getsize(segment_to_gene)//1000000)
+    # print("gene_to_small_segments:", getsize(gene_to_small_segments)//1000000)
+    # print("max_intron_chr:", getsize(max_intron_chr)//1000000)
+    # print("chr_to_id:", getsize(chr_to_id)//1000000)
+    # print("id_to_chr:", getsize(id_to_chr)//1000000)
 
-    # print("tiling_segment_id_to_choordinates:", getsize(tiling_segment_id_to_choordinates)//1000000)
-    print("tiling_ref_segment_sequences:", getsize(tiling_ref_segment_sequences)//1000000)
-    print("tiling_parts_to_segments:", getsize(tiling_parts_to_segments)//1000000)
-    print("tiling_segment_to_gene:", getsize(tiling_segment_to_gene)//1000000)
-    print("tiling_gene_to_small_segments:", getsize(tiling_gene_to_small_segments)//1000000)
+    # print("tiling_ref_segment_sequences:", getsize(tiling_ref_segment_sequences)//1000000)
+    # print("tiling_parts_to_segments:", getsize(tiling_parts_to_segments)//1000000)
+    # print("tiling_segment_to_gene:", getsize(tiling_segment_to_gene)//1000000)
+    # print("tiling_gene_to_small_segments:", getsize(tiling_gene_to_small_segments)//1000000)
 
     return ref_segment_sequences, ref_flank_sequences, splices_to_transcripts, \
             transcripts_to_splices, all_splice_pairs_annotations, \
@@ -392,8 +387,8 @@ def run_tiling_solution(mem_solution, tiling_ref_segment_sequences, ref_flank_se
 def align_single(reads, refs_lengths, args,  batch_number):
     # print("reads:", getsize(reads)//1000000)
     auxillary_data = import_data(args)
-    import time
-    time.sleep(1000)
+    # import time
+    # time.sleep(10000)
     mems_path =  os.path.join( args.outfolder, "mummer_mems_batch_{0}.txt".format(batch_number) )
     mems_path_rc =  os.path.join( args.outfolder, "mummer_mems_batch_{0}_rc.txt".format(batch_number) )
     nlog_n_instance_counter = 0
