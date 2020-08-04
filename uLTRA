@@ -317,7 +317,7 @@ def align_reads(args):
 
         # Combine samfiles produced from each batch
         combine_start = time()
-        print(refs_lengths)
+        # print(refs_lengths)
         alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, "reads.sam"), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
     
         for f in alignment_outfiles:
