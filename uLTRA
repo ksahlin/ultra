@@ -115,7 +115,9 @@ def prep_seqs(args):
             acc_id = chr_to_id[acc]
             refs_id[acc_id] = seq
 
-    refs_lengths = { acc_id : len(seq) for acc_id, seq in refs_id.items()} 
+    refs_id_lengths = { acc_id : len(seq) for acc_id, seq in refs_id.items()} 
+    refs_lengths = { acc : len(seq) for acc, seq in refs.items()} 
+    help_functions.pickle_dump(args, refs_id_lengths, 'refs_id_lengths.pickle')
     help_functions.pickle_dump(args, refs_lengths, 'refs_lengths.pickle')
 
     print( "Number of ref seqs in fasta:", len(refs.keys()))
@@ -202,6 +204,7 @@ def align_reads(args):
     # path_covers = help_functions.pickle_load( os.path.join(args.outfolder, 'paths.pickle') )
 
     ref_part_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'ref_part_sequences.pickle') )
+    refs_id_lengths = help_functions.pickle_load( os.path.join(args.outfolder, 'refs_id_lengths.pickle') )
     refs_lengths = help_functions.pickle_load( os.path.join(args.outfolder, 'refs_lengths.pickle') )
 
     # print(ref_part_sequences)
@@ -299,7 +302,7 @@ def align_reads(args):
 
     if args.nr_cores == 1:
         reads = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r'))}
-        classifications, alignment_outfile_name = align.align_single(reads, refs_lengths, args, -1)
+        classifications, alignment_outfile_name = align.align_single(reads, refs_id_lengths, args, -1)
     else:
         # batch reads and mems up: divide reads by  nr_cores to get batch size
         # then write to separate SAM-files with a batch index, 
@@ -308,13 +311,13 @@ def align_reads(args):
         batch_size = int(len(reads)/int(args.nr_cores) + 1)
         # read_batches = batch(reads, batch_size)
         print('Nr reads:', len(reads), "nr batches:", len(read_batches), [len(b) for b in read_batches])
-        classifications, alignment_outfiles = align.align_parallel(read_batches, refs_lengths, args)
+        classifications, alignment_outfiles = align.align_parallel(read_batches, refs_id_lengths, args)
     
         print("Time to align reads:{0} seconds.".format(time()-aligning_start))
 
         # Combine samfiles produced from each batch
         combine_start = time()
-
+        print(refs_lengths)
         alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, "reads.sam"), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
     
         for f in alignment_outfiles:
