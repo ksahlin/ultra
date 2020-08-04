@@ -222,7 +222,7 @@ rule minimap2_align:
     run:
 
         if wildcards.dataset == "sirv":
-            shell("/usr/bin/time -v  minimap2 --eqx -t 62 -ax splice -k14 --splice-flank=no {input.index} {input.fastq} 1>  {output.sam} 2> {output.time_and_mem} ")
+            shell("/usr/bin/time -v  minimap2 --eqx -t 62 -ax splice -k13 --splice-flank=no --secondary=no -C5 {input.index} {input.fastq} 1>  {output.sam} 2> {output.time_and_mem} ")
         elif wildcards.dataset == "pacbio_alzheimer" :
             shell("/usr/bin/time -v  minimap2 --eqx -t 62 -ax splice -k14 -G 500k {input.index} {input.fastq} 1>  {output.sam} 2> {output.time_and_mem} ")
         else:
