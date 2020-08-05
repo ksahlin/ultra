@@ -368,11 +368,11 @@ def get_unique_NIC(reads_isonalign, reads_minimap2, reads_desalt, reads, outfold
     for (nic_id, nr_reads) in sorted(interesting_cases, key=lambda x: x[1], reverse=True):
         print("interesting unique NIC case:", nic_id, len(ultra_NIC[nic_id]))
 
-        exons = nic_id[0].split(":")
+        exons = nic_id[0].split("-")
         exons = exons[1:-1]
         contains_small_exon = False
         smallest_exon = 0
-        if len(exons):
+        if exons:
             for e in exons:
                 e1,e2 = e.split(":")
                 e1, e2 = int(e1), int(e2)
