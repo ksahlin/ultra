@@ -182,7 +182,7 @@ def get_success_regions(data_for_success_cases, reads, outfolder):
     print("TOTAL number of unique interesting_success_cases:", len(interesting_success_cases))
     print("TOTAL number of reads in unique interesting_success_cases:", sum([nr_reads for tr_id, nr_reads in interesting_success_cases]) )
     print("Printing some of the more abundant ones (over 10 reads):")
-    for tr_id, nr_reads in sorted(interesting_success_cases, key=lambda x: x[1], reverse=True):
+    for tr_id, nr_fsm_reads in sorted(interesting_success_cases, key=lambda x: x[1], reverse=True):
         if nr_fsm_reads >= 10:
             print("interesting success case:", tr_id, nr_fsm_reads)
             for acc in ultra_fsm_distribution[tr_id]:
