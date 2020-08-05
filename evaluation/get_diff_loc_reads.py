@@ -173,11 +173,16 @@ def get_success_regions(data_for_success_cases, reads, outfolder):
     outfile = open(os.path.join(outfolder, "ultra_unique_FSMs.csv"), "w")
     fa_outfile = open(os.path.join(outfolder, "ultra_unique_FSMs.fa"), "w")
 
+    interesting_success_cases = []
     for tr_id in ultra_unique:
         for acc in ultra_fsm_distribution[tr_id]:
             outfile.write("{0},{1}\n".format(tr_id, acc)) 
-
-        nr_fsm_reads = len(ultra_fsm_distribution[tr_id])
+        interesting_success_cases.append( (tr_id, len(ultra_fsm_distribution[tr_id])) )
+        # nr_fsm_reads = len(ultra_fsm_distribution[tr_id])
+    print("TOTAL number of unique interesting_success_cases:", len(interesting_success_cases))
+    print("TOTAL number of reads in unique interesting_success_cases:", sum([nr_reads for tr_id, nr_reads in interesting_success_cases]) )
+    print("Printing some of the more abundant ones (over 10 reads):")
+    for tr_id, nr_reads in sorted(interesting_success_cases, key=lambda x: x[1], reverse=True):
         if nr_fsm_reads >= 10:
             print("interesting success case:", tr_id, nr_fsm_reads)
             for acc in ultra_fsm_distribution[tr_id]:
@@ -363,7 +368,7 @@ def get_unique_NIC(reads_isonalign, reads_minimap2, reads_desalt, reads, outfold
     for (nic_id, nr_reads) in sorted(interesting_cases, key=lambda x: x[1], reverse=True):
         print("interesting unique NIC case:", nic_id, len(ultra_NIC[nic_id]))
 
-        exons = nic_id.split(":")
+        exons = nic_id[0].split(":")
         exons = exons[1:-1]
         contains_small_exon = False
         smallest_exon = 0
