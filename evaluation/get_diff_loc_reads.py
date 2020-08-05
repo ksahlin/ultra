@@ -351,17 +351,39 @@ def get_unique_NIC(reads_isonalign, reads_minimap2, reads_desalt, reads, outfold
     # find the NICs unique to uLTRA
     ultra_unique_NICs = set(ultra_NIC.keys()) - (set(minimap2_NIC.keys()) | set(desalt_NIC.keys()))
 
+
+    interesting_cases = []
+    for nic_id in ultra_unique_NICs:
+        if len(ultra_NIC[nic_id]) >= 5:
+            interesting_cases.append( (nic_id,len(ultra_NIC[nic_id])) )
+
     outfile = open(os.path.join(outfolder, "ultra_unique_NICs.csv"), "w")
     fa_outfile = open(os.path.join(outfolder, "ultra_unique_NICs.fa"), "w")
 
+    for (nic_id, nr_reads) in sorted(interesting_cases, key=lambda x: x[1], reverse=True):
+        print("interesting unique NIC case:", nic_id, len(ultra_NIC[nic_id]))
 
-    for nic_id in ultra_unique_NICs:
-        if len(ultra_NIC[nic_id]) >= 10:
-            print("interesting unique NIC case:", nic_id, len(ultra_NIC[nic_id]))
-            for acc in ultra_NIC[nic_id]:
-                seq, qual = reads[acc]
-                fa_outfile.write(">{0}\n{1}\n".format(acc, seq)) 
-                outfile.write("{0},{1}\n".format(nic_id, acc)) 
+        exons = nic_id.split(":")
+        exons = exons[1:-1]
+        contains_small_exon = False
+        smallest_exon = 0
+        if len(exons):
+            for e in exons:
+                e1,e2 = e.split(":")
+                e1, e2 = int(e1), int(e2)
+                if e2-e1 < 20:
+                    contains_small_exon = True
+                    smallest_exon = e2-e1
+        if contains_small_exon:
+            print("This case contains small exon, extra interesting!", "smallest_exon:", smallest_exon)
+
+        mm2_preds = []
+        for acc in ultra_NIC[nic_id]:
+            mm2_preds.append(reads_minimap2[acc][7])
+            seq, qual = reads[acc]
+            fa_outfile.write(">{0}\n{1}\n".format(acc, seq)) 
+            outfile.write("{0},{1}\n".format(nic_id, acc)) 
+        print(mm2_preds)
 
     outfile.close()
     fa_outfile.close()
