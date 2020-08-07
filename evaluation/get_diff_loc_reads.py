@@ -230,23 +230,7 @@ def get_overlap_venn(data1, data2, data3, flag1, flag2, flag3):
                 pass
         else:
             pass
-        if acc in data2:
-            ds_start, ds_stop = data2[acc]
-            if is_overlapping(mm2_start, mm2_stop,  ds_start, ds_stop):
-                label += flag2
-            else:
-                pass
-        else:
-            pass
 
-        if acc in data3:
-            ult_start, ult_stop = data3[acc]
-            if is_overlapping(mm2_start, mm2_stop,  ult_start, ult_stop):
-                label += flag3
-            else:
-                pass
-        else:
-            pass
         if acc in data3:
             ult_start, ult_stop = data3[acc]
             if is_overlapping(mm2_start, mm2_stop,  ult_start, ult_stop):
