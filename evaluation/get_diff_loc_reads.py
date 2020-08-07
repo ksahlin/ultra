@@ -213,9 +213,54 @@ def get_diff_regions(data_for_success_cases, reads, outfolder):
     outfile.close()
     fa_outfile.close()
 
+def get_overlap_venn(data1, data2, data3, flag1, flag2, flag3):
+    '''
+        assigns 1 : minimap2, 10: seSALT, 100: uLTRA
+        label: 1: mm,  12: mm & ds, 123: mm & ds & ult, ...
+    '''
+    data1_labelled = set()
+    for acc in data1:
+        mm2_start, mm2_stop = data1[acc]
+        label = flag1
+        if acc in data2:
+            ds_start, ds_stop = data2[acc]
+            if is_overlapping(mm2_start, mm2_stop,  ds_start, ds_stop):
+                label += flag2
+            else:
+                pass
+        else:
+            pass
+        if acc in data2:
+            ds_start, ds_stop = data2[acc]
+            if is_overlapping(mm2_start, mm2_stop,  ds_start, ds_stop):
+                label += flag2
+            else:
+                pass
+        else:
+            pass
+
+        if acc in data3:
+            ult_start, ult_stop = data3[acc]
+            if is_overlapping(mm2_start, mm2_stop,  ult_start, ult_stop):
+                label += flag3
+            else:
+                pass
+        else:
+            pass
+        if acc in data3:
+            ult_start, ult_stop = data3[acc]
+            if is_overlapping(mm2_start, mm2_stop,  ult_start, ult_stop):
+                label += flag3
+            else:
+                pass
+        else:
+            pass
+            
+        data1_labelled.add( (acc, label))
+    return data1_labelled
 
 def get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desalt, reads):
-
+    mm_positions = {}
     differing_reads = defaultdict(set)
     mm_aln = {}
     mm_genomic = set()
@@ -223,19 +268,26 @@ def get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desa
         mm2_annot, mm2_chr, mm2_start, mm2_stop, mm_is_exonic = reads_minimap2[acc][7], reads_minimap2[acc][11], reads_minimap2[acc][12], reads_minimap2[acc][13], reads_minimap2[acc][15]
         if mm_is_exonic == '0':
             mm_genomic.add(acc)
+        elif mm_is_exonic == '1':
+            mm_positions[acc] = (mm2_start, mm2_stop)
         mm_aln[acc] = mm2_annot
     
+    ds_positions = {}
     ds_aln = {}
     ds_genomic = set()
     for acc in reads_desalt:
         ds_annot, ds_chr, ds_start, ds_stop, ds_is_exonic = reads_desalt[acc][7], reads_desalt[acc][11], reads_desalt[acc][12], reads_desalt[acc][13], reads_desalt[acc][15]
         if ds_is_exonic == '0':
             ds_genomic.add(acc)
+        elif ds_is_exonic == '1':
+            ds_positions[acc] = (ds_start, ds_stop)
+
         ds_aln[acc] = ds_annot
 
     is_genomic = ds_genomic & mm_genomic
     # get the uLTRA categories for likely genomic reads
 
+    ult_positions = {}
     ultra_unaligned = set()
     ultra_categories =  defaultdict(int)
     suspicious_fsms = set()
@@ -247,9 +299,19 @@ def get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desa
                 suspicious_fsms.add(acc)
         if ia_annot == 'unaligned':
             ultra_unaligned.add(acc)
+        if ia_is_exonic == '1':
+            ult_positions[acc] = (ia_start, ia_stop)
+
+
+    mm_ovl_venn = get_overlap_venn(mm_positions, ds_positions, ult_positions, 1,10,100)
+    ds_ovl_venn = get_overlap_venn(ds_positions, mm_positions, ult_positions, 10,1,100)
+    ult_ovl_venn = get_overlap_venn(ult_positions, mm_positions, ds_positions, 100,1,10)
+    tot = set(set(mm_positions.keys()) | set(ds_positions.keys()) | set(ult_positions.keys()))
+    print("total exonic reads evaluated for concordance:", tot)
+    tot = set(mm_ovl_venn | ds_ovl_venn | ult_ovl_venn)
+    print("total union of unique entries in the concordance venn diagram:", tot)
 
     print("suspicious_fsm reads", len(suspicious_fsms), "20 first:", list(suspicious_fsms)[:20])
-
     print("ULTRA categories of likely genomic reads:", ultra_categories)
 
     mm_categories = defaultdict(int)
@@ -276,7 +338,7 @@ def get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desa
     outfile.close()
     fa_outfile.close()
 
-
+    return [ult_ovl_venn, ds_ovl_venn, mm_ovl_venn]
 
     # categories:
     #  genomic/exonic
@@ -399,19 +461,24 @@ def get_unique_NIC(reads_isonalign, reads_minimap2, reads_desalt, reads, outfold
 def main(args):
 
     reads_isonalign, reads_minimap2, reads_desalt = parse_differing_location_reads(args.csvfile)
-    data_for_venn, data_for_success_cases = get_FSM_concordance( reads_isonalign, reads_minimap2, reads_desalt)
-    venn(data_for_venn, args.outfolder, "reads_to_FSM_concordance")
+    fsm_data_for_venn, data_for_success_cases = get_FSM_concordance( reads_isonalign, reads_minimap2, reads_desalt)
+    venn(fsm_data_for_venn, args.outfolder, "reads_to_FSM_concordance")
     venn(data_for_success_cases, args.outfolder, "unique_FSM_concordance")
 
     reads = { acc.split()[0] : (seq, qual) for i, (acc, (seq, qual)) in enumerate(readfq(open(args.reads, 'r')))}
     print("Total reads", len(reads))
 
+    # FSM
+    get_ultra_categories_of_missed_likely_fsm_reads(fsm_data_for_venn, reads_isonalign, reads)
     get_success_regions(data_for_success_cases, reads, args.outfolder)
     get_diff_regions(data_for_success_cases, reads, args.outfolder)
     get_unique_NIC(reads_isonalign, reads_minimap2, reads_desalt, reads, args.outfolder)
-    get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desalt, reads)
+    
+    # OVERLAP
+    overlap_data_for_venn = get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desalt, reads)
 
-    get_ultra_categories_of_missed_likely_fsm_reads(data_for_venn, reads_isonalign, reads)
+    venn(overlap_data_for_venn, args.outfolder, "reads_ovl_concordance")
+
 
 
     # fq_outfile = open(os.path.join(args.outfolder, "diff_mapped.fq"), "w")
