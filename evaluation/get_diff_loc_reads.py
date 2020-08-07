@@ -310,6 +310,8 @@ def get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desa
     print("total exonic reads evaluated for concordance:", len(tot))
     tot2 = set(mm_ovl_venn | ds_ovl_venn | ult_ovl_venn)
     print("total union of unique entries in the concordance venn diagram:", len(tot2))
+    tot3 = set(mm_ovl_venn & ds_ovl_venn & ult_ovl_venn)
+    print("total shared between all unique entries:", len(tot2))
 
     print("suspicious_fsm reads", len(suspicious_fsms), "20 first:", list(suspicious_fsms)[:20])
     print("ULTRA categories of likely genomic reads:", ultra_categories)
