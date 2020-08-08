@@ -383,7 +383,8 @@ def n_logn_read_coverage_mams(mams, overlap_threshold = 5):
 
     """
     # assert mams == sorted(mams, key=lambda x: x.y)
-
+    # for mam in mams:
+    #     print(mam.mam_id, mam.x, mam.y, mam.c, mam.d, '\t', mam.val, mam.min_segment_length)
     # overlap_threshold = 20
     T_leafs = make_leafs_power_of_2(mams)
     I_leafs = make_leafs_power_of_2(mams)
