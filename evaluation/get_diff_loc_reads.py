@@ -412,7 +412,9 @@ def get_unique_NIC(reads_isonalign, reads_minimap2, reads_desalt, reads, outfold
 
     outfile = open(os.path.join(outfolder, "ultra_unique_NICs.csv"), "w")
     fa_outfile = open(os.path.join(outfolder, "ultra_unique_NICs.fa"), "w")
-
+    print("TOTAL uLTRA distinct  NICS:", len(ultra_NIC))
+    print("TOTAL uLTRA NIC reads:", sum([len(reads) for nic_id, reads in  ultra_NIC.items()] ))
+    
     for (nic_id, nr_reads) in sorted(interesting_cases, key=lambda x: x[1], reverse=True):
         print("interesting unique NIC case:", nic_id, len(ultra_NIC[nic_id]))
 
