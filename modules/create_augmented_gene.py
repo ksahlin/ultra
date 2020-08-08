@@ -370,7 +370,7 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segme
             active_gene_ids = set(exon_gene_ids) 
 
 
-        elif exon.start - 1 > active_stop:
+        elif exon.start - 1 > active_stop + 100:
             parts_to_exons[chr_id][(active_start, active_stop)] = active_exons
             part_count_to_choord[(chr_id,part_counter)] = (active_start, active_stop)
             # get_complementary_exon_seq_per_part(parts_to_exons, exon_to_gene, exon_id_to_choordinates, exons_to_ref, active_exons, active_start, active_stop, prev_seq_id)
