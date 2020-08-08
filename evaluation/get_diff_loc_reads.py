@@ -15,6 +15,11 @@ try:
 except (ImportError, RuntimeError):
     print("COULD not import matplotlib")
 
+
+import numpy as np
+import seaborn as sns
+import pandas as pd
+
 from matplotlib_venn import venn3, venn3_circles, venn2
 
 from collections import defaultdict
@@ -182,7 +187,9 @@ def get_success_regions(data_for_success_cases, reads, outfolder):
     print("TOTAL number of unique interesting_success_cases:", len(interesting_success_cases))
     print("TOTAL number of reads in unique interesting_success_cases:", sum([nr_reads for tr_id, nr_reads in interesting_success_cases]) )
     print("Printing some of the more abundant ones (over 10 reads):")
+    data_for_hist = []
     for tr_id, nr_fsm_reads in sorted(interesting_success_cases, key=lambda x: x[1], reverse=True):
+        data_for_hist.append(nr_fsm_reads)
         if nr_fsm_reads >= 10:
             print("interesting success case:", tr_id, nr_fsm_reads)
             for acc in ultra_fsm_distribution[tr_id]:
@@ -191,6 +198,7 @@ def get_success_regions(data_for_success_cases, reads, outfolder):
 
     outfile.close()
     fa_outfile.close()
+    return data_for_hist
 
 
 def get_diff_regions(data_for_success_cases, reads, outfolder):
@@ -414,7 +422,7 @@ def get_unique_NIC(reads_isonalign, reads_minimap2, reads_desalt, reads, outfold
     fa_outfile = open(os.path.join(outfolder, "ultra_unique_NICs.fa"), "w")
     print("TOTAL uLTRA distinct  NICS:", len(ultra_NIC))
     print("TOTAL uLTRA NIC reads:", sum([len(reads) for nic_id, reads in  ultra_NIC.items()] ))
-    
+
     for (nic_id, nr_reads) in sorted(interesting_cases, key=lambda x: x[1], reverse=True):
         print("interesting unique NIC case:", nic_id, len(ultra_NIC[nic_id]))
 
@@ -446,6 +454,18 @@ def get_unique_NIC(reads_isonalign, reads_minimap2, reads_desalt, reads, outfold
 
 
 
+def plot_hist(x, outfolder, filename):
+    ax = sns.distplot(x, bins=50, kde=False, rug=True)
+    ax.set_yscale('log')
+    ax.set_xscale('log')
+    ax.set_ylabel("Count")
+    ax.set_xlabel("Number of FSM reads")
+    plt.tight_layout()
+    plt.savefig(os.path.join(outfolder, filename +".pdf"))
+    plt.savefig(os.path.join(outfolder, filename +".eps"))
+    plt.close()
+
+
 def main(args):
 
     reads_isonalign, reads_minimap2, reads_desalt = parse_differing_location_reads(args.csvfile)
@@ -456,18 +476,17 @@ def main(args):
     reads = { acc.split()[0] : (seq, qual) for i, (acc, (seq, qual)) in enumerate(readfq(open(args.reads, 'r')))}
     print("Total reads", len(reads))
 
-    # FSM
-    get_ultra_categories_of_missed_likely_fsm_reads(fsm_data_for_venn, reads_isonalign, reads)
-    get_success_regions(data_for_success_cases, reads, args.outfolder)
-    get_diff_regions(data_for_success_cases, reads, args.outfolder)
-    get_unique_NIC(reads_isonalign, reads_minimap2, reads_desalt, reads, args.outfolder)
     
     # OVERLAP
     overlap_data_for_venn = get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desalt, reads)
-
     venn(overlap_data_for_venn, args.outfolder, "reads_ovl_concordance")
 
-
+    # FSM
+    get_ultra_categories_of_missed_likely_fsm_reads(fsm_data_for_venn, reads_isonalign, reads)
+    data_for_hist = get_success_regions(data_for_success_cases, reads, args.outfolder)
+    get_diff_regions(data_for_success_cases, reads, args.outfolder)
+    get_unique_NIC(reads_isonalign, reads_minimap2, reads_desalt, reads, args.outfolder)
+    plot_hist(data_for_hist, args.outfolder, "ultra_unique_found_FSM_distribution")
 
     # fq_outfile = open(os.path.join(args.outfolder, "diff_mapped.fq"), "w")
     # info_outfile = open(os.path.join(args.outfolder, "diff_mapped.csv"), "w")
