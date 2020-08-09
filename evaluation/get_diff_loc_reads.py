@@ -305,7 +305,7 @@ def fill_aligner_data(read_alignments, is_ultra = False):
         return positions, categories, aln, genomic
 
 
-def fill_ultra_data(read_alignments, is_genomic):
+def fill_ultra_data(reads_isonalign, is_genomic):
     ult_positions = {}
     ultra_unaligned = set()
     ultra_genomic_reads_categories =  defaultdict(int)
