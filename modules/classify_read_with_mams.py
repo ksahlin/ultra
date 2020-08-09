@@ -523,7 +523,7 @@ def main(solution, ref_segment_sequences, ref_flank_sequences, parts_to_segments
             segm_already_tried.add(partial_flank_seq)
 
 
-    mam_instance = list(filter(lambda x: not("_start" in x.mam_id and x.c >= 50) and not("_end" in x.mam_id and x.d <= len(read_seq) - 50), mam_instance))
+    mam_instance = list(filter(lambda x: not("_start" in x.mam_id and x.c >= 10) and not("_end" in x.mam_id and x.d <= len(read_seq) - 10), mam_instance))
     mam_instance = sorted(mam_instance, key = lambda x: x.y )
     #  sorted_mems = [ mem(x,y,c,d,val,j,e_id) for j, (x, y, c, d, val, e_id) in enumerate(coordinate_sorted_tuples) ]
     mam_instance  = [mam(m.x, m.y, m.c, m.d, m.val, j, m.min_segment_length, m.mam_id, m.ref_chr_id) for j, m in enumerate(mam_instance) ]  # assingn an index j based on the hit choordinate
