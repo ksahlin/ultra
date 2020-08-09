@@ -312,7 +312,7 @@ def fill_ultra_data(reads_isonalign, is_genomic):
     ultra_exonic_reads_categories =  defaultdict(dict)
     suspicious_fsms = set()
     for acc in reads_isonalign:
-        ia_annot, splice_choords, ia_chr, ia_start, ia_stop, ia_is_exonic = reads_isonalign[acc][7], read_alignments[acc][9], reads_isonalign[acc][11], reads_isonalign[acc][12], reads_isonalign[acc][13], reads_isonalign[acc][15]
+        ia_annot, splice_choords, ia_chr, ia_start, ia_stop, ia_is_exonic = reads_isonalign[acc][7], reads_isonalign[acc][9], reads_isonalign[acc][11], reads_isonalign[acc][12], reads_isonalign[acc][13], reads_isonalign[acc][15]
         if acc in is_genomic:
             ultra_genomic_reads_categories[ia_annot] += 1
             if ia_annot == "FSM":
