@@ -528,14 +528,22 @@ def main(solution, ref_segment_sequences, ref_flank_sequences, parts_to_segments
     # NEW
     # Save only partial segment/flank hits with the outmost choordinates in each instance
     outmost_partial_start = 2**32
+    min_segment_end = 2**32
     outmost_partial_end = 0
+    max_segment_start = 0
     for x in mam_instance:
         if "_start" in x.mam_id and x.c < outmost_partial_start:
             outmost_partial_start = x.c
         elif "_end" in x.mam_id and x.d > outmost_partial_end:
             outmost_partial_end = x.d
-    outmost_partial_start = min(outmost_partial_start, 50)
-    outmost_partial_end = min(outmost_partial_end, len(read_seq) - 50)
+
+        if x.d < min_segment_end:
+            min_segment_end = x.d
+        if x.c > max_segment_start:
+            max_segment_start = x.c
+
+    outmost_partial_start = min(outmost_partial_start, min_segment_end) # partial start hit not allowed if further in on read than full hit
+    outmost_partial_end = max(outmost_partial_end, max_segment_start) # partial end hit not allowed if further in on read than full hit
     mam_instance = list(filter(lambda x: not("_start" in x.mam_id and x.c > outmost_partial_start) and not("_end" in x.mam_id and x.d < outmost_partial_end), mam_instance))
 
     # print(mam_instance_old == mam_instance, len(read_seq))
