@@ -317,9 +317,9 @@ def read_coverage_mam_score(mams, overlap_threshold = 20):
         # I_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if v.c <= mams[j_prime].d  <= v.c + (v.d - v.c)*(1.0 - v.val/(v.d - v.c)) ]  #Maybe bug here, check the objective!! need to be careful
         if I_values:
             # print("here", j, I_values)
-            # I_values_plus_chord_diff = [ (j_prime, c_val + (v.d - mams[j_prime].d)*v.identity - max(0, (mams[j_prime].d - v.c +1)*v.identity  - (mams[j_prime].d - v.c +1)*mams[j_prime].identity) ) for j_prime, c_val in I_values]  # Last max is takeing which of the two mams had highest idendity in shared region. 
-            I_values_plus_chord_diff = [ (j_prime, c_val + (v.val - (mams[j_prime].d - v.c + 1 ) - 0.01 if v.x != mams[j_prime].y else v.val - 0.01)) for j_prime, c_val in I_values]  # Penalize an extra 0.1 to prefer non-overlapping solutions in case of tie breakers
-            # I_values_plus_chord_diff = [ (j_prime, c_val + (v.val - (mams[j_prime].d - v.c))) for j_prime, c_val in I_values]  # Penalize the overlap not to double count coverage on read. 1.1 instead of 1.0 to remove tie breakers preferring the non-overlapping solutions
+            # I_values_plus_chord_diff = [ (j_prime, c_val + (v.val - (mams[j_prime].d - v.c + 1 ) - 0.01 if v.x != mams[j_prime].y else v.val - 0.01)) for j_prime, c_val in I_values]  # Penalize an extra 0.1 to prefer non-overlapping solutions in case of tie breakers
+            I_values_plus_chord_diff = [ (j_prime, c_val + (v.val - (mams[j_prime].d - v.c + 1 ) - 0.01*(mams[j_prime].d - v.c + 1 )) ) for j_prime, c_val in I_values]  # Penalize an extra 0.1 to prefer non-overlapping solutions in case of tie breakers
+
             I_traceback_index, max_c_value_case_b = max(reversed(I_values_plus_chord_diff), key=lambda x: x[1])
             C_b[j] = max_c_value_case_b
 
