@@ -576,7 +576,7 @@ def main(args):
     # OVERLAP
     overlap_data_for_venn = get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desalt, reads)
 
-    for category in overlap_data_for_venn
+    for category in overlap_data_for_venn:
         data = overlap_data_for_venn[category]
         venn(data, args.outfolder, "reads_{0}_concordance".format(category))
 
