@@ -522,8 +522,26 @@ def main(solution, ref_segment_sequences, ref_flank_sequences, parts_to_segments
             add_segment_to_mam(read_seq, ref_chr_id, partial_flank_seq, f_start, f_stop, flank_id, mam_instance, min_acc, annot_label = '_partial_flank_end')
             segm_already_tried.add(partial_flank_seq)
 
+    # OLD
+    # mam_instance_old = list(filter(lambda x: not("_start" in x.mam_id and x.c >= 50) and not("_end" in x.mam_id and x.d <= len(read_seq) - 50), mam_instance))
 
-    mam_instance = list(filter(lambda x: not("_start" in x.mam_id and x.c >= 10) and not("_end" in x.mam_id and x.d <= len(read_seq) - 10), mam_instance))
+    # NEW
+    # Save only partial segment/flank hits with the outmost choordinates in each instance
+    outmost_partial_start = 2**32
+    outmost_partial_end = 0
+    for x in mam_instance:
+        if "_start" in x.mam_id and x.c < outmost_partial_start:
+            outmost_partial_start = x.c
+        elif "_end" in x.mam_id and x.d > outmost_partial_end:
+            outmost_partial_end = x.d
+    outmost_partial_start = min(outmost_partial_start, 50)
+    outmost_partial_end = min(outmost_partial_end, len(read_seq) - 50)
+    mam_instance = list(filter(lambda x: not("_start" in x.mam_id and x.c > outmost_partial_start) and not("_end" in x.mam_id and x.d < outmost_partial_end), mam_instance))
+
+    # print(mam_instance_old == mam_instance, len(read_seq))
+    # print(len(mam_instance_old))
+    # print(len(mam_instance))
+
     mam_instance = sorted(mam_instance, key = lambda x: x.y )
     #  sorted_mems = [ mem(x,y,c,d,val,j,e_id) for j, (x, y, c, d, val, e_id) in enumerate(coordinate_sorted_tuples) ]
     mam_instance  = [mam(m.x, m.y, m.c, m.d, m.val, j, m.min_segment_length, m.mam_id, m.ref_chr_id) for j, m in enumerate(mam_instance) ]  # assingn an index j based on the hit choordinate
