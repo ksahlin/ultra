@@ -228,10 +228,10 @@ def get_overlap_venn(data1, data2, data3, flag1, flag2, flag3):
     '''
     data1_labelled = set()
     for acc in data1:
-        mm2_start, mm2_stop = data1[acc]
+        mm2_start, mm2_stop, data1_splice_choords = data1[acc]
         label = flag1
         if acc in data2:
-            ds_start, ds_stop = data2[acc]
+            ds_start, ds_stop, data2_splice_choords = data2[acc]
             if is_overlapping(mm2_start, mm2_stop,  ds_start, ds_stop):
                 label += flag2
             else:
@@ -240,7 +240,7 @@ def get_overlap_venn(data1, data2, data3, flag1, flag2, flag3):
             pass
 
         if acc in data3:
-            ult_start, ult_stop = data3[acc]
+            ult_start, ult_stop, data3_splice_choords = data3[acc]
             if is_overlapping(mm2_start, mm2_stop,  ult_start, ult_stop):
                 label += flag3
             else:
@@ -251,49 +251,138 @@ def get_overlap_venn(data1, data2, data3, flag1, flag2, flag3):
         data1_labelled.add( (acc, label))
     return data1_labelled
 
-def get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desalt, reads):
-    mm_positions = {}
-    differing_reads = defaultdict(set)
-    mm_aln = {}
-    mm_genomic = set()
-    for acc in reads_minimap2:
-        mm2_annot, mm2_chr, mm2_start, mm2_stop, mm_is_exonic = reads_minimap2[acc][7], reads_minimap2[acc][11], reads_minimap2[acc][12], reads_minimap2[acc][13], reads_minimap2[acc][15]
-        if mm_is_exonic == '0':
-            mm_genomic.add(acc)
-        elif mm_is_exonic == '1':
-            mm_positions[acc] = (mm2_start, mm2_stop)
-        mm_aln[acc] = mm2_annot
-    
-    ds_positions = {}
-    ds_aln = {}
-    ds_genomic = set()
-    for acc in reads_desalt:
-        ds_annot, ds_chr, ds_start, ds_stop, ds_is_exonic = reads_desalt[acc][7], reads_desalt[acc][11], reads_desalt[acc][12], reads_desalt[acc][13], reads_desalt[acc][15]
-        if ds_is_exonic == '0':
-            ds_genomic.add(acc)
-        elif ds_is_exonic == '1':
-            ds_positions[acc] = (ds_start, ds_stop)
 
-        ds_aln[acc] = ds_annot
+def get_splice_sites_match_venn(data1, data2, data3, flag1, flag2, flag3):
+    '''
+        assigns 1 : minimap2, 10: seSALT, 100: uLTRA
+        label: 1: mm,  12: mm & ds, 123: mm & ds & ult, ...
+    '''
+    data1_labelled = set()
+    for acc in data1:
+        data1_start, data1_stop, data1_splice_choords = data1[acc]
+        label = flag1
+        if acc in data2:
+            data2_start, data2_stop, data2_splice_choords = data2[acc]
+            if data1_splice_choords == data2_splice_choords:
+                label += flag2
+            else:
+                pass
+        else:
+            pass
 
-    is_genomic = ds_genomic & mm_genomic
-    # get the uLTRA categories for likely genomic reads
+        if acc in data3:
+            data3_start, data3_stop, data3_splice_choords = data3[acc]
+            if data1_splice_choords == data3_splice_choords:
+                label += flag3
+            else:
+                pass
+        else:
+            pass
+            
+        data1_labelled.add( (acc, label))
+    return data1_labelled
 
+
+def fill_aligner_data(read_alignments, is_ultra = False):
+    positions = {}
+    categories = defaultdict(dict)
+    aln = {}
+    if not is_ultra:
+        genomic = set()
+
+    for acc in read_alignments:
+        annot, splice_choords, chr_id, start, stop, is_exonic = read_alignments[acc][7], read_alignments[acc][9], read_alignments[acc][11], read_alignments[acc][12], read_alignments[acc][13], read_alignments[acc][15]
+        if is_exonic == '0':
+            genomic.add(acc)
+        elif is_exonic == '1':
+            positions[acc] = (start, stop, splice_choords)
+            categories[annot][acc] = (start, stop, splice_choords)
+        aln[acc] = annot
+
+    if is_ultra:
+        return positions, categories, aln
+    else:
+        return positions, categories, aln, genomic
+
+
+def fill_ultra_data(read_alignments, is_genomic):
     ult_positions = {}
     ultra_unaligned = set()
-    ultra_categories =  defaultdict(int)
+    ultra_genomic_reads_categories =  defaultdict(int)
+    ultra_exonic_reads_categories =  defaultdict(dict)
     suspicious_fsms = set()
     for acc in reads_isonalign:
-        ia_annot, ia_chr, ia_start, ia_stop, ia_is_exonic = reads_isonalign[acc][7], reads_isonalign[acc][11], reads_isonalign[acc][12], reads_isonalign[acc][13], reads_isonalign[acc][15]
+        ia_annot, splice_choords, ia_chr, ia_start, ia_stop, ia_is_exonic = reads_isonalign[acc][7], read_alignments[acc][9], reads_isonalign[acc][11], reads_isonalign[acc][12], reads_isonalign[acc][13], reads_isonalign[acc][15]
         if acc in is_genomic:
-            ultra_categories[ia_annot] += 1
+            ultra_genomic_reads_categories[ia_annot] += 1
             if ia_annot == "FSM":
                 suspicious_fsms.add(acc)
+        else:
+            ultra_exonic_reads_categories[ia_annot][acc] = (ia_start, ia_stop, splice_choords)
+
         if ia_annot == 'unaligned':
             ultra_unaligned.add(acc)
         if ia_is_exonic == '1':
-            ult_positions[acc] = (ia_start, ia_stop)
+            ult_positions[acc] = (ia_start, ia_stop, splice_choords)
 
+    return ult_positions, ultra_genomic_reads_categories, ultra_unaligned, suspicious_fsms, ultra_exonic_reads_categories
+
+
+def get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desalt, reads):
+
+    mm_positions, mm_categories, mm_aln, mm_genomic =  fill_aligner_data(reads_minimap2, is_ultra = False)
+    ds_positions, ds_categories, ds_aln, ds_genomic =  fill_aligner_data(reads_desalt, is_ultra = False)
+
+    # mm_positions = {}
+    # mm_categories = defaultdict(dict)
+    # mm_aln = {}
+    # mm_genomic = set()
+    # for acc in reads_minimap2:
+    #     mm2_annot, mm_splice_choords, mm2_chr, mm2_start, mm2_stop, mm_is_exonic = reads_minimap2[acc][7], reads_minimap2[acc][9], reads_minimap2[acc][11], reads_minimap2[acc][12], reads_minimap2[acc][13], reads_minimap2[acc][15]
+    #     if mm_is_exonic == '0':
+    #         mm_genomic.add(acc)
+    #     elif mm_is_exonic == '1':
+    #         mm_positions[acc] = (mm2_start, mm2_stop)
+    #         mm_categories[mm2_annot][acc] = (mm2_start, mm2_stop, mm_splice_choords)
+    #     mm_aln[acc] = mm2_annot
+    
+    # ds_positions = {}
+    # ds_categories = defaultdict(dict)
+    # ds_aln = {}
+    # ds_genomic = set()
+    # for acc in reads_desalt:
+    #     ds_annot, ds_chr, ds_start, ds_stop, ds_is_exonic = reads_desalt[acc][7], reads_desalt[acc][11], reads_desalt[acc][12], reads_desalt[acc][13], reads_desalt[acc][15]
+    #     if ds_is_exonic == '0':
+    #         ds_genomic.add(acc)
+    #     elif ds_is_exonic == '1':
+    #         ds_positions[acc] = (ds_start, ds_stop)
+
+    #     ds_aln[acc] = ds_annot
+
+    is_genomic = ds_genomic & mm_genomic
+
+    # get the uLTRA categories for likely genomic reads
+    ult_positions, ultra_genomic_reads_categories, ultra_unaligned, suspicious_fsms, ult_categories = fill_ultra_data(reads_isonalign, is_genomic)
+
+    # ult_positions = {}
+    # ultra_unaligned = set()
+    # ultra_genomic_reads_categories =  defaultdict(int)
+    # suspicious_fsms = set()
+    # for acc in reads_isonalign:
+    #     ia_annot, ia_chr, ia_start, ia_stop, ia_is_exonic = reads_isonalign[acc][7], reads_isonalign[acc][11], reads_isonalign[acc][12], reads_isonalign[acc][13], reads_isonalign[acc][15]
+    #     if acc in is_genomic:
+    #         ultra_genomic_reads_categories[ia_annot] += 1
+    #         if ia_annot == "FSM":
+    #             suspicious_fsms.add(acc)
+    #     if ia_annot == 'unaligned':
+    #         ultra_unaligned.add(acc)
+    #     if ia_is_exonic == '1':
+    #         ult_positions[acc] = (ia_start, ia_stop)
+
+
+    data_for_venn = {}
+
+    # All reads
 
     mm_ovl_venn = get_overlap_venn(mm_positions, ds_positions, ult_positions, 1,10,100)
     ds_ovl_venn = get_overlap_venn(ds_positions, mm_positions, ult_positions, 10,1,100)
@@ -304,9 +393,47 @@ def get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desa
     print("total union of unique entries in the concordance venn diagram:", len(tot2))
     tot3 = set(mm_ovl_venn & ds_ovl_venn & ult_ovl_venn)
     print("total shared between all unique entries:", len(tot3))
+    data_for_venn["ALN"] = [ult_ovl_venn, ds_ovl_venn, mm_ovl_venn]
+
+    # Separated into category 
+    label_types = ["NNC", "NO_SPLICE", "NIC", "ISM", "FSM"]
+    for label_type in label_types:
+        mm_reads = mm_categories[label_type]
+        ds_reads = ds_categories[label_type]
+        ult_reads = ult_categories[label_type]
+        if label_type in set(["NIC", "ISM", "FSM"]):
+            mm_ovl_venn = get_splice_sites_match_venn(mm_reads, ds_reads, ult_reads, 1, 10, 100)
+            ds_ovl_venn = get_splice_sites_match_venn(ds_reads, mm_reads, ult_reads, 10,1,100)
+            ult_ovl_venn = get_splice_sites_match_venn(ult_reads, mm_reads, ds_reads, 100,1,10)
+        else:
+            mm_ovl_venn = get_overlap_venn(mm_reads, ds_reads, ult_reads, 1,10,100)
+            ds_ovl_venn = get_overlap_venn(ds_reads, mm_reads, ult_reads, 10,1,100)
+            ult_ovl_venn = get_overlap_venn(ult_reads, mm_reads, ds_reads, 100,1,10)
+        
+        data_for_venn[label_type] = [ult_ovl_venn, ds_ovl_venn, mm_ovl_venn]
+        print()
+        print(label_type)
+        tot = set(set(mm_reads.keys()) | set(ds_reads.keys()) | set(ult_reads.keys()))
+        print("total exonic reads evaluated for concordance:", len(tot))
+        tot2 = set(mm_ovl_venn | ds_ovl_venn | ult_ovl_venn)
+        print("total union of unique entries in the concordance venn diagram:", len(tot2))
+        tot3 = set(mm_ovl_venn & ds_ovl_venn & ult_ovl_venn)
+        print("total shared between all unique entries:", len(tot3))
+
+    # label_types = ["NIC", "ISM", "FSM"]
+    # for label_type in label_types:
+    #     mm_reads = mm_categories[label_type]
+    #     ds_reads = ds_categories[label_type]
+    #     ult_reads = ult_categories[label_type]
+
+    #     mm_ovl_venn = get_splice_sites_match_venn(mm_reads, ds_reads, ult_reads, 1, 10, 100)
+    #     ds_ovl_venn = get_splice_sites_match_venn(ds_reads, mm_reads, ult_reads, 10,1,100)
+    #     ult_ovl_venn = get_splice_sites_match_venn(ult_reads, mm_reads, ds_reads, 100,1,10)
+
+    #     data_for_venn[label_type] = [ult_ovl_venn, ds_ovl_venn, mm_ovl_venn]
 
     print("suspicious_fsm reads", len(suspicious_fsms), "20 first:", list(suspicious_fsms)[:20])
-    print("ULTRA categories of likely genomic reads:", ultra_categories)
+    print("ULTRA categories of likely genomic reads:", ultra_genomic_reads_categories)
 
     mm_categories = defaultdict(int)
     ds_categories = defaultdict(int)
@@ -332,40 +459,9 @@ def get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desa
     outfile.close()
     fa_outfile.close()
 
-    return [ult_ovl_venn, ds_ovl_venn, mm_ovl_venn]
-
-    # categories:
-    #  genomic/exonic
-    # What are the venn diagrams in overlapping locations for all the exonic reads
-
-    # What is the category type for uLTRA for reads where minimap2 and deSALT agrees its a genomic read
+    return data_for_venn
 
 
-    # interesting to infer: how many unaligned is genomic
-
-        # if mm2_chr != 'unaligned' and  ds_chr != 'unaligned':
-        #     if ia_chr == 'unaligned':
-        #         differing_reads[acc].add( ( "unaligned_ultra",mm2_chr, ds_annot, ds_start, ds_stop, mm2_annot, mm2_start, mm2_stop,  reads_isonalign[acc]) )
-        #     elif mm2_chr == ds_chr and is_overlapping(ds_start, ds_stop, mm2_start, mm2_stop): # they are overlapping
-        #         if ia_chr != mm2_chr or not is_overlapping(ia_start, ia_stop, mm2_start, mm2_stop): # not overlapping with isONalign
-        #             differing_reads[acc].add( ( "differing_pos", mm2_chr, ds_annot, ds_start, ds_stop, mm2_annot, mm2_start, mm2_stop,  reads_isonalign[acc]) )
-        
-        # # More detailed analysis for later
-        # else:
-        #     if mm2_chr == 'unaligned' and  ds_chr == 'unaligned':
-        #         if ia_chr != 'unaligned': 
-        #             differing_reads[acc].add( ("unaligned_mm2_ds", "-",  "-",  "-",  "-",  "-", reads_isonalign[acc]) )
-        #     elif mm2_chr == 'unaligned':
-        #         if ia_chr != 'unaligned': 
-        #             ds_chr, ds_start, ds_stop = reads_desalt[acc][11], reads_desalt[acc][12], reads_desalt[acc][13]
-        #             if not is_overlapping(ia_start, ia_stop, ds_start, ds_stop):
-        #                 differing_reads[acc].add( ("unaligned_mm2_diff_ds",ds_chr, ds_annot, ds_start, ds_stop, "-", "-", "-", reads_isonalign[acc]) )
-        #     elif ds_chr == 'unaligned':
-        #         if ia_chr != 'unaligned': 
-        #             mm2_chr, mm2_start, mm2_stop = reads_minimap2[acc][11], reads_minimap2[acc][12], reads_minimap2[acc][13]
-        #             if not is_overlapping(ia_start, ia_stop, mm2_start, mm2_stop):
-        #                 differing_reads[acc].add( ("unaligned_ds_diff_mm2", mm2_chr, '-', "-", "-", mm2_annot, mm2_start, mm2_stop, reads_isonalign[acc]) )
-    # return differing_reads
 
 def get_ultra_categories_of_missed_likely_fsm_reads(data_for_venn, reads_isonalign, reads):
     ultra, desalt, minimap2 = data_for_venn
@@ -479,7 +575,10 @@ def main(args):
     
     # OVERLAP
     overlap_data_for_venn = get_mapping_location_concordance(reads_isonalign, reads_minimap2, reads_desalt, reads)
-    venn(overlap_data_for_venn, args.outfolder, "reads_ovl_concordance")
+
+    for category in overlap_data_for_venn
+        data = overlap_data_for_venn[category]
+        venn(data, args.outfolder, "reads_{0}_concordance".format(category))
 
     # FSM
     get_ultra_categories_of_missed_likely_fsm_reads(fsm_data_for_venn, reads_isonalign, reads)
