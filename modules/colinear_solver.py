@@ -303,7 +303,7 @@ def read_coverage_mam_score(mams, overlap_threshold = 20):
         v =  mams[j]
 
         # linear scan -- replace with range max Q tree
-        T_values = [(j_prime, c_val - 0.01* (v.c - mams[j_prime].d - 1) ) for j_prime, c_val in enumerate(C) if  mams[j_prime].d < v.c and j_prime < j]
+        T_values = [(j_prime, c_val - 0.1* (v.c - mams[j_prime].d - 1) ) for j_prime, c_val in enumerate(C) if  mams[j_prime].d < v.c and j_prime < j]
         # T_values2 = [(j_prime, c_val - max(0, mams[j_prime].y - v.x)) for j_prime, c_val in enumerate(C) if  mams[j_prime].d < v.c and j_prime < j] # Is this proper symmetric variant subtracting overlapping genomic positions?
         if T_values:
             # print(j, T_values)
@@ -318,7 +318,7 @@ def read_coverage_mam_score(mams, overlap_threshold = 20):
         if I_values:
             # print("here", j, I_values)
             # I_values_plus_chord_diff = [ (j_prime, c_val + (v.val - (mams[j_prime].d - v.c + 1 ) - 0.01 if v.x != mams[j_prime].y else v.val - 0.01)) for j_prime, c_val in I_values]  # Penalize an extra 0.1 to prefer non-overlapping solutions in case of tie breakers
-            I_values_plus_chord_diff = [ (j_prime, c_val + (v.val - (mams[j_prime].d - v.c + 1 ) - 0.01*(mams[j_prime].d - v.c + 1 )) ) for j_prime, c_val in I_values]  # Penalize an extra 0.1 to prefer non-overlapping solutions in case of tie breakers
+            I_values_plus_chord_diff = [ (j_prime, c_val + (v.val - (mams[j_prime].d - v.c + 1 ) - 0.1*(mams[j_prime].d - v.c + 1 )) ) for j_prime, c_val in I_values]  # Penalize an extra 0.1 to prefer non-overlapping solutions in case of tie breakers
 
             I_traceback_index, max_c_value_case_b = max(reversed(I_values_plus_chord_diff), key=lambda x: x[1])
             C_b[j] = max_c_value_case_b
