@@ -369,27 +369,31 @@ if __name__ == '__main__':
     pipeline_parser.add_argument('reads', type=str, help='Path to fasta/fastq file with reads.')
     pipeline_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
     group = pipeline_parser.add_mutually_exclusive_group()
-    group.add_argument('--ont', action="store_true", help='Set parameters suitable for ONT (Currently sets: --min_mem 17, --min_acc 0.6).')
-    group.add_argument('--isoseq', action="store_true", help='Set parameters suitable for IsoSeq (Currently only: --min_mem 20, --min_acc 0.8).')
+    group.add_argument('--ont', action="store_true", help='Set parameters suitable for ONT (Currently sets: --min_mem 17, --min_acc 0.6 --alignment_threshold 0.5).')
+    group.add_argument('--isoseq', action="store_true", help='Set parameters suitable for IsoSeq (Currently sets: --min_mem 20, --min_acc 0.8 --alignment_threshold 0.8).')
     # group2 = pipeline_parser.add_mutually_exclusive_group()
     # group2.add_argument('--mummer', action="store_true", help='Use mummer to find mems. About 1.5-2x faster than slamem but consumes  >4x more memory (slamem is recommended for human and larger)')
     # group2.add_argument('--slamem', action="store_true", help='Use slaMEM to find mems. About 1.5-2x slower than mumer but consumes less than 25% of the memory compared to mummer')
 
     pipeline_parser.add_argument('--min_mem', type=int, default=17, help='Threshold for minimum mem size considered.')
     pipeline_parser.add_argument('--min_segm', type=int, default=25, help='Threshold for minimum segment size considered.')
-    pipeline_parser.add_argument('--min_acc', type=float, default=0.6, help='Minimum accuracy of MAM to be considered in mam chaining.')
+    pipeline_parser.add_argument('--min_acc', type=float, default=0.5, help='Minimum accuracy of MAM to be considered in mam chaining.')
     pipeline_parser.add_argument('--flank_size', type=int, default=1000, help='Size of genomic regions surrounding genes.')
     pipeline_parser.add_argument('--max_intron', type=int, default=1200000, help='Set global maximum size between mems considered in chaining solution. This is otherwise inferred from GTF file per chromosome.')
     pipeline_parser.add_argument('--small_exon_threshold', type=int, default=200, help='Considered in MAM solution even if they cont contain MEMs.')
     pipeline_parser.add_argument('--reduce_read_ployA', type=int, default=8, help='Reduces polyA tails longer than X bases (default 10) in reads to 5bp before MEM finding. This helps MEM matching to spurios regions but does not affect final read alignments.')
-    pipeline_parser.add_argument('--alignment_threshold', type=int, default=0.5, help='Lower threshold for considering an alignment. \
+    pipeline_parser.add_argument('--alignment_threshold', type=int, default=0.6, help='Lower threshold for considering an alignment. \
                                                                                         Counted as the difference between total match score and total mismatch penalty. \
                                                                                         If a read has 25\% errors (under edit distance scoring), the difference between \
-                                                                                        matches and mismatches would be 0.75 - 0.25 = 0.5. Default val (0.5) sets that a score\
+                                                                                        matches and mismatches would be (very roughly) 0.75 - 0.25 = 0.5 with default alignment parameters \
+                                                                                        match =2, subs=-2, gap open 3, gap ext=1. Default val (0.5) sets that a score\
                                                                                         higher than 2*0.5*read_length would be considered an alignment, otherwise unaligned.')
     pipeline_parser.add_argument('--t', dest = 'nr_cores', type=int, default=3, help='Number of cores.')
     pipeline_parser.add_argument('--non_covered_cutoff', type=int, default=15, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
     pipeline_parser.add_argument('--dropoff', type=float, default=0.95, help='Ignore alignment to hits with read coverage of this fraction less than the best hit.')
+    pipeline_parser.add_argument('--max_loc', type=float, default=5, help='Limit read to be aligned to at most max_loc places (default 5).\
+                                                                            This prevents time blowup for reads from highly repetitive regions (e.g. some genomic intra-priming reads)\
+                                                                            but may limit all posible alignments to annotated gene families with many highly similar copies.')
     pipeline_parser.add_argument('--ignore_rc', action='store_true', help='Ignore to map to reverse complement.')
     pipeline_parser.add_argument('--disable_infer', action='store_true', help='Makes splice creation step much faster. Thes parameter can be set if gene and transcript name fields are provided in gtf file.')
     pipeline_parser.add_argument('--mask_threshold', type=int, default=200, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
@@ -417,19 +421,24 @@ if __name__ == '__main__':
     align_reads_parser.add_argument('--t', dest = 'nr_cores', type=int, default=3, help='Number of cores.')
     align_reads_parser.add_argument('--max_intron', type=int, default=1200000, help='Set global maximum size between mems considered in chaining solution. This is otherwise inferred from GTF file per chromosome.')
     align_reads_parser.add_argument('--reduce_read_ployA', type=int, default=8, help='Reduces polyA tails longer than X bases (default 10) in reads to 5bp before MEM finding. This helps MEM matching to spurios regions but does not affect final read alignments.')
-    align_reads_parser.add_argument('--alignment_threshold', type=int, default=0.5, help='Lower threshold for considering an alignment. \
+    align_reads_parser.add_argument('--alignment_threshold', type=int, default=0.6, help='Lower threshold for considering an alignment. \
                                                                                         Counted as the difference between total match score and total mismatch penalty. \
                                                                                         If a read has 25\% errors (under edit distance scoring), the difference between \
-                                                                                        matches and mismatches would be 0.75 - 0.25 = 0.5. Default val (0.5) sets that a score\
+                                                                                        matches and mismatches would be (very roughly) 0.75 - 0.25 = 0.5 with default alignment parameters \
+                                                                                        match =2, subs=-2, gap open 3, gap ext=1. Default val (0.5) sets that a score\
                                                                                         higher than 2*0.5*read_length would be considered an alignment, otherwise unaligned.')
     align_reads_parser.add_argument('--non_covered_cutoff', type=int, default=15, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
     align_reads_parser.add_argument('--dropoff', type=float, default=0.95, help='Ignore alignment to hits with read coverage of this fraction less than the best hit.')
+    align_reads_parser.add_argument('--max_loc', type=float, default=5, help='Limit read to be aligned to at most max_loc places (default 5).\
+                                                                            This prevents time blowup for reads from highly repetitive regions (e.g. some genomic intra-priming reads)\
+                                                                            but may limit all posible alignments to annotated gene families with many highly similar copies.')
+
     align_reads_parser.add_argument('--ignore_rc', action='store_true', help='Ignore to map to reverse complement.')
     align_reads_parser.add_argument('--min_mem', type=int, default=16, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
-    align_reads_parser.add_argument('--min_acc', type=float, default=0.6, help='Minimum accuracy of MAM to be considered in mam chaining.')
+    align_reads_parser.add_argument('--min_acc', type=float, default=0.5, help='Minimum accuracy of MAM to be considered in mam chaining.')
     group2 = align_reads_parser.add_mutually_exclusive_group()
-    group2.add_argument('--ont', action="store_true", help='Set parameters suitable for ONT (Currently sets: --min_mem 17, --min_acc 0.6).')
-    group2.add_argument('--isoseq', action="store_true", help='Set parameters suitable for IsoSeq (Currently only: --min_mem 20, --min_acc 0.8).')
+    group2.add_argument('--ont', action="store_true", help='Set parameters suitable for ONT (Currently sets: --min_mem 17, --min_acc 0.6 --alignment_threshold 0.5).')
+    group2.add_argument('--isoseq', action="store_true", help='Set parameters suitable for IsoSeq (Currently sets: --min_mem 20, --min_acc 0.8 --alignment_threshold 0.8).')
 
 
     align_reads_parser.set_defaults(which='align_reads')
@@ -445,9 +454,11 @@ if __name__ == '__main__':
         if args.ont:
             args.min_mem = 17
             args.min_acc = 0.6
+            # args.alignment_threshold = 0.5
         if args.isoseq:
             args.min_mem = 20
             args.min_acc = 0.8
+            # args.alignment_threshold = 0.5
 
 
     if args.which == 'prep_splicing':
