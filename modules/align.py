@@ -424,7 +424,7 @@ def align_single(reads, refs_lengths, args,  batch_number):
         if read_acc not in reads: # if parallelization not all reads in mummer file are in read batches
             continue
         else:
-            read_seq = help_functions.remove_read_polyA_ends(reads[read_acc], args.reduce_read_ployA, 1)
+            read_seq_mod = help_functions.remove_read_polyA_ends(reads[read_acc], args.reduce_read_ployA, 1)
         # print("instance sizes fw:", [ (chr_id, len(mm)) for chr_id, mm in mems.items()])
         # print("instance sizes rc:", [ (chr_id, len(mm)) for chr_id, mm in mems_rc.items()])
         # print()
@@ -442,10 +442,10 @@ def align_single(reads, refs_lengths, args,  batch_number):
         for (chr_id, chr_instance_index) , (upper_bound_cov, is_rc, all_mems_to_chromosome) in sorted(list(upper_bound.items()) + list(upper_bound_rc.items()), key = lambda x: x[1][0], reverse = True ): # mems.items():
             # print((chr_id, chr_instance_index), upper_bound_cov, all_mems_to_chromosome)
             if upper_bound_cov < best_solution_value*args.dropoff:
-                # print("Breaking for", chr_id, is_rc, upper_bound_cov, "best:", best_solution_value, "read length:", len(read_seq))
+                # print("Breaking for", chr_id, is_rc, upper_bound_cov, "best:", best_solution_value, "read length:", len(read_seq_mod))
                 break
             
-            # print("Processing", chr_id, is_rc, upper_bound_cov, "best:", best_solution_value, "read length:", len(read_seq))
+            # print("Processing", chr_id, is_rc, upper_bound_cov, "best:", best_solution_value, "read length:", len(read_seq_mod))
             # for mem in all_mems_to_chromosome:
             #     print(mem.exon_part_id, mem.x, mem.y, mem.c, mem.d, '\t', mem.val)
             # print(len(all_mems_to_chromosome))
@@ -478,25 +478,39 @@ def align_single(reads, refs_lengths, args,  batch_number):
         is_secondary =  False
         is_rc =  False
         if not all_chainings:
-            sam_output.main(read_acc, read_seq, '*', 'unaligned', [], '*', '*', '*', alignment_outfile, is_rc, is_secondary, 0)
+            sam_output.main(read_acc, read_seq_mod, '*', 'unaligned', [], '*', '*', '*', alignment_outfile, is_rc, is_secondary, 0)
             continue
 
-        all_chainings = sorted(all_chainings, key=lambda x: x[2], reverse=True)
+        # all_chainings = sorted(all_chainings, key=lambda x: x[2], reverse=True) 
+        all_chainings = sorted(all_chainings, key=lambda x:(-x[2],(x[1][-1].y - x[1][0].x))) 
         # if multiple:
         #     print(all_chainings)
         best_chaining_score = all_chainings[0][2]
         read_alignments = []
-        for chr_id, mem_solution, chaining_score, is_rc in all_chainings:
-            if chaining_score/float(best_chaining_score) < args.dropoff:
+        for i_nr_sol, (chr_id, mem_solution, chaining_score, is_rc) in enumerate(all_chainings):
+            # print(i_nr_sol)
+            # if read_acc == "100:823|c8740d7a-53bd-4690-aa53-de3ebd003d20": #len(all_chainings) > 20: 
+            #     print(read_acc, len(all_chainings), chaining_score)
+            #     print(all_chainings)
+            #     for c in all_chainings:
+            #         print(c[1][-1].y - c[1][0].x, c[1][0].x, c[1][-1].y)
+            #     sys.exit()
+            if chaining_score/float(best_chaining_score) < args.dropoff or i_nr_sol >= args.max_loc:
                 # print(chr_id, chaining_score, best_chaining_score, "NOT CONSIDERED")
-                continue
+                # print(i_nr_sol, "lol")
+                break
             # print(chr_id, chaining_score, best_chaining_score)
 
             if is_rc:
-                read_seq = help_functions.reverse_complement(read_seq)
+                read_seq = help_functions.reverse_complement(read_seq_mod)
             else:
-                read_seq = read_seq
+                read_seq = read_seq_mod
             # print("mem solution:", is_rc, chaining_score, mem_solution)
+            # print()
+            # print()
+            # print(is_rc, mem_solution[0].x)
+            # print(mem_solution)
+            # print(read_seq)
             non_covered_regions, mam_value, mam_solution = classify_read_with_mams.main(mem_solution, ref_segment_sequences, ref_flank_sequences, parts_to_segments, \
                                                                                                                     segment_to_gene, gene_to_small_segments, \
                                                                                                                     read_seq, warning_log_file, min_acc)
@@ -514,6 +528,7 @@ def align_single(reads, refs_lengths, args,  batch_number):
                 classification, annotated_to_transcript_id = classify_alignment2.main(chr_id, predicted_splices, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations)
                 largest_intron_size = max([m2.x - m1.y for m1,m2 in zip(mam_solution[:-1], mam_solution[1:]) ]) if len(mam_solution) > 1 else 0
                 if largest_intron_size > max_allowed_intron and classification != 'FSM':
+                    # print(i_nr_sol, mem_solution[0].x, "HERE", largest_intron_size)
                     # print()
                     # print(read_acc)
                     # print(classification, alignment_score/len(read_seq), "Score: {0}, old T: {1}, new T: {2}".format(alignment_score, 2*args.alignment_threshold*len(read_seq), len(read_seq)*8*args.alignment_threshold))
@@ -533,13 +548,20 @@ def align_single(reads, refs_lengths, args,  batch_number):
                                         all_splice_sites_annotations, mam_sol_exons_length, alignment_score, \
                                         read_aln, ref_aln, classification, non_covered_regions, covered, predicted_exons, annotated_to_transcript_id)
 
-
+                # print(read_aln)
+                # print(ref_aln)
+                # print()
+                # if readl_acc == "m64014_190506_005857/153027831/ccs" or read_acc == "m64014_190506_005857/168625399/ccs":
+                #     print(classification, alignment_score/len(read_seq), "Score: {0}, T: {1}".format(alignment_score, 2*args.alignment_threshold*len(read_seq)))
+                # print("SEQ identity:")
+                # print(alignment_score)
                 if alignment_score < 2*args.alignment_threshold*len(read_seq) and classification != 'FSM': # match score * aln_threshold
+                    # print(i_nr_sol, mem_solution[0].x, "HERE2", chaining_score, alignment_score, 2*args.alignment_threshold*len(read_seq))
                     # print()
                     # print(read_acc)
                     # print(read_aln)
                     # print(ref_aln)
-                    # print(classification, alignment_score/len(read_seq), "Score: {0}, old T: {1}, new T: {2}".format(alignment_score, 2*args.alignment_threshold*len(read_seq), len(read_seq)*8*args.alignment_threshold))
+                    # print(classification, alignment_score/len(read_seq), "Score: {0}, T: {1}".format(alignment_score, 2*args.alignment_threshold*len(read_seq)))
                     continue
                 # print(classification)
                 # checing for internal (splice site) non covered regions
@@ -547,9 +569,22 @@ def align_single(reads, refs_lengths, args,  batch_number):
                     classification = 'Insufficient_junction_coverage_unclassified'
                 coverage = covered / float(len(read_seq)) 
                 # print(len(read_alignments), read_alignments)
-                read_alignments.append( (alignment_score, read_acc, chr_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, is_rc, coverage) )
-                
-
+                genome_start = mam_solution[0].x
+                genome_stop = mam_solution[-1].y
+                read_alignments.append( (alignment_score, genome_start, genome_stop, read_acc, chr_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, is_rc, coverage) )
+            
+            # else:
+            #     print(i_nr_sol, mem_solution[0].x, "OK", chaining_score, mam_value, mem_solution[-1].y - mem_solution[0].x, mem_solution[0].x)    
+        # if read_acc == "100:823|c8740d7a-53bd-4690-aa53-de3ebd003d20": #len(all_chainings) > 20: 
+        #     print(read_acc, len(all_chainings), chaining_score, chr_id, max_allowed_intron)
+        #     print(read_seq)
+        #     # print(all_chainings)
+        #     for c in all_chainings:
+        #         print(is_rc, c[2], c[1][-1].y - c[1][0].x, c[1][0].x, c[1][-1].y)
+        #     print("Nr alignments:", len(read_alignments))
+        #     for r in read_alignments:
+        #         print(r[0],r[1], r[2], r[3],r[4])
+        #     # sys.exit()
 
             # elif 10*len(read_seq) < mam_sol_exons_length:
             #     print("length ref: {0}, length query:{1}".format(mam_sol_exons_length, len(read_seq)))
@@ -561,16 +596,19 @@ def align_single(reads, refs_lengths, args,  batch_number):
             sam_output.main(read_acc, read_seq, '*', 'unaligned', [], '*', '*', '*', alignment_outfile, is_rc, is_secondary, 0)
         else:
             # sorted_wrt_alignement_score = sorted(read_alignments, key = lambda x: x[0], reverse = True)
-            sorted_wrt_alignement_score = sorted(read_alignments, key = lambda x: (-x[0], x[3]))
+            sorted_wrt_alignement_score = sorted(read_alignments, key = lambda x: (-x[0], (x[2] - x[1]), x[3]))
             best_aln_sw_score = sorted_wrt_alignement_score[0][0]
             more_than_one_alignment = True if len(sorted_wrt_alignement_score) > 1 else False
-            # if len(sorted_wrt_alignement_score) > 1:
-            #     if best_aln_sw_score >  sorted_wrt_alignement_score[1][0]:
-            #         map_score = 60
-            #     else:                    
-            #         map_score = 60
 
-            for i, (alignment_score, read_acc, chr_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, is_rc, coverage) in enumerate(sorted_wrt_alignement_score):
+            # if read_acc == "100:823|c8740d7a-53bd-4690-aa53-de3ebd003d20": #len(all_chainings) > 20: 
+            #     print()
+            #     print( "SORTED", best_aln_sw_score)
+            #     for r in sorted_wrt_alignement_score:
+            #         print(r[0],r[1], (r[2]-r[1]), r[5],r[6])
+            #     sys.exit()
+
+
+            for i, (alignment_score, genome_start, genome_stop, read_acc, chr_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, is_rc, coverage) in enumerate(sorted_wrt_alignement_score):
                 if i == 0:
                     is_secondary =  False
                     assert alignment_score == best_aln_sw_score
