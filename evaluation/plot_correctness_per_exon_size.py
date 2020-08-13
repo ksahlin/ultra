@@ -23,7 +23,9 @@ def correctness_per_exon_size(input_csv, outfolder):
     print(nr_reads)
 
     indata = pd.read_csv(input_csv)
-    ax = sns.lineplot(x="exon_size", y="fraction_correct", hue="alignment_algorithm", estimator=None, lw=1, data=indata)
+    ax = sns.lineplot(x="exon_size", y="fraction_correct", hue="alignment_algorithm",
+                          hue_order= ["uLTRA", "minimap2", "minimap2_GTF", "deSALT", "deSALT_GTF", "Graphmap2", "Graphmap2_GTF"],
+                           estimator=None, lw=1, data=indata)
     # g = sns.catplot(x="alignment_classification", #col="Depth",
     #             data=indata,  hue="alignment_algorithm", hue_order= ["uLTRA", "minimap2", "deSALT", "deSALT_GTF", "Graphmap2", "Graphmap2_GTF"],
     #             order= ["correct", "site_diff", "diff_exon_count", "diff_location", 'unaligned'], kind="count", aspect=1)
@@ -84,7 +86,8 @@ def correctness_per_exon_size_binned(input_csv, outfolder):
         # full_supp_data = [ {"exon_bins" : index[0], "percentage" : float(val)} for index, val in data_tmp.iteritems() if index[1] == "yes"]
         # full_supp = pd.DataFrame(full_supp_data)
 
-        g = sns.barplot(x="exon_bins", y="fraction_correct", hue = 'alignment_algorithm', data=data_grouped)
+        g = sns.barplot(x="exon_bins", y="fraction_correct", hue = 'alignment_algorithm', 
+                        hue_order= ["uLTRA", "minimap2", "minimap2_GTF", "deSALT", "deSALT_GTF", "Graphmap2", "Graphmap2_GTF"], data=data_grouped)
 
         plt.xlabel('exon_size', fontsize=14)
         plt.ylabel('Correct alignment',fontsize=16)

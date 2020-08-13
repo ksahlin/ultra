@@ -8,7 +8,7 @@ from collections import namedtuple
 mem = namedtuple('Mem', ['x', 'y', 'c', 'd', 'val', 'j', "exon_part_id"])
 globals()[mem.__name__] = mem # Global needed for multiprocessing
 
-def find_mems(outfolder, read_path, refs_path, mummer_out_path, min_mem):
+def find_mems_mummer(outfolder, read_path, refs_path, mummer_out_path, min_mem):
     # mummer_out_path = os.path.join( outfolder, "mummer_mems.txt" )
     with open(mummer_out_path, "w") as output_file:
         # print('Running spoa...', end=' ')
@@ -18,18 +18,21 @@ def find_mems(outfolder, read_path, refs_path, mummer_out_path, min_mem):
         # print('Done.')
         stdout.flush()
     output_file.close()
-    # mummer_file = open(mummer_out_path, "r").readlines()
-    # for line in mummer_file:
-    #     print(line)
-    # consensus = l[1].strip()
-    # msa = [s.strip() for s in l[3:]]
-    # print("regular spoa:", consensus)
-    # print(len(consensus))
-    # print(msa)
-    # r = open(ref_out_file, "w")
-    # r.write(">{0}\n{1}".format("reference", consensus))
-    # r.close()
-    # return consensus
+
+def find_mems_slamem(outfolder, read_path, refs_path, out_path, min_mem):
+    # time slaMEM -l 14 /Users/kxs624/tmp/ULTRA/human_test/refs_sequences.fa /Users/kxs624/tmp/ULTRA/human_test_new_flanking_strat/reads_tmp.fq -o /Users/kxs624/tmp/ULTRA/human_test/slamem_test.tx
+    # with open(out_path, "w") as output_file:
+    stdout.flush()
+    stderr_file = open(os.path.join(outfolder, "slamem_stderr.1") , "w")
+    stdout_file = open(os.path.join(outfolder, "slamem_stdout.1") , "w")
+    try: # slaMEM throws error if no MEMs are found in any of the sequences
+        subprocess.check_call([ 'slaMEM', '-l' , str(min_mem),  refs_path, read_path, '-o', out_path ], stdout=stdout_file, stderr=stderr_file)
+    except:
+        find_mems_mummer(outfolder, read_path, refs_path, out_path, min_mem)
+    # print('Done.')
+    stdout.flush()
+    # output_file.close()
+
 
 
 # def parse_results(mems_path):
@@ -68,7 +71,7 @@ def find_mems(outfolder, read_path, refs_path, mummer_out_path, min_mem):
 #     return mems_db
 
 
-def get_mummer_records(mems_path, reads):
+def get_mem_records(mems_path, reads):
     '''
         Reads contains all the relevant reads in the batch to read mems from 
     '''
@@ -76,8 +79,8 @@ def get_mummer_records(mems_path, reads):
     relevant_read_cnt = 0
     for i, line in enumerate(open(mems_path, 'r')):
         if line[0] == '>':
-            tmp_line = line.split()[1].strip()
-            if tmp_line not in reads:
+            acc = line[1:].strip()
+            if acc not in reads:
                 relevant = False
                 continue
             else:
@@ -85,7 +88,7 @@ def get_mummer_records(mems_path, reads):
                 relevant_read_cnt +=1
 
             if relevant_read_cnt == 1:
-                read_acc = line.split()[1].strip()  
+                read_acc = acc  
             else:
 
                 for chr_id in list(read_mems_tmp.keys()):
@@ -94,7 +97,7 @@ def get_mummer_records(mems_path, reads):
                     read_mems_tmp[chr_id] = sorted_mems
 
                 yield read_acc, read_mems_tmp
-                read_acc = line.split()[1].strip() 
+                read_acc = acc 
             
             read_mems_tmp = defaultdict(list)
 
@@ -102,6 +105,7 @@ def get_mummer_records(mems_path, reads):
                 vals =  line.split() #11404_11606           1     11405       202
                 exon_part_id = vals[0]
                 chr_id, ref_coord_start, ref_coord_end = exon_part_id.split('^')
+                chr_id = int(chr_id)
                 mem_len = int(vals[3])
                 # convert to 0-indexed reference as in python
                 # however, for MEM length last coordinate is inclusive of the hit in MEM solvers, not as in python end-indexing
