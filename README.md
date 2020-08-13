@@ -61,6 +61,16 @@ Upon start/login to your server/computer you need to activate the conda environm
 source activate ultra
 ```
 
+5. Test uLTRA
+
+Download/use test data available in this repository [here](https://github.com/ksahlin/ultra/tree/master/test) and run: 
+
+```
+uLTRA pipeline [/your/local/directory/to/test]/SIRV_genes_C_170612a.gtf  \
+               [/your/local/directory/to/test]/SIRV_genes.fasta  \
+               [/your/local/directory/to/test]/reads.fa outfolder/  [optional parameters]
+```
+
 ### Downloading source from GitHub
 
 #### Dependencies
@@ -93,7 +103,7 @@ uLTRA can be used with either Iso-Seq or ONT reads.
 First, we construct the data structures used in uLTRA using a genome annotation GTF file and a genome fasta file.
 
 ```
-uLTRA prep_splicing  all_genes.gtf outfolder/  [parameters]
+uLTRA prep_splicing  /full/dir/to/all_genes.gtf outfolder/  [parameters]
 ```
 
 ```
@@ -103,7 +113,7 @@ uLTRA prep_seqs  genome.fasta  outfolder/  [parameters]
 
 ### Aligning
 
-For example, to align ONT cDNA reads using 48 cores, run
+For example
 
 ```
 uLTRA align  genome.fasta  reads.[fa/fq] outfolder/  --ont --t 48   # ONT cDNA reads using 48 cores
@@ -111,13 +121,14 @@ uLTRA align  genome.fasta  reads.[fa/fq] outfolder/  --isoseq --t 48 # PacBio is
 uLTRA align  genome.fasta  reads.[fa/fq] outfolder/  --k 14  --t 48 # PacBio dRNA reads or reads with >10-12% error rate
 ```
 
+uLTRA's index takes about 7Gb for human, and each instance needs a separate copy of the index (if parallelized, that is, `--t` greater than 1). So if you have a computer/cluster with 8Gb per core and n cores it is straightforward to set `--t n-1` (n-1 to leave some space for the main process). 
 
 ### Pipeline
 
 Performs all the steps in one
 
 ```
-uLTRA pipeline test/SIRV_genes_C_170612a.gtf  test/SIRV_genes.fasta  test/reads.fa outfolder/  [parameters]
+uLTRA pipeline /full/dir/to/test/SIRV_genes_C_170612a.gtf  test/SIRV_genes.fasta  test/reads.fa outfolder/  [parameters]
 ```
 
 #### Output
