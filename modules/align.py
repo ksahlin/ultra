@@ -453,6 +453,7 @@ def align_single(reads, refs_lengths, args,  batch_number):
 
             max_allowed_intron = min(max_intron_chr[chr_id] + 20000, max_global_intron)
             # print("max_allowed_intron", max_allowed_intron, max_intron_chr[chr_id])
+            # print("LEM MEMS", len(all_mems_to_chromosome))
             if len(all_mems_to_chromosome) < 90:
                 solutions, mem_solution_value = colinear_solver.read_coverage(all_mems_to_chromosome, max_allowed_intron)
                 quadratic_instance_counter += 1 
@@ -473,7 +474,7 @@ def align_single(reads, refs_lengths, args,  batch_number):
             for sol in solutions:
                 all_chainings.append( (chr_id, sol, mem_solution_value, is_rc) )
                 # for mem in sol:
-                #     print(mem.exon_part_id, mem.x, mem.y, "(sol)")
+                #     print(mem.exon_part_id, mem.x, mem.y, mem.c, mem.d, '\t', mem.val, "(sol)")
             # print(all_chainings)
         is_secondary =  False
         is_rc =  False
@@ -488,12 +489,12 @@ def align_single(reads, refs_lengths, args,  batch_number):
         best_chaining_score = all_chainings[0][2]
         read_alignments = []
         for i_nr_sol, (chr_id, mem_solution, chaining_score, is_rc) in enumerate(all_chainings):
-            # print(i_nr_sol)
+            # print(i_nr_sol, chr_id, chaining_score)
             # if read_acc == "100:823|c8740d7a-53bd-4690-aa53-de3ebd003d20": #len(all_chainings) > 20: 
             #     print(read_acc, len(all_chainings), chaining_score)
             #     print(all_chainings)
-            #     for c in all_chainings:
-            #         print(c[1][-1].y - c[1][0].x, c[1][0].x, c[1][-1].y)
+            # for c in all_chainings:
+            #     print(c[1][-1].y - c[1][0].x, c[1][0].x, c[1][-1].y)
             #     sys.exit()
             if chaining_score/float(best_chaining_score) < args.dropoff or i_nr_sol >= args.max_loc:
                 # print(chr_id, chaining_score, best_chaining_score, "NOT CONSIDERED")
@@ -596,7 +597,17 @@ def align_single(reads, refs_lengths, args,  batch_number):
             sam_output.main(read_acc, read_seq, '*', 'unaligned', [], '*', '*', '*', alignment_outfile, is_rc, is_secondary, 0)
         else:
             # sorted_wrt_alignement_score = sorted(read_alignments, key = lambda x: x[0], reverse = True)
-            sorted_wrt_alignement_score = sorted(read_alignments, key = lambda x: (-x[0], (x[2] - x[1]), x[3]))
+            sorted_wrt_alignement_score = sorted(read_alignments, key = lambda x: (-x[0], (x[2] - x[1]), x[5]))
+            # sorted_wrt_alignement_score = sorted(read_alignments, key = lambda x: (-(x[0] - 0.002*(x[2] - x[1])), len(x[5]) ))
+            # if len(read_alignments) > 1 and "FSM" in set( [r[5] for r in read_alignments]):
+            #     print(read_acc)
+            #     for r in sorted_wrt_alignement_score:
+            #         print(r[0], r[5], r[1], (r[2] - r[1]))
+            #         print(r[7])
+            #         print(r[8])
+            #     for c in all_chainings:
+            #         print(c[0], c[2], c[1][0].x, c[1][-1].y)
+            # sorted_wrt_alignement_score = sorted(read_alignments, key = lambda x: (x[5] != "FSM", -x[0], (x[2] - x[1])))
             best_aln_sw_score = sorted_wrt_alignement_score[0][0]
             more_than_one_alignment = True if len(sorted_wrt_alignement_score) > 1 else False
 

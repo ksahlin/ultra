@@ -30,6 +30,9 @@ def traceback(index, C):
 def all_solutions_c_max_indicies(C, C_max):
     return [i for i, c in enumerate(C) if c == C_max] 
 
+# def all_solutions_c_max_indicies_mam(C, C_max):
+#     return [i for i, c in enumerate(C) if c >= C_max - 1 ] 
+
 # def reconstruct_solution(mems, C, trace_vector):
 #     solution_index = argmax(C)
 #     value = C[solution_index]
@@ -43,14 +46,17 @@ def all_solutions_c_max_indicies(C, C_max):
 #         #     break
 #     return value, solution[::-1]
 
-def reconstruct_all_solutions(mems, all_C_max_indicies, trace_vector, C):
+def reconstruct_all_solutions(mems, all_C_max_indicies, trace_vector, C, mam_mode = False):
     # solution_index = argmax(C)
     solutions = []
     for solution_index in all_C_max_indicies:
         value = C[solution_index]
         solution = []
         while solution_index > 0:
-            solution.append(mems[solution_index - 1])  # trace vector is shifted on to the right so need to remove 1 from vectore to get j_index 
+            if mam_mode:
+                solution.append(mems[solution_index])  # trace vector is shifted on to the right so need to remove 1 from vectore to get j_index 
+            else:
+                solution.append(mems[solution_index - 1])  # trace vector is shifted on to the right so need to remove 1 from vectore to get j_index 
             solution_index = trace_vector[solution_index]
         solutions.append( solution[::-1] )
     return value, solutions
@@ -354,6 +360,17 @@ def read_coverage_mam_score(mams, overlap_threshold = 20):
     value = C[solution_index]
     # print("index best sol:", solution_index, argmax(C), len(C), C)
     # print(traceback_pointers)
+
+    # all_C_max_indicies = all_solutions_c_max_indicies_mam(C, value)
+    # print(C)
+    # print([m.x for m in mams])
+    # print(traceback_pointers)
+    # print(all_C_max_indicies)
+    # print("number solutions with the same score:", all_solutions_c_max_indicies_mam(C, value))
+    # C_max, solutions = reconstruct_all_solutions(mams, all_C_max_indicies, traceback_pointers, C, mam_mode = True)
+    # for s in solutions:
+    #     print(C_max, s)
+
     solution = []
     while True:
         solution.append(mams[solution_index])
