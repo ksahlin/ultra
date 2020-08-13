@@ -15,7 +15,7 @@ before_install:
 # command to install dependencies
 install:
   - conda create --yes -n uLTRA python=$TRAVIS_PYTHON_VERSION pip 
-  - conda activate uLTRA
+  - source activate uLTRA
   - pip install ultra-bioinformatics
   - git clone git@github.com:fjdf/slaMEM.git
   - cd slaMEM
