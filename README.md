@@ -103,10 +103,9 @@ uLTRA can be used with either Iso-Seq or ONT reads.
 First, we construct the data structures used in uLTRA using a genome annotation GTF file and a genome fasta file.
 
 ```
+# Step 1
 uLTRA prep_splicing  /full/dir/to/all_genes.gtf outfolder/  [parameters]
-```
-
-```
+# Step 2
 uLTRA prep_seqs  genome.fasta  outfolder/  [parameters]
 ```
 
