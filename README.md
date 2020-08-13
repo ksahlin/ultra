@@ -38,7 +38,7 @@ source activate ultra
 2. Install uLTRA 
 
 ```
-pip install uLTRA
+pip install ultra-bioinformatics
 ```
 
 3. You should now have 'uLTRA' installed; try it:
