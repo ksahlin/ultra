@@ -18,7 +18,7 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 
 setup(
 
-    name='uLTRA',  # Required
+    name='ultra_bioinformatics',  # Required
     version='0.0.1',  # Required
     description='Splice aligner of long transcriptomic reads to genome.',  # Required
     long_description=long_description,  # Optional
