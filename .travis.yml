@@ -1,7 +1,9 @@
 language: python
 python:
   - "3.6"
-  
+  - "3.7"
+  - "3.8"
+
 before_install:
 
   # Here we just install Miniconda, which you shouldn't have to change.
@@ -17,7 +19,7 @@ install:
   - conda create --yes -n uLTRA python=$TRAVIS_PYTHON_VERSION pip 
   - source activate uLTRA
   - pip install ultra-bioinformatics
-  - git clone git@github.com:fjdf/slaMEM.git
+  - git clone git@github.com:ksahlin/slaMEM.git
   - cd slaMEM
   - make 
   - export PATH=$PATH:$PWD/
