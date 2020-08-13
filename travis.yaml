@@ -24,7 +24,6 @@ install:
   #- conda install --yes -c conda-forge -c bioconda medaka openblas==0.3.3 spoa racon minimap2
 
 
-
   # - pip install coveralls
 # os:
 #   - linux
