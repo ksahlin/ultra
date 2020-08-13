@@ -20,7 +20,7 @@ setup(
 
     name='uLTRA',  # Required
     version='0.0.1',  # Required
-    description='Aligner of long-read transcriptome reads.',  # Required
+    description='Aligner of long transcriptome reads.',  # Required
     long_description=long_description,  # Optional
     long_description_content_type='text/markdown',
     url='https://github.com/ksahlin/uLTRA',  # Optional
@@ -78,8 +78,9 @@ setup(
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=['parasail',
                      'pysam',
-                     'intervaltree',
-                     'dill'],  # Optional
+                     'dill',
+                     'gffutils',
+                     'edlib'],  # Optional
     # dependency_links=[], # Optional
     # List additional groups of dependencies here (e.g. development
     # dependencies). Users will be able to install these using the "extras"

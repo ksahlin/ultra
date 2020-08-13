@@ -8,6 +8,7 @@ import itertools
 import parasail
 import edlib
 import dill as pickle 
+import collections.abc
 
 # def check_reference_headers(refs):
 #     modified = False
@@ -26,6 +27,16 @@ import dill as pickle
 #             del refs[header]
 #             refs[chr_id] = seq
 #     return modified
+
+
+def update_nested(d, u):
+    for k, v in u.items():
+        if isinstance(v, collections.abc.Mapping):
+            d[k] = update_nested(d.get(k, {}), v)
+        else:
+            d[k] = v
+    return d
+
 
 def remove_read_polyA_ends(seq, threshold_len, to_len):
     end_length_window = min(len(seq)//2, 100)
@@ -173,7 +184,7 @@ def mkdir_p(path):
         else:
             raise
 
-def parasail_alignment(s1, s2, match_score = 8, mismatch_penalty = -8, opening_penalty = 12, gap_ext = 1):
+def parasail_alignment(s1, s2, match_score = 2, mismatch_penalty = -2, opening_penalty = 3, gap_ext = 1):
     user_matrix = parasail.matrix_create("ACGT", match_score, mismatch_penalty)
     result = parasail.sg_trace_scan_16(s1, s2, opening_penalty, gap_ext, user_matrix)
     if result.saturated:
@@ -266,3 +277,19 @@ def parasail_local(s1, s2, match_score = 2, mismatch_penalty = -2, opening_penal
     # print(result.end_query, result.end_ref, result.len_query, result.len_ref, result.length, result.matches)
     # print()
     return s1_alignment, s2_alignment, cigar_string, cigar_tuples, result.score
+
+
+def find_all_paths(graph, start, end):
+    path  = []
+    paths = []
+    queue = [(start, end, path)]
+    while queue:
+        start, end, path = queue.pop()
+        # print( 'PATH', path)
+
+        path = path + [start]
+        if start == end:
+            paths.append(path)
+        for node in set(graph[start]).difference(path):
+            queue.append((node, end, path))
+    return paths

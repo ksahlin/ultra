@@ -30,6 +30,9 @@ def traceback(index, C):
 def all_solutions_c_max_indicies(C, C_max):
     return [i for i, c in enumerate(C) if c == C_max] 
 
+# def all_solutions_c_max_indicies_mam(C, C_max):
+#     return [i for i, c in enumerate(C) if c >= C_max - 1 ] 
+
 # def reconstruct_solution(mems, C, trace_vector):
 #     solution_index = argmax(C)
 #     value = C[solution_index]
@@ -43,14 +46,17 @@ def all_solutions_c_max_indicies(C, C_max):
 #         #     break
 #     return value, solution[::-1]
 
-def reconstruct_all_solutions(mems, all_C_max_indicies, trace_vector, C):
+def reconstruct_all_solutions(mems, all_C_max_indicies, trace_vector, C, mam_mode = False):
     # solution_index = argmax(C)
     solutions = []
     for solution_index in all_C_max_indicies:
         value = C[solution_index]
         solution = []
         while solution_index > 0:
-            solution.append(mems[solution_index - 1])  # trace vector is shifted on to the right so need to remove 1 from vectore to get j_index 
+            if mam_mode:
+                solution.append(mems[solution_index])  # trace vector is shifted on to the right so need to remove 1 from vectore to get j_index 
+            else:
+                solution.append(mems[solution_index - 1])  # trace vector is shifted on to the right so need to remove 1 from vectore to get j_index 
             solution_index = trace_vector[solution_index]
         solutions.append( solution[::-1] )
     return value, solutions
@@ -267,9 +273,7 @@ def read_coverage(mems, max_intron):
     # traceback(C, best_solution_index)
 
 
-
-
-def read_coverage_mam_score(mams):
+def read_coverage_mam_score(mams, overlap_threshold = 20):
     """
         Algorithm 15.1 in Genome scale algorithmic design, Makinen et al.
 
@@ -279,11 +283,13 @@ def read_coverage_mam_score(mams):
         each mem is an Namedtuple. python object
 
     """
-    mams = sorted(mams, key = lambda x: x.y )
-    overlap_threshold = 20
+
+    # assert mams == sorted(mams, key=lambda x: x.y)
+    # mams = sorted(mams, key = lambda x: x.y )
+
     # print("MAM INSTANCE", mams)
     # for mam in mams:
-    #     print(mam.exon_id, mam.x, mam.y, mam.c, mam.d, '\t', mam.val, mam.min_segment_length)
+    #     print(mam.mam_id, mam.x, mam.y, mam.c, mam.d, '\t', mam.val, mam.min_segment_length)
     if len(mams) > 1000:
         print('MAM',len(mams))
     T = [ (v.d, v.val)  for v in mams]
@@ -303,10 +309,11 @@ def read_coverage_mam_score(mams):
         v =  mams[j]
 
         # linear scan -- replace with range max Q tree
-        T_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if  mams[j_prime].d < v.c and j_prime < j]
+        T_values = [(j_prime, c_val - 0.1* (v.c - mams[j_prime].d - 1) ) for j_prime, c_val in enumerate(C) if  mams[j_prime].d < v.c and j_prime < j]
+        # T_values2 = [(j_prime, c_val - max(0, mams[j_prime].y - v.x)) for j_prime, c_val in enumerate(C) if  mams[j_prime].d < v.c and j_prime < j] # Is this proper symmetric variant subtracting overlapping genomic positions?
         if T_values:
             # print(j, T_values)
-            T_traceback_index, max_c_value_case_a = max(T_values, key=lambda x: x[1])
+            T_traceback_index, max_c_value_case_a = max(reversed(T_values), key=lambda x: x[1])
         else:
             max_c_value_case_a = 0
             T_traceback_index = None
@@ -316,10 +323,10 @@ def read_coverage_mam_score(mams):
         # I_values = [(j_prime, c_val) for j_prime, c_val in enumerate(C) if v.c <= mams[j_prime].d  <= v.c + (v.d - v.c)*(1.0 - v.val/(v.d - v.c)) ]  #Maybe bug here, check the objective!! need to be careful
         if I_values:
             # print("here", j, I_values)
-            # I_values_plus_chord_diff = [ (j_prime, c_val + (v.d - mams[j_prime].d)*v.identity - max(0, (mams[j_prime].d - v.c +1)*v.identity  - (mams[j_prime].d - v.c +1)*mams[j_prime].identity) ) for j_prime, c_val in I_values]  # Last max is takeing which of the two mams had highest idendity in shared region. 
-            I_values_plus_chord_diff = [ (j_prime, c_val + (v.val - (mams[j_prime].d - v.c + 1 ) - 0.1)) for j_prime, c_val in I_values]  # Penalize an extra 0.1 to prefer non-overlapping solutions in case of tie breakers
-            # I_values_plus_chord_diff = [ (j_prime, c_val + (v.val - (mams[j_prime].d - v.c))) for j_prime, c_val in I_values]  # Penalize the overlap not to double count coverage on read. 1.1 instead of 1.0 to remove tie breakers preferring the non-overlapping solutions
-            I_traceback_index, max_c_value_case_b = max(I_values_plus_chord_diff, key=lambda x: x[1])
+            # I_values_plus_chord_diff = [ (j_prime, c_val + (v.val - (mams[j_prime].d - v.c + 1 ) - 0.01 if v.x != mams[j_prime].y else v.val - 0.01)) for j_prime, c_val in I_values]  # Penalize an extra 0.1 to prefer non-overlapping solutions in case of tie breakers
+            I_values_plus_chord_diff = [ (j_prime, c_val + (v.val - (mams[j_prime].d - v.c + 1 ) - 0.1*(mams[j_prime].d - v.c + 1 )) ) for j_prime, c_val in I_values]  # Penalize an extra 0.1 to prefer non-overlapping solutions in case of tie breakers
+
+            I_traceback_index, max_c_value_case_b = max(reversed(I_values_plus_chord_diff), key=lambda x: x[1])
             C_b[j] = max_c_value_case_b
 
             # I_traceback_index, max_c_value_case_b = max(I_values, key=lambda x: x[1])
@@ -353,6 +360,17 @@ def read_coverage_mam_score(mams):
     value = C[solution_index]
     # print("index best sol:", solution_index, argmax(C), len(C), C)
     # print(traceback_pointers)
+
+    # all_C_max_indicies = all_solutions_c_max_indicies_mam(C, value)
+    # print(C)
+    # print([m.x for m in mams])
+    # print(traceback_pointers)
+    # print(all_C_max_indicies)
+    # print("number solutions with the same score:", all_solutions_c_max_indicies_mam(C, value))
+    # C_max, solutions = reconstruct_all_solutions(mams, all_C_max_indicies, traceback_pointers, C, mam_mode = True)
+    # for s in solutions:
+    #     print(C_max, s)
+
     solution = []
     while True:
         solution.append(mams[solution_index])
@@ -370,6 +388,105 @@ def read_coverage_mam_score(mams):
     # print("Solution:", solution[::-1])
     return solution[::-1], value, unique
     # traceback(C, best_solution_index)
+
+
+
+def n_logn_read_coverage_mams(mams, overlap_threshold = 5):
+    """
+        Algorithm 15.1 in Genome scale algorithmic design, Makinen et al.
+
+        Using Binary search trees for range max queries,
+        so n log n time complexity. Each mem is an Namedtuple. python object
+
+    """
+    # assert mams == sorted(mams, key=lambda x: x.y)
+    # for mam in mams:
+    #     print(mam.mam_id, mam.x, mam.y, mam.c, mam.d, '\t', mam.val, mam.min_segment_length)
+    # overlap_threshold = 20
+    T_leafs = make_leafs_power_of_2(mams)
+    I_leafs = make_leafs_power_of_2(mams)
+    n = len(T_leafs)
+    T = [0 for i in range(2 * n) ]  
+    I = [0 for i in range(2 * n) ]  
+    # T_leafs = copy.deepcopy(leafs)
+    RMaxQST.construct_tree(T, T_leafs, n)
+    # I_leafs = copy.deepcopy(leafs)
+    RMaxQST.construct_tree(I, I_leafs, n)
+
+    mem_to_leaf_index = {l.j : i for i,l in enumerate(T_leafs)}
+
+    C = [0]* (len(mams) + 1) #(len(leafs))
+    trace_vector = [None]*(len(mams) + 1)
+
+    # aux_score = [0]* (len(mams) + 1) #(len(leafs))
+
+    RMaxQST.update(T, 0, 0, n) # point update 
+    RMaxQST.update(I, 0, 0, n) # point update 
+    for j, mam in enumerate(mams):
+        # print()
+        # print( 'starting:', mam.c, mam.d)
+        leaf_to_update = mem_to_leaf_index[j]
+        c = mam.c
+        T_max, j_prime_a, node_pos  = RMaxQST.range_query(T, -1, c-1, len(T_leafs)) 
+        # print("C_a:", T_max, T_max + mam.val , j_prime_a, node_pos, leaf_to_update )
+        # print("T TREE:", [(s, zz.j, zz.d, zz.Cj, zz.j_max) for s, zz in enumerate(T) if type(zz) != int])
+        C_a =  T_max + mam.val #mam.d - mam.c + 1   # add the mam_score to T since disjoint
+
+        if T_max < 0:
+            print("BUG", T_max)
+            sys.exit()
+
+        
+        d = mam.d
+        I_max, j_prime_b, node_pos  = RMaxQST.range_query(I, c, c - 1 + overlap_threshold, len(I_leafs))         
+        # print( I_max, mam.d, mams[j_prime_b].d, mams[j_prime_b])
+        # print("I TREE:", [(s, zz.j, zz.d, zz.Cj, zz.j_max) for s, zz in enumerate(I) if type(zz) != int])
+        prev_end = max(mam.c - 1, mams[j_prime_b].d)
+        prev_end_diff = mams[j_prime_b].d - (mam.c - 1)
+        # (mams[j_prime].d - v.c + 1 ) - 0.0001 if v.x != mams[j_prime].y else v.val - 0.0001)
+        ovl_penalty = mams[j_prime_b].d - (mam.c - 1) + 0.0001 if mam.x != mams[j_prime_b].y else 0.0001
+        # prev_score = aux_score[j_prime_b]
+        # print("prev_score", prev_score)
+        # print("C_b:", I_max, I_max  + mam.val - ovl_penalty , j_prime_b, node_pos, leaf_to_update )
+        C_b =  I_max  + mam.val - ovl_penalty # (mam.d - prev_end)*mam.val/(mam.d-mam.c + 1) - 0.001 #mam.d #- mams[j_prime_b].d   # add the part of the mam that is not overlapping
+
+
+        index, value = max_both([C_a, C_b])
+        # print("taking:", index, value)
+        C[j+1] = value
+        # aux_score[j+1] = value
+        if index == 0: # Updating with C_a
+            j_prime = j_prime_a
+        else: # Updating with C_b
+            j_prime = j_prime_b
+
+
+        if j_prime < 0: # any of the additional leaf nodes (with negative index) we add to make number of leafs 2^n
+            trace_vector[j+1] = 0
+        elif value == 0: # first j (i.e. j=0) 
+            trace_vector[j+1]= 0
+        else:
+            trace_vector[j+1] = j_prime +1
+
+        RMaxQST.update(T, leaf_to_update, value, n) # point update 
+        RMaxQST.update(I, leaf_to_update, value, n) # point update 
+
+
+    solution_index = argmax(C)
+
+    value = C[solution_index]
+    solution = []
+    while solution_index > 0:
+        solution.append(mams[solution_index - 1])  # trace vector is shifted on to the right so need to remove 1 from vectore to get j_index 
+        solution_index = trace_vector[solution_index]
+    # solutions.append( solution[::-1] )
+
+    non_unique = [x for x in set(C) if C.count(x) > 1]
+    unique = True
+    if non_unique:
+        unique = False
+    # sys.exit()
+    return solution[::-1], value, unique
 
 
 
