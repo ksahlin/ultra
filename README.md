@@ -1,14 +1,7 @@
-# torkel
-Aligns long reads to splicing graphs and predicts FSM, ISM, NIC and NNC
-
-Dependencies: gffutils
-
-
 uLTRA
 ===========
 
-uLTRA is a tool for aligning and annotating Long Transcriptomic Reads to a database of known transcripts. It is tailored for finding splice matches to annotations and provided genomic alignment coordinates to a sam file. The SAM file includes information of which splice sites are found and if the reads is a full splice match, incomplete splice match, Novel in catalogue, or novel not in catalogue, as defined in [cite Sqanti here]. 
-
+uLTRA is a tool for splice alignment of long transcriptomic reads to a genome, guided by a database of exon annotations. uLTRA takes reads in fast(a/q) and a genome annotation as input and outputs a SAM-file. The SAM-file includes information of which splice sites are found and if the read is a full splice match (and to which transcript), incomplete splice match, Novel in catalogue, or novel not in catalogue, as defined in [SQANTI](https://github.com/ConesaLab/SQANTI). uLTRA is highly accurate when aligning to small exons [see some examples](https://github.com/ksahlin/ultra/data/images/).
 
 uLTRA is distributed as a python package supported on Linux / OSX with python v>=3.4. [![Build Status](https://travis-ci.org/ksahlin/uLTRA.svg?branch=master)](https://travis-ci.org/ksahlin/uLTRA).
 
@@ -20,7 +13,7 @@ Table of Contents
     * [Downloading source from GitHub](#Downloading-source-from-github)
     * [Dependencies](#Dependencies)
   * [USAGE](#USAGE)
-    * [constructing](#Constructing)
+    * [Indexing](#Indexing)
     * [aligning](#Aligning)
     * [Output](#Output)
     * [Parameters](#Parameters)
@@ -60,7 +53,7 @@ git clone git@github.com:fjdf/slaMEM.git
 cd slaMEM
 make 
 ```
-And place the binary `slaMEM` that is generated to your path.
+And either place the generated binary `slaMEM`in your path or run `export PATH=$PATH:$PWD/` if you are in the slaMEM folder).
 
 
 Upon start/login to your server/computer you need to activate the conda environment "ultra" to run uLTRA as:
@@ -95,9 +88,9 @@ USAGE
 uLTRA can be used with either Iso-Seq or ONT reads. 
 
 
-### Constructing
+### Indexing
 
-Fist we construct splicing structure and extract reference sequnces from a genome.
+Fist we construct the datastructures used in uLTRA using a genome annotation GTF file and a genome fasta file.
 
 ```
 uLTRA prep_splicing  all_genes.gtf outfolder/  [parameters]
@@ -129,7 +122,7 @@ uLTRA pipeline test/SIRV_genes_C_170612a.gtf  test/SIRV_genes.fasta  test/reads.
 
 #### Output
 
-uLTRA outputs a sam file with alignments to the genome. In addition, it outputs to extra tags describing whether all the splices sites are known and annotated (FSM), new splice combinations (NIC), etc. For details see the defitions of notations in the [Sqanti paper](https://genome.cshlp.org/content/28/7/1096).
+uLTRA outputs a SAM-file with alignments to the genome. In addition, it outputs to extra tags describing whether all the splices sites are known and annotated (FSM), new splice combinations (NIC), etc. For details see the defitions of notations in the [Sqanti paper](https://genome.cshlp.org/content/28/7/1096).
 
 
 
@@ -138,7 +131,7 @@ CREDITS
 
 Please cite [1] when using uLTRA.
 
-1. Kristoffer Sahlin, Veli Makinen (2019) "Accurate spliced alignment of long RNA sequencing reads".
+1. Kristoffer Sahlin, Veli Makinen (2019) "Accurate spliced alignment of long RNA sequencing reads". (In preparation)
 
 Bib record: 
 
