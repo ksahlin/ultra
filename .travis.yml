@@ -39,6 +39,8 @@ branches:
 # command to run tests
 script: 
       - uLTRA --help
+      - slaMEM
+      - slaMEM -l 17 outfolder/refs_sequences.fa outfolder/reads_batch_0_rc.fa -o outfolder/mummer_mems_batch_0_rc.txt
       - uLTRA pipeline $PWD/test/SIRV_genes_C_170612a.gtf  test/SIRV_genes.fasta  test/reads.fa outfolder/
 # after_success: 
 #  - coveralls  
