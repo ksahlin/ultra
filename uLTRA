@@ -434,7 +434,7 @@ if __name__ == '__main__':
                                                                             but may limit all posible alignments to annotated gene families with many highly similar copies.')
 
     align_reads_parser.add_argument('--ignore_rc', action='store_true', help='Ignore to map to reverse complement.')
-    align_reads_parser.add_argument('--min_mem', type=int, default=16, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
+    align_reads_parser.add_argument('--min_mem', type=int, default=17, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
     align_reads_parser.add_argument('--min_acc', type=float, default=0.5, help='Minimum accuracy of MAM to be considered in mam chaining.')
     group2 = align_reads_parser.add_mutually_exclusive_group()
     group2.add_argument('--ont', action="store_true", help='Set parameters suitable for ONT (Currently sets: --min_mem 15, --min_acc 0.6 --alignment_threshold 0.5).')
@@ -452,11 +452,11 @@ if __name__ == '__main__':
 
     if args.which == 'align_reads' or args.which == 'pipeline':
         if args.ont:
-            args.min_mem = 15
+            args.min_mem = 17
             args.min_acc = 0.6
             # args.alignment_threshold = 0.5
         if args.isoseq:
-            args.min_mem = 17
+            args.min_mem = 20
             args.min_acc = 0.8
             # args.alignment_threshold = 0.5
 
