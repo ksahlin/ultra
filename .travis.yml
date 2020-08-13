@@ -24,7 +24,7 @@ install:
   - make 
   - export PATH=$PATH:$PWD/
   - cd ..
-  - conda install -c bioconda mummer
+  - conda install --yes -c bioconda mummer
   #- conda install --yes -c conda-forge -c bioconda medaka openblas==0.3.3 spoa racon minimap2
 
 
