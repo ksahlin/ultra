@@ -20,7 +20,7 @@ setup(
 
     name='uLTRA',  # Required
     version='0.0.1',  # Required
-    description='Aligner of long transcriptome reads.',  # Required
+    description='Splice aligner of long transcriptomic reads to genome.',  # Required
     long_description=long_description,  # Optional
     long_description_content_type='text/markdown',
     url='https://github.com/ksahlin/uLTRA',  # Optional
