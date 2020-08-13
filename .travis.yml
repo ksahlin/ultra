@@ -41,11 +41,11 @@ branches:
 script: 
       - uLTRA --help
       - slaMEM
-      - uLTRA prep_splicing $PWD/test/SIRV_genes_C_170612a.gtf outfolder/
-      - uLTRA prep_seqs  test/SIRV_genes.fasta outfolder/ 
-      - slaMEM -l 17 outfolder/refs_sequences.fa outfolder/reads_batch_0_rc.fa -o outfolder/mummer_mems_batch_0_rc.txt
-      - uLTRA align test/SIRV_genes.fasta test/reads.fa outfolder/
-      - uLTRA pipeline $PWD/test/SIRV_genes_C_170612a.gtf  test/SIRV_genes.fasta  test/reads.fa outfolder/
+      - uLTRA prep_splicing $PWD/test/SIRV_genes_C_170612a.gtf ~/tmp/outfolder/
+      - uLTRA prep_seqs  test/SIRV_genes.fasta ~/tmp/outfolder/ 
+      - slaMEM -l 17 ~/tmp/outfolder/refs_sequences.fa ~/tmp/outfolder/reads_batch_0_rc.fa -o ~/tmp/outfolder/mummer_mems_batch_0_rc.txt
+      - uLTRA align test/SIRV_genes.fasta test/reads.fa ~/tmp/outfolder/
+      - uLTRA pipeline $PWD/test/SIRV_genes_C_170612a.gtf  test/SIRV_genes.fasta  test/reads.fa ~/tmp/outfolder/
 
 # after_success: 
 #  - coveralls  
