@@ -27,8 +27,11 @@ def find_mems_slamem(outfolder, read_path, refs_path, out_path, min_mem):
     stdout_file = open(os.path.join(outfolder, "slamem_stdout.1") , "w")
     try: # slaMEM throws error if no MEMs are found in any of the sequences
         subprocess.check_call([ 'slaMEM', '-l' , str(min_mem),  refs_path, read_path, '-o', out_path ], stdout=stdout_file, stderr=stderr_file)
+        print("Using SLAMEM")
     except:
         find_mems_mummer(outfolder, read_path, refs_path, out_path, min_mem)
+        print("Using MUMMER")
+
     # print('Done.')
     stdout.flush()
     # output_file.close()
