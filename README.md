@@ -41,20 +41,26 @@ source activate ultra
 pip install ultra-bioinformatics
 ```
 
-3. You should now have 'uLTRA' installed; try it:
-```
-uLTRA --help
-```
-
-4. Install [slaMEM](https://github.com/fjdf/slaMEM)
+3. Install third party MEM finder [slaMEM](https://github.com/fjdf/slaMEM) (and [MUMmer](http://mummer.sourceforge.net/))
 
 ```
 git clone git@github.com:fjdf/slaMEM.git
 cd slaMEM
 make 
 ```
+
 And either place the generated binary `slaMEM`in your path or run `export PATH=$PATH:$PWD/` if you are in the slaMEM folder).
 
+While MUMmer is usually not used in uLTRA, it can be good to have it as backup if slaMEM [fails](https://github.com/fjdf/slaMEM/issues/3) until bugs have been fixed.
+
+```
+conda install --yes -c bioconda mummer
+```
+
+4. You should now have 'uLTRA' installed; try it:
+```
+uLTRA --help
+```
 
 Upon start/login to your server/computer you need to activate the conda environment "ultra" to run uLTRA as:
 ```
