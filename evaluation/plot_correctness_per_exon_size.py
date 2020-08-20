@@ -90,7 +90,7 @@ def correctness_per_exon_size_binned(input_csv, outfolder):
                         hue_order= ["uLTRA", "minimap2", "minimap2_GTF", "deSALT", "deSALT_GTF", "Graphmap2", "Graphmap2_GTF"], data=data_grouped)
 
         plt.xlabel('exon_size', fontsize=14)
-        plt.ylabel('Correct alignment',fontsize=16)
+        plt.ylabel('Fraction correct',fontsize=16)
         plt.tick_params(rotation=20)
         plt.ylim(0, 1)
         g.legend(loc=4)
