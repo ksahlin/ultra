@@ -131,9 +131,22 @@ CREDITS
 
 Please cite [1] when using uLTRA.
 
-1. Kristoffer Sahlin, Veli Makinen (2019) "Accurate spliced alignment of long RNA sequencing reads". (In preparation)
+1. Kristoffer Sahlin, Veli Makinen. 2020. "Accurate spliced alignment of long RNA sequencing reads" [preprint available here](https://www.biorxiv.org/content/10.1101/2020.09.02.279208v1).
 
 Bib record: 
+
+@article {Sahlin2020.09.02.279208,
+  author = {Sahlin, Kristoffer and Makinen, Veli},
+  title = {Accurate spliced alignment of long RNA sequencing reads},
+  elocation-id = {2020.09.02.279208},
+  year = {2020},
+  doi = {10.1101/2020.09.02.279208},
+  publisher = {Cold Spring Harbor Laboratory},
+  abstract = {Long-read RNA sequencing techniques are quickly establishing themselves as the primary sequencing technique to study the transcriptome landscape. Many such analyses are dependent upon splice alignment of reads to the genome. However, the error rate and sequencing length of long-read technologies create new challenges for accurately aligning these reads. We present an alignment method uLTRA that, on simulated and synthetic data, shows higher accuracy over state-of-the-art with substantially higher accuracy for small exons. We show several examples on biological data where uLTRA aligns to known and novel isoforms with exon structures that are not detected with other aligners. uLTRA is available at https://github.com/ksahlin/ultra.Competing Interest StatementThe authors have declared no competing interest.},
+  URL = {https://www.biorxiv.org/content/early/2020/09/03/2020.09.02.279208},
+  eprint = {https://www.biorxiv.org/content/early/2020/09/03/2020.09.02.279208.full.pdf},
+  journal = {bioRxiv}
+}
 
 
 LICENCE
