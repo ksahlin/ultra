@@ -32,7 +32,7 @@ Conda is the preferred way to install uLTRA.
 
 ```
 conda create -n ultra python=3 pip 
-source activate ultra
+conda activate ultra
 ```
 
 2. Install uLTRA 
