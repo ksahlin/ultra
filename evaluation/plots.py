@@ -214,7 +214,7 @@ def splice_site_classification_plot(input_csv, outfolder):
     # print(len(indata))
 
     g = sns.catplot(x="annotation", #col="Depth",
-                data=indata,  hue="read_type", hue_order= ["uLTRA", "minimap2", "minimap2_GTF", "deSALT", "deSALT_GTF", "Graphmap2", "Graphmap2_GTF"],
+                data=indata,  hue="read_type", hue_order= ["uLTRA", "minimap2", "minimap2_GTF", "deSALT", "deSALT_GTF", "GraphMap2", "GraphMap2_GTF"],
                 order= ["FSM", "ISM", "NIC", "NNC", 'NO_SPLICE', "unaligned"], kind="count", aspect=1)
 
     # g.set(ylim=(0,15))
