@@ -1,7 +1,9 @@
 language: python
 python:
   - "3.6"
-  
+  - "3.7"
+  - "3.8"
+
 before_install:
 
   # Here we just install Miniconda, which you shouldn't have to change.
@@ -15,14 +17,15 @@ before_install:
 # command to install dependencies
 install:
   - conda create --yes -n uLTRA python=$TRAVIS_PYTHON_VERSION pip 
-  - conda activate uLTRA
-  - pip install uLTRA
-  - git clone git@github.com:fjdf/slaMEM.git
+  - source activate uLTRA
+  - pip install ultra-bioinformatics
+  - git clone https://github.com/ksahlin/slaMEM.git
   - cd slaMEM
   - make 
   - export PATH=$PATH:$PWD/
+  - cd ..
+  - conda install --yes -c bioconda mummer
   #- conda install --yes -c conda-forge -c bioconda medaka openblas==0.3.3 spoa racon minimap2
-
 
 
   # - pip install coveralls
@@ -37,6 +40,12 @@ branches:
 # command to run tests
 script: 
       - uLTRA --help
-      - uLTRA pipeline test/SIRV_genes_C_170612a.gtf  test/SIRV_genes.fasta  test/reads.fa outfolder/
+      # - slaMEM
+      - uLTRA prep_splicing $PWD/test/SIRV_genes_C_170612a.gtf ~/tmp/outfolder/
+      - uLTRA prep_seqs  test/SIRV_genes.fasta ~/tmp/outfolder/ 
+      # - slaMEM -l 17 ~/tmp/outfolder/refs_sequences.fa ~/tmp/outfolder/reads_batch_0_rc.fa -o ~/tmp/outfolder/mummer_mems_batch_0_rc.txt
+      - uLTRA align test/SIRV_genes.fasta test/reads.fa ~/tmp/outfolder/
+      - uLTRA pipeline $PWD/test/SIRV_genes_C_170612a.gtf  test/SIRV_genes.fasta  test/reads.fa ~/tmp/outfolder/
+
 # after_success: 
 #  - coveralls  
