@@ -51,11 +51,6 @@ make
 
 And either place the generated binary `slaMEM`in your path or run `export PATH=$PATH:$PWD/` if you are in the slaMEM folder).
 
-While MUMmer is usually not used in uLTRA, it can be good to have it as backup if slaMEM [fails](https://github.com/fjdf/slaMEM/issues/3) until bugs have been fixed.
-
-```
-conda install --yes -c bioconda mummer
-```
 
 4. You should now have 'uLTRA' installed; try it:
 ```
@@ -77,12 +72,22 @@ uLTRA pipeline [/your/local/directory/to/test]/SIRV_genes_C_170612a.gtf  \
                [/your/local/directory/to/test]/reads.fa outfolder/  [optional parameters]
 ```
 
+6. (Optional) Install of MUMmer 
+
+While MUMmer is usually not used in uLTRA, if slaMEM [fails](https://github.com/fjdf/slaMEM/issues/3), uLTRA falls back on finding MEMs with MUMmer until the slaMEM bug has been fixed. In this corner case, uLTRA needs MUMmer avaialble in the path. MUMmer can be installed with
+
+```
+conda install --yes -c bioconda mummer
+```
+
+
 ### Downloading source from GitHub
 
 #### Dependencies
 
 Make sure the below-listed dependencies are installed (installation links below). Versions in parenthesis are suggested as uLTRA has not been tested with earlier versions of these libraries. However, uLTRA may also work with earlier versions of these libraries.
 * [parasail](https://github.com/jeffdaily/parasail-python)
+* [edlib](https://github.com/Martinsos/edlib)
 * [pysam](http://pysam.readthedocs.io/en/latest/installation.html) (>= v0.11)
 * dill
 * [gffutils](https://pythonhosted.org/gffutils/)
