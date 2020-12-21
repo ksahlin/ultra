@@ -488,6 +488,7 @@ def align_single(reads, refs_lengths, args,  batch_number):
         #     print(all_chainings)
         best_chaining_score = all_chainings[0][2]
         read_alignments = []
+        mam_solutions = set()
         for i_nr_sol, (chr_id, mem_solution, chaining_score, is_rc) in enumerate(all_chainings):
             # print(i_nr_sol, chr_id, chaining_score)
             # if read_acc == "100:823|c8740d7a-53bd-4690-aa53-de3ebd003d20": #len(all_chainings) > 20: 
@@ -515,6 +516,13 @@ def align_single(reads, refs_lengths, args,  batch_number):
             non_covered_regions, mam_value, mam_solution = classify_read_with_mams.main(mem_solution, ref_segment_sequences, ref_flank_sequences, parts_to_segments, \
                                                                                                                     segment_to_gene, gene_to_small_segments, \
                                                                                                                     read_seq, warning_log_file, min_acc)
+            
+            # We can enter the if statement below because sometimes the MEM chaining finder will 
+            # return multiple optimal chainings that lead to the same mam_solution
+            if mam_solution in mam_solutions:
+                continue
+
+            mam_solutions.add(mam_solution)
             # print("finished Mam solution:",mam_value, mam_solution)
             # for zzz2 in mam_solution:
             #     print(zzz2)

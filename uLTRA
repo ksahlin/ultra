@@ -386,7 +386,7 @@ if __name__ == '__main__':
     pipeline_parser.add_argument('--reduce_read_ployA', type=int, default=8, help='Reduces polyA tails longer than X bases (default 10) in reads to 5bp before MEM finding. This helps MEM matching to spurios regions but does not affect final read alignments.')
     pipeline_parser.add_argument('--alignment_threshold', type=int, default=0.5, help='Lower threshold for considering an alignment. \
                                                                                         Counted as the difference between total match score and total mismatch penalty. \
-                                                                                        If a read has 25\% errors (under edit distance scoring), the difference between \
+                                                                                        If a read has 25%% errors (under edit distance scoring), the difference between \
                                                                                         matches and mismatches would be (very roughly) 0.75 - 0.25 = 0.5 with default alignment parameters \
                                                                                         match =2, subs=-2, gap open 3, gap ext=1. Default val (0.5) sets that a score\
                                                                                         higher than 2*0.5*read_length would be considered an alignment, otherwise unaligned.')
@@ -425,7 +425,7 @@ if __name__ == '__main__':
     align_reads_parser.add_argument('--reduce_read_ployA', type=int, default=8, help='Reduces polyA tails longer than X bases (default 10) in reads to 5bp before MEM finding. This helps MEM matching to spurios regions but does not affect final read alignments.')
     align_reads_parser.add_argument('--alignment_threshold', type=int, default=0.5, help='Lower threshold for considering an alignment. \
                                                                                         Counted as the difference between total match score and total mismatch penalty. \
-                                                                                        If a read has 25\% errors (under edit distance scoring), the difference between \
+                                                                                        If a read has 25%% errors (under edit distance scoring), the difference between \
                                                                                         matches and mismatches would be (very roughly) 0.75 - 0.25 = 0.5 with default alignment parameters \
                                                                                         match =2, subs=-2, gap open 3, gap ext=1. Default val (0.5) sets that a score\
                                                                                         higher than 2*0.5*read_length would be considered an alignment, otherwise unaligned.')
