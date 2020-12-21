@@ -11,12 +11,14 @@ from collections import defaultdict
 
 from modules import help_functions
 
-def get_ultra_indexed_choordinates(ref_part_sequences):
+def get_ultra_indexed_choordinates(ref_part_sequences, outfolder):
+    id_to_chr = help_functions.pickle_load( os.path.join(outfolder, 'id_to_chr.pickle') )
     indexed_regions = defaultdict(intervaltree.IntervalTree)
 
     for sequence_id, seq  in ref_part_sequences.items():
         chr_id, start, stop = unpack('LLL',sequence_id)
-        indexed_regions[chr_id].addi(start, stop, None)
+        ref_seq_name = id_to_chr[chr_id]
+        indexed_regions[ref_seq_name].addi(start, stop, None)
 
     return indexed_regions
 
@@ -64,60 +66,72 @@ def get_exons_from_cigar(read):
 
         # elif t == "I" or t == "S" or t == "H": # insertion or softclip
         #     ref_pos += 0
+        # else: # reference skip or soft/hardclip "~", or match =
+        #     print("UNEXPECTED!", t)
+        #     sys.exit()
 
-        else: # reference skip or soft/hardclip "~", or match =
-            print("UNEXPECTED!", t)
-            sys.exit()
     exon_sites.append( (exon_start, ref_pos) )
     return exon_sites
 
 
+def overlap_size(a, b, c, d):
+    max_start = max(a, c)
+    min_stop = min(b, d)
+    return min_stop - max_start
+
+def is_overlapping(a_start,a_stop, b_start,b_stop):
+    return (int(a_start) <= int(b_start) <= int(a_stop) )  or (int(a_start) <= int(b_stop) <= int(a_stop)) or (int(b_start) <= int(a_start) <= int(a_stop) <= int(b_stop) )
 
 
 def parse_alignments_and_mask(minimap2_samfile_path, indexed_regions):
     SAM_file = pysam.AlignmentFile(minimap2_samfile_path, "r", check_sq=False)
     reads_to_ignore = {}
-
+    print(indexed_regions)
     for read in SAM_file.fetch(until_eof=True):
         if read.flag == 0 or read.flag == 16:
 
             aligned_choordinates = get_exons_from_cigar(read)
             total_overlap = 0
             total_aligned_length = 0
+            print(aligned_choordinates)
             for (a_start, a_stop) in aligned_choordinates:
-                overlaps =  indexed_regions[read.reference_name].overlap(a_start, a_stop)
-                for ovl in overlaps: continue here to get sizxe of overlap
-                    total_overlap += overlaps
-                print("overlaps", overlaps)
-                total_overlap += overlaps
+                overlaps = indexed_regions[read.reference_name].overlap(a_start, a_stop)
+                for ovl in overlaps: #continue here to get sizxe of overlap
+                    # print(ovl.begin, ovl.end)
+                    total_overlap += overlap_size(a_start, a_stop, ovl.begin, ovl.end)
+                # print("overlaps", overlaps)
+                # total_overlap += overlaps
                 total_aligned_length += a_stop - a_start
 
             # is_exonic = 1 if indexed_regions[reference_name].overlaps(reference_start, reference_end) else 0
-
+            print("frac covered:", total_overlap/total_aligned_length)
             if total_overlap/total_aligned_length < 0.7:
                 reads_to_ignore[read.query_name] = read
-    return reads_to_ignore
+    return reads_to_ignore, SAM_file
 
 
-def print_read_categories(reads_to_ignore, reads, outfolder):
+def print_read_categories(reads_to_ignore, reads, outfolder, SAM_file):
     reads_to_align = open(os.path.join(outfolder, "reads_after_genomic_filtering.fasta"), "w")
-    genomic_aligned = pysam.AlignmentFile(open(os.path.join(outfolder, "genomic.sam"), "w", template=samfile))
+    genomic_aligned = pysam.AlignmentFile(os.path.join(outfolder, "genomic.sam"), "w", template=SAM_file)
 
     for acc, (seq, _) in help_functions.readfq(open(reads,"r")):
         if acc in reads_to_ignore:
+            read = reads_to_ignore[acc]
             genomic_aligned.write(read)
         else:
             reads_to_align.write(">{0}\n{1}\n".format(acc, seq))
 
     genomic_aligned.close()
+    reads_to_align.close()
+    return reads_to_align.name
 
 
 
 def main(ref_part_sequences, ref, reads, outfolder, nr_cores):
-    indexed_regions = get_ultra_indexed_choordinates(ref_part_sequences)
+    indexed_regions = get_ultra_indexed_choordinates(ref_part_sequences, outfolder)
     minimap2_samfile_path = align_with_minimap2(ref, reads, outfolder, nr_cores)
-    reads_to_ignore = parse_alignments_and_mask(minimap2_samfile_path, indexed_regions)
-    path_reads_to_align = print_read_categories(reads_to_ignore, reads, outfolder)
+    reads_to_ignore, SAM_file = parse_alignments_and_mask(minimap2_samfile_path, indexed_regions)
+    path_reads_to_align = print_read_categories(reads_to_ignore, reads, outfolder, SAM_file)
     return set(reads_to_ignore.keys()), path_reads_to_align
 
 
