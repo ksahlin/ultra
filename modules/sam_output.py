@@ -221,6 +221,18 @@ def main(read_id, read_seq, ref_id, classification, predicted_exons, read_aln, r
         #     print(read_aln)
         #     print(ref_aln)
         #     print(predicted_exons)
+        if is_secondary and is_rc:
+            read_sam_entry.flag = 256 + 16 
+        elif is_secondary:
+            read_sam_entry.flag = 256
+        elif is_rc:
+            read_sam_entry.flag = 16 
+        else:
+            read_sam_entry.flag = 0 
+
+        read_sam_entry.reference_name = ref_id
+        read_sam_entry.mapping_quality = 60 # TODO: calculate mapping quality 
+
         read_sam_entry.cigarstring = genomic_cigar 
         read_sam_entry.reference_start = predicted_exons[0][0] + start_offset
         read_sam_entry.mapping_quality = map_score 
@@ -237,19 +249,7 @@ def main(read_id, read_seq, ref_id, classification, predicted_exons, read_aln, r
     read_sam_entry.query_sequence  = read_seq
     read_sam_entry.query_name = read_id
 
-    if is_secondary and is_rc:
-        read_sam_entry.flag = 256 + 16 
-    elif is_secondary:
-        read_sam_entry.flag = 256
-    elif is_rc:
-        read_sam_entry.flag = 16 
-    else:
-        read_sam_entry.flag = 0 
 
-    read_sam_entry.reference_name = ref_id
-    read_sam_entry.mapping_quality = 60 # TODO: calculate mapping quality 
-    # print(annotated_to_transcript_id)
-    # read_sam_entry.reference_star = 
 
 
     alignment_outfile.write(read_sam_entry)

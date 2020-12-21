@@ -386,7 +386,7 @@ def read_coverage_mam_score(mams, overlap_threshold = 20):
         # print(traceback_pointers)
 
     # print("Solution:", solution[::-1])
-    return solution[::-1], value, unique
+    return tuple(solution[::-1]), value, unique
     # traceback(C, best_solution_index)
 
 
@@ -486,7 +486,7 @@ def n_logn_read_coverage_mams(mams, overlap_threshold = 5):
     if non_unique:
         unique = False
     # sys.exit()
-    return solution[::-1], value, unique
+    return tuple(solution[::-1]), value, unique
 
 
 
