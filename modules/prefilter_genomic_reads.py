@@ -22,14 +22,14 @@ def get_ultra_indexed_choordinates(ref_part_sequences, outfolder):
 
     return indexed_regions
 
-def align_with_minimap2(refs_path, read_path, outfolder, nr_cores):
+def align_with_minimap2(refs_path, read_path, outfolder, nr_cores, k_size):
     minimap2_samfile_path = os.path.join(outfolder, "minimap2.sam")
     with open(minimap2_samfile_path, "w") as output_file:
         # print('Running spoa...', end=' ')
         sys.stdout.flush()
         stderr_file = open(os.path.join(outfolder, "minimap2_errors.1") , 'w')
         # minimap2 --eqx -t 62 -ax splice -k13 -w 5 -G 500k {input.index} {input.fastq}
-        subprocess.check_call([ 'minimap2',  '-ax', 'splice', '--eqx' , '-k13', '-w5', '-G', '500k', '-t', str(nr_cores), refs_path, read_path], stdout=output_file, stderr=stderr_file)
+        subprocess.check_call([ 'minimap2',  '-ax', 'splice', '--eqx' , '-k', str(k_size), '-t', str(nr_cores), refs_path, read_path], stdout=output_file, stderr=stderr_file)
         # print('Done.')
         sys.stdout.flush()
     output_file.close()
@@ -83,17 +83,15 @@ def is_overlapping(a_start,a_stop, b_start,b_stop):
     return (int(a_start) <= int(b_start) <= int(a_stop) )  or (int(a_start) <= int(b_stop) <= int(a_stop)) or (int(b_start) <= int(a_start) <= int(a_stop) <= int(b_stop) )
 
 
-def parse_alignments_and_mask(minimap2_samfile_path, indexed_regions):
+def parse_alignments_and_mask(minimap2_samfile_path, indexed_regions, genomic_frac_cutoff):
     SAM_file = pysam.AlignmentFile(minimap2_samfile_path, "r", check_sq=False)
     reads_to_ignore = {}
-    print(indexed_regions)
     for read in SAM_file.fetch(until_eof=True):
         if read.flag == 0 or read.flag == 16:
 
             aligned_choordinates = get_exons_from_cigar(read)
             total_overlap = 0
             total_aligned_length = 0
-            print(aligned_choordinates)
             for (a_start, a_stop) in aligned_choordinates:
                 overlaps = indexed_regions[read.reference_name].overlap(a_start, a_stop)
                 for ovl in overlaps: #continue here to get sizxe of overlap
@@ -104,8 +102,8 @@ def parse_alignments_and_mask(minimap2_samfile_path, indexed_regions):
                 total_aligned_length += a_stop - a_start
 
             # is_exonic = 1 if indexed_regions[reference_name].overlaps(reference_start, reference_end) else 0
-            print("frac covered:", total_overlap/total_aligned_length)
-            if total_overlap/total_aligned_length < 0.7:
+            # print(read.query_name, "unindexed portion:", 1 - (total_overlap/total_aligned_length))
+            if 1 - (total_overlap/total_aligned_length) > genomic_frac_cutoff:
                 reads_to_ignore[read.query_name] = read
     return reads_to_ignore, SAM_file
 
@@ -117,6 +115,8 @@ def print_read_categories(reads_to_ignore, reads, outfolder, SAM_file):
     for acc, (seq, _) in help_functions.readfq(open(reads,"r")):
         if acc in reads_to_ignore:
             read = reads_to_ignore[acc]
+            read.set_tag('XA', "")
+            read.set_tag('XC', "uLTRA_unindexed")
             genomic_aligned.write(read)
         else:
             reads_to_align.write(">{0}\n{1}\n".format(acc, seq))
@@ -127,10 +127,10 @@ def print_read_categories(reads_to_ignore, reads, outfolder, SAM_file):
 
 
 
-def main(ref_part_sequences, ref, reads, outfolder, nr_cores):
+def main(ref_part_sequences, ref, reads, outfolder, nr_cores, genomic_frac_cutoff, k_size):
     indexed_regions = get_ultra_indexed_choordinates(ref_part_sequences, outfolder)
-    minimap2_samfile_path = align_with_minimap2(ref, reads, outfolder, nr_cores)
-    reads_to_ignore, SAM_file = parse_alignments_and_mask(minimap2_samfile_path, indexed_regions)
+    minimap2_samfile_path = align_with_minimap2(ref, reads, outfolder, nr_cores, k_size)
+    reads_to_ignore, SAM_file = parse_alignments_and_mask(minimap2_samfile_path, indexed_regions, genomic_frac_cutoff)
     path_reads_to_align = print_read_categories(reads_to_ignore, reads, outfolder, SAM_file)
     return set(reads_to_ignore.keys()), path_reads_to_align
 
