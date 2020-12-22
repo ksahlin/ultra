@@ -502,17 +502,15 @@ if __name__ == '__main__':
         sys.exit()
 
     if args.which == 'align_reads' or args.which == 'pipeline':
+        args.mm2_ksize = 15
         if args.ont:
             args.min_mem = 17
             args.min_acc = 0.6
-            if not args.disable_prefilter_genomic_reads:
-                args.mm2_ksize = 14
+            args.mm2_ksize = 14
             # args.alignment_threshold = 0.5
         if args.isoseq:
             args.min_mem = 20
             args.min_acc = 0.8
-            if not args.disable_prefilter_genomic_reads:
-                args.mm2_ksize = 15
             # args.alignment_threshold = 0.5
 
 
