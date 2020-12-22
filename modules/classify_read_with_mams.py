@@ -574,7 +574,7 @@ def main(solution, ref_segment_sequences, ref_flank_sequences, parts_to_segments
         else:
             mam_solution, value, unique = colinear_solver.read_coverage_mam_score(mam_instance, overlap_threshold = 20)
     else:
-        return [], -1, []
+        return [], -1, tuple()
     # print(mam_solution)
     covered = sum([mam.d-mam.c + 1 for mam in mam_solution])
     if len(mam_solution) > 0:
