@@ -38,9 +38,12 @@ from modules import align
 from modules import prefilter_genomic_reads
 
 
+def load_reference(args):
+    refs = {acc : seq for acc, (seq, _) in help_functions.readfq(open(args.ref,"r"))}
+    refs_lengths = { acc : len(seq) for acc, seq in refs.items()} 
+    return refs, refs_lengths
 
-
-def prep_splicing(args):
+def prep_splicing(args, refs_lengths):
     database = os.path.join(args.outfolder,'database.db')
     if os.path.isfile(database):
         print("Database found in directory using this one.")
@@ -63,7 +66,7 @@ def prep_splicing(args):
     transcripts_to_splices, all_splice_pairs_annotations, \
     all_splice_sites_annotations, segment_id_to_choordinates, \
     segment_to_gene, gene_to_small_segments, flank_choordinates, \
-    max_intron_chr, exon_choordinates_to_id, chr_to_id, id_to_chr, tiling_structures = augmented_gene.create_graph_from_exon_parts(db, args.flank_size, args.small_exon_threshold, args.min_segm )
+    max_intron_chr, exon_choordinates_to_id, chr_to_id, id_to_chr, tiling_structures = augmented_gene.create_graph_from_exon_parts(db, args.flank_size, args.small_exon_threshold, args.min_segm, refs_lengths)
 
     # dump to pickle here! Both graph and reference seqs
     # help_functions.pickle_dump(args, genes_to_ref, 'genes_to_ref.pickle')
@@ -90,7 +93,7 @@ def prep_splicing(args):
     help_functions.pickle_dump(args, tiling_gene_to_small_segments, 'tiling_gene_to_small_segments.pickle')
 
 
-def prep_seqs(args):
+def prep_seqs(args, refs, refs_lengths):
     parts_to_segments = help_functions.pickle_load( os.path.join(args.outfolder, 'parts_to_segments.pickle') )
     segment_id_to_choordinates = help_functions.pickle_load( os.path.join(args.outfolder, 'segment_id_to_choordinates.pickle') )
     segment_to_ref = help_functions.pickle_load( os.path.join(args.outfolder, 'segment_to_ref.pickle') )
@@ -104,7 +107,6 @@ def prep_seqs(args):
     tiling_segment_to_ref = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_segment_to_ref.pickle') )
     
     print( "Number of ref seqs in gff:", len(parts_to_segments.keys()))
-    refs = {acc : seq for acc, (seq, _) in help_functions.readfq(open(args.ref,"r"))}
 
     refs_id = {}
 
@@ -117,7 +119,6 @@ def prep_seqs(args):
             refs_id[acc_id] = seq
 
     refs_id_lengths = { acc_id : len(seq) for acc_id, seq in refs_id.items()} 
-    refs_lengths = { acc : len(seq) for acc, seq in refs.items()} 
     help_functions.pickle_dump(args, refs_id_lengths, 'refs_id_lengths.pickle')
     help_functions.pickle_dump(args, refs_lengths, 'refs_lengths.pickle')
 
@@ -387,18 +388,17 @@ def align_reads(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description="uLTRA -- Align and classify long transcriptomic reads based on colinear chaining algorithms to gene regions")
-    parser.add_argument('--version', action='version', version='%(prog)s 0.0.1')
+    parser.add_argument('--version', action='version', version='%(prog)s 0.0.2')
 
     subparsers = parser.add_subparsers(help='Subcommands for eaither constructing a graph, or align reads')
     # parser.add_argument("-v", help='Different subcommands for eaither constructing a graph, or align reads')
 
     pipeline_parser = subparsers.add_parser('pipeline', help= "Perform all in one: prepare splicing database and reference sequences and align reads.")
-    prep_splicing_parser = subparsers.add_parser('prep_splicing', help= "Prepare all splicing structures from annotation")
-    prep_seqs_parser = subparsers.add_parser('prep_seqs', help= "Prepare reference sequences to align to.")
+    indexing_parser = subparsers.add_parser('index', help= "Construct data structures used for alignment.")
     align_reads_parser = subparsers.add_parser('align', help="Classify and align reads with colinear chaining to DAGs")
 
-    pipeline_parser.add_argument('gtf', type=str, help='Path to gtf or gtf file with gene models.')
     pipeline_parser.add_argument('ref', type=str, help='Reference genome (fasta)')
+    pipeline_parser.add_argument('gtf', type=str, help='Path to gtf or gtf file with gene models.')
     pipeline_parser.add_argument('reads', type=str, help='Path to fasta/fastq file with reads.')
     pipeline_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
     group = pipeline_parser.add_mutually_exclusive_group()
@@ -439,20 +439,16 @@ if __name__ == '__main__':
 
     pipeline_parser.set_defaults(which='pipeline')
 
-
-    prep_splicing_parser.add_argument('gtf', type=str, help='Path to gtf or gtf file with gene models.')
-    prep_splicing_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
-    prep_splicing_parser.add_argument('--min_segm', type=int, default=25, help='Threshold for minimum segment size considered.')
-    prep_splicing_parser.add_argument('--flank_size', type=int, default=1000, help='Size of genomic regions surrounding genes.')
-    prep_splicing_parser.add_argument('--small_exon_threshold', type=int, default=200, help='Considered in MAM solution even if they cont contain MEMs.')
-    prep_splicing_parser.add_argument('--disable_infer', action='store_true', help='Makes splice creation step much faster. Thes parameter can be set if gene and transcript name fields are provided in gtf file.')
-    prep_splicing_parser.set_defaults(which='prep_splicing')
-
-    prep_seqs_parser.add_argument('ref', type=str, help='Reference genome (fasta)')
-    prep_seqs_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
-    prep_seqs_parser.add_argument('--min_mem', type=int, default=17, help='Threshold for minimum mem size considered.')
-    prep_seqs_parser.add_argument('--mask_threshold', type=int, default=200, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
-    prep_seqs_parser.set_defaults(which='prep_seqs')
+    indexing_parser.add_argument('ref', type=str, help='Reference genome (fasta)')
+    indexing_parser.add_argument('gtf', type=str, help='Path to gtf or gtf file with gene models.')
+    indexing_parser.add_argument('outfolder', type=str, help='Path to output folder.')
+    indexing_parser.add_argument('--min_segm', type=int, default=25, help='Threshold for minimum segment size considered.')
+    indexing_parser.add_argument('--flank_size', type=int, default=1000, help='Size of genomic regions surrounding genes.')
+    indexing_parser.add_argument('--small_exon_threshold', type=int, default=200, help='Considered in MAM solution even if they cont contain MEMs.')
+    indexing_parser.add_argument('--disable_infer', action='store_true', help='Makes splice creation step much faster. Thes parameter can be set if gene and transcript name fields are provided in gtf file.')
+    indexing_parser.add_argument('--min_mem', type=int, default=17, help='Threshold for minimum mem size considered.')
+    indexing_parser.add_argument('--mask_threshold', type=int, default=200, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
+    indexing_parser.set_defaults(which='index')
 
 
     align_reads_parser.add_argument('ref', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')    
@@ -514,15 +510,16 @@ if __name__ == '__main__':
             # args.alignment_threshold = 0.5
 
 
-    if args.which == 'prep_splicing':
-        prep_splicing(args)
-    elif args.which == 'prep_seqs':
-        prep_seqs(args)
+    if args.which == 'index':
+        refs, refs_lengths = load_reference(args)
+        prep_splicing(args, refs_lengths)
+        prep_seqs(args, refs, refs_lengths)
     elif args.which == 'align_reads':
         align_reads(args)
     elif args.which == 'pipeline':
-        prep_splicing(args)
-        prep_seqs(args)
+        refs, refs_lengths = load_reference(args)
+        prep_splicing(args, refs_lengths)
+        prep_seqs(args, refs, refs_lengths)
         align_reads(args)        
     else:
         print('invalid call')
