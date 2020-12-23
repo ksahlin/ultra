@@ -24,6 +24,10 @@ install:
   - make 
   - export PATH=$PATH:$PWD/
   - cd ..
+  - git clone https://github.com/lh3/minimap2
+  - cd minimap2 && make
+  - export PATH=$PATH:$PWD/
+  - cd ..
   - conda install --yes -c bioconda mummer
   #- conda install --yes -c conda-forge -c bioconda medaka openblas==0.3.3 spoa racon minimap2
 
@@ -41,11 +45,11 @@ branches:
 script: 
       - uLTRA --help
       # - slaMEM
-      - uLTRA prep_splicing $PWD/test/SIRV_genes_C_170612a.gtf ~/tmp/outfolder/
-      - uLTRA prep_seqs  test/SIRV_genes.fasta ~/tmp/outfolder/ 
+      - uLTRA index test/SIRV_genes.fasta $PWD/test/SIRV_genes_C_170612a.gtf ~/tmp/outfolder/
+      # - uLTRA prep_seqs  test/SIRV_genes.fasta ~/tmp/outfolder/ 
       # - slaMEM -l 17 ~/tmp/outfolder/refs_sequences.fa ~/tmp/outfolder/reads_batch_0_rc.fa -o ~/tmp/outfolder/mummer_mems_batch_0_rc.txt
       - uLTRA align test/SIRV_genes.fasta test/reads.fa ~/tmp/outfolder/
-      - uLTRA pipeline $PWD/test/SIRV_genes_C_170612a.gtf  test/SIRV_genes.fasta  test/reads.fa ~/tmp/outfolder/
+      - uLTRA pipeline test/SIRV_genes.fasta $PWD/test/SIRV_genes_C_170612a.gtf test/reads.fa ~/tmp/outfolder/
 
 # after_success: 
 #  - coveralls  
