@@ -48,13 +48,7 @@ git clone git@github.com:fjdf/slaMEM.git
 cd slaMEM
 make 
 ```
-
-```
-git clone https://github.com/lh3/minimap2
-cd minimap2 && make
-```
-
-And place the generated binaries `slaMEM` and `minimap2` in your path.
+Place the generated binaries `slaMEM` in your path. Minimap2 can be installed through conda with `conda install -c bioconda minimap2`, or [manually](https://github.com/lh3/minimap2). 
 
 4. You should now have 'uLTRA' installed; try it:
 ```

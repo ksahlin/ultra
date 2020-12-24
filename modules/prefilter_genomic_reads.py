@@ -85,7 +85,8 @@ def is_overlapping(a_start,a_stop, b_start,b_stop):
 
 def parse_alignments_and_mask(minimap2_samfile_path, indexed_regions, genomic_frac_cutoff):
     SAM_file = pysam.AlignmentFile(minimap2_samfile_path, "r", check_sq=False)
-    reads_to_ignore = {}
+    reads_unindexed = {}
+    reads_indexed = {}
     for read in SAM_file.fetch(until_eof=True):
         if read.flag == 0 or read.flag == 16:
 
@@ -104,24 +105,32 @@ def parse_alignments_and_mask(minimap2_samfile_path, indexed_regions, genomic_fr
             # is_exonic = 1 if indexed_regions[reference_name].overlaps(reference_start, reference_end) else 0
             # print(read.query_name, "unindexed portion:", 1 - (total_overlap/total_aligned_length))
             if 1 - (total_overlap/total_aligned_length) > genomic_frac_cutoff:
-                reads_to_ignore[read.query_name] = read
-    return reads_to_ignore, SAM_file
+                reads_unindexed[read.query_name] = read
+            else:
+                reads_indexed[read.query_name] = read
+
+    return reads_unindexed, reads_indexed, SAM_file
 
 
-def print_read_categories(reads_to_ignore, reads, outfolder, SAM_file):
+def print_read_categories(reads_unindexed, reads_indexed, reads, outfolder, SAM_file):
     reads_to_align = open(os.path.join(outfolder, "reads_after_genomic_filtering.fasta"), "w")
-    genomic_aligned = pysam.AlignmentFile(os.path.join(outfolder, "genomic.sam"), "w", template=SAM_file)
+    unindexed_aligned = pysam.AlignmentFile(os.path.join(outfolder, "unindexed.sam"), "w", template=SAM_file)
+    indexed_aligned = pysam.AlignmentFile(os.path.join(outfolder, "indexed.sam"), "w", template=SAM_file)
 
     for acc, (seq, _) in help_functions.readfq(open(reads,"r")):
-        if acc in reads_to_ignore:
-            read = reads_to_ignore[acc]
+        if acc in reads_unindexed:
+            read = reads_unindexed[acc]
             read.set_tag('XA', "")
             read.set_tag('XC', "uLTRA_unindexed")
-            genomic_aligned.write(read)
+            unindexed_aligned.write(read)
         else:
             reads_to_align.write(">{0}\n{1}\n".format(acc, seq))
+            if acc in reads_indexed:
+                read = reads_indexed[acc]
+                indexed_aligned.write(read)
 
-    genomic_aligned.close()
+    unindexed_aligned.close()
+    indexed_aligned.close()
     reads_to_align.close()
     return reads_to_align.name
 
@@ -130,9 +139,9 @@ def print_read_categories(reads_to_ignore, reads, outfolder, SAM_file):
 def main(ref_part_sequences, ref, reads, outfolder, nr_cores, genomic_frac_cutoff, k_size):
     indexed_regions = get_ultra_indexed_choordinates(ref_part_sequences, outfolder)
     minimap2_samfile_path = align_with_minimap2(ref, reads, outfolder, nr_cores, k_size)
-    reads_to_ignore, SAM_file = parse_alignments_and_mask(minimap2_samfile_path, indexed_regions, genomic_frac_cutoff)
-    path_reads_to_align = print_read_categories(reads_to_ignore, reads, outfolder, SAM_file)
-    return set(reads_to_ignore.keys()), path_reads_to_align
+    reads_unindexed, reads_indexed, SAM_file = parse_alignments_and_mask(minimap2_samfile_path, indexed_regions, genomic_frac_cutoff)
+    path_reads_to_align = print_read_categories(reads_unindexed, reads_indexed, reads, outfolder, SAM_file)
+    return len(reads_unindexed), path_reads_to_align
 
 
 
