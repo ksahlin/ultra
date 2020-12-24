@@ -193,6 +193,40 @@ def batch(dictionary, size, batch_type):
     # return batches
 
 
+def output_final_alignments( ultra_alignments_path, path_indexed_aligned, path_unindexed_aligned):
+    # read in all reads from alternative aligner that was also mapped by uLTRA
+    
+    alt_alignments_file = pysam.AlignmentFile(path_indexed_aligned, "r", check_sq=False)
+    alt_alignments = { read.query_name : read for read in alt_alignments_file.fetch(until_eof=True) if read.flag == 0 or read.flag == 16 }
+
+
+    alignment_infile = pysam.AlignmentFile( ultra_alignments_path, "r" )
+    tmp_merged_outfile = pysam.AlignmentFile( ultra_alignments_path.decode()+ 'tmp', "w", template= alignment_infile)
+    replaced_cntr = 0
+    tot_counter = 0
+    for read in alignment_infile.fetch():
+        tot_counter += 1
+        if read.flag == 4 and read.query_name in alt_alignments:
+           read = alt_alignments[ read.query_name ] # replace unmapped uLTRA read with alternative alignment if mapped
+           replaced_cntr += 1
+        tmp_merged_outfile.write(read)
+    alignment_infile.close()
+    # path_genomic_aligned = os.path.join(args.outfolder, "unindexed.sam")
+
+    # add all reads that we did not attempt to align with uLTRA
+    # these reads had a primary alignment to unindexed regions by other pre-processing aligner (minimap2 as of now)
+    not_attempted_cntr = 0
+    unindexed = pysam.AlignmentFile(path_unindexed_aligned, "r")
+    for read in unindexed.fetch():
+        tmp_merged_outfile.write(read)
+        not_attempted_cntr += 1
+    unindexed.close()
+    tmp_merged_outfile.close()
+    print("{0} read alignments were not attempted to be aligned with ultra, instead alternative aligner was used.".format(not_attempted_cntr))
+    print("{0} uLTRA read alignments was replaced with alternative aligner.".format(replaced_cntr))
+    print("{0} reads remaining were aligned with uLTRA.".format(tot_counter - replaced_cntr))
+
+    shutil.move(ultra_alignments_path.decode()+ 'tmp', ultra_alignments_path)
 
 
 def align_reads(args):
@@ -211,9 +245,9 @@ def align_reads(args):
 
     if not args.disable_prefilter_genomic_reads:
         print("Filtering reads aligned to unindexed regions with minimap2 ")
-        reads_to_ignore, path_reads_to_align = prefilter_genomic_reads.main(ref_part_sequences, args.ref, args.reads, args.outfolder, args.nr_cores, args.genomic_frac, args.mm2_ksize)
+        nr_reads_to_ignore, path_reads_to_align = prefilter_genomic_reads.main(ref_part_sequences, args.ref, args.reads, args.outfolder, args.nr_cores, args.genomic_frac, args.mm2_ksize)
         args.reads = path_reads_to_align
-        print("Done filtering. Reads filtered:{0}".format(len(reads_to_ignore)))
+        print("Done filtering. Reads filtered:{0}".format(nr_reads_to_ignore))
 
     # print(ref_part_sequences)
     ref_path = os.path.join(args.outfolder, "refs_sequences.fa")
@@ -311,23 +345,6 @@ def align_reads(args):
     if args.nr_cores == 1:
         reads = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r'))}
         classifications, alignment_outfile_name = align.align_single(reads, refs_id_lengths, args, -1)
-
-        # need to merge the two SAM files if we have genomic reads
-        if not args.disable_prefilter_genomic_reads:
-            alignment_infile = pysam.AlignmentFile( alignment_outfile_name, "r" )
-            print(alignment_outfile_name)
-            alignment_outfile = pysam.AlignmentFile( alignment_outfile_name.decode()+ 'tmp', "w", template= alignment_infile)
-            for read in alignment_infile.fetch():
-                alignment_outfile.write(read)
-            alignment_infile.close()
-            path_genomic_aligned = os.path.join(args.outfolder, "genomic.sam")
-            genomic = pysam.AlignmentFile(path_genomic_aligned, "r")
-            for read in genomic.fetch():
-                alignment_outfile.write(read)
-            genomic.close()
-            alignment_outfile.close()
-            shutil.move(alignment_outfile_name.decode()+ 'tmp', alignment_outfile_name)
-
     else:
         # batch reads and mems up: divide reads by  nr_cores to get batch size
         # then write to separate SAM-files with a batch index, 
@@ -351,16 +368,15 @@ def align_reads(args):
                 alignment_outfile.write(read)
             samfile.close()
 
-        if not args.disable_prefilter_genomic_reads:
-            path_genomic_aligned = os.path.join(args.outfolder, "genomic.sam")
-            genomic = pysam.AlignmentFile(path_genomic_aligned, "r")
-            for read in genomic.fetch():
-                alignment_outfile.write(read)
-            genomic.close()
-
         alignment_outfile.close()
+        alignment_outfile_name = alignment_outfile.filename
         print("Time to merge SAM-files:{0} seconds.".format(time() - combine_start))
 
+    # need to merge genomic/unindexed alignments with the uLTRA-aligned alignments
+    if not args.disable_prefilter_genomic_reads:
+        path_indexed_aligned = os.path.join(args.outfolder, "indexed.sam")
+        path_unindexed_aligned = os.path.join(args.outfolder, "unindexed.sam")
+        output_final_alignments(alignment_outfile_name, path_indexed_aligned, path_unindexed_aligned)
 
     counts = defaultdict(int)
     alignment_coverage = 0
