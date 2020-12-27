@@ -192,23 +192,45 @@ def batch(dictionary, size, batch_type):
     
     # return batches
 
+def ultra_best_fit(aln_ultra, aln_other):
+    diffs = {1,2,8}
+    matches_ultra = sum([length for type_, length in aln_ultra.cigartuples if type_ == 7])
+    diffs_ultra = sum([length for type_, length in aln_ultra.cigartuples if type_ in diffs]) 
+    matches_other = sum([length for type_, length in aln_other.cigartuples if type_ == 7])
+    diffs_other = sum([length for type_, length in aln_other.cigartuples if type_ in diffs]) 
+    # print(matches_ultra, diffs_ultra, matches_other, diffs_other, matches_other - diffs_other <= matches_ultra - diffs_ultra)
+    return matches_other - diffs_other <= matches_ultra - diffs_ultra
+
 
 def output_final_alignments( ultra_alignments_path, path_indexed_aligned, path_unindexed_aligned):
     # read in all reads from alternative aligner that was also mapped by uLTRA
     
     alt_alignments_file = pysam.AlignmentFile(path_indexed_aligned, "r", check_sq=False)
-    alt_alignments = { read.query_name : read for read in alt_alignments_file.fetch(until_eof=True) if read.flag == 0 or read.flag == 16 }
+    alt_alignments = { read.query_name : read for read in alt_alignments_file.fetch(until_eof=True) if not read.is_secondary }
 
 
     alignment_infile = pysam.AlignmentFile( ultra_alignments_path, "r" )
     tmp_merged_outfile = pysam.AlignmentFile( ultra_alignments_path.decode()+ 'tmp', "w", template= alignment_infile)
-    replaced_cntr = 0
+    replaced_unaligned_cntr = 0
+    replaced_fit_cntr = 0
+    ultra_best_cntr = 0
     tot_counter = 0
     for read in alignment_infile.fetch():
-        tot_counter += 1
-        if read.flag == 4 and read.query_name in alt_alignments:
-           read = alt_alignments[ read.query_name ] # replace unmapped uLTRA read with alternative alignment if mapped
-           replaced_cntr += 1
+        if not read.is_secondary:
+            tot_counter += 1
+
+        if read.query_name in alt_alignments:
+            if read.flag == 4:
+               read = alt_alignments[ read.query_name ] # replace unmapped uLTRA read with alternative alignment if mapped
+               replaced_unaligned_cntr += 1
+            elif not read.is_secondary: 
+                if ultra_best_fit(read,  alt_alignments[ read.query_name ]):
+                    # uLTRAS primary alignment preserved
+                    ultra_best_cntr += 1
+                else:
+                    read = alt_alignments[ read.query_name ] # replace unmapped uLTRA read with alternative alignment if better fit
+                    replaced_fit_cntr += 1
+
         tmp_merged_outfile.write(read)
     alignment_infile.close()
     # path_genomic_aligned = os.path.join(args.outfolder, "unindexed.sam")
@@ -219,12 +241,16 @@ def output_final_alignments( ultra_alignments_path, path_indexed_aligned, path_u
     unindexed = pysam.AlignmentFile(path_unindexed_aligned, "r")
     for read in unindexed.fetch():
         tmp_merged_outfile.write(read)
-        not_attempted_cntr += 1
+        if not read.is_secondary: 
+            not_attempted_cntr += 1
     unindexed.close()
     tmp_merged_outfile.close()
-    print("{0} read alignments were not attempted to be aligned with ultra, instead alternative aligner was used.".format(not_attempted_cntr))
-    print("{0} uLTRA read alignments was replaced with alternative aligner.".format(replaced_cntr))
-    print("{0} reads remaining were aligned with uLTRA.".format(tot_counter - replaced_cntr))
+    print("{0} primary alignments aligned with uLTRA.".format(ultra_best_cntr))
+    print("{0} reads were not attempted to be aligned with ultra, instead alternative aligner was used.".format(not_attempted_cntr))
+    print("{0} reads with primary alignments were replaced with alternative aligner because they were unaligned with uLTRA.".format(replaced_unaligned_cntr))
+    print("{0} primary alignments by uLTRA was replaced with alternative aligner because of better fit.".format(replaced_fit_cntr))
+
+    # print("{0} read with primary alignments aligned with uLTRA.".format(tot_counter - replaced_unaligned_cntr - replaced_fit_cntr))
 
     shutil.move(ultra_alignments_path.decode()+ 'tmp', ultra_alignments_path)
 
