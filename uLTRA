@@ -192,14 +192,20 @@ def batch(dictionary, size, batch_type):
     
     # return batches
 
-def ultra_best_fit(aln_ultra, aln_other):
+def check_alignment_fit(aln_ultra, aln_other):
+    """
+        returns: 
+        1. the differnce in scoring is positive if uLTRA better
+        2. the classification obtained by uLTRA
+    """
     diffs = {1,2,8}
     matches_ultra = sum([length for type_, length in aln_ultra.cigartuples if type_ == 7])
     diffs_ultra = sum([length for type_, length in aln_ultra.cigartuples if type_ in diffs]) 
     matches_other = sum([length for type_, length in aln_other.cigartuples if type_ == 7])
     diffs_other = sum([length for type_, length in aln_other.cigartuples if type_ in diffs]) 
     # print(matches_ultra, diffs_ultra, matches_other, diffs_other, matches_other - diffs_other <= matches_ultra - diffs_ultra)
-    return matches_other - diffs_other <= matches_ultra - diffs_ultra
+    # return matches_other - diffs_other <= matches_ultra - diffs_ultra
+    return (matches_ultra - diffs_ultra) - (matches_other - diffs_other), aln_ultra.get_tag('XC')
 
 
 def output_final_alignments( ultra_alignments_path, path_indexed_aligned, path_unindexed_aligned):
@@ -212,9 +218,8 @@ def output_final_alignments( ultra_alignments_path, path_indexed_aligned, path_u
     alignment_infile = pysam.AlignmentFile( ultra_alignments_path, "r" )
     tmp_merged_outfile = pysam.AlignmentFile( ultra_alignments_path.decode()+ 'tmp', "w", template= alignment_infile)
     replaced_unaligned_cntr = 0
-    replaced_fit_cntr = 0
-    ultra_best_cntr = 0
     tot_counter = 0
+    scoring_dict = defaultdict(int)
     for read in alignment_infile.fetch():
         if not read.is_secondary:
             tot_counter += 1
@@ -224,12 +229,10 @@ def output_final_alignments( ultra_alignments_path, path_indexed_aligned, path_u
                read = alt_alignments[ read.query_name ] # replace unmapped uLTRA read with alternative alignment if mapped
                replaced_unaligned_cntr += 1
             elif not read.is_secondary: 
-                if ultra_best_fit(read,  alt_alignments[ read.query_name ]):
-                    # uLTRAS primary alignment preserved
-                    ultra_best_cntr += 1
-                else:
+                ultra_scoring_diff, classification = check_alignment_fit(read,  alt_alignments[ read.query_name ])
+                scoring_dict[ultra_scoring_diff] += 1
+                if ultra_scoring_diff < 0:
                     read = alt_alignments[ read.query_name ] # replace unmapped uLTRA read with alternative alignment if better fit
-                    replaced_fit_cntr += 1
 
         tmp_merged_outfile.write(read)
     alignment_infile.close()
@@ -245,11 +248,24 @@ def output_final_alignments( ultra_alignments_path, path_indexed_aligned, path_u
             not_attempted_cntr += 1
     unindexed.close()
     tmp_merged_outfile.close()
-    print("{0} primary alignments aligned with uLTRA.".format(ultra_best_cntr))
     print("{0} reads were not attempted to be aligned with ultra, instead alternative aligner was used.".format(not_attempted_cntr))
     print("{0} reads with primary alignments were replaced with alternative aligner because they were unaligned with uLTRA.".format(replaced_unaligned_cntr))
-    print("{0} primary alignments by uLTRA was replaced with alternative aligner because of better fit.".format(replaced_fit_cntr))
+    print("{0} primary alignments had best fit with uLTRA.".format(sum([v for k,v in scoring_dict.items() if k > 0])))
+    print("{0} primary alignments had equal fit.".format(scoring_dict[0]))
+    print("{0} primary alignments had best fit with alternative aligner.".format(sum([v for k,v in scoring_dict.items() if k < 0])))
 
+    bin_boundaries = [-2**32, -100,-50,-20,-10,-5,-4,-3,-2,-1, 0, 1, 2, 3, 4, 5, 10, 20, 50, 100, 2**32]
+    counts = [0]*len(bin_boundaries) #{ (b_l, b_u) : 0 for b_l, b_u in zip(bin_boundaries[:-1], bin_boundaries[1:])}
+    for k in sorted(scoring_dict.keys()):
+        for i, b in enumerate(bin_boundaries):
+            if k < b:
+                counts[i] += scoring_dict[k]
+
+    print("Table of score-difference between alignment methods (negative number: alternative aligner better fit, positive number is uLTRA better fit)")
+    print("Score is calculated as sum(identities) - sum(ins, del, subs)")
+    print("Format: Score difference: Number of primary alignments ")
+    for i in range(len(counts)-1):
+        print("[{0} - {1}): {2}".format(bin_boundaries[i],bin_boundaries[i+1], counts[i+1] - counts[i]))
     # print("{0} read with primary alignments aligned with uLTRA.".format(tot_counter - replaced_unaligned_cntr - replaced_fit_cntr))
 
     shutil.move(ultra_alignments_path.decode()+ 'tmp', ultra_alignments_path)
