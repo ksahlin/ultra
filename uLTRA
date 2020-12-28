@@ -255,11 +255,18 @@ def output_final_alignments( ultra_alignments_path, path_indexed_aligned, path_u
     print("{0} primary alignments had best fit with alternative aligner.".format(sum([v for k,v in scoring_dict.items() if k < 0])))
 
     bin_boundaries = [-2**32, -100,-50,-20,-10,-5,-4,-3,-2,-1, 0, 1, 2, 3, 4, 5, 10, 20, 50, 100, 2**32]
-    counts = [0]*len(bin_boundaries) #{ (b_l, b_u) : 0 for b_l, b_u in zip(bin_boundaries[:-1], bin_boundaries[1:])}
+    n = len(bin_boundaries)
+    counts = [0]*n #{ (b_l, b_u) : 0 for b_l, b_u in zip(bin_boundaries[:-1], bin_boundaries[1:])}
+    start_next = 0
     for k in sorted(scoring_dict.keys()):
-        for i, b in enumerate(bin_boundaries):
+        for i in range(start_next, n):
+            b = bin_boundaries[i]
+        # for i, b in enumerate(bin_boundaries):
             if k < b:
                 counts[i] += scoring_dict[k]
+            else:
+                start_next = i
+
 
     print("Table of score-difference between alignment methods (negative number: alternative aligner better fit, positive number is uLTRA better fit)")
     print("Score is calculated as sum(identities) - sum(ins, del, subs)")
