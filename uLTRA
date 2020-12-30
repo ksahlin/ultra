@@ -8,6 +8,7 @@ from time import time
 import itertools
 from itertools import islice, chain
 from struct import *
+import shutil
 
 import argparse
 import errno
@@ -34,12 +35,15 @@ from modules import classify_read_with_mams
 from modules import classify_alignment2
 from modules import sam_output
 from modules import align
+from modules import prefilter_genomic_reads
 
 
+def load_reference(args):
+    refs = {acc : seq for acc, (seq, _) in help_functions.readfq(open(args.ref,"r"))}
+    refs_lengths = { acc : len(seq) for acc, seq in refs.items()} 
+    return refs, refs_lengths
 
-
-
-def prep_splicing(args):
+def prep_splicing(args, refs_lengths):
     database = os.path.join(args.outfolder,'database.db')
     if os.path.isfile(database):
         print("Database found in directory using this one.")
@@ -62,7 +66,7 @@ def prep_splicing(args):
     transcripts_to_splices, all_splice_pairs_annotations, \
     all_splice_sites_annotations, segment_id_to_choordinates, \
     segment_to_gene, gene_to_small_segments, flank_choordinates, \
-    max_intron_chr, exon_choordinates_to_id, chr_to_id, id_to_chr, tiling_structures = augmented_gene.create_graph_from_exon_parts(db, args.flank_size, args.small_exon_threshold, args.min_segm )
+    max_intron_chr, exon_choordinates_to_id, chr_to_id, id_to_chr, tiling_structures = augmented_gene.create_graph_from_exon_parts(db, args.flank_size, args.small_exon_threshold, args.min_segm, refs_lengths)
 
     # dump to pickle here! Both graph and reference seqs
     # help_functions.pickle_dump(args, genes_to_ref, 'genes_to_ref.pickle')
@@ -89,7 +93,7 @@ def prep_splicing(args):
     help_functions.pickle_dump(args, tiling_gene_to_small_segments, 'tiling_gene_to_small_segments.pickle')
 
 
-def prep_seqs(args):
+def prep_seqs(args, refs, refs_lengths):
     parts_to_segments = help_functions.pickle_load( os.path.join(args.outfolder, 'parts_to_segments.pickle') )
     segment_id_to_choordinates = help_functions.pickle_load( os.path.join(args.outfolder, 'segment_id_to_choordinates.pickle') )
     segment_to_ref = help_functions.pickle_load( os.path.join(args.outfolder, 'segment_to_ref.pickle') )
@@ -103,7 +107,6 @@ def prep_seqs(args):
     tiling_segment_to_ref = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_segment_to_ref.pickle') )
     
     print( "Number of ref seqs in gff:", len(parts_to_segments.keys()))
-    refs = {acc : seq for acc, (seq, _) in help_functions.readfq(open(args.ref,"r"))}
 
     refs_id = {}
 
@@ -116,7 +119,6 @@ def prep_seqs(args):
             refs_id[acc_id] = seq
 
     refs_id_lengths = { acc_id : len(seq) for acc_id, seq in refs_id.items()} 
-    refs_lengths = { acc : len(seq) for acc, seq in refs.items()} 
     help_functions.pickle_dump(args, refs_id_lengths, 'refs_id_lengths.pickle')
     help_functions.pickle_dump(args, refs_lengths, 'refs_lengths.pickle')
 
@@ -190,7 +192,90 @@ def batch(dictionary, size, batch_type):
     
     # return batches
 
+def check_alignment_fit(aln_ultra, aln_other):
+    """
+        returns: 
+        1. the differnce in scoring is positive if uLTRA better
+        2. the classification obtained by uLTRA
+    """
+    diffs = {1,2,8}
+    matches_ultra = sum([length for type_, length in aln_ultra.cigartuples if type_ == 7])
+    diffs_ultra = sum([length for type_, length in aln_ultra.cigartuples if type_ in diffs]) 
+    matches_other = sum([length for type_, length in aln_other.cigartuples if type_ == 7])
+    diffs_other = sum([length for type_, length in aln_other.cigartuples if type_ in diffs]) 
+    # print(matches_ultra, diffs_ultra, matches_other, diffs_other, matches_other - diffs_other <= matches_ultra - diffs_ultra)
+    # return matches_other - diffs_other <= matches_ultra - diffs_ultra
+    return (matches_ultra - diffs_ultra) - (matches_other - diffs_other), aln_ultra.get_tag('XC')
 
+
+def output_final_alignments( ultra_alignments_path, path_indexed_aligned, path_unindexed_aligned):
+    # read in all reads from alternative aligner that was also mapped by uLTRA
+    
+    alt_alignments_file = pysam.AlignmentFile(path_indexed_aligned, "r", check_sq=False)
+    alt_alignments = { read.query_name : read for read in alt_alignments_file.fetch(until_eof=True) if not read.is_secondary }
+
+
+    alignment_infile = pysam.AlignmentFile( ultra_alignments_path, "r" )
+    tmp_merged_outfile = pysam.AlignmentFile( ultra_alignments_path.decode()+ 'tmp', "w", template= alignment_infile)
+    replaced_unaligned_cntr = 0
+    tot_counter = 0
+    scoring_dict = defaultdict(int)
+    for read in alignment_infile.fetch():
+        if not read.is_secondary:
+            tot_counter += 1
+
+        if read.query_name in alt_alignments:
+            if read.flag == 4:
+               read = alt_alignments[ read.query_name ] # replace unmapped uLTRA read with alternative alignment if mapped
+               replaced_unaligned_cntr += 1
+            elif not read.is_secondary: 
+                ultra_scoring_diff, classification = check_alignment_fit(read,  alt_alignments[ read.query_name ])
+                scoring_dict[ultra_scoring_diff] += 1
+                if ultra_scoring_diff < 0:
+                    read = alt_alignments[ read.query_name ] # replace unmapped uLTRA read with alternative alignment if better fit
+
+        tmp_merged_outfile.write(read)
+    alignment_infile.close()
+    # path_genomic_aligned = os.path.join(args.outfolder, "unindexed.sam")
+
+    # add all reads that we did not attempt to align with uLTRA
+    # these reads had a primary alignment to unindexed regions by other pre-processing aligner (minimap2 as of now)
+    not_attempted_cntr = 0
+    unindexed = pysam.AlignmentFile(path_unindexed_aligned, "r")
+    for read in unindexed.fetch():
+        tmp_merged_outfile.write(read)
+        if not read.is_secondary: 
+            not_attempted_cntr += 1
+    unindexed.close()
+    tmp_merged_outfile.close()
+    print("{0} reads were not attempted to be aligned with ultra, instead alternative aligner was used.".format(not_attempted_cntr))
+    print("{0} reads with primary alignments were replaced with alternative aligner because they were unaligned with uLTRA.".format(replaced_unaligned_cntr))
+    print("{0} primary alignments had best fit with uLTRA.".format(sum([v for k,v in scoring_dict.items() if k > 0])))
+    print("{0} primary alignments had equal fit.".format(scoring_dict[0]))
+    print("{0} primary alignments had best fit with alternative aligner.".format(sum([v for k,v in scoring_dict.items() if k < 0])))
+
+    bin_boundaries = [-2**32, -100,-50,-20,-10,-5,-4,-3,-2,-1, 0, 1, 2, 3, 4, 5, 10, 20, 50, 100, 2**32]
+    n = len(bin_boundaries)
+    counts = [0]*n #{ (b_l, b_u) : 0 for b_l, b_u in zip(bin_boundaries[:-1], bin_boundaries[1:])}
+    start_next = 0
+    for k in sorted(scoring_dict.keys()):
+        for i in range(start_next, n):
+            b = bin_boundaries[i]
+        # for i, b in enumerate(bin_boundaries):
+            if k < b:
+                counts[i] += scoring_dict[k]
+            else:
+                start_next = i
+
+
+    print("Table of score-difference between alignment methods (negative number: alternative aligner better fit, positive number is uLTRA better fit)")
+    print("Score is calculated as sum(identities) - sum(ins, del, subs)")
+    print("Format: Score difference: Number of primary alignments ")
+    for i in range(len(counts)-1):
+        print("[{0} - {1}): {2}".format(bin_boundaries[i],bin_boundaries[i+1], counts[i+1] - counts[i]))
+    # print("{0} read with primary alignments aligned with uLTRA.".format(tot_counter - replaced_unaligned_cntr - replaced_fit_cntr))
+
+    shutil.move(ultra_alignments_path.decode()+ 'tmp', ultra_alignments_path)
 
 
 def align_reads(args):
@@ -206,6 +291,12 @@ def align_reads(args):
     ref_part_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'ref_part_sequences.pickle') )
     refs_id_lengths = help_functions.pickle_load( os.path.join(args.outfolder, 'refs_id_lengths.pickle') )
     refs_lengths = help_functions.pickle_load( os.path.join(args.outfolder, 'refs_lengths.pickle') )
+
+    if not args.disable_mm2:
+        print("Filtering reads aligned to unindexed regions with minimap2 ")
+        nr_reads_to_ignore, path_reads_to_align = prefilter_genomic_reads.main(ref_part_sequences, args.ref, args.reads, args.outfolder, args.nr_cores, args.genomic_frac, args.mm2_ksize)
+        args.reads = path_reads_to_align
+        print("Done filtering. Reads filtered:{0}".format(nr_reads_to_ignore))
 
     # print(ref_part_sequences)
     ref_path = os.path.join(args.outfolder, "refs_sequences.fa")
@@ -327,8 +418,14 @@ def align_reads(args):
             samfile.close()
 
         alignment_outfile.close()
+        alignment_outfile_name = alignment_outfile.filename
         print("Time to merge SAM-files:{0} seconds.".format(time() - combine_start))
 
+    # need to merge genomic/unindexed alignments with the uLTRA-aligned alignments
+    if not args.disable_mm2:
+        path_indexed_aligned = os.path.join(args.outfolder, "indexed.sam")
+        path_unindexed_aligned = os.path.join(args.outfolder, "unindexed.sam")
+        output_final_alignments(alignment_outfile_name, path_indexed_aligned, path_unindexed_aligned)
 
     counts = defaultdict(int)
     alignment_coverage = 0
@@ -356,18 +453,17 @@ def align_reads(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description="uLTRA -- Align and classify long transcriptomic reads based on colinear chaining algorithms to gene regions")
-    parser.add_argument('--version', action='version', version='%(prog)s 0.0.1')
+    parser.add_argument('--version', action='version', version='%(prog)s 0.0.2')
 
     subparsers = parser.add_subparsers(help='Subcommands for eaither constructing a graph, or align reads')
     # parser.add_argument("-v", help='Different subcommands for eaither constructing a graph, or align reads')
 
     pipeline_parser = subparsers.add_parser('pipeline', help= "Perform all in one: prepare splicing database and reference sequences and align reads.")
-    prep_splicing_parser = subparsers.add_parser('prep_splicing', help= "Prepare all splicing structures from annotation")
-    prep_seqs_parser = subparsers.add_parser('prep_seqs', help= "Prepare reference sequences to align to.")
+    indexing_parser = subparsers.add_parser('index', help= "Construct data structures used for alignment.")
     align_reads_parser = subparsers.add_parser('align', help="Classify and align reads with colinear chaining to DAGs")
 
-    pipeline_parser.add_argument('gtf', type=str, help='Path to gtf or gtf file with gene models.')
     pipeline_parser.add_argument('ref', type=str, help='Reference genome (fasta)')
+    pipeline_parser.add_argument('gtf', type=str, help='Path to gtf or gtf file with gene models.')
     pipeline_parser.add_argument('reads', type=str, help='Path to fasta/fastq file with reads.')
     pipeline_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
     group = pipeline_parser.add_mutually_exclusive_group()
@@ -386,7 +482,7 @@ if __name__ == '__main__':
     pipeline_parser.add_argument('--reduce_read_ployA', type=int, default=8, help='Reduces polyA tails longer than X bases (default 10) in reads to 5bp before MEM finding. This helps MEM matching to spurios regions but does not affect final read alignments.')
     pipeline_parser.add_argument('--alignment_threshold', type=int, default=0.5, help='Lower threshold for considering an alignment. \
                                                                                         Counted as the difference between total match score and total mismatch penalty. \
-                                                                                        If a read has 25\% errors (under edit distance scoring), the difference between \
+                                                                                        If a read has 25%% errors (under edit distance scoring), the difference between \
                                                                                         matches and mismatches would be (very roughly) 0.75 - 0.25 = 0.5 with default alignment parameters \
                                                                                         match =2, subs=-2, gap open 3, gap ext=1. Default val (0.5) sets that a score\
                                                                                         higher than 2*0.5*read_length would be considered an alignment, otherwise unaligned.')
@@ -399,22 +495,23 @@ if __name__ == '__main__':
     pipeline_parser.add_argument('--ignore_rc', action='store_true', help='Ignore to map to reverse complement.')
     pipeline_parser.add_argument('--disable_infer', action='store_true', help='Makes splice creation step much faster. Thes parameter can be set if gene and transcript name fields are provided in gtf file.')
     pipeline_parser.add_argument('--mask_threshold', type=int, default=200, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
+    pipeline_parser.add_argument('--disable_mm2', action='store_true', help='Disables utilizing minimap2 to detect genomic primary alignments and to quality check uLTRAs primary alignments.\
+                                                                                An alignment is classified as genomic if more than --genomic_frac (default 10%%) of its aligned length is outside\
+                                                                                regions indexed by uLTRA. Note that uLTRA indexes flank regions such as 3 prime, 5 prime and (parts of) introns.')
+    pipeline_parser.add_argument('--genomic_frac', type=float, default=0.1, help='If parameter prefilter_genomic is set, this is the threshild for fraction of aligned portion of read that is outside uLTRA indexed regions to be considered genomic (default 0.1).')
+
     pipeline_parser.set_defaults(which='pipeline')
 
-
-    prep_splicing_parser.add_argument('gtf', type=str, help='Path to gtf or gtf file with gene models.')
-    prep_splicing_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
-    prep_splicing_parser.add_argument('--min_segm', type=int, default=25, help='Threshold for minimum segment size considered.')
-    prep_splicing_parser.add_argument('--flank_size', type=int, default=1000, help='Size of genomic regions surrounding genes.')
-    prep_splicing_parser.add_argument('--small_exon_threshold', type=int, default=200, help='Considered in MAM solution even if they cont contain MEMs.')
-    prep_splicing_parser.add_argument('--disable_infer', action='store_true', help='Makes splice creation step much faster. Thes parameter can be set if gene and transcript name fields are provided in gtf file.')
-    prep_splicing_parser.set_defaults(which='prep_splicing')
-
-    prep_seqs_parser.add_argument('ref', type=str, help='Reference genome (fasta)')
-    prep_seqs_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
-    prep_seqs_parser.add_argument('--min_mem', type=int, default=17, help='Threshold for minimum mem size considered.')
-    prep_seqs_parser.add_argument('--mask_threshold', type=int, default=200, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
-    prep_seqs_parser.set_defaults(which='prep_seqs')
+    indexing_parser.add_argument('ref', type=str, help='Reference genome (fasta)')
+    indexing_parser.add_argument('gtf', type=str, help='Path to gtf or gtf file with gene models.')
+    indexing_parser.add_argument('outfolder', type=str, help='Path to output folder.')
+    indexing_parser.add_argument('--min_segm', type=int, default=25, help='Threshold for minimum segment size considered.')
+    indexing_parser.add_argument('--flank_size', type=int, default=1000, help='Size of genomic regions surrounding genes.')
+    indexing_parser.add_argument('--small_exon_threshold', type=int, default=200, help='Considered in MAM solution even if they cont contain MEMs.')
+    indexing_parser.add_argument('--disable_infer', action='store_true', help='Makes splice creation step much faster. Thes parameter can be set if gene and transcript name fields are provided in gtf file.')
+    indexing_parser.add_argument('--min_mem', type=int, default=17, help='Threshold for minimum mem size considered.')
+    indexing_parser.add_argument('--mask_threshold', type=int, default=200, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
+    indexing_parser.set_defaults(which='index')
 
 
     align_reads_parser.add_argument('ref', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')    
@@ -425,7 +522,7 @@ if __name__ == '__main__':
     align_reads_parser.add_argument('--reduce_read_ployA', type=int, default=8, help='Reduces polyA tails longer than X bases (default 10) in reads to 5bp before MEM finding. This helps MEM matching to spurios regions but does not affect final read alignments.')
     align_reads_parser.add_argument('--alignment_threshold', type=int, default=0.5, help='Lower threshold for considering an alignment. \
                                                                                         Counted as the difference between total match score and total mismatch penalty. \
-                                                                                        If a read has 25\% errors (under edit distance scoring), the difference between \
+                                                                                        If a read has 25%% errors (under edit distance scoring), the difference between \
                                                                                         matches and mismatches would be (very roughly) 0.75 - 0.25 = 0.5 with default alignment parameters \
                                                                                         match =2, subs=-2, gap open 3, gap ext=1. Default val (0.5) sets that a score\
                                                                                         higher than 2*0.5*read_length would be considered an alignment, otherwise unaligned.')
@@ -438,6 +535,13 @@ if __name__ == '__main__':
     align_reads_parser.add_argument('--ignore_rc', action='store_true', help='Ignore to map to reverse complement.')
     align_reads_parser.add_argument('--min_mem', type=int, default=17, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
     align_reads_parser.add_argument('--min_acc', type=float, default=0.5, help='Minimum accuracy of MAM to be considered in mam chaining.')
+
+    align_reads_parser.add_argument('--disable_mm2', action='store_true', help='Disables utilizing minimap2 to detect genomic primary alignments and to quality check uLTRAs primary alignments.\
+                                                                                An alignment is classified as genomic if more than --genomic_frac (default 10%%) of its aligned length is outside\
+                                                                                regions indexed by uLTRA. Note that uLTRA indexes flank regions such as 3 prime, 5 prime and (parts of) introns.')
+
+    align_reads_parser.add_argument('--genomic_frac', type=float, default=0.1, help='If parameter prefilter_genomic is set, this is the threshild for fraction of aligned portion of read that is outside uLTRA indexed regions to be considered genomic (default 0.1).')
+
     group2 = align_reads_parser.add_mutually_exclusive_group()
     group2.add_argument('--ont', action="store_true", help='Set parameters suitable for ONT (Currently sets: --min_mem 15, --min_acc 0.6 --alignment_threshold 0.5).')
     group2.add_argument('--isoseq', action="store_true", help='Set parameters suitable for IsoSeq (Currently sets: --min_mem 17, --min_acc 0.8 --alignment_threshold 0.5).')
@@ -456,9 +560,11 @@ if __name__ == '__main__':
         sys.exit()
 
     if args.which == 'align_reads' or args.which == 'pipeline':
+        args.mm2_ksize = 15
         if args.ont:
             args.min_mem = 17
             args.min_acc = 0.6
+            args.mm2_ksize = 14
             # args.alignment_threshold = 0.5
         if args.isoseq:
             args.min_mem = 20
@@ -466,15 +572,16 @@ if __name__ == '__main__':
             # args.alignment_threshold = 0.5
 
 
-    if args.which == 'prep_splicing':
-        prep_splicing(args)
-    elif args.which == 'prep_seqs':
-        prep_seqs(args)
+    if args.which == 'index':
+        refs, refs_lengths = load_reference(args)
+        prep_splicing(args, refs_lengths)
+        prep_seqs(args, refs, refs_lengths)
     elif args.which == 'align_reads':
         align_reads(args)
     elif args.which == 'pipeline':
-        prep_splicing(args)
-        prep_seqs(args)
+        refs, refs_lengths = load_reference(args)
+        prep_splicing(args, refs_lengths)
+        prep_seqs(args, refs, refs_lengths)
         align_reads(args)        
     else:
         print('invalid call')

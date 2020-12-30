@@ -1,7 +1,10 @@
 uLTRA
 ===========
 
-uLTRA is a tool for splice alignment of long transcriptomic reads to a genome, guided by a database of exon annotations. uLTRA takes reads in fast(a/q) and a genome annotation as input and outputs a SAM-file. The SAM-file includes information on which splice sites are found and if the read is a full splice match (and to which transcript), incomplete splice match, Novel in catalog, or novel not in the catalog, as defined in [SQANTI](https://github.com/ConesaLab/SQANTI). uLTRA is highly accurate when aligning to small exons [see some examples](https://github.com/ksahlin/ultra/tree/master/data/images).
+uLTRA is a tool for splice alignment of long transcriptomic reads to a genome, guided by a database of exon annotations. uLTRA takes reads in fast(a/q) and a genome annotation as input and outputs a SAM-file. The SAM-file includes information on which splice sites are found and if the read is a full splice match (and to which transcript), incomplete splice match, Novel in catalog, or novel not in the catalog, as defined in [SQANTI](https://github.com/ConesaLab/SQANTI). uLTRA is highly accurate when aligning to small exons [see some examples](https://github.com/ksahlin/ultra/tree/master/data/images). 
+
+### New since v0.0.2
+Since v0.0.2, uLTRA can be used as an **end-to-end aligner for annotation and detection of novel genes or isoforms** (default mode). This is because uLTRA (>=v0.0.2) now incorporates [minimap2](https://github.com/lh3/minimap2). [minimap2](https://github.com/lh3/minimap2) is run upon start of uLTRA, and the results are used both for (i) not aligning reads with uLTRA which had a primary alignment to regions not indexed by uLTRA (e.g. genomic regions or unannotated genes) and (ii) to consult at end of program which aligner had a better fit (based on cigar) of the primary alignment and chose this alignment to be primary. uLTRA still uses its own alignment algorithm to align to and around all annotated gene regions. uLTRA can therefore, at worst, be seen as an advanced wrapper around minimap2 that refines alignments around annotated regions. See updated `CREDITS` when using this version. uLTRA can still be used as a stand alone aligner as presented in our [preprint](https://www.biorxiv.org/content/10.1101/2020.09.02.279208v1) by specifying `--disable_mm2`.
 
 uLTRA is distributed as a python package supported on Linux / OSX with python v>=3.4. [![Build Status](https://travis-ci.org/ksahlin/uLTRA.svg?branch=master)](https://travis-ci.org/ksahlin/uLTRA).
 
@@ -28,46 +31,40 @@ INSTALLATION
 ### Using conda
 Conda is the preferred way to install uLTRA.
 
-1. Create and activate a new environment called ultra
+#### 1. Create and activate a new environment called ultra
 
 ```
 conda create -n ultra python=3 pip 
 conda activate ultra
 ```
 
-2. Install uLTRA 
+#### 2. Install uLTRA 
 
 ```
 pip install ultra-bioinformatics
 ```
 
-3. Install third party MEM finder [slaMEM](https://github.com/fjdf/slaMEM) (and [MUMmer](http://mummer.sourceforge.net/))
+#### 3. Install third party MEM finder [slaMEM](https://github.com/fjdf/slaMEM) and aligner [minimap2](https://github.com/lh3/minimap2)
 
 ```
 git clone git@github.com:fjdf/slaMEM.git
 cd slaMEM
 make 
 ```
+Place the generated binary `slaMEM` in your path. Minimap2 can be installed through conda with `conda install -c bioconda minimap2`, or [manually](https://github.com/lh3/minimap2). 
 
-And either place the generated binary `slaMEM`in your path or run `export PATH=$PATH:$PWD/` if you are in the slaMEM folder).
+#### 4. You should now have 'uLTRA' installed; try it:
 
-While MUMmer is usually not used in uLTRA, it can be good to have it as backup if slaMEM [fails](https://github.com/fjdf/slaMEM/issues/3) until bugs have been fixed.
-
-```
-conda install --yes -c bioconda mummer
-```
-
-4. You should now have 'uLTRA' installed; try it:
 ```
 uLTRA --help
 ```
 
 Upon start/login to your server/computer you need to activate the conda environment "ultra" to run uLTRA as:
 ```
-source activate ultra
+conda activate ultra
 ```
 
-5. Test uLTRA
+#### 5. Test uLTRA
 
 Download/use test data available in this repository [here](https://github.com/ksahlin/ultra/tree/master/test) and run: 
 
@@ -77,14 +74,25 @@ uLTRA pipeline [/your/local/directory/to/test]/SIRV_genes_C_170612a.gtf  \
                [/your/local/directory/to/test]/reads.fa outfolder/  [optional parameters]
 ```
 
+#### 6. (Optional) Install of MUMmer 
+
+While MUMmer is usually not used in uLTRA, if slaMEM [fails](https://github.com/fjdf/slaMEM/issues/3), uLTRA falls back on finding MEMs with MUMmer until the slaMEM bug has been fixed. In this corner case, uLTRA needs MUMmer avaialble in the path. MUMmer can be installed with
+
+```
+conda install --yes -c bioconda mummer
+```
+
+
 ### Downloading source from GitHub
 
 #### Dependencies
 
-Make sure the below-listed dependencies are installed (installation links below). Versions in parenthesis are suggested as uLTRA has not been tested with earlier versions of these libraries. However, uLTRA may also work with earlier versions of these libraries.
+Make sure the below-listed dependencies are installed (installation links below). Versions in parenthesis are suggested as uLTRA has not been tested with earlier versions of these libraries. However, uLTRA may also work with earlier versions of these libraries. All below dependencies except `slaMEM` can be installed as `pip install X` or through conda.
 * [parasail](https://github.com/jeffdaily/parasail-python)
+* [edlib](https://github.com/Martinsos/edlib)
 * [pysam](http://pysam.readthedocs.io/en/latest/installation.html) (>= v0.11)
-* dill
+* [dill](https://pypi.org/project/dill/)
+* [intervaltree](https://github.com/chaimleib/intervaltree/tree/master/intervaltree)
 * [gffutils](https://pythonhosted.org/gffutils/)
 * [slaMEM](https://github.com/fjdf/slaMEM)
 
@@ -109,10 +117,7 @@ uLTRA can be used with either Iso-Seq or ONT reads.
 First, we construct the data structures used in uLTRA using a genome annotation GTF file and a genome fasta file.
 
 ```
-# Step 1
-uLTRA prep_splicing  /full/dir/to/all_genes.gtf outfolder/  [parameters]
-# Step 2
-uLTRA prep_seqs  genome.fasta  outfolder/  [parameters]
+uLTRA index genome.fasta  annotation.gtf outfolder/  [parameters]
 ```
 
 
@@ -121,9 +126,9 @@ uLTRA prep_seqs  genome.fasta  outfolder/  [parameters]
 For example
 
 ```
-uLTRA align  genome.fasta  reads.[fa/fq] outfolder/  --ont --t 48   # ONT cDNA reads using 48 cores
-uLTRA align  genome.fasta  reads.[fa/fq] outfolder/  --isoseq --t 48 # PacBio isoseq reads
-uLTRA align  genome.fasta  reads.[fa/fq] outfolder/  --k 14  --t 48 # PacBio dRNA reads or reads with >10-12% error rate
+uLTRA align genome.fasta reads.[fa/fq] outfolder/  --ont --t 48   # ONT cDNA reads using 48 cores
+uLTRA align genome.fasta reads.[fa/fq] outfolder/  --isoseq --t 48 # PacBio isoseq reads
+uLTRA align genome.fasta reads.[fa/fq] outfolder/  --k 14  --t 48 # PacBio dRNA reads or reads with >10-12% error rate
 ```
 
 uLTRA's index takes about 7Gb for human, and each instance needs a separate copy of the index (if parallelized, that is, `--t` greater than 1). So if you have a computer/cluster with 8Gb per core and n cores it is straightforward to set `--t n-1` (n-1 to leave some space for the main process). 
@@ -133,7 +138,7 @@ uLTRA's index takes about 7Gb for human, and each instance needs a separate copy
 Performs all the steps in one
 
 ```
-uLTRA pipeline /full/dir/to/test/SIRV_genes_C_170612a.gtf  test/SIRV_genes.fasta  test/reads.fa outfolder/  [parameters]
+uLTRA pipeline genome.fasta annotation.gtf reads.fa outfolder/  [parameters]
 ```
 
 #### Output
@@ -145,7 +150,7 @@ uLTRA outputs a SAM-file with alignments to the genome. In addition, it outputs 
 CREDITS
 ----------------
 
-Please cite [1] when using uLTRA.
+Please cite [1] when using uLTRA. If you are using uLTRA v0.0.2 or later **please also cite** [minimap2](https://github.com/lh3/minimap2) as uLTRA incorporates minimap2 for alignment of some reads. For example "We aligned reads to the genome using uLTRA [1], which incorporates minimap2 [CIT].".
 
 1. Kristoffer Sahlin, Veli Makinen. 2020. "Accurate spliced alignment of long RNA sequencing reads" [preprint available here](https://www.biorxiv.org/content/10.1101/2020.09.02.279208v1).
 
