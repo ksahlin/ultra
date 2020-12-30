@@ -4,7 +4,7 @@ uLTRA
 uLTRA is a tool for splice alignment of long transcriptomic reads to a genome, guided by a database of exon annotations. uLTRA takes reads in fast(a/q) and a genome annotation as input and outputs a SAM-file. The SAM-file includes information on which splice sites are found and if the read is a full splice match (and to which transcript), incomplete splice match, Novel in catalog, or novel not in the catalog, as defined in [SQANTI](https://github.com/ConesaLab/SQANTI). uLTRA is highly accurate when aligning to small exons [see some examples](https://github.com/ksahlin/ultra/tree/master/data/images). 
 
 ### New since v0.0.2
-Since v0.0.2, uLTRA can be used as an **end-to-end aligner for annotation and detection of novel genes or isoforms** (default mode). This is because uLTRA (>= v0.0.2 in default mode) now incorporates [minimap2](https://github.com/lh3/minimap2). [minimap2](https://github.com/lh3/minimap2) is run upon start of uLTRA, and the results are used both for (i) not aligning reads with uLTRA which had a primary alignment to regions not indexed by uLTRA (e.g. genomic regions or unannotated genes) and (ii) to consult at end of program which aligner had a better fit (based on cigar) of the primary alignment and chose this alignment to be primary. uLTRA still uses its own alignment algorithm to align to and around all annotated gene regions. uLTRA can therefore, at worst, be seen as an advanced wrapper around minimap2 that refines alignments around annotated regions. See updated `CREDITS` when using this version. uLTRA can still be used as a stand alone aligner as presented in our [preprint](https://www.biorxiv.org/content/10.1101/2020.09.02.279208v1) by specifying `--disable_mm2`.
+Since v0.0.2, uLTRA can be used as an **end-to-end aligner for annotation and detection of novel genes or isoforms** (default mode). This is because uLTRA (>=v0.0.2) now incorporates [minimap2](https://github.com/lh3/minimap2). [minimap2](https://github.com/lh3/minimap2) is run upon start of uLTRA, and the results are used both for (i) not aligning reads with uLTRA which had a primary alignment to regions not indexed by uLTRA (e.g. genomic regions or unannotated genes) and (ii) to consult at end of program which aligner had a better fit (based on cigar) of the primary alignment and chose this alignment to be primary. uLTRA still uses its own alignment algorithm to align to and around all annotated gene regions. uLTRA can therefore, at worst, be seen as an advanced wrapper around minimap2 that refines alignments around annotated regions. See updated `CREDITS` when using this version. uLTRA can still be used as a stand alone aligner as presented in our [preprint](https://www.biorxiv.org/content/10.1101/2020.09.02.279208v1) by specifying `--disable_mm2`.
 
 uLTRA is distributed as a python package supported on Linux / OSX with python v>=3.4. [![Build Status](https://travis-ci.org/ksahlin/uLTRA.svg?branch=master)](https://travis-ci.org/ksahlin/uLTRA).
 
@@ -31,39 +31,40 @@ INSTALLATION
 ### Using conda
 Conda is the preferred way to install uLTRA.
 
-1. Create and activate a new environment called ultra
+#### 1. Create and activate a new environment called ultra
 
 ```
 conda create -n ultra python=3 pip 
 conda activate ultra
 ```
 
-2. Install uLTRA 
+#### 2. Install uLTRA 
 
 ```
 pip install ultra-bioinformatics
 ```
 
-3. Install third party MEM finder [slaMEM](https://github.com/fjdf/slaMEM) and aligner [minimap2](https://github.com/lh3/minimap2)
+#### 3. Install third party MEM finder [slaMEM](https://github.com/fjdf/slaMEM) and aligner [minimap2](https://github.com/lh3/minimap2)
 
 ```
 git clone git@github.com:fjdf/slaMEM.git
 cd slaMEM
 make 
 ```
-Place the generated binaries `slaMEM` in your path. Minimap2 can be installed through conda with `conda install -c bioconda minimap2`, or [manually](https://github.com/lh3/minimap2). 
+Place the generated binary `slaMEM` in your path. Minimap2 can be installed through conda with `conda install -c bioconda minimap2`, or [manually](https://github.com/lh3/minimap2). 
 
-4. You should now have 'uLTRA' installed; try it:
+#### 4. You should now have 'uLTRA' installed; try it:
+
 ```
 uLTRA --help
 ```
 
 Upon start/login to your server/computer you need to activate the conda environment "ultra" to run uLTRA as:
 ```
-source activate ultra
+conda activate ultra
 ```
 
-6. Test uLTRA
+#### 5. Test uLTRA
 
 Download/use test data available in this repository [here](https://github.com/ksahlin/ultra/tree/master/test) and run: 
 
@@ -73,7 +74,7 @@ uLTRA pipeline [/your/local/directory/to/test]/SIRV_genes_C_170612a.gtf  \
                [/your/local/directory/to/test]/reads.fa outfolder/  [optional parameters]
 ```
 
-6. (Optional) Install of MUMmer 
+#### 6. (Optional) Install of MUMmer 
 
 While MUMmer is usually not used in uLTRA, if slaMEM [fails](https://github.com/fjdf/slaMEM/issues/3), uLTRA falls back on finding MEMs with MUMmer until the slaMEM bug has been fixed. In this corner case, uLTRA needs MUMmer avaialble in the path. MUMmer can be installed with
 
@@ -149,7 +150,7 @@ uLTRA outputs a SAM-file with alignments to the genome. In addition, it outputs 
 CREDITS
 ----------------
 
-Please cite [1] when using uLTRA. If you are using uLTRA v0.0.2 or later **please also cite** [minimap2](https://github.com/lh3/minimap2) as uLTRA uses and consults minimap2 for alignment of some reads. For example "We aligned reads to the genome using uLTRA [1], which incorporates minimap2 [CIT].".
+Please cite [1] when using uLTRA. If you are using uLTRA v0.0.2 or later **please also cite** [minimap2](https://github.com/lh3/minimap2) as uLTRA incorporates minimap2 for alignment of some reads. For example "We aligned reads to the genome using uLTRA [1], which incorporates minimap2 [CIT].".
 
 1. Kristoffer Sahlin, Veli Makinen. 2020. "Accurate spliced alignment of long RNA sequencing reads" [preprint available here](https://www.biorxiv.org/content/10.1101/2020.09.02.279208v1).
 
