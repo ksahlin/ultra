@@ -19,7 +19,7 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 setup(
 
     name='ultra_bioinformatics',  # Required
-    version='0.0.1',  # Required
+    version='0.0.2',  # Required
     description='Splice aligner of long transcriptomic reads to genome.',  # Required
     long_description=long_description,  # Optional
     long_description_content_type='text/markdown',
@@ -79,6 +79,7 @@ setup(
     install_requires=['parasail',
                      'pysam',
                      'dill',
+                     'intervaltree',
                      'gffutils',
                      'edlib'],  # Optional
     # dependency_links=[], # Optional

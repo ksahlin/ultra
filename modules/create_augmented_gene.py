@@ -277,7 +277,7 @@ def add_to_chr_mapping(chr_name, chr_to_id, id_to_chr):
         return hash_id
 
         
-def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segment_size): 
+def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segment_size, refs_lengths): 
     """
         We need to link parts --> exons and exons --> transcripts
     """
@@ -323,7 +323,8 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segme
         exon_ids.add(exon_name)
         # creating the augmentation
         if i == 0: # initialization
-            prev_seq_id = chr_id
+            prev_chr_id = chr_id
+            prev_chr_name = chr_name
             active_start = exon.start - 1
             active_stop = exon.stop
             active_exons = set() 
@@ -342,22 +343,31 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segme
             continue
             # print(2*flank_size)
 
-        if chr_id != prev_seq_id: # switching chromosomes
-            parts_to_exons[prev_seq_id][(active_start, active_stop)] = active_exons
-            part_count_to_choord[(prev_seq_id,part_counter)] = (active_start, active_stop)
-            # part_intervals[prev_seq_id].addi(active_start, active_stop, None)
-            # get_complementary_exon_seq_per_part(parts_to_exons, exon_to_gene, exon_id_to_choordinates, exons_to_ref, active_exons, active_start, active_stop, prev_seq_id)
-            # adding very last flank on chromosome
-            flank_name =  array("L", [prev_seq_id, max(0, active_stop), active_stop + 2*flank_size]).tobytes()
+        if chr_id != prev_chr_id: # switching chromosomes
+            parts_to_exons[prev_chr_id][(active_start, active_stop)] = active_exons
+            part_count_to_choord[(prev_chr_id,part_counter)] = (active_start, active_stop)
+            # part_intervals[prev_chr_id].addi(active_start, active_stop, None)
+            # get_complementary_exon_seq_per_part(parts_to_exons, exon_to_gene, exon_id_to_choordinates, exons_to_ref, active_exons, active_start, active_stop, prev_chr_id)
+            # adding the very last flank on previous chromosome
+            chr_length = refs_lengths[prev_chr_name]
+            flank_name = array("L", [prev_chr_id, max(0, active_stop), min(chr_length, active_stop + 2*flank_size)]).tobytes()
             flank_ids.add(flank_name)
             total_flanks2 += 1
             total_flank_size += 2*flank_size
             # print(2*flank_size)
 
             # print(max(0, active_stop), active_stop + 1000)
-            prev_seq_id = chr_id
+            prev_chr_id = chr_id
+            prev_chr_name = chr_name
             active_start = exon.start - 1
             active_stop = exon.stop
+
+            # adding the very first flank on new chromosome
+            flank_name = array("L", [chr_id, max(0, exon.start - segment_size), exon.start - 1]).tobytes()
+            flank_ids.add(flank_name)
+            total_flanks2 += 1
+            total_flank_size += 2*flank_size
+
             part_counter +=1
             part_to_canonical_pos[(chr_id, part_counter)].add(exon.start - 1)
             part_to_canonical_pos[(chr_id, part_counter)].add(exon.stop)
@@ -373,12 +383,13 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segme
         elif exon.start - 1 > active_stop + 20:
             parts_to_exons[chr_id][(active_start, active_stop)] = active_exons
             part_count_to_choord[(chr_id,part_counter)] = (active_start, active_stop)
-            # get_complementary_exon_seq_per_part(parts_to_exons, exon_to_gene, exon_id_to_choordinates, exons_to_ref, active_exons, active_start, active_stop, prev_seq_id)
-            # part_intervals[prev_seq_id].addi(active_start, active_stop, None)
+            # get_complementary_exon_seq_per_part(parts_to_exons, exon_to_gene, exon_id_to_choordinates, exons_to_ref, active_exons, active_start, active_stop, prev_chr_id)
+            # part_intervals[prev_chr_id].addi(active_start, active_stop, None)
             segment_size = 2*flank_size if set(exon_gene_ids).isdisjoint(active_gene_ids) else flank_size
             # part_intervalst(segment_size)
             if exon.start - active_stop > 2*segment_size:
-                flank_name = array("L", [chr_id, max(0, active_stop), active_stop + segment_size]).tobytes()
+                chr_length = refs_lengths[chr_name]
+                flank_name = array("L", [chr_id, max(0, active_stop), min(chr_length, active_stop + segment_size)]).tobytes()
                 flank_ids.add(flank_name)
                 flank_name = array("L", [chr_id, max(0, exon.start - segment_size), exon.start - 1]).tobytes()
                 flank_ids.add(flank_name) 
@@ -417,6 +428,11 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segme
             pos_to_exon_ids[(chr_id, part_counter)][ (exon.stop, False)].add(exon.id)
 
         assert active_start <= exon.start - 1
+
+    # addig the very last flank at the last chromosome in the annotation
+    chr_length = refs_lengths[chr_name]
+    flank_name = array("L", [chr_id, max(0, active_stop), min(chr_length, active_stop + segment_size)]).tobytes()
+    flank_ids.add(flank_name)
 
     # print("NR EXONS + COMPL:", len(exon_to_gene))
     print("total_flanks2:", total_flanks2)
@@ -483,6 +499,12 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segme
         for unique_sp_sites, tr_ids in chr_sp_sites_dict.items():
             for tr_id in tr_ids:
                 transcripts_to_splices[chr_id][tr_id] = unique_sp_sites
+
+    # print(chr_to_id)
+    # for f in flank_ids:
+    #     chr_id, start, stop = unpack('LLL',f)
+    #     if chr_id == 7:
+    #         print(chr_id, start, stop)
 
     return  segment_to_ref, parts_to_segments, splices_to_transcripts, \
             transcripts_to_splices, all_splice_pairs_annotations, \

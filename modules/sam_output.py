@@ -103,28 +103,28 @@ def get_cigars(segments):
     return segments_cigar, start_offset #"".join([str(length)+ type_ for length, type_ in c ])
 
 
-def modify_beginning(c, p):
-    add_N_beg = 0
-    match_beg = re.match(p, c)
-    if match_beg:
-        # print('heeeej',c)
-        m = match_beg.group()
-        add_N_beg  = int(m[:-1])
-        c = c[len(m):]
-    return c, add_N_beg
+# def modify_beginning(c, p):
+#     add_N_beg = 0
+#     match_beg = re.match(p, c)
+#     if match_beg:
+#         # print('heeeej',c)
+#         m = match_beg.group()
+#         add_N_beg  = int(m[:-1])
+#         c = c[len(m):]
+#     return c, add_N_beg
 
 
-def modify_end(c,p):
-    add_N_end = 0
-    c_rev = c[::-1]
-    match_end = re.match(p, c_rev)
-    if match_end:
-        # print('holllla',c)
-        m_rev = match_end.group()
-        m = m_rev[::-1]
-        add_N_end  = int(m[:-1])
-        c = c[:-len(m)]
-    return c, add_N_end
+# def modify_end(c,p):
+#     add_N_end = 0
+#     c_rev = c[::-1]
+#     match_end = re.match(p, c_rev)
+#     if match_end:
+#         # print('holllla',c)
+#         m_rev = match_end.group()
+#         m = m_rev[::-1]
+#         add_N_end  = int(m[:-1])
+#         c = c[:-len(m)]
+#     return c, add_N_end
 
 
 def get_genomic_cigar(read_aln, ref_aln, predicted_exons):
@@ -192,6 +192,23 @@ def get_genomic_cigar(read_aln, ref_aln, predicted_exons):
     return genomic_cigar, start_offset
 
 
+def edit_distance(cigar):
+    ed = 0
+    cigar_tuples = []
+    result = re.split(r'[=DXSMIN]+', cigar)
+    cig_pos = 0
+    for length in result[:-1]:
+        cig_pos += len(length)
+        type_ = cigar[cig_pos]
+        cig_pos += 1
+        cigar_tuples.append((int(length), type_ ))
+
+    ed_types = {"X", "I", "D"}
+    for length_, type_ in cigar_tuples:
+        if type_ in ed_types:
+            ed += length_
+    return ed 
+
 
 def main(read_id, read_seq, ref_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, alignment_outfile, is_rc, is_secondary, map_score, aln_score = 0):
     # print(ref_id, classification, predicted_exons, read_aln, ref_aln, alignment_outfile)
@@ -204,34 +221,35 @@ def main(read_id, read_seq, ref_id, classification, predicted_exons, read_aln, r
         #     print(read_aln)
         #     print(ref_aln)
         #     print(predicted_exons)
+        if is_secondary and is_rc:
+            read_sam_entry.flag = 256 + 16 
+        elif is_secondary:
+            read_sam_entry.flag = 256
+        elif is_rc:
+            read_sam_entry.flag = 16 
+        else:
+            read_sam_entry.flag = 0 
+
+        read_sam_entry.reference_name = ref_id
+        read_sam_entry.mapping_quality = 60 # TODO: calculate mapping quality 
+
         read_sam_entry.cigarstring = genomic_cigar 
         read_sam_entry.reference_start = predicted_exons[0][0] + start_offset
         read_sam_entry.mapping_quality = map_score 
         # print(predicted_exons[0][0], start_offset)
-
+        read_sam_entry.set_tag('XA', annotated_to_transcript_id)
+        read_sam_entry.set_tag('XC', classification)
+        read_sam_entry.set_tag('NM', edit_distance(genomic_cigar))
     else:
         read_sam_entry.cigarstring = '*'
         read_sam_entry.reference_start = -1
+        read_sam_entry.flag = 4
+
 
     read_sam_entry.query_sequence  = read_seq
     read_sam_entry.query_name = read_id
 
-    if is_secondary and is_rc:
-        read_sam_entry.flag = 256 + 16 
-    elif is_secondary:
-        read_sam_entry.flag = 256
-    elif is_rc:
-        read_sam_entry.flag = 16 
-    else:
-        read_sam_entry.flag = 0 
 
-    read_sam_entry.reference_name = ref_id
-    read_sam_entry.mapping_quality = 60 # TODO: calculate mapping quality 
-    # print(annotated_to_transcript_id)
-    read_sam_entry.set_tag('AN', annotated_to_transcript_id)
-    read_sam_entry.set_tag('CN', classification)
-
-    # read_sam_entry.reference_star = 
 
 
     alignment_outfile.write(read_sam_entry)
