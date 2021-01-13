@@ -1,0 +1,21 @@
+{
+
+    "DATASETS" : ["human_ont", "simulated"],
+
+    "ROOT_OUT" : "/nfs/brubeck.bx.psu.edu/scratch4/ksahlin/ultra_eval",
+    "ROOT_IN" : "/galaxy/home/ksahlin/prefix/source/torkel",
+    "ANNOTATION" : "/nfs/brubeck.bx.psu.edu/scratch4/ksahlin/isoncorrect_eval/gtf_annotations",
+
+    "DATA" : "/nfs/brubeck.bx.psu.edu/scratch4/ksahlin/data/",
+
+    "SIRV" : "/nfs/brubeck.bx.psu.edu/scratch4/ksahlin/isoncorrect_eval/data/SIRV/SIRV_Set1_Lot00141_Sequences_170612a/SIRV_isoforms_multi-fasta_170612a.fasta",
+
+    "HG38" : "/nfs/brubeck.bx.psu.edu/scratch6/ksahlin/data/HG38/Homo_sapiens.GRCh38.dna.primary_assembly_modified_headers.fa",
+    "TRANSCRIPTOME" : "/galaxy/home/ksahlin/prefix/source/torkel/data/all_transcripts_ENSEMBL.txt",
+    "drosophila97" : "/nfs/brubeck.bx.psu.edu/scratch4/ksahlin/isoncorrect_eval/data/drosophila/Drosophila_melanogaster.BDGP6.22.dna.toplevel.fa",
+    "ENSEMBL" : "/nfs/brubeck.bx.psu.edu/scratch4/ksahlin/data/",
+    "TOOLS" :["ultra", "minimap2"],
+    "GNUTIME" : "/usr/bin/time -v",
+    "SCRIPT_FOLDER" : "/galaxy/home/ksahlin/prefix/source/torkel/scripts/",
+    "EXPERIMENT_ID" : "test"
+}
