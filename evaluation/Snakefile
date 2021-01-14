@@ -61,14 +61,14 @@ def mkdir_p(path):
             raise
 
 rule all:
-   input:   config["ROOT_IN"] + "/data/results/plots_bio.zip",
-            config["ROOT_IN"] + "/data/results/plots_sim.zip",
-            config["ROOT_IN"] + "/data/results/plots_exon_size.zip",
-            config["ROOT_IN"] + "/data/results/plots_sirv_analysis.zip",
-            config["ROOT_IN"] + "/data/results/map_concordance_bio.zip",
-            config["ROOT_IN"] + "/data/results/pacbio_alzheimer_success_cases_sam_files.tar.bz2", 
-            config["ROOT_IN"] + "/data/results/drosophila_success_cases_sam_files.tar.bz2",
-            config["ROOT_IN"] + "/data/results/ont_human_success_cases_sam_files.tar.bz2",
+   input:   config["ROOT_OUT"] + "/results/plots_bio.zip",
+            config["ROOT_OUT"] + "/results/plots_sim.zip",
+            config["ROOT_OUT"] + "/results/plots_exon_size.zip",
+            config["ROOT_OUT"] + "/results/plots_sirv_analysis.zip",
+            config["ROOT_OUT"] + "/results/map_concordance_bio.zip",
+            config["ROOT_OUT"] + "/results/pacbio_alzheimer_success_cases_sam_files.tar.bz2", 
+            config["ROOT_OUT"] + "/results/drosophila_success_cases_sam_files.tar.bz2",
+            config["ROOT_OUT"] + "/results/ont_human_success_cases_sam_files.tar.bz2",
 
 
 
@@ -108,17 +108,17 @@ rule simulate:
     input:  ref_transcripts = config["TRANSCRIPTOME"],
             annotation = config["ANNOTATION"] + "/NA12878.gtf",
             ref = config["HG38"]
-    output: simulated_reads_fa =  config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
-            simulated_reads_fq =  config["ROOT_OUT"] + "/data/{dataset}/reads.fq",
-            accessions_map =  config["ROOT_OUT"] + "/data/{dataset}/accessions_map.csv"
+    output: simulated_reads_fa =  config["ROOT_OUT"] + "/reads/{dataset}/reads.fa",
+            simulated_reads_fq =  config["ROOT_OUT"] + "/reads/{dataset}/reads.fq",
+            accessions_map =  config["ROOT_OUT"] + "/reads/{dataset}/accessions_map.csv"
     wildcard_constraints:
         dataset="sim[_\w]+"
 
     run:
 
         inbase= config["ROOT_IN"]
-        mkdir_p(config["ROOT_OUT"] + "/data/")
-        simulated_reads_prefix = config["ROOT_OUT"] + "/data/{0}/reads".format(wildcards.dataset)
+        mkdir_p(config["ROOT_OUT"] + "/reads/")
+        simulated_reads_prefix = config["ROOT_OUT"] + "/reads/{0}/reads".format(wildcards.dataset)
         if wildcards.dataset == "simulated":
             shell("python {inbase}/evaluation/simulate_reads.py {input.ref_transcripts} {simulated_reads_prefix} 1000000")
 
@@ -166,7 +166,7 @@ rule ultra_prep:
 
 
 rule ultra_align:
-    input:  reads = config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
+    input:  reads = config["ROOT_OUT"] + "/reads/{dataset}/reads.fa",
             ultra_index = rules.ultra_prep.output.ref_index,
             # ref = config["HG38"],
     output: sam = config["ROOT_OUT"] + "/alignments/ultra/{dataset}/reads.sam",
@@ -215,7 +215,7 @@ rule minimap2_index:
 
 
 rule minimap2_align:
-    input: fastq =  config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
+    input: fastq =  config["ROOT_OUT"] + "/reads/{dataset}/reads.fa",
             index = rules. minimap2_index.output.mm_index
     output: time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/minimap2/{dataset}/aligning_time_and_mem.txt",
             sam =  config["ROOT_OUT"] + "/alignments/minimap2/{dataset}/reads.sam"
@@ -231,7 +231,7 @@ rule minimap2_align:
 
 
 rule minimap2_gtf_align:
-    input: fastq =  config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
+    input: fastq =  config["ROOT_OUT"] + "/reads/{dataset}/reads.fa",
             index = rules. minimap2_index.output.mm_index
     output: time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/minimap2_gtf/{dataset}/aligning_time_and_mem.txt",
             sam =  config["ROOT_OUT"] + "/alignments/minimap2_gtf/{dataset}/reads.sam"
@@ -294,7 +294,7 @@ rule desalt_index:
         shell("touch  {output.finished_flag} ")
 
 rule desalt_align:
-    input: fastq =  config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
+    input: fastq =  config["ROOT_OUT"] + "/reads/{dataset}/reads.fa",
             # index = rules.desalt_index.output.desalt_index_folder,
             finished_flag = rules.desalt_index.output.finished_flag
             # desalt_gtf_annotation_outfile = rules.desalt_annotation_fix.output.desalt_gtf_annotation_outfile
@@ -313,7 +313,7 @@ rule desalt_align:
 
 
 rule desalt_gtf_align:
-    input: fastq =  config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
+    input: fastq =  config["ROOT_OUT"] + "/reads/{dataset}/reads.fa",
             # index = rules.desalt_index.output.desalt_index_folder,
             finished_flag = rules.desalt_index.output.finished_flag,
             desalt_gtf_annotation_outfile = rules.desalt_annotation_fix.output.desalt_gtf_annotation_outfile
@@ -331,7 +331,7 @@ rule desalt_gtf_align:
 
 rule graphmap2_index:
     input:  #ref = config["HG38"],
-            fastq =  config["ROOT_OUT"] + "/data/{dataset}/reads.fq"
+            fastq =  config["ROOT_OUT"] + "/reads/{dataset}/reads.fq"
     output: index =  config["ROOT_OUT"] + "/alignments/graphmap2/{dataset}/index.gmidx",
             time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2/{dataset}/indexing_time_and_mem.txt"
     run:
@@ -347,7 +347,7 @@ rule graphmap2_index:
 
 rule graphmap2_gtf_align:
     input:  #ref = config["HG38"],
-            fastq =  config["ROOT_OUT"] + "/data/{dataset}/reads.fq",
+            fastq =  config["ROOT_OUT"] + "/reads/{dataset}/reads.fq",
             index = rules.graphmap2_index.output.index,
             #annotation = config["ANNOTATION"] + "/NA12878.gtf",
     output: sam =  config["ROOT_OUT"] + "/alignments/graphmap2_gtf/{dataset}/reads.sam",
@@ -375,7 +375,7 @@ rule graphmap2_gtf_align:
 
 rule graphmap2_align:
     input:  #ref = config["HG38"],
-            fastq =  config["ROOT_OUT"] + "/data/{dataset}/reads.fq",
+            fastq =  config["ROOT_OUT"] + "/reads/{dataset}/reads.fq",
             index = rules.graphmap2_index.output.index,
     output: sam =  config["ROOT_OUT"] + "/alignments/graphmap2/{dataset}/reads.sam",
             time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2/{dataset}/aligning_time_and_mem.txt"
@@ -404,7 +404,7 @@ rule evaluate_sim:
             desalt_gtf = rules.desalt_gtf_align.output.sam,
             graphmap2 = rules.graphmap2_align.output.sam,
             graphmap2_gtf = rules.graphmap2_gtf_align.output.sam,
-            reads =  config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
+            reads =  config["ROOT_OUT"] + "/reads/{dataset}/reads.fa",
     output: csv_file = config["ROOT_OUT"] + "/evaluation_sim/{dataset}/results_per_read.csv",
             csv_exon_size_file = config["ROOT_OUT"] + "/evaluation_sim/{dataset}/correctness_per_exon_size.csv"
     # wildcard_constraints:
@@ -417,19 +417,19 @@ rule evaluate_sim:
         annotation = config["ANNOTATION"] + "/NA12878.gtf"
 
         if wildcards.dataset == "simulated" or wildcards.dataset == "simulated_nic":
-            accessions_map = config["ROOT_OUT"] + "/data/{0}/accessions_map.csv".format(wildcards.dataset) #rules.simulate.output.accessions_map
+            accessions_map = config["ROOT_OUT"] + "/reads/{0}/accessions_map.csv".format(wildcards.dataset) #rules.simulate.output.accessions_map
             shell("python {eval_dir}/evaluate_simulated_reads.py  --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --mm2_gtf_sam {input.minimap2_gtf} --desalt_sam {input.desalt} --desalt_gtf_sam {input.desalt_gtf} \
                                                                  --graphmap2_sam {input.graphmap2}  --graphmap2_gtf_sam {input.graphmap2_gtf} {input.reads} \
                                                             {ref} {annotation} {accessions_map} {outfolder} --load_database")   
         
         elif wildcards.dataset == "simulated_ens":
-            accessions_map = config["ROOT_OUT"] + "/data/{0}/accessions_map.csv".format(wildcards.dataset) #rules.simulate.output.accessions_map
+            accessions_map = config["ROOT_OUT"] + "/reads/{0}/accessions_map.csv".format(wildcards.dataset) #rules.simulate.output.accessions_map
             shell("python {eval_dir}/evaluate_simulated_reads.py  --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --mm2_gtf_sam {input.minimap2_gtf} --desalt_sam {input.desalt} --desalt_gtf_sam {input.desalt_gtf} \
                                                                   {input.reads} {ref} {annotation} {accessions_map} {outfolder} --load_database")   
 
 rule evaluate_biological:
     input:  sam = config["ROOT_OUT"] + "/alignments/{tool}/{dataset}/reads.sam",
-            reads =  config["ROOT_OUT"] + "/data/{dataset}/reads.fa",
+            reads =  config["ROOT_OUT"] + "/reads/{dataset}/reads.fa",
     output: csv_file = config["ROOT_OUT"] + "/evaluation_bio/{dataset}/{tool}.csv"
     run:
         eval_dir = config["ROOT_IN"] + "/evaluation/"
@@ -502,31 +502,29 @@ rule plot_exon_size:
 
 rule gzip_exon_size:
     input: pdfs = expand(rules.plot_exon_size.output.pdf, dataset=["simulated","simulated_nic", "simulated_ens"])
-    output: zip_file = config["ROOT_IN"] + "/data/results/plots_exon_size.zip"
+    output: zip_file = config["ROOT_OUT"] + "/results/plots_exon_size.zip"
     run:
         root_out= config["ROOT_OUT"] 
         shell("zip {output.zip_file}  {root_out}/evaluation_sim/*/correctness_per_exon_*.pdf")
 
 rule gzip_bio:
     input: bio_pdfs = expand(rules.plot_biological.output.pdf, dataset=["ont_human", "pacbio_alzheimer", "sirv", "drosophila"]) #pdfs = expand(config["ROOT_OUT"] + "/evaluation/{dataset}/results.pdf", dataset=["ont_human", "pacbio_alzheimer", "sirv","simulated","simulated_nic", "simulated_ens"])
-    output: zip_file = config["ROOT_IN"] + "/data/results/plots_bio.zip"
+    output: zip_file = config["ROOT_OUT"] + "/results/plots_bio.zip"
     run:
         root_out = config["ROOT_OUT"] 
         shell("zip {output.zip_file}  {root_out}/evaluation_bio/*/results.pdf")
 
 rule gzip_sim:
     input: sim_pdfs = expand(rules.plot_sim.output.pdf, dataset=["simulated","simulated_nic", "simulated_ens"])
-    output: zip_file = config["ROOT_IN"] + "/data/results/plots_sim.zip"
+    output: zip_file = config["ROOT_OUT"] + "/results/plots_sim.zip"
     run:
         root_out = config["ROOT_OUT"] 
         shell("zip {output.zip_file}  {root_out}/evaluation_sim/*/results.pdf")
 
 rule sirv_analysis:
     input: csv = config["ROOT_OUT"] + "/evaluation_bio/sirv/results_per_read.csv",
-            reads = config["ROOT_OUT"] + "/data/sirv/reads.fq"
-    output: zip_file = config["ROOT_IN"] + "/data/results/plots_sirv_analysis.zip"
-            # config["ROOT_IN"] + "/data/results/sirv_venn.pdf",
-            # config["ROOT_IN"] + "/data/results/sirv_counts_SIRV1.pdf"
+            reads = config["ROOT_OUT"] + "/reads/sirv/reads.fq"
+    output: zip_file = config["ROOT_OUT"] + "/results/plots_sirv_analysis.zip"
     run:
         root_out = config["ROOT_OUT"] 
         outfolder = config["ROOT_OUT"] + "/evaluation_bio/sirv/"
@@ -536,8 +534,8 @@ rule sirv_analysis:
 
 rule mapping_concordance:
     input: csv = config["ROOT_OUT"] + "/evaluation_bio/{dataset}/results_per_read.csv",
-            reads = config["ROOT_OUT"] + "/data/{dataset}/reads.fq"
-    output: venn_file = config["ROOT_OUT"] + "/evaluation_bio/{dataset}/unique_FSM_concordance.pdf", # config["ROOT_IN"] + "/data/{dataset}/fsm_concordance.pdf"
+            reads = config["ROOT_OUT"] + "/reads/{dataset}/reads.fq"
+    output: venn_file = config["ROOT_OUT"] + "/evaluation_bio/{dataset}/unique_FSM_concordance.pdf",
             summary = config["ROOT_OUT"] + "/evaluation_bio/{dataset}/{dataset}_summary.txt",
             ultra_unique_FSMs = config["ROOT_OUT"] + "/evaluation_bio/{dataset}/ultra_unique_FSMs.fa",
             ultra_diff_than_mm2_and_desalt = config["ROOT_OUT"] + "/evaluation_bio/{dataset}/ultra_diff_than_mm2_and_desalt.fa",
@@ -549,7 +547,7 @@ rule mapping_concordance:
 
 rule gzip_map_concordance:
     input: bio_pdfs = expand(rules.mapping_concordance.output.venn_file, dataset=["ont_human", "pacbio_alzheimer", "drosophila"]) #pdfs = expand(config["ROOT_OUT"] + "/evaluation/{dataset}/results.pdf", dataset=["ont_human", "pacbio_alzheimer", "sirv","simulated","simulated_nic", "simulated_ens"])
-    output: zip_file = config["ROOT_IN"] + "/data/results/map_concordance_bio.zip"
+    output: zip_file = config["ROOT_OUT"] + "/results/map_concordance_bio.zip"
     run:
         root_out = config["ROOT_OUT"] 
         shell("zip {output.zip_file}  {root_out}/evaluation_bio/*/*concordance.pdf  {root_out}/evaluation_bio/*/*distribution.pdf {root_out}/evaluation_bio/*/*_summary.txt")
@@ -559,7 +557,7 @@ rule get_sam_files_success_cases:
     input: ultra_unique_FSMs = rules.mapping_concordance.output.ultra_unique_FSMs,
            ultra_diff_than_mm2_and_desalt = rules.mapping_concordance.output.ultra_diff_than_mm2_and_desalt,
            ultra_unique_NICs = rules.mapping_concordance.output.ultra_unique_NICs
-    output: zip_file = config["ROOT_IN"] + "/data/results/{dataset}_success_cases_sam_files.tar.bz2"
+    output: zip_file = config["ROOT_OUT"] + "/results/{dataset}_success_cases_sam_files.tar.bz2"
 
     run:
 
