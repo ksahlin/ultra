@@ -346,10 +346,10 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segme
         if chr_id != prev_chr_id: # switching chromosomes
             parts_to_exons[prev_chr_id][(active_start, active_stop)] = active_exons
             part_count_to_choord[(prev_chr_id,part_counter)] = (active_start, active_stop)
-            # part_intervals[prev_chr_id].addi(active_start, active_stop, None)
-            # get_complementary_exon_seq_per_part(parts_to_exons, exon_to_gene, exon_id_to_choordinates, exons_to_ref, active_exons, active_start, active_stop, prev_chr_id)
+           
             # adding the very last flank on previous chromosome
-            chr_length = refs_lengths[prev_chr_name]
+            # chr_length = refs_lengths[prev_chr_name]
+            chr_length = refs_lengths.get(prev_chr_name, active_stop + 2*flank_size) # if key 'prev_chr_name' is not present in refs_lengths (i.e. in reference fasta), it means that we will not use the annotations to this chromosome anyway so value does not matter..
             flank_name = array("L", [prev_chr_id, max(0, active_stop), min(chr_length, active_stop + 2*flank_size)]).tobytes()
             flank_ids.add(flank_name)
             total_flanks2 += 1
@@ -383,12 +383,11 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segme
         elif exon.start - 1 > active_stop + 20:
             parts_to_exons[chr_id][(active_start, active_stop)] = active_exons
             part_count_to_choord[(chr_id,part_counter)] = (active_start, active_stop)
-            # get_complementary_exon_seq_per_part(parts_to_exons, exon_to_gene, exon_id_to_choordinates, exons_to_ref, active_exons, active_start, active_stop, prev_chr_id)
-            # part_intervals[prev_chr_id].addi(active_start, active_stop, None)
             segment_size = 2*flank_size if set(exon_gene_ids).isdisjoint(active_gene_ids) else flank_size
             # part_intervalst(segment_size)
             if exon.start - active_stop > 2*segment_size:
-                chr_length = refs_lengths[chr_name]
+                # chr_length = refs_lengths[chr_name]
+                chr_length = refs_lengths.get(chr_name, active_stop + segment_size) # if key 'chr_name' is not present in refs_lengths (i.e. in reference fasta), it means that we will not use the annotations to this chromosome anyway so value does not matter..
                 flank_name = array("L", [chr_id, max(0, active_stop), min(chr_length, active_stop + segment_size)]).tobytes()
                 flank_ids.add(flank_name)
                 flank_name = array("L", [chr_id, max(0, exon.start - segment_size), exon.start - 1]).tobytes()
@@ -430,7 +429,8 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segme
         assert active_start <= exon.start - 1
 
     # addig the very last flank at the last chromosome in the annotation
-    chr_length = refs_lengths[chr_name]
+    # chr_length = refs_lengths[chr_name]
+    chr_length = refs_lengths.get(chr_name, active_stop + 2*flank_size) # if key 'chr_name' is not present in refs_lengths (i.e. in reference fasta), it means that we will not use the annotations to this chromosome anyway so value does not matter..
     flank_name = array("L", [chr_id, max(0, active_stop), min(chr_length, active_stop + 2*flank_size)]).tobytes()
     flank_ids.add(flank_name)
 
