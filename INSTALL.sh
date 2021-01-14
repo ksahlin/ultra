@@ -18,8 +18,8 @@ echo
 # Create and activate a new environment called ultra
 echo "SETTING UP CONDA ENVIRONMENT"
 echo
-conda create --yes -n uLTRA python=3.8 pip 
-conda activate uLTRA
+conda create --yes -n ultra python=3.8 pip 
+conda activate ultra
 
 # Install uLTRA
 echo
@@ -92,5 +92,5 @@ if [ "$installed_slamem" = true ] ; then
     echo "I have put slaMEM in:" $path " please make sure that this folder is in your path, or move slaMEM to your path"
 fi
 
-echo "Please activate the environment as 'conda activate uLTRA' before running uLTRA."
+echo "Please activate the environment as 'conda activate ultra' before running uLTRA."
 echo
