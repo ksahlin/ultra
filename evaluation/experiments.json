@@ -1,6 +1,6 @@
 {
 
-    "ROOT_OUT" : "/proj/snic2020-16-138/ultra_eval/",
+    "ROOT_OUT" : "/proj/snic2020-16-138/ultra_eval",
     "ROOT_IN" : "/home/kris/source/ultra",
     "ANNOTATION" : "/proj/snic2020-16-138/ultra_eval/gtf_annotations",
 
