@@ -363,7 +363,7 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segme
             active_stop = exon.stop
 
             # adding the very first flank on new chromosome
-            flank_name = array("L", [chr_id, max(0, exon.start - segment_size), exon.start - 1]).tobytes()
+            flank_name = array("L", [chr_id, max(0, exon.start - 2*flank_size), exon.start - 1]).tobytes()
             flank_ids.add(flank_name)
             total_flanks2 += 1
             total_flank_size += 2*flank_size
