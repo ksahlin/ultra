@@ -74,6 +74,17 @@
         "mail_type" : "FAIL"
     },
 
+    "minimap2_gtf_align": 
+    {
+        "account" : "snic2020-5-651",
+        "jobname" : "minimap2",
+        "cpus-per-task" : "20",
+        "Nodes" : 1,
+        "C" : "mem128GB",
+        "runtime" : "2-00:00:00",
+        "mail" : "ksahlin@kth.se",
+        "mail_type" : "FAIL"
+    },
 
     "ultra_prep": 
     {
