@@ -14,7 +14,6 @@ Table of Contents
   * [INSTALLATION](#INSTALLATION)
     * [Using conda](#Using-conda)
     * [Downloading source from GitHub](#Downloading-source-from-github)
-    * [Dependencies](#Dependencies)
   * [USAGE](#USAGE)
     * [Indexing](#Indexing)
     * [aligning](#Aligning)
@@ -28,8 +27,27 @@ Table of Contents
 INSTALLATION
 ----------------
 
-### Using conda
-Conda is the preferred way to install uLTRA.
+## Using conda
+Conda is the preferred way to install uLTRA. You can either clone this repository and 
+run the script `INSTALL.sh` or you can perform step 1-6 below manually for more control.
+
+### Installation with INSTALL.sh
+
+```
+git clone https://github.com/ksahlin/uLTRA.git
+cd uLTRA
+./INSTALL.sh [An install directory in your PATH]
+```
+The install script is tested in bash environment and will perform the steps 1-6 below automatically
+for you. 
+
+You need to activate the conda environment "ultra" to run uLTRA as:
+```
+conda activate ultra
+```
+
+### Manual installation
+
 
 #### 1. Create and activate a new environment called ultra
 
@@ -83,9 +101,8 @@ conda install --yes -c bioconda mummer
 ```
 
 
-### Downloading source from GitHub
+## Downloading source from GitHub
 
-#### Dependencies
 
 Make sure the below-listed dependencies are installed (installation links below). Versions in parenthesis are suggested as uLTRA has not been tested with earlier versions of these libraries. However, uLTRA may also work with earlier versions of these libraries. All below dependencies except `slaMEM` can be installed as `pip install X` or through conda.
 * [parasail](https://github.com/jeffdaily/parasail-python)
