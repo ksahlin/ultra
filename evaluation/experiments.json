@@ -3,6 +3,8 @@
     "ROOT_OUT" : "/proj/snic2020-16-138/ultra_eval",
     "ROOT_IN" : "/home/kris/source/ultra",
     "ANNOTATION" : "/proj/snic2020-16-138/ultra_eval/gtf_annotations",
+    "deSALT_src" : "/home/kris/source/deSALT/src",
+    "uLTRA_src" : "/home/kris/source/ultra",
 
     "SIRV" : "/proj/snic2020-16-138/ultra_eval/genomes/SIRV_isoforms_multi-fasta_170612a.fasta",
     "HG38" : "/proj/snic2020-16-138/ultra_eval/genomes/Homo_sapiens.GRCh38.dna.primary_assembly_modified_headers.fa",
