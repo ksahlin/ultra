@@ -31,7 +31,7 @@ INSTALLATION
 Conda is the preferred way to install uLTRA. You can either clone this repository and 
 run the script `INSTALL.sh` or you can perform step 1-6 below manually for more control.
 
-### Installation with INSTALL.sh
+### Installation with INSTALL.sh script
 
 ```
 git clone https://github.com/ksahlin/uLTRA.git
@@ -126,15 +126,16 @@ cd uLTRA
 USAGE
 -------
 
-uLTRA can be used with either Iso-Seq or ONT reads. 
+uLTRA can be used with either PacBio Iso-Seq or ONT cDNA/dRNA reads. 
 
 
 ### Indexing
 
 First, we construct the data structures used in uLTRA using a genome annotation GTF file and a genome fasta file.
+Make sure to specify full path to annotation, otherwise `gffutils` will complain.
 
 ```
-uLTRA index genome.fasta  annotation.gtf outfolder/  [parameters]
+uLTRA index genome.fasta  /full/path/to/annotation.gtf  outfolder/  [parameters]
 ```
 
 

@@ -77,9 +77,22 @@ echo
 
 conda install --yes -c bioconda mummer
 
-cd ..
-rm -rf "temp_install_ultra"
 
+
+
+echo
+echo "TESTING INSTALLATION OF ULTRA"
+echo
+
+cd ..
+uLTRA pipeline $PWD/test/SIRV_genes.fasta $PWD/test/SIRV_genes_C_170612a.gtf $PWD/test/reads.fa temp_install_ultra/
+
+echo
+echo "INSTALLATION WORKED"
+echo
+
+
+rm -rf "temp_install_ultra"
 
 echo
 echo "FINISHED INSTALLATION"
