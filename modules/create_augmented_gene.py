@@ -431,7 +431,7 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segme
 
     # addig the very last flank at the last chromosome in the annotation
     chr_length = refs_lengths[chr_name]
-    flank_name = array("L", [chr_id, max(0, active_stop), min(chr_length, active_stop + segment_size)]).tobytes()
+    flank_name = array("L", [chr_id, max(0, active_stop), min(chr_length, active_stop + 2*flank_size)]).tobytes()
     flank_ids.add(flank_name)
 
     # print("NR EXONS + COMPL:", len(exon_to_gene))
