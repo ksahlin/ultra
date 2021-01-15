@@ -87,10 +87,12 @@ conda activate ultra
 Download/use test data available in this repository [here](https://github.com/ksahlin/ultra/tree/master/test) and run: 
 
 ```
-uLTRA pipeline [/your/local/directory/to/test]/SIRV_genes_C_170612a.gtf  \
-               [/your/local/directory/to/test]/SIRV_genes.fasta  \
+uLTRA pipeline [/your/local/directory/to/test]/SIRV_genes.fasta  \
+               [/your/local/directory/to/test]/SIRV_genes_C_170612a.gtf  \
                [/your/local/directory/to/test]/reads.fa outfolder/  [optional parameters]
 ```
+Specify full path to annotation, otherwise `gffutils` will complain.
+
 
 #### 6. (Optional) Install of MUMmer 
 
