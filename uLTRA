@@ -131,7 +131,7 @@ def prep_seqs(args, refs, refs_lengths):
             print(s)
 
     if not_in_annot:
-        print("Warning: Detected {0} sequences in reference fasta that are not in annotation. Will not be able to infer annotations from alignments on the following refernece sequences:\n".format(len(not_in_annot)))
+        print("Warning: Detected {0} sequences in reference fasta that are not in annotation. Will not be able to infer annotations from alignments on the following reference sequences:\n".format(len(not_in_annot)))
         for s in not_in_annot:
             print(s, "with length:{0}".format(len(refs[s])))
     # ref_part_sequences, ref_flank_sequences = augmented_gene.get_part_sequences_from_choordinates(parts_to_segments, flank_choordinates, refs_id)
@@ -199,7 +199,7 @@ def check_alignment_fit(aln_ultra, aln_other):
         1. the differnce in scoring is positive if uLTRA better
         2. the classification obtained by uLTRA
     """
-    diffs = {1,2,8}
+    diffs = {1,2,8} # cigar IDs for INS, DEL, SUBS
     matches_ultra = sum([length for type_, length in aln_ultra.cigartuples if type_ == 7])
     diffs_ultra = sum([length for type_, length in aln_ultra.cigartuples if type_ in diffs]) 
     matches_other = sum([length for type_, length in aln_other.cigartuples if type_ == 7])
@@ -233,7 +233,7 @@ def output_final_alignments( ultra_alignments_path, path_indexed_aligned, path_u
                 ultra_scoring_diff, classification = check_alignment_fit(read,  alt_alignments[ read.query_name ])
                 scoring_dict[ultra_scoring_diff] += 1
                 if ultra_scoring_diff < 0:
-                    read = alt_alignments[ read.query_name ] # replace unmapped uLTRA read with alternative alignment if better fit
+                    read = alt_alignments[ read.query_name ] # replace uLTRA read with alternative alignment if better fit
 
         tmp_merged_outfile.write(read)
     alignment_infile.close()
@@ -454,7 +454,7 @@ def align_reads(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description="uLTRA -- Align and classify long transcriptomic reads based on colinear chaining algorithms to gene regions")
-    parser.add_argument('--version', action='version', version='%(prog)s 0.0.2.3')
+    parser.add_argument('--version', action='version', version='%(prog)s 0.0.2.4')
 
     subparsers = parser.add_subparsers(help='Subcommands for eaither constructing a graph, or align reads')
     # parser.add_argument("-v", help='Different subcommands for eaither constructing a graph, or align reads')
