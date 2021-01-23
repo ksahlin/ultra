@@ -117,7 +117,7 @@
         "jobname" : "desalt_align",
         "cpus-per-task" : "20",
         "Nodes" : 1,
-        "C" : "mem128GB",
+        "C" : "mem256GB",
         "runtime" : "4-00:00:00",
         "mail" : "ksahlin@kth.se",
         "mail_type" : "FAIL"
@@ -129,7 +129,7 @@
         "jobname" : "desalt_gtf_align",
         "cpus-per-task" : "20",
         "Nodes" : 1,
-        "C" : "mem128GB",
+        "C" : "mem256GB",
         "runtime" : "4-00:00:00",
         "mail" : "ksahlin@kth.se",
         "mail_type" : "FAIL"
@@ -153,7 +153,7 @@
         "jobname" : "graphmap2_align",
         "cpus-per-task" : "20",
         "Nodes" : 1,
-        "C" : "mem128GB",
+        "C" : "mem256GB",
         "runtime" : "2-00:00:00",
         "mail" : "ksahlin@kth.se",
         "mail_type" : "FAIL"
@@ -164,7 +164,7 @@
         "jobname" : "graphmap2_align",
         "cpus-per-task" : "20",
         "Nodes" : 1,
-        "C" : "mem128GB",
+        "C" : "mem256GB",
         "runtime" : "2-00:00:00",
         "mail" : "ksahlin@kth.se",
         "mail_type" : "FAIL"
