@@ -406,8 +406,8 @@ rule evaluate_sim:
             minimap2_gtf = rules.minimap2_gtf_align.output.sam,
             desalt = rules.desalt_align.output.sam,
             desalt_gtf = rules.desalt_gtf_align.output.sam,
-            graphmap2 = rules.graphmap2_align.output.sam,
-            graphmap2_gtf = rules.graphmap2_gtf_align.output.sam,
+            # graphmap2 = rules.graphmap2_align.output.sam,
+            # graphmap2_gtf = rules.graphmap2_gtf_align.output.sam,
             reads =  config["ROOT_OUT"] + "/reads/{dataset}/reads.fa",
     output: csv_file = config["ROOT_OUT"] + "/evaluation_sim/{dataset}/results_per_read.csv",
             csv_exon_size_file = config["ROOT_OUT"] + "/evaluation_sim/{dataset}/correctness_per_exon_size.csv"
@@ -423,13 +423,13 @@ rule evaluate_sim:
         if wildcards.dataset == "simulated" or wildcards.dataset == "simulated_nic":
             accessions_map = config["ROOT_OUT"] + "/reads/{0}/accessions_map.csv".format(wildcards.dataset) #rules.simulate.output.accessions_map
             shell("python {eval_dir}/evaluate_simulated_reads.py  --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --mm2_gtf_sam {input.minimap2_gtf} --desalt_sam {input.desalt} --desalt_gtf_sam {input.desalt_gtf} \
-                                                                 --graphmap2_sam {input.graphmap2}  --graphmap2_gtf_sam {input.graphmap2_gtf} {input.reads} \
-                                                            {ref} {annotation} {accessions_map} {outfolder} --load_database")   
+                                                                  {input.reads} \
+                                                            {ref} {annotation} {accessions_map} {outfolder}")   #--graphmap2_sam {input.graphmap2}  --graphmap2_gtf_sam {input.graphmap2_gtf}
         
         elif wildcards.dataset == "simulated_ens":
             accessions_map = config["ROOT_OUT"] + "/reads/{0}/accessions_map.csv".format(wildcards.dataset) #rules.simulate.output.accessions_map
             shell("python {eval_dir}/evaluate_simulated_reads.py  --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --mm2_gtf_sam {input.minimap2_gtf} --desalt_sam {input.desalt} --desalt_gtf_sam {input.desalt_gtf} \
-                                                                  {input.reads} {ref} {annotation} {accessions_map} {outfolder} --load_database")   
+                                                                  {input.reads} {ref} {annotation} {accessions_map} {outfolder}")   
 
 rule evaluate_biological:
     input:  sam = config["ROOT_OUT"] + "/alignments/{tool}/{dataset}/reads.sam",
@@ -445,20 +445,20 @@ rule evaluate_biological:
             ref = config["SIRV"]
             annotation = config["ANNOTATION"] + "/SIRV.gtf"
             shell("python {eval_dir}/evaluate_splice_annotations.py  {input.sam} {input.reads} \
-                                                                        {ref} {annotation} {outfolder} {wildcards.tool} --load_database --infer_genes")
+                                                                        {ref} {annotation} {outfolder} {wildcards.tool} --infer_genes")
         elif wildcards.dataset == "drosophila":
             ref =  config["drosophila97"]
             annotation = config["ANNOTATION"] + "/drosophila.gtf"
             shell("python {eval_dir}/evaluate_splice_annotations.py   {input.sam} {input.reads}  \
-                                                                    {ref} {annotation} {outfolder} {wildcards.tool} --load_database")
+                                                                    {ref} {annotation} {outfolder} {wildcards.tool}")
         else:
             ref = config["HG38"]
             annotation = config["ANNOTATION"] + "/NA12878.gtf"
             shell("python {eval_dir}/evaluate_splice_annotations.py   {input.sam}  {input.reads}  \
-                                                                    {ref} {annotation} {outfolder} {wildcards.tool} --load_database")
+                                                                    {ref} {annotation} {outfolder} {wildcards.tool}")
 
 rule summarize_biological_results:
-    input: tool_csv_files = lambda wildcards: expand(rules.evaluate_biological.output.csv_file, dataset = wildcards.dataset, tool=["ultra", 'minimap2', 'minimap2_gtf', 'desalt', 'desalt_gtf', 'graphmap2', 'graphmap2_gtf']) #config["ROOT_OUT"] + "/evaluation_bio/{dataset}/{tool}.csv"
+    input: tool_csv_files = lambda wildcards: expand(rules.evaluate_biological.output.csv_file, dataset = wildcards.dataset, tool=["ultra", 'minimap2', 'minimap2_gtf', 'desalt', 'desalt_gtf']) # 'graphmap2', 'graphmap2_gtf'
     output: csv_file = config["ROOT_OUT"] + "/evaluation_bio/{dataset}/results_per_read.csv"
     run:
         header = "acc,read_type,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_exonic\n"
