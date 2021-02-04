@@ -174,7 +174,7 @@
     {
         "account" : "snic2020-5-651",
         "cpus-per-task" : "2",
-        "C" : "mem128GB",
+        "C" : "mem256GB",
         "Nodes" : 1,
         "runtime" : "3-00:00:00",
         "jobname" : "plot_biological",
