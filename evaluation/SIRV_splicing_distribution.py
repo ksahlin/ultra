@@ -85,7 +85,7 @@ def parse_differing_splicing_reads(csv_file, outfolder):
     for line in open(csv_file,'r'):
         #print(line)
         acc,algorithm,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_genomic = line.strip().split(",")
-        if algorithm == 'uLTRA':
+        if algorithm == 'uLTRA_mm2':
             reads_ultra[acc] =  (acc,algorithm,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_genomic) 
         if algorithm == 'minimap2_GTF':
             reads_minimap2[acc] = (acc,algorithm,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_genomic) 
@@ -166,7 +166,7 @@ def venn(data_for_venn, outfolder):
 
 
 def plot_nr_of_isoforms(data_for_mapping_bias, outfolder ):
-    m = {0:'uLTRA', 1:'deSALT', 2: 'minimap2_GTF'}
+    m = {0:'uLTRA_mm2', 1:'deSALT', 2: 'minimap2_GTF'}
     g = {}
     # testdata
     # ds_fsm_distribution = [('SIRV304', 4), ('SIRV702', 53), ('SIRV503', 85), ('SIRV301', 109), ('SIRV705', 514), ('SIRV613', 521), ('SIRV306', 544), ('SIRV103', 631), ('SIRV101', 666), ('SIRV703', 675), ('SIRV303', 1039), ('SIRV201', 1105), ('SIRV106', 1223), ('SIRV107', 1248), ('SIRV302', 1489), ('SIRV202', 1722), ('SIRV405', 1756), ('SIRV409', 1866), ('SIRV204', 1876), ('SIRV307', 2584), ('SIRV404', 4384), ('SIRV610', 4452), ('SIRV509', 4995), ('SIRV203', 6433), ('SIRV604', 6529), ('SIRV305', 6902), ('SIRV601', 7136), ('SIRV612', 7205), ('SIRV611', 8389), ('SIRV608', 11188), ('SIRV105', 13224), ('SIRV605', 15352), ('SIRV309', 16423), ('SIRV102', 16624), ('SIRV406', 16899), ('SIRV616', 17395), ('SIRV607', 24212), ('SIRV410', 24415), ('SIRV308', 25880), ('SIRV310', 29637), ('SIRV606', 31014), ('SIRV507', 49303), ('SIRV615', 67949), ('SIRV602', 70150), ('SIRV109', 71720), ('SIRV614', 77764), ('SIRV609', 91320)]

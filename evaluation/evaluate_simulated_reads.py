@@ -393,8 +393,8 @@ def main(args):
     correctness_per_exon_size_outfile = open(os.path.join(args.outfolder, "correctness_per_exon_size.csv"), "w")
     correctness_per_exon_size_outfile.write("exon_size,nr_total,nr_corr,fraction_correct,alignment_algorithm\n")
 
-    if args.torkel_sam:
-        torkel_primary_locations = decide_primary_locations(args.torkel_sam, args)
+    if args.ultra_sam:
+        torkel_primary_locations = decide_primary_locations(args.ultra_sam, args)
         torkel_exon_sites = get_read_alignment_exon_sites(torkel_primary_locations, annotated_splice_coordinates_pairs)
         print('uLTRA')
         torkel_alignment_results, total_count_exon_sizes, correct_count_exon_sizes = get_alignment_classifications(true_exon_sites, torkel_exon_sites)
@@ -403,6 +403,17 @@ def main(args):
         print_detailed_values_to_file(error_rates, torkel_alignment_results, reads, detailed_results_outfile, "uLTRA")
         print("Reads successfully aligned uLTRA:", len(torkel_primary_locations))
         print("READS UNALIGNED uLTRA:", len(reads_unaligned_in_torkel) )
+
+    if args.ultra_mm2_sam:
+        ultra_mm2_primary_locations = decide_primary_locations(args.ultra_mm2_sam, args)
+        ultra_mm2_exon_sites = get_read_alignment_exon_sites(ultra_mm2_primary_locations, annotated_splice_coordinates_pairs)
+        print('uLTRA')
+        torkel_alignment_results, total_count_exon_sizes, correct_count_exon_sizes = get_alignment_classifications(true_exon_sites, ultra_mm2_exon_sites)
+        print_correctness_per_exon_size(correctness_per_exon_size_outfile, total_count_exon_sizes, correct_count_exon_sizes, "uLTRA_mm2")
+        reads_unaligned_in_ultra_mm2 = set(reads.keys()) - set(ultra_mm2_primary_locations.keys())
+        print_detailed_values_to_file(error_rates, torkel_alignment_results, reads, detailed_results_outfile, "uLTRA_mm2")
+        print("Reads successfully aligned uLTRA:", len(ultra_mm2_primary_locations))
+        print("READS UNALIGNED uLTRA:", len(reads_unaligned_in_ultra_mm2) )
 
     if args.mm2_sam:
         mm2_primary_locations = decide_primary_locations(args.mm2_sam, args)
@@ -489,7 +500,8 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Evaluate pacbio IsoSeq transcripts.")
-    parser.add_argument('--torkel_sam', type=str, default = '', help='Path to the original read file')
+    parser.add_argument('--ultra_sam', type=str, default = '', help='Path to the original read file')
+    parser.add_argument('--ultra_mm2_sam', type=str, default = '', help='Path to the original read file')
     parser.add_argument('--mm2_sam', type=str, default = '', help='Path to the corrected read file')
     parser.add_argument('--mm2_gtf_sam', type=str, default = '', help='Path to the corrected read file')
     parser.add_argument('--desalt_sam', type=str, default = '', help='Path to the corrected read file')

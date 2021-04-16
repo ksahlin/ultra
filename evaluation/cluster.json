@@ -110,6 +110,17 @@
         "mail_type" : "FAIL"
     },
 
+    "ultra_mm2_align": 
+    {
+        "account" : "snic2020-5-651",
+        "jobname" : "ultra_align",
+        "cpus-per-task" : "20",
+        "Nodes" : 1,
+        "C" : "mem256GB",
+        "runtime" : "4-00:00:00",
+        "mail" : "ksahlin@kth.se",
+        "mail_type" : "FAIL"
+    },
 
     "desalt_align" : 
     {

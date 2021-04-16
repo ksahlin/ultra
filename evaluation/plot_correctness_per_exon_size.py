@@ -24,7 +24,8 @@ def correctness_per_exon_size(input_csv, outfolder):
 
     indata = pd.read_csv(input_csv)
     ax = sns.lineplot(x="exon_size", y="fraction_correct", hue="alignment_algorithm",
-                          hue_order= ["uLTRA", "minimap2", "minimap2_GTF", "deSALT", "deSALT_GTF", "Graphmap2", "Graphmap2_GTF"],
+                          hue_order= ["uLTRA", "uLTRA_mm2", "minimap2", "minimap2_GTF", "deSALT", "deSALT_GTF"],
+                          # hue_order= ["uLTRA", "uLTRA_mm2", "minimap2", "minimap2_GTF", "deSALT", "deSALT_GTF", "Graphmap2", "Graphmap2_GTF"],
                            estimator=None, lw=1, data=indata)
     # g = sns.catplot(x="alignment_classification", #col="Depth",
     #             data=indata,  hue="alignment_algorithm", hue_order= ["uLTRA", "minimap2", "deSALT", "deSALT_GTF", "Graphmap2", "Graphmap2_GTF"],

@@ -184,6 +184,29 @@ rule ultra_align:
         ultra_src = config["uLTRA_src"]
         outfolder = config["ROOT_OUT"] + "/alignments/ultra/{0}/".format(wildcards.dataset)
         if wildcards.dataset == 'pacbio_alzheimer' or wildcards.dataset == "simulated_ens":
+            shell("/usr/bin/time -v {ultra_src}/uLTRA align {ref} {input.reads}  {outfolder} --min_mem 20 --min_acc 0.8 --t 19 --disable_mm2 2>&1 | tee {output.time_and_mem} ") # 2> {output.time_and_mem}
+        else:
+            shell("/usr/bin/time -v {ultra_src}/uLTRA align {ref} {input.reads}  {outfolder} --min_mem 17 --min_acc 0.6 --t 19 --disable_mm2 2>&1 | tee {output.time_and_mem} ") # 2> {output.time_and_mem}
+
+        # shell("mv {outfolder}/torkel.sam {output.sam}")
+
+rule ultra_mm2_align:
+    input:  reads = config["ROOT_OUT"] + "/reads/{dataset}/reads.fa",
+            ultra_index = rules.ultra_prep.output.ref_index,
+            # ref = config["HG38"],
+    output: sam = config["ROOT_OUT"] + "/alignments/ultra_mm2/{dataset}/reads.sam",
+            time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/ultra_mm2/{dataset}/aligning_time_and_mem.txt"
+    run:
+        if wildcards.dataset == "sirv":
+            ref = config["SIRV"]
+        elif wildcards.dataset == "drosophila":
+            ref =  config["drosophila97"]
+        else:
+            ref = config["HG38"]
+
+        ultra_src = config["uLTRA_src"]
+        outfolder = config["ROOT_OUT"] + "/alignments/ultra_mm2/{0}/".format(wildcards.dataset)
+        if wildcards.dataset == 'pacbio_alzheimer' or wildcards.dataset == "simulated_ens":
             shell("/usr/bin/time -v {ultra_src}/uLTRA align {ref} {input.reads}  {outfolder} --min_mem 20 --min_acc 0.8 --t 19  2>&1 | tee {output.time_and_mem} ") # 2> {output.time_and_mem}
         else:
             shell("/usr/bin/time -v {ultra_src}/uLTRA align {ref} {input.reads}  {outfolder} --min_mem 17 --min_acc 0.6 --t 19  2>&1 | tee {output.time_and_mem} ") # 2> {output.time_and_mem}
@@ -402,6 +425,7 @@ rule graphmap2_align:
 
 rule evaluate_sim:
     input:  ultra = rules.ultra_align.output.sam,
+            ultra_mm2 = rules.ultra_mm2_align.output.sam,
             minimap2 = rules.minimap2_align.output.sam,
             minimap2_gtf = rules.minimap2_gtf_align.output.sam,
             desalt = rules.desalt_align.output.sam,
@@ -422,13 +446,13 @@ rule evaluate_sim:
 
         if wildcards.dataset == "simulated" or wildcards.dataset == "simulated_nic":
             accessions_map = config["ROOT_OUT"] + "/reads/{0}/accessions_map.csv".format(wildcards.dataset) #rules.simulate.output.accessions_map
-            shell("python {eval_dir}/evaluate_simulated_reads.py  --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --mm2_gtf_sam {input.minimap2_gtf} --desalt_sam {input.desalt} --desalt_gtf_sam {input.desalt_gtf} \
+            shell("python {eval_dir}/evaluate_simulated_reads.py  --ultra_sam {input.ultra} --ultra_mm2_sam {input.ultra_mm2} --mm2_sam {input.minimap2} --mm2_gtf_sam {input.minimap2_gtf} --desalt_sam {input.desalt} --desalt_gtf_sam {input.desalt_gtf} \
                                                                   {input.reads} \
                                                             {ref} {annotation} {accessions_map} {outfolder}")   #--graphmap2_sam {input.graphmap2}  --graphmap2_gtf_sam {input.graphmap2_gtf}
         
         elif wildcards.dataset == "simulated_ens":
             accessions_map = config["ROOT_OUT"] + "/reads/{0}/accessions_map.csv".format(wildcards.dataset) #rules.simulate.output.accessions_map
-            shell("python {eval_dir}/evaluate_simulated_reads.py  --torkel_sam {input.ultra} --mm2_sam {input.minimap2} --mm2_gtf_sam {input.minimap2_gtf} --desalt_sam {input.desalt} --desalt_gtf_sam {input.desalt_gtf} \
+            shell("python {eval_dir}/evaluate_simulated_reads.py  --ultra_sam {input.ultra} --ultra_mm2_sam {input.ultra_mm2} --mm2_sam {input.minimap2} --mm2_gtf_sam {input.minimap2_gtf} --desalt_sam {input.desalt} --desalt_gtf_sam {input.desalt_gtf} \
                                                                   {input.reads} {ref} {annotation} {accessions_map} {outfolder}")   
 
 rule evaluate_biological:
@@ -458,7 +482,7 @@ rule evaluate_biological:
                                                                     {ref} {annotation} {outfolder} {wildcards.tool}")
 
 rule summarize_biological_results:
-    input: tool_csv_files = lambda wildcards: expand(rules.evaluate_biological.output.csv_file, dataset = wildcards.dataset, tool=["ultra", 'minimap2', 'minimap2_gtf', 'desalt', 'desalt_gtf']) # 'graphmap2', 'graphmap2_gtf'
+    input: tool_csv_files = lambda wildcards: expand(rules.evaluate_biological.output.csv_file, dataset = wildcards.dataset, tool=["ultra", "ultra_mm2", 'minimap2', 'minimap2_gtf', 'desalt', 'desalt_gtf']) # 'graphmap2', 'graphmap2_gtf'
     output: csv_file = config["ROOT_OUT"] + "/evaluation_bio/{dataset}/results_per_read.csv"
     run:
         header = "acc,read_type,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_exonic\n"
