@@ -227,7 +227,7 @@ rule ultra_mm2_prep:
 
 rule ultra_mm2_align:
     input:  reads = config["ROOT_OUT"] + "/reads/{dataset}/reads.fa",
-            ultra_index = rules.ultra_prep.output.ref_index,
+            ultra_index = rules.ultra_mm2_prep.output.ref_index,
             # ref = config["HG38"],
     output: sam = config["ROOT_OUT"] + "/alignments/ultra_mm2/{dataset}/reads.sam",
             time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/ultra_mm2/{dataset}/aligning_time_and_mem.txt"
