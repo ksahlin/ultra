@@ -24,41 +24,39 @@ def add_items(array, chr_id, p1, p2):
     array.append(p1)
     array.append(p2)
 
-def add_tiling(p1, p2, active_gene_ids, active_start, active_stop, min_segment_size, chr_id,
-                 tiling_segment_id_to_choordinates, tiling_segment_to_gene, tiling_segment_to_ref,
-                            tiling_parts_to_segments, tiling_gene_to_small_segments):
-    part_name = array("L", [chr_id, active_start, active_stop]).tobytes()
-    k = 0
-    while p2 - p1 - k > min_segment_size:
-        # tiling_segment_name = "segm_{0}_{1}_{2}".format(chr_id, p1+k, p1 + k + min_segment_size)
-        # tiling_segment_name = tiling_segment_id
-        tiling_segment_key = array("L", [chr_id, p1+k, p1 + k + min_segment_size]).tobytes()
-        tiling_segment_id_to_choordinates[tiling_segment_key] = (p1+k, p1 + k + min_segment_size)
-        tiling_segment_to_ref[tiling_segment_key] = chr_id
-        # tiling_parts_to_segments[part_name].append(tiling_segment_key)
-        add_items(tiling_parts_to_segments[part_name], chr_id, p1+k, p1 + k + min_segment_size)
-        tiling_segment_to_gene[tiling_segment_key] =  active_gene_ids 
-        # total_unique_segment_counter += min_segment_size
-        for gene_id in active_gene_ids:
-            # tiling_gene_to_small_segments[gene_id].append(tiling_segment_key)
-            add_items(tiling_gene_to_small_segments[gene_id], chr_id, p1+k, p1 + k + min_segment_size)
-        k += min_segment_size
+# def add_tiling(p1, p2, active_gene_ids, active_start, active_stop, min_segment_size, chr_id,
+#                  tiling_segment_id_to_choordinates, tiling_segment_to_gene, tiling_segment_to_ref,
+#                             tiling_parts_to_segments, tiling_gene_to_small_segments):
+#     part_name = array("L", [chr_id, active_start, active_stop]).tobytes()
+#     k = 0
+#     while p2 - p1 - k > min_segment_size:
+#         # tiling_segment_name = "segm_{0}_{1}_{2}".format(chr_id, p1+k, p1 + k + min_segment_size)
+#         # tiling_segment_name = tiling_segment_id
+#         tiling_segment_key = array("L", [chr_id, p1+k, p1 + k + min_segment_size]).tobytes()
+#         tiling_segment_id_to_choordinates[tiling_segment_key] = (p1+k, p1 + k + min_segment_size)
+#         tiling_segment_to_ref[tiling_segment_key] = chr_id
+#         # tiling_parts_to_segments[part_name].append(tiling_segment_key)
+#         add_items(tiling_parts_to_segments[part_name], chr_id, p1+k, p1 + k + min_segment_size)
+#         tiling_segment_to_gene[tiling_segment_key] =  active_gene_ids 
+#         # total_unique_segment_counter += min_segment_size
+#         for gene_id in active_gene_ids:
+#             # tiling_gene_to_small_segments[gene_id].append(tiling_segment_key)
+#             add_items(tiling_gene_to_small_segments[gene_id], chr_id, p1+k, p1 + k + min_segment_size)
+#         k += min_segment_size
 
-    # tiling_segment_name = "segm_{0}_{1}_{2}".format(chr_id, p1 + k - min_segment_size, p2)
-    # tiling_segment_name = tiling_segment_id
-    tiling_segment_key = array("L", [chr_id, max(0, p1 + k - min_segment_size), p2]).tobytes()
-    tiling_segment_id_to_choordinates[tiling_segment_key] = (max(0, p1 + k - min_segment_size), p2)
-    tiling_segment_to_ref[tiling_segment_key] = chr_id
-    # tiling_parts_to_segments[part_name].append(tiling_segment_key)
-    add_items(tiling_parts_to_segments[part_name], chr_id, max(0, p1 + k - min_segment_size), p2)
-    tiling_segment_to_gene[tiling_segment_key] =  active_gene_ids 
-    # total_unique_segment_counter += p2 - (p1 + k - min_segment_size)
-    for gene_id in active_gene_ids:
-        # tiling_gene_to_small_segments[gene_id].append(tiling_segment_key)
-        add_items(tiling_gene_to_small_segments[gene_id], chr_id, max(0, p1 + k - min_segment_size), p2)
+#     # tiling_segment_name = "segm_{0}_{1}_{2}".format(chr_id, p1 + k - min_segment_size, p2)
+#     # tiling_segment_name = tiling_segment_id
+#     tiling_segment_key = array("L", [chr_id, max(0, p1 + k - min_segment_size), p2]).tobytes()
+#     tiling_segment_id_to_choordinates[tiling_segment_key] = (max(0, p1 + k - min_segment_size), p2)
+#     tiling_segment_to_ref[tiling_segment_key] = chr_id
+#     # tiling_parts_to_segments[part_name].append(tiling_segment_key)
+#     add_items(tiling_parts_to_segments[part_name], chr_id, max(0, p1 + k - min_segment_size), p2)
+#     tiling_segment_to_gene[tiling_segment_key] =  active_gene_ids 
+#     # total_unique_segment_counter += p2 - (p1 + k - min_segment_size)
+#     for gene_id in active_gene_ids:
+#         # tiling_gene_to_small_segments[gene_id].append(tiling_segment_key)
+#         add_items(tiling_gene_to_small_segments[gene_id], chr_id, max(0, p1 + k - min_segment_size), p2)
 
-    # tiling_segment_id += 1
-    # return tiling_segment_id # need to return cause immutable
 
 
 
@@ -83,9 +81,8 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
     tiling_gene_to_small_segments = defaultdict(lambda :array("L")) #= defaultdict(lambda :array("b"))
 
 
-    tiling_structures = [tiling_segment_id_to_choordinates, tiling_segment_to_gene, tiling_segment_to_ref, tiling_parts_to_segments, tiling_gene_to_small_segments]
-    # tiling_segment_id = 0
-    # segment_id = 0
+    # tiling_structures = [tiling_segment_id_to_choordinates, tiling_segment_to_gene, tiling_segment_to_ref, tiling_parts_to_segments, tiling_gene_to_small_segments]
+
     for (chr_id, part_id) in part_to_canonical_pos:
         active_start, active_stop = part_count_to_choord[(chr_id, part_id)]
         part_name = array("L", [chr_id, active_start, active_stop]).tobytes()
@@ -97,9 +94,9 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
         for i, (p1, p2) in enumerate(pos_tuples):
             open_starts_e_ids.update(pos_to_exon_ids[(chr_id, part_id)][p1, True]) # add the exons that start at this point 
             open_starts_e_ids.difference_update(pos_to_exon_ids[(chr_id, part_id)][p1, False]) # remove the ones that ended here
-            add_tiling(p1, p2, active_gene_ids, active_start, active_stop, min_segment_size, chr_id,
-                        tiling_segment_id_to_choordinates, tiling_segment_to_gene, tiling_segment_to_ref,
-                        tiling_parts_to_segments, tiling_gene_to_small_segments)
+            # add_tiling(p1, p2, active_gene_ids, active_start, active_stop, min_segment_size, chr_id,
+            #             tiling_segment_id_to_choordinates, tiling_segment_to_gene, tiling_segment_to_ref,
+            #             tiling_parts_to_segments, tiling_gene_to_small_segments)
             if p2 - p1 >= min_segment_size:
                 # print("here good", p2 - p1)
                 # segment_name = "segm_{0}_{1}_{2}".format(chr_id,p1,p2)
@@ -229,9 +226,9 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
                 bad += p2 - p1
                 for e_id in all_segm_spanning:
                     e_start, e_stop = exon_id_to_choordinates[e_id]
-                    add_tiling(e_start, e_stop, active_gene_ids, active_start, active_stop, min_segment_size, chr_id,
-                                tiling_segment_id_to_choordinates, tiling_segment_to_gene, tiling_segment_to_ref,
-                                tiling_parts_to_segments, tiling_gene_to_small_segments)
+                    # add_tiling(e_start, e_stop, active_gene_ids, active_start, active_stop, min_segment_size, chr_id,
+                    #             tiling_segment_id_to_choordinates, tiling_segment_to_gene, tiling_segment_to_ref,
+                    #             tiling_parts_to_segments, tiling_gene_to_small_segments)
 
                     # exon_name = "exon_{0}_{1}_{2}".format(chr_id,e_start,e_stop) 
                     # segment_name = segment_id
@@ -263,7 +260,8 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
     print("total_unique_segment_counter", total_unique_segment_counter)
     print("total_segments_bad", total_segments_bad)
     print("bad", bad)
-    return parts_to_segments, segment_to_gene, segment_id_to_choordinates, segment_to_ref, gene_to_small_segments, tiling_structures 
+    return parts_to_segments, segment_to_gene, segment_id_to_choordinates, segment_to_ref, gene_to_small_segments 
+    # return parts_to_segments, segment_to_gene, segment_id_to_choordinates, segment_to_ref, gene_to_small_segments, tiling_structures 
 
 
 def add_to_chr_mapping(chr_name, chr_to_id, id_to_chr):
@@ -458,9 +456,14 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segme
     parts_to_exons[chr_id][(active_start, active_stop)] = active_exons
     part_count_to_choord[(chr_id,part_counter)] = (active_start, active_stop)
 
+    # parts_to_segments, segment_to_gene, \
+    # segment_id_to_choordinates, segment_to_ref, \
+    # gene_to_small_segments, tiling_structures  = get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_active_gene, pos_to_exon_ids, exon_id_to_choordinates, small_exon_threshold, min_segment_size)
+
     parts_to_segments, segment_to_gene, \
     segment_id_to_choordinates, segment_to_ref, \
-    gene_to_small_segments, tiling_structures  = get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_active_gene, pos_to_exon_ids, exon_id_to_choordinates, small_exon_threshold, min_segment_size)
+    gene_to_small_segments  = get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_active_gene, pos_to_exon_ids, exon_id_to_choordinates, small_exon_threshold, min_segment_size)
+
 
     print("total parts size:", sum( [stop - start for chrrr in parts_to_exons for start,stop in parts_to_exons[chrrr] ]))
     print("total exons size:", sum( [stop - start for start, stop in exon_id_to_choordinates.values() ]))
@@ -527,8 +530,13 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segme
             transcripts_to_splices, all_splice_pairs_annotations, \
             all_splice_sites_annotations, segment_id_to_choordinates, \
             segment_to_gene, gene_to_small_segments, flank_ids, max_intron_chr, \
-            exon_ids, chr_to_id, id_to_chr, tiling_structures
+            exon_ids, chr_to_id, id_to_chr
 
+    # return  segment_to_ref, parts_to_segments, splices_to_transcripts, \
+    #         transcripts_to_splices, all_splice_pairs_annotations, \
+    #         all_splice_sites_annotations, segment_id_to_choordinates, \
+    #         segment_to_gene, gene_to_small_segments, flank_ids, max_intron_chr, \
+    #         exon_ids, chr_to_id, id_to_chr, tiling_structures
 
 def get_sequences_from_choordinates(sequence_choordinates, refs):
     sequence_container = defaultdict(dict)
