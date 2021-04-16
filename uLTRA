@@ -317,84 +317,84 @@ def align_reads(args):
 
     del ref_part_sequences
 
-    # ######### FIND MEMS WITH MUMMER #############
-    # #############################################
-    # #############################################
+    ######### FIND MEMS WITH MUMMER #############
+    #############################################
+    #############################################
 
-    # mummer_start = time()
-    # if args.nr_cores == 1:
-    #     print("Processing reads for MEM finding")
-    #     reads_tmp = open(os.path.join(args.outfolder, 'reads_tmp.fq'), 'w')
-    #     for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r')):
-    #         # print(seq)
-    #         # print(help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA))
-    #         reads_tmp.write('>{0}\n{1}\n'.format(acc, help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5)))
-    #     reads_tmp.close()
-    #     args.reads_tmp = reads_tmp.name
-    #     print("Finished processing reads for MEM finding ")
+    mummer_start = time()
+    if args.nr_cores == 1:
+        print("Processing reads for MEM finding")
+        reads_tmp = open(os.path.join(args.outfolder, 'reads_tmp.fq'), 'w')
+        for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r')):
+            # print(seq)
+            # print(help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA))
+            reads_tmp.write('>{0}\n{1}\n'.format(acc, help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5)))
+        reads_tmp.close()
+        args.reads_tmp = reads_tmp.name
+        print("Finished processing reads for MEM finding ")
 
-    #     mummer_out_path =  os.path.join( args.outfolder, "mummer_mems_batch_-1.txt" )
-    #     print("Running MEM finding forward") 
-    #     mem_wrapper.find_mems_slamem(args.outfolder, args.reads_tmp, ref_path, mummer_out_path, args.min_mem)
-    #     print("Completed MEM finding forward")
+        mummer_out_path =  os.path.join( args.outfolder, "mummer_mems_batch_-1.txt" )
+        print("Running MEM finding forward") 
+        mem_wrapper.find_mems_slamem(args.outfolder, args.reads_tmp, ref_path, mummer_out_path, args.min_mem)
+        print("Completed MEM finding forward")
 
-    #     print("Processing reverse complement reads for MEM finding")
-    #     reads_rc = open(os.path.join(args.outfolder, 'reads_rc.fq'), 'w')
-    #     for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r')):
-    #         # print(help_functions.reverse_complement(seq))
-    #         # print(help_functions.remove_read_polyA_ends(help_functions.reverse_complement(seq), args.reduce_read_ployA))
-    #         reads_rc.write('>{0}\n{1}\n'.format(acc, help_functions.reverse_complement(help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5))))
-    #     reads_rc.close()
-    #     args.reads_rc = reads_rc.name
-    #     print("Finished processing reverse complement reads for MEM finding")
+        print("Processing reverse complement reads for MEM finding")
+        reads_rc = open(os.path.join(args.outfolder, 'reads_rc.fq'), 'w')
+        for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r')):
+            # print(help_functions.reverse_complement(seq))
+            # print(help_functions.remove_read_polyA_ends(help_functions.reverse_complement(seq), args.reduce_read_ployA))
+            reads_rc.write('>{0}\n{1}\n'.format(acc, help_functions.reverse_complement(help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5))))
+        reads_rc.close()
+        args.reads_rc = reads_rc.name
+        print("Finished processing reverse complement reads for MEM finding")
 
-    #     mummer_out_path =  os.path.join(args.outfolder, "mummer_mems_batch_-1_rc.txt" )
-    #     print("Running MEM finding reverse")
-    #     mem_wrapper.find_mems_slamem(args.outfolder, args.reads_rc, ref_path, mummer_out_path, args.min_mem)
-    #     print("Completed MEM finding reverse")
+        mummer_out_path =  os.path.join(args.outfolder, "mummer_mems_batch_-1_rc.txt" )
+        print("Running MEM finding reverse")
+        mem_wrapper.find_mems_slamem(args.outfolder, args.reads_rc, ref_path, mummer_out_path, args.min_mem)
+        print("Completed MEM finding reverse")
     
-    # else:
-    #     reads = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r'))}
-    #     total_nt = sum([len(seq) for seq in reads.values() ])
-    #     batch_size = int(total_nt/int(args.nr_cores) + 1)
-    #     print("batch nt:", batch_size, "total_nt:", total_nt)
-    #     read_batches = batch(reads, batch_size, 'nt')
+    else:
+        reads = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r'))}
+        total_nt = sum([len(seq) for seq in reads.values() ])
+        batch_size = int(total_nt/int(args.nr_cores) + 1)
+        print("batch nt:", batch_size, "total_nt:", total_nt)
+        read_batches = batch(reads, batch_size, 'nt')
         
-    #     #### TMP remove not to call mummer repeatedly when bugfixing #### 
+        #### TMP remove not to call mummer repeatedly when bugfixing #### 
         
-    #     batch_args = []
-    #     for i, read_batch_dict in enumerate(read_batches):
-    #         print(len(read_batch_dict))
-    #         read_batch_temp_file = open(os.path.join(args.outfolder, "reads_batch_{0}.fa".format(i)), "w")
-    #         read_batch_temp_file_rc = open(os.path.join(args.outfolder, "reads_batch_{0}_rc.fa".format(i) ), "w")
-    #         for acc, seq in read_batch_dict.items():
-    #             read_batch_temp_file.write('>{0}\n{1}\n'.format(acc, help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5)))
-    #         read_batch_temp_file.close()
+        batch_args = []
+        for i, read_batch_dict in enumerate(read_batches):
+            print(len(read_batch_dict))
+            read_batch_temp_file = open(os.path.join(args.outfolder, "reads_batch_{0}.fa".format(i)), "w")
+            read_batch_temp_file_rc = open(os.path.join(args.outfolder, "reads_batch_{0}_rc.fa".format(i) ), "w")
+            for acc, seq in read_batch_dict.items():
+                read_batch_temp_file.write('>{0}\n{1}\n'.format(acc, help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5)))
+            read_batch_temp_file.close()
 
-    #         for acc, seq in read_batch_dict.items():
-    #             read_batch_temp_file_rc.write('>{0}\n{1}\n'.format(acc, help_functions.reverse_complement(help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5))))
-    #         read_batch_temp_file_rc.close()
+            for acc, seq in read_batch_dict.items():
+                read_batch_temp_file_rc.write('>{0}\n{1}\n'.format(acc, help_functions.reverse_complement(help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5))))
+            read_batch_temp_file_rc.close()
             
-    #         read_batch = read_batch_temp_file.name
-    #         read_batch_rc = read_batch_temp_file_rc.name
-    #         mummer_batch_out_path =  os.path.join( args.outfolder, "mummer_mems_batch_{0}.txt".format(i) )
-    #         mummer_batch_out_path_rc =  os.path.join(args.outfolder, "mummer_mems_batch_{0}_rc.txt".format(i) )
-    #         batch_args.append( (args.outfolder, read_batch, ref_path, mummer_batch_out_path, args.min_mem ) )
-    #         batch_args.append( (args.outfolder, read_batch_rc, ref_path, mummer_batch_out_path_rc, args.min_mem ) )
+            read_batch = read_batch_temp_file.name
+            read_batch_rc = read_batch_temp_file_rc.name
+            mummer_batch_out_path =  os.path.join( args.outfolder, "mummer_mems_batch_{0}.txt".format(i) )
+            mummer_batch_out_path_rc =  os.path.join(args.outfolder, "mummer_mems_batch_{0}_rc.txt".format(i) )
+            batch_args.append( (args.outfolder, read_batch, ref_path, mummer_batch_out_path, args.min_mem ) )
+            batch_args.append( (args.outfolder, read_batch_rc, ref_path, mummer_batch_out_path_rc, args.min_mem ) )
 
-    #     pool = Pool(processes=int(args.nr_cores))
-    #     results = pool.starmap(mem_wrapper.find_mems_slamem, batch_args)
-    #     pool.close()
-    #     pool.join() 
+        pool = Pool(processes=int(args.nr_cores))
+        results = pool.starmap(mem_wrapper.find_mems_slamem, batch_args)
+        pool.close()
+        pool.join() 
         
-    #     ####################################################################
+        ####################################################################
 
-    #     pass
+        pass
 
-    # print("Time for mummer to find mems:{0} seconds.".format(time()-mummer_start))
-    # #############################################
-    # #############################################
-    # #############################################
+    print("Time for mummer to find mems:{0} seconds.".format(time()-mummer_start))
+    #############################################
+    #############################################
+    #############################################
 
 
     print("Starting aligning reads.")
