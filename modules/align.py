@@ -65,11 +65,11 @@ def import_data(args):
     chr_to_id = help_functions.pickle_load( os.path.join(args.outfolder, 'chr_to_id.pickle') )
     id_to_chr = help_functions.pickle_load( os.path.join(args.outfolder, 'id_to_chr.pickle') )
 
-    tiling_ref_segment_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_ref_segment_sequences.pickle') )
-    tiling_parts_to_segments = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_parts_to_segments.pickle') )
-    tiling_segment_to_gene = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_segment_to_gene.pickle') )
-    tiling_gene_to_small_segments = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_gene_to_small_segments.pickle') )
-    tiling_structures = [tiling_segment_to_gene, tiling_parts_to_segments, tiling_gene_to_small_segments, tiling_ref_segment_sequences]
+    # tiling_ref_segment_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_ref_segment_sequences.pickle') )
+    # tiling_parts_to_segments = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_parts_to_segments.pickle') )
+    # tiling_segment_to_gene = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_segment_to_gene.pickle') )
+    # tiling_gene_to_small_segments = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_gene_to_small_segments.pickle') )
+    # tiling_structures = [tiling_segment_to_gene, tiling_parts_to_segments, tiling_gene_to_small_segments, tiling_ref_segment_sequences]
 
     # print("ref_segment_sequences:", getsize(ref_segment_sequences)//1000000)
     # print("ref_exon_sequences:", getsize(ref_exon_sequences)//1000000)
@@ -90,12 +90,17 @@ def import_data(args):
     # print("tiling_segment_to_gene:", getsize(tiling_segment_to_gene)//1000000)
     # print("tiling_gene_to_small_segments:", getsize(tiling_gene_to_small_segments)//1000000)
 
+    # return ref_segment_sequences, ref_flank_sequences, splices_to_transcripts, \
+    #         transcripts_to_splices, all_splice_pairs_annotations, \
+    #         all_splice_sites_annotations, parts_to_segments,\
+    #         segment_to_gene, gene_to_small_segments, max_intron_chr, \
+    #         ref_exon_sequences, chr_to_id, id_to_chr, tiling_structures
+
     return ref_segment_sequences, ref_flank_sequences, splices_to_transcripts, \
             transcripts_to_splices, all_splice_pairs_annotations, \
             all_splice_sites_annotations, parts_to_segments,\
             segment_to_gene, gene_to_small_segments, max_intron_chr, \
-            ref_exon_sequences, chr_to_id, id_to_chr, tiling_structures
-
+            ref_exon_sequences, chr_to_id, id_to_chr
 
 def annotate_guaranteed_optimal_bound(mems, is_rc, max_intron_chr, max_global_intron):
     """
@@ -342,46 +347,46 @@ def get_exact_alignment(read_seq, created_ref_seq, mam_sol_exons_length):
     return read_aln, ref_aln, alignment_score 
 
 
-def run_tiling_solution(mem_solution, tiling_ref_segment_sequences, ref_flank_sequences, tiling_parts_to_segments, \
-                        tiling_segment_to_gene, tiling_gene_to_small_segments, \
-                        read_seq, warning_log_file, min_acc, \
-                        chr_id, ref_exon_sequences, \
-                        all_splice_pairs_annotations,
-                        splices_to_transcripts, transcripts_to_splices, \
-                        all_splice_sites_annotations, mam_sol_exons_length, \
-                        alignment_score, read_aln, ref_aln, current_classification, non_covered_regions, covered,
-                        predicted_exons, annotated_to_transcript_id):
+# def run_tiling_solution(mem_solution, tiling_ref_segment_sequences, ref_flank_sequences, tiling_parts_to_segments, \
+#                         tiling_segment_to_gene, tiling_gene_to_small_segments, \
+#                         read_seq, warning_log_file, min_acc, \
+#                         chr_id, ref_exon_sequences, \
+#                         all_splice_pairs_annotations,
+#                         splices_to_transcripts, transcripts_to_splices, \
+#                         all_splice_sites_annotations, mam_sol_exons_length, \
+#                         alignment_score, read_aln, ref_aln, current_classification, non_covered_regions, covered,
+#                         predicted_exons, annotated_to_transcript_id):
 
-    non_covered_regions_tiling, mam_value_tiling, mam_solution_tiling = classify_read_with_mams.main(mem_solution, tiling_ref_segment_sequences, ref_flank_sequences, tiling_parts_to_segments, \
-                                                                                                            tiling_segment_to_gene, tiling_gene_to_small_segments, \
-                                                                                                            read_seq, warning_log_file, min_acc, is_tiling_instance = True)
+#     non_covered_regions_tiling, mam_value_tiling, mam_solution_tiling = classify_read_with_mams.main(mem_solution, tiling_ref_segment_sequences, ref_flank_sequences, tiling_parts_to_segments, \
+#                                                                                                             tiling_segment_to_gene, tiling_gene_to_small_segments, \
+#                                                                                                             read_seq, warning_log_file, min_acc, is_tiling_instance = True)
 
-    # print("TILING finished Mam solution Tiling!!:",mam_value_tiling, mam_solution_tiling)
-    # for zzz2 in mam_solution_tiling:
-    #     print(zzz2)
-    exons, tiling_created_ref_seq, tiling_predicted_exons, tiling_predicted_splices, tiling_covered = find_exons(chr_id, mam_solution_tiling, ref_exon_sequences, \
-                                                                            tiling_ref_segment_sequences, ref_flank_sequences, all_splice_pairs_annotations)
+#     # print("TILING finished Mam solution Tiling!!:",mam_value_tiling, mam_solution_tiling)
+#     # for zzz2 in mam_solution_tiling:
+#     #     print(zzz2)
+#     exons, tiling_created_ref_seq, tiling_predicted_exons, tiling_predicted_splices, tiling_covered = find_exons(chr_id, mam_solution_tiling, ref_exon_sequences, \
+#                                                                             tiling_ref_segment_sequences, ref_flank_sequences, all_splice_pairs_annotations)
 
-    tiling_classification, tiling_annotated_to_transcript_id = classify_alignment2.main(chr_id, tiling_predicted_splices, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations)
+#     tiling_classification, tiling_annotated_to_transcript_id = classify_alignment2.main(chr_id, tiling_predicted_splices, splices_to_transcripts, transcripts_to_splices, all_splice_pairs_annotations, all_splice_sites_annotations)
 
-    tiling_read_aln, tiling_ref_aln, tiling_alignment_score = get_exact_alignment(read_seq, tiling_created_ref_seq, mam_sol_exons_length)
+#     tiling_read_aln, tiling_ref_aln, tiling_alignment_score = get_exact_alignment(read_seq, tiling_created_ref_seq, mam_sol_exons_length)
 
-    if tiling_alignment_score > alignment_score or tiling_classification == 'FSM':
-        # print("TILING")        
-        # print("old aln:", read_aln)
-        # print("old aln:", ref_aln)
-        # print(tiling_classification)            
-        # print("BEFORE", non_covered_regions)
-        # print("new aln:", tiling_read_aln)
-        # print("new aln:", tiling_ref_aln)
-        # print("NOW", non_covered_regions_tiling) 
-        # print("read was", current_classification, "had aln score", alignment_score)
-        # print("tiling read is ", tiling_classification, "has aln score", tiling_alignment_score)
-        return  tiling_classification, tiling_alignment_score, non_covered_regions_tiling, \
-                tiling_read_aln, tiling_ref_aln, tiling_predicted_exons, tiling_annotated_to_transcript_id, tiling_covered
-    else:
-        return current_classification, alignment_score, non_covered_regions, \
-                read_aln, ref_aln, predicted_exons, annotated_to_transcript_id, covered
+#     if tiling_alignment_score > alignment_score or tiling_classification == 'FSM':
+#         # print("TILING")        
+#         # print("old aln:", read_aln)
+#         # print("old aln:", ref_aln)
+#         # print(tiling_classification)            
+#         # print("BEFORE", non_covered_regions)
+#         # print("new aln:", tiling_read_aln)
+#         # print("new aln:", tiling_ref_aln)
+#         # print("NOW", non_covered_regions_tiling) 
+#         # print("read was", current_classification, "had aln score", alignment_score)
+#         # print("tiling read is ", tiling_classification, "has aln score", tiling_alignment_score)
+#         return  tiling_classification, tiling_alignment_score, non_covered_regions_tiling, \
+#                 tiling_read_aln, tiling_ref_aln, tiling_predicted_exons, tiling_annotated_to_transcript_id, tiling_covered
+#     else:
+#         return current_classification, alignment_score, non_covered_regions, \
+#                 read_aln, ref_aln, predicted_exons, annotated_to_transcript_id, covered
 
 
 def align_single(reads, refs_lengths, args,  batch_number):
@@ -399,8 +404,9 @@ def align_single(reads, refs_lengths, args,  batch_number):
     transcripts_to_splices, all_splice_pairs_annotations, \
     all_splice_sites_annotations, parts_to_segments, \
     segment_to_gene, gene_to_small_segments, max_intron_chr, \
-    ref_exon_sequences, chr_to_id, id_to_chr, tiling_structures = auxillary_data
-    # print(ref_flank_sequences.keys())
+    ref_exon_sequences, chr_to_id, id_to_chr = auxillary_data
+    # ref_exon_sequences, chr_to_id, id_to_chr, tiling_structures = auxillary_data
+
     if batch_number == -1:
         alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, "reads.sam"), "w", reference_names=list([id_to_chr[id_] for id_ in refs_lengths.keys()]), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
         warning_log_file = open(os.path.join(args.outfolder, "uLTRA.stderr"), "w")
@@ -411,9 +417,9 @@ def align_single(reads, refs_lengths, args,  batch_number):
 
 
 
-    tiling_segment_to_gene, \
-    tiling_parts_to_segments, tiling_gene_to_small_segments, \
-    tiling_ref_segment_sequences = tiling_structures # unpacking tiling structures
+    # tiling_segment_to_gene, \
+    # tiling_parts_to_segments, tiling_gene_to_small_segments, \
+    # tiling_ref_segment_sequences = tiling_structures # unpacking tiling structures
 
     classifications = defaultdict(str)
     read_accessions_with_mappings = set()
@@ -545,25 +551,18 @@ def align_single(reads, refs_lengths, args,  batch_number):
 
                 read_aln, ref_aln, alignment_score = get_exact_alignment(read_seq, created_ref_seq, mam_sol_exons_length)
 
-                # if classification != 'FSM' and classification != 'NO_SPLICE':
-                if classification != 'FSM' and len(non_covered_regions) >= 3 and (max(non_covered_regions[1:-1]) > args.non_covered_cutoff):
-                # if "NIC" in classification or (classification != 'FSM' and len(non_covered_regions) >= 3 and (max(non_covered_regions[1:-1]) > args.non_covered_cutoff)):
-                    classification, alignment_score, non_covered_regions, \
-                    read_aln, ref_aln, predicted_exons, annotated_to_transcript_id, covered = run_tiling_solution(mem_solution, tiling_ref_segment_sequences, ref_flank_sequences, tiling_parts_to_segments, \
-                                        tiling_segment_to_gene, tiling_gene_to_small_segments, \
-                                        read_seq, warning_log_file, min_acc, chr_id, ref_exon_sequences, \
-                                        all_splice_pairs_annotations,
-                                        splices_to_transcripts, transcripts_to_splices, \
-                                        all_splice_sites_annotations, mam_sol_exons_length, alignment_score, \
-                                        read_aln, ref_aln, classification, non_covered_regions, covered, predicted_exons, annotated_to_transcript_id)
+                # if classification != 'FSM' and len(non_covered_regions) >= 3 and (max(non_covered_regions[1:-1]) > args.non_covered_cutoff):
+                #     classification, alignment_score, non_covered_regions, \
+                #     read_aln, ref_aln, predicted_exons, annotated_to_transcript_id, covered = run_tiling_solution(mem_solution, tiling_ref_segment_sequences, ref_flank_sequences, tiling_parts_to_segments, \
+                #                         tiling_segment_to_gene, tiling_gene_to_small_segments, \
+                #                         read_seq, warning_log_file, min_acc, chr_id, ref_exon_sequences, \
+                #                         all_splice_pairs_annotations,
+                #                         splices_to_transcripts, transcripts_to_splices, \
+                #                         all_splice_sites_annotations, mam_sol_exons_length, alignment_score, \
+                #                         read_aln, ref_aln, classification, non_covered_regions, covered, predicted_exons, annotated_to_transcript_id)
 
-                # print(read_aln)
-                # print(ref_aln)
-                # print()
-                # if readl_acc == "m64014_190506_005857/153027831/ccs" or read_acc == "m64014_190506_005857/168625399/ccs":
-                #     print(classification, alignment_score/len(read_seq), "Score: {0}, T: {1}".format(alignment_score, 2*args.alignment_threshold*len(read_seq)))
-                # print("SEQ identity:")
-                # print(alignment_score)
+
+
                 if alignment_score < 2*args.alignment_threshold*len(read_seq) and classification != 'FSM': # match score * aln_threshold
                     # print(i_nr_sol, mem_solution[0].x, "HERE2", chaining_score, alignment_score, 2*args.alignment_threshold*len(read_seq))
                     # print()
