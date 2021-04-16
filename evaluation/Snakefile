@@ -356,21 +356,21 @@ rule desalt_gtf_align:
         shell("/usr/bin/time -v  deSALT aln {index} {input.fastq} --max-intron-len 500000 -d 10  -s 2 -l 14  -t 19 --gtf {input.desalt_gtf_annotation_outfile} -o {output.sam} -f {tempfile}  2>&1 | tee {output.time_and_mem} ") 
 
 
-rule graphmap2_index:
-    input:  #ref = config["HG38"],
-            fastq =  config["ROOT_OUT"] + "/reads/{dataset}/reads.fq"
-    output: index =  config["ROOT_OUT"] + "/alignments/graphmap2/{dataset}/index.gmidx",
-            time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2/{dataset}/indexing_time_and_mem.txt"
-    run:
+# rule graphmap2_index:
+#     input:  #ref = config["HG38"],
+#             fastq =  config["ROOT_OUT"] + "/reads/{dataset}/reads.fq"
+#     output: index =  config["ROOT_OUT"] + "/alignments/graphmap2/{dataset}/index.gmidx",
+#             time_and_mem =  config["ROOT_OUT"] + "/time_and_mem/graphmap2/{dataset}/indexing_time_and_mem.txt"
+#     run:
 
-        if wildcards.dataset == "sirv":
-            ref = config["SIRV"]
-        elif wildcards.dataset == "drosophila":
-            ref =  config["drosophila97"]
-        else:
-            ref = config["HG38"]
+#         if wildcards.dataset == "sirv":
+#             ref = config["SIRV"]
+#         elif wildcards.dataset == "drosophila":
+#             ref =  config["drosophila97"]
+#         else:
+#             ref = config["HG38"]
 
-        shell("/usr/bin/time -v  graphmap2 align --index-only --index {output.index}  -x rnaseq -r {ref} -d {input.fastq} 2>&1 | tee {output.time_and_mem} ") # 2> {output.time_and_mem}  ")
+#         shell("/usr/bin/time -v  graphmap2 align --index-only --index {output.index}  -x rnaseq -r {ref} -d {input.fastq} 2>&1 | tee {output.time_and_mem} ") # 2> {output.time_and_mem}  ")
 
 # rule graphmap2_gtf_align:
 #     input:  #ref = config["HG38"],
