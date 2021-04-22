@@ -160,7 +160,7 @@ def parse_differing_splicing_reads(csv_file, outfolder):
 def venn(data_for_venn, outfolder):
     ultra, desalt, minimap2 = data_for_venn
     total = len((ultra | desalt | minimap2 ))
-    r = venn3(data_for_venn, ("uLTRA", "deSALT", "minimap2_GTF"), subset_label_formatter=lambda x: f"{(x/total):1.1%}")
+    r = venn3(data_for_venn, ("uLTRA_mm2", "deSALT", "minimap2_GTF"), subset_label_formatter=lambda x: f"{(x/total):1.1%}")
     plt.savefig(os.path.join(outfolder, "sirv_venn.pdf"))
     plt.clf()
 
