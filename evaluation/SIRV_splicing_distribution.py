@@ -113,8 +113,8 @@ def parse_differing_splicing_reads(csv_file, outfolder):
 
     desalt_gtf_fsm_distribution = defaultdict(int)
     desalt_gtf = set()
-    for acc in reads_desalt:
-        ds_annot, transcript_fsm_id = reads_desalt[acc][7], reads_desalt[acc][10]
+    for acc in reads_desalt_gtf:
+        ds_annot, transcript_fsm_id = reads_desalt_gtf[acc][7], reads_desalt_gtf[acc][10]
         if ds_annot == 'FSM':
             desalt_gtf_fsm_distribution[transcript_fsm_id] += 1
             desalt_gtf.add( (acc, transcript_fsm_id) ) 
@@ -130,8 +130,8 @@ def parse_differing_splicing_reads(csv_file, outfolder):
 
     mm2_gtf_fsm_distribution = defaultdict(int)
     minimap2_gtf = set()
-    for acc in reads_minimap2:
-        mm2_annot, transcript_fsm_id = reads_minimap2[acc][7], reads_minimap2[acc][10]
+    for acc in reads_minimap2_gtf:
+        mm2_annot, transcript_fsm_id = reads_minimap2_gtf[acc][7], reads_minimap2_gtf[acc][10]
         if mm2_annot == 'FSM':
             mm2_gtf_fsm_distribution[transcript_fsm_id] += 1
             minimap2_gtf.add( (acc, transcript_fsm_id) ) 
@@ -146,8 +146,8 @@ def parse_differing_splicing_reads(csv_file, outfolder):
 
     ultra_mm2_fsm_distribution = defaultdict(int)
     ultra_mm2 = set()
-    for acc in reads_ultra:
-        ultra_annot, transcript_fsm_id = reads_ultra[acc][7], reads_ultra[acc][10]
+    for acc in reads_ultra_mm2:
+        ultra_annot, transcript_fsm_id = reads_ultra_mm2[acc][7], reads_ultra_mm2[acc][10]
         if ultra_annot == 'FSM':
             ultra_mm2_fsm_distribution[transcript_fsm_id] += 1
             ultra_mm2.add( (acc, transcript_fsm_id) ) 
