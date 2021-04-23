@@ -90,8 +90,11 @@ def correctness_per_exon_size_binned(input_csv, outfolder):
         g = sns.barplot(x="exon_bins", y="fraction_correct", hue = 'alignment_algorithm', 
                         hue_order= ["uLTRA", "uLTRA_mm2", "minimap2", "minimap2_GTF", "deSALT", "deSALT_GTF"], data=data_grouped)
 
-        plt.xlabel('exon_size', fontsize=14)
-        plt.ylabel('Fraction correct',fontsize=16)
+        # plt.xlabel('exon_size', fontsize=14)
+        # plt.ylabel('Fraction correct',fontsize=16)
+        g.set_ylabel("Fraction correct")
+        g.set_xlabel("Exon size")
+
         plt.tick_params(rotation=20)
         plt.ylim(0, 1)
         g.legend(loc=4)
