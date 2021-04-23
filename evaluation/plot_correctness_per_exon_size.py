@@ -92,12 +92,13 @@ def correctness_per_exon_size_binned(input_csv, outfolder):
 
         # plt.xlabel('exon_size', fontsize=14)
         # plt.ylabel('Fraction correct',fontsize=16)
-        g.set_ylabel("Fraction correct")
-        g.set_xlabel("Exon size")
+
 
         plt.tick_params(rotation=20)
         plt.ylim(0, 1)
         g.legend(loc=4)
+        g.set_ylabel("Fraction correct")
+        g.set_xlabel("Exon size")
         plt.savefig(os.path.join(outfolder, "correctness_per_exon_size_binned.eps"))
         plt.savefig(os.path.join(outfolder, "correctness_per_exon_size_binned.pdf"))
 
@@ -112,7 +113,7 @@ def main(args):
     sns.set(style="whitegrid")
     flatui = ["#2ecc71", "#e74c3c"] # https://chrisalbon.com/python/data_visualization/seaborn_color_palettes/
     sns.set_palette(flatui)    # total_error_rate(args.input_csv, args.outfolder)
-    correctness_per_exon_size(args.input_csv, args.outfolder)
+    # correctness_per_exon_size(args.input_csv, args.outfolder)
     correctness_per_exon_size_binned(args.input_csv, args.outfolder)
 
 
