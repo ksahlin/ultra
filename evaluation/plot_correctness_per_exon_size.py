@@ -99,6 +99,7 @@ def correctness_per_exon_size_binned(input_csv, outfolder):
         g.legend(loc=4)
         g.set_ylabel("Fraction correct")
         g.set_xlabel("Exon size")
+        plt.tight_layout()
         plt.savefig(os.path.join(outfolder, "correctness_per_exon_size_binned.eps"))
         plt.savefig(os.path.join(outfolder, "correctness_per_exon_size_binned.pdf"))
 
