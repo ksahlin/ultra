@@ -553,7 +553,7 @@ rule plot_sim:
 
 rule plot_exon_size:
     input: csv_exon_size_file = rules.evaluate_sim.output.csv_exon_size_file 
-    output: pdf = config["ROOT_OUT"] + "/evaluation_sim/{dataset}/correctness_per_exon_size.pdf"
+    output: pdf = config["ROOT_OUT"] + "/evaluation_sim/{dataset}/correctness_per_exon_size_binned.pdf"
     # wildcard_constraints:
     #     dataset="sim[_\w]+"
     run:
