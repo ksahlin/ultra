@@ -36,6 +36,18 @@
         "mail_type" : "FAIL"
     },
 
+    "mapping_concordance": 
+    {
+        "account" : "snic2020-5-651",
+        "jobname" : "mapping_concordance",
+        "cpus-per-task" : "20",
+        "Nodes" : 1,
+        "C" : "mem128GB",
+        "runtime" : "1-00:00:00",
+        "mail" : "ksahlin@kth.se",
+        "mail_type" : "FAIL"
+    },
+
 
     "evaluate_biological_cigar": 
     {
