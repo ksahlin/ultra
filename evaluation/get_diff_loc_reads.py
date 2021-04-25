@@ -79,6 +79,7 @@ def is_overlapping(a_start,a_stop, b_start,b_stop):
 
 def parse_differing_location_reads(csv_file):
     reads_ultra = {}
+    reads_ultra_mm2 = {}
     reads_minimap2 = {}
     reads_desalt = {}
     reads_minimap2_gtf = {}
