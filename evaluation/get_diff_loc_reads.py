@@ -203,7 +203,7 @@ def get_FSM_concordance(reads_ultra, reads_ultra_mm2, reads_minimap2, reads_mini
     print("In all", len(a_b_c))
 
     print("ALL FSM READS:", len( (ultra_mm2 | desalt_gtf | minimap2_gtf )) )
-    return [ultra_mm2, desalt_gtf, minimap2_gtf], [ultra_mm2_fsm_distribution, ds_gtf_fsm_distribution, mm2_gtf_fsm_distribution]
+    return [ultra_mm2, desalt_gtf, minimap2], [ultra_mm2_fsm_distribution, ds_gtf_fsm_distribution, mm2_fsm_distribution]
 
 
 def venn(data_for_venn, outfolder, filename):
@@ -216,7 +216,7 @@ def venn(data_for_venn, outfolder, filename):
         minimap2 = set(minimap2.keys())
         data_for_venn = [ultra, desalt, minimap2]
         total = len((ultra | desalt | minimap2 ))
-    r = venn3(data_for_venn, ("uLTRA_mm2", "deSALT_GTF", "minimap2_GTF"), subset_label_formatter=lambda x: f"{(x/total):1.1%}")
+    r = venn3(data_for_venn, ("uLTRA_mm2", "deSALT_GTF", "minimap2"), subset_label_formatter=lambda x: f"{(x/total):1.1%}")
     plt.savefig(os.path.join(outfolder, filename +".pdf"))
     plt.clf()
 
@@ -623,7 +623,7 @@ def main(args):
 
     
     # OVERLAP
-    overlap_data_for_venn = get_mapping_location_concordance(reads_ultra_mm2, reads_minimap2_gtf, reads_desalt_gtf, reads)
+    overlap_data_for_venn = get_mapping_location_concordance(reads_ultra_mm2, reads_minimap2, reads_desalt_gtf, reads)
 
     for category in overlap_data_for_venn:
         data = overlap_data_for_venn[category]
