@@ -22,9 +22,11 @@ def find_mems_mummer(outfolder, read_path, refs_path, mummer_out_path, min_mem):
 def find_mems_slamem(outfolder, read_path, refs_path, out_path, min_mem):
     # time slaMEM -l 14 /Users/kxs624/tmp/ULTRA/human_test/refs_sequences.fa /Users/kxs624/tmp/ULTRA/human_test_new_flanking_strat/reads_tmp.fq -o /Users/kxs624/tmp/ULTRA/human_test/slamem_test.tx
     # with open(out_path, "w") as output_file:
+    tmp = out_path.split("mummer_mems_batch_")[1]
+    batch_id =  tmp.split('.')[0]
     stdout.flush()
-    stderr_file = open(os.path.join(outfolder, "slamem_stderr.1") , "w")
-    stdout_file = open(os.path.join(outfolder, "slamem_stdout.1") , "w")
+    stderr_file = open(os.path.join(outfolder, "slamem_stderr_{0}.1".format(batch_id)) , "w")
+    stdout_file = open(os.path.join(outfolder, "slamem_stdout_{0}.1".format(batch_id)) , "w")
     try: # slaMEM throws error if no MEMs are found in any of the sequences
         subprocess.check_call([ 'slaMEM', '-l' , str(min_mem),  refs_path, read_path, '-o', out_path ], stdout=stdout_file, stderr=stderr_file)
         print("Using SLAMEM")

@@ -24,7 +24,8 @@ def correctness_per_exon_size(input_csv, outfolder):
 
     indata = pd.read_csv(input_csv)
     ax = sns.lineplot(x="exon_size", y="fraction_correct", hue="alignment_algorithm",
-                          hue_order= ["uLTRA", "minimap2", "minimap2_GTF", "deSALT", "deSALT_GTF", "Graphmap2", "Graphmap2_GTF"],
+                          hue_order= ["uLTRA", "uLTRA_mm2", "minimap2", "minimap2_GTF", "deSALT", "deSALT_GTF"],
+                          # hue_order= ["uLTRA", "uLTRA_mm2", "minimap2", "minimap2_GTF", "deSALT", "deSALT_GTF", "Graphmap2", "Graphmap2_GTF"],
                            estimator=None, lw=1, data=indata)
     # g = sns.catplot(x="alignment_classification", #col="Depth",
     #             data=indata,  hue="alignment_algorithm", hue_order= ["uLTRA", "minimap2", "deSALT", "deSALT_GTF", "Graphmap2", "Graphmap2_GTF"],
@@ -87,13 +88,18 @@ def correctness_per_exon_size_binned(input_csv, outfolder):
         # full_supp = pd.DataFrame(full_supp_data)
 
         g = sns.barplot(x="exon_bins", y="fraction_correct", hue = 'alignment_algorithm', 
-                        hue_order= ["uLTRA", "minimap2", "minimap2_GTF", "deSALT", "deSALT_GTF", "Graphmap2", "Graphmap2_GTF"], data=data_grouped)
+                        hue_order= ["uLTRA", "uLTRA_mm2", "minimap2", "minimap2_GTF", "deSALT", "deSALT_GTF"], data=data_grouped)
 
-        plt.xlabel('exon_size', fontsize=14)
-        plt.ylabel('Fraction correct',fontsize=16)
+        # plt.xlabel('exon_size', fontsize=14)
+        # plt.ylabel('Fraction correct',fontsize=16)
+
+
         plt.tick_params(rotation=20)
         plt.ylim(0, 1)
         g.legend(loc=4)
+        g.set_ylabel("Fraction correct")
+        g.set_xlabel("Exon size")
+        plt.tight_layout()
         plt.savefig(os.path.join(outfolder, "correctness_per_exon_size_binned.eps"))
         plt.savefig(os.path.join(outfolder, "correctness_per_exon_size_binned.pdf"))
 
@@ -108,7 +114,7 @@ def main(args):
     sns.set(style="whitegrid")
     flatui = ["#2ecc71", "#e74c3c"] # https://chrisalbon.com/python/data_visualization/seaborn_color_palettes/
     sns.set_palette(flatui)    # total_error_rate(args.input_csv, args.outfolder)
-    correctness_per_exon_size(args.input_csv, args.outfolder)
+    # correctness_per_exon_size(args.input_csv, args.outfolder)
     correctness_per_exon_size_binned(args.input_csv, args.outfolder)
 
 
