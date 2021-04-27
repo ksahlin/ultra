@@ -40,7 +40,7 @@ run the script `INSTALL.sh` or you can perform step 1-6 below manually for more 
 ### Installation with INSTALL.sh script
 
 ```
-git clone https://github.com/ksahlin/uLTRA.git
+git clone https://github.com/ksahlin/uLTRA.git --depth 1
 cd uLTRA
 ./INSTALL.sh [An install directory in your PATH]
 ```
