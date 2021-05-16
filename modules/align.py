@@ -50,20 +50,26 @@ def getsize(obj):
 ######################
 
 def import_data(args):
-    ref_segment_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'ref_segment_sequences.pickle') )
-    ref_exon_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'ref_exon_sequences.pickle') )
-    ref_flank_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'ref_flank_sequences.pickle') )
-    splices_to_transcripts = help_functions.pickle_load( os.path.join(args.outfolder, 'splices_to_transcripts.pickle') )
-    transcripts_to_splices = help_functions.pickle_load( os.path.join(args.outfolder, 'transcripts_to_splices.pickle') )
-    all_splice_pairs_annotations = help_functions.pickle_load( os.path.join(args.outfolder, 'all_splice_pairs_annotations.pickle') )
-    all_splice_sites_annotations = help_functions.pickle_load( os.path.join(args.outfolder, 'all_splice_sites_annotations.pickle') )
-    parts_to_segments = help_functions.pickle_load( os.path.join(args.outfolder, 'parts_to_segments.pickle') )
-    segment_to_gene = help_functions.pickle_load( os.path.join(args.outfolder, 'segment_to_gene.pickle') )
-    gene_to_small_segments = help_functions.pickle_load( os.path.join(args.outfolder, 'gene_to_small_segments.pickle') )
-    max_intron_chr = help_functions.pickle_load( os.path.join(args.outfolder, 'max_intron_chr.pickle') )
 
-    chr_to_id = help_functions.pickle_load( os.path.join(args.outfolder, 'chr_to_id.pickle') )
-    id_to_chr = help_functions.pickle_load( os.path.join(args.outfolder, 'id_to_chr.pickle') )
+    if args.index:
+        index_folder = args.index
+    else:
+        index_folder = args.outfolder
+        
+    ref_segment_sequences = help_functions.pickle_load( os.path.join(index_folder, 'ref_segment_sequences.pickle') )
+    ref_exon_sequences = help_functions.pickle_load( os.path.join(index_folder, 'ref_exon_sequences.pickle') )
+    ref_flank_sequences = help_functions.pickle_load( os.path.join(index_folder, 'ref_flank_sequences.pickle') )
+    splices_to_transcripts = help_functions.pickle_load( os.path.join(index_folder, 'splices_to_transcripts.pickle') )
+    transcripts_to_splices = help_functions.pickle_load( os.path.join(index_folder, 'transcripts_to_splices.pickle') )
+    all_splice_pairs_annotations = help_functions.pickle_load( os.path.join(index_folder, 'all_splice_pairs_annotations.pickle') )
+    all_splice_sites_annotations = help_functions.pickle_load( os.path.join(index_folder, 'all_splice_sites_annotations.pickle') )
+    parts_to_segments = help_functions.pickle_load( os.path.join(index_folder, 'parts_to_segments.pickle') )
+    segment_to_gene = help_functions.pickle_load( os.path.join(index_folder, 'segment_to_gene.pickle') )
+    gene_to_small_segments = help_functions.pickle_load( os.path.join(index_folder, 'gene_to_small_segments.pickle') )
+    max_intron_chr = help_functions.pickle_load( os.path.join(index_folder, 'max_intron_chr.pickle') )
+
+    chr_to_id = help_functions.pickle_load( os.path.join(index_folder, 'chr_to_id.pickle') )
+    id_to_chr = help_functions.pickle_load( os.path.join(index_folder, 'id_to_chr.pickle') )
 
     # tiling_ref_segment_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_ref_segment_sequences.pickle') )
     # tiling_parts_to_segments = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_parts_to_segments.pickle') )
@@ -408,7 +414,7 @@ def align_single(reads, refs_lengths, args,  batch_number):
     # ref_exon_sequences, chr_to_id, id_to_chr, tiling_structures = auxillary_data
 
     if batch_number == -1:
-        alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, "reads.sam"), "w", reference_names=list([id_to_chr[id_] for id_ in refs_lengths.keys()]), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
+        alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, args.prefix+".sam"), "w", reference_names=list([id_to_chr[id_] for id_ in refs_lengths.keys()]), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
         warning_log_file = open(os.path.join(args.outfolder, "uLTRA.stderr"), "w")
 
     else:  
