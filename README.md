@@ -10,7 +10,7 @@ Since v0.0.2, uLTRA can be used as an **end-to-end aligner for annotation and de
 
 ### New since v0.0.3
 
-uLTRA is now used less than half of the memory used in previous versions and is about 20% faster.
+uLTRA now uses less than half of the memory used in previous versions and is about 20% faster.
 
 
 
@@ -93,11 +93,11 @@ conda activate ultra
 Download/use test data available in this repository [here](https://github.com/ksahlin/ultra/tree/master/test) and run: 
 
 ```
-uLTRA pipeline [/your/local/directory/to/test]/SIRV_genes.fasta  \
-               [/your/local/directory/to/test]/SIRV_genes_C_170612a.gtf  \
-               [/your/local/directory/to/test]/reads.fa outfolder/  [optional parameters]
+uLTRA pipeline [/your/full/path/to/test]/SIRV_genes.fasta  \
+               /your/full/path/to/test/SIRV_genes_C_170612a.gtf  \
+               [/your/full/path/to/test]/reads.fa outfolder/  [optional parameters]
 ```
-Specify full path to annotation, otherwise `gffutils` will complain.
+Specify the **absolute path** to the GTF-file on your system, if an otherwise `gffutils` will complain and giva a cryptic `ValueError: unknown url type:` error message. Outfile will be `outfolder/reads.sam`, unless you specify your custom prefix filename with `--prefix`.
 
 
 #### 6. (Optional) Install of MUMmer 
@@ -157,7 +157,8 @@ uLTRA align genome.fasta reads.[fa/fq] outfolder/  --isoseq --t 48 # PacBio isos
 uLTRA align genome.fasta reads.[fa/fq] outfolder/  --k 14  --t 48 # PacBio dRNA reads or reads with >10-12% error rate
 ```
 
-uLTRA's index takes about 7Gb for human, and each instance needs a separate copy of the index (if parallelized, that is, `--t` greater than 1). So if you have a computer/cluster with 8Gb per core and n cores it is straightforward to set `--t n-1` (n-1 to leave some space for the main process). 
+You can set a custom location of where to get the index from using `--index [PATH]`. Otherwise, uLTRA will try to read the index from the `outfolder/` by default.
+
 
 ### Pipeline
 

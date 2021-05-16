@@ -11,8 +11,8 @@ from collections import defaultdict
 
 from modules import help_functions
 
-def get_ultra_indexed_choordinates(ref_part_sequences, outfolder):
-    id_to_chr = help_functions.pickle_load( os.path.join(outfolder, 'id_to_chr.pickle') )
+def get_ultra_indexed_choordinates(ref_part_sequences, indexfolder, outfolder):
+    id_to_chr = help_functions.pickle_load( os.path.join(indexfolder, 'id_to_chr.pickle') )
     indexed_regions = defaultdict(intervaltree.IntervalTree)
 
     for sequence_id, seq  in ref_part_sequences.items():
@@ -136,8 +136,8 @@ def print_read_categories(reads_unindexed, reads_indexed, reads, outfolder, SAM_
 
 
 
-def main(ref_part_sequences, ref, reads, outfolder, nr_cores, genomic_frac_cutoff, k_size):
-    indexed_regions = get_ultra_indexed_choordinates(ref_part_sequences, outfolder)
+def main(ref_part_sequences, ref, reads, outfolder, indexfolder, nr_cores, genomic_frac_cutoff, k_size):
+    indexed_regions = get_ultra_indexed_choordinates(ref_part_sequences, indexfolder, outfolder)
     minimap2_samfile_path = align_with_minimap2(ref, reads, outfolder, nr_cores, k_size)
     reads_unindexed, reads_indexed, SAM_file = parse_alignments_and_mask(minimap2_samfile_path, indexed_regions, genomic_frac_cutoff)
     path_reads_to_align = print_read_categories(reads_unindexed, reads_indexed, reads, outfolder, SAM_file)

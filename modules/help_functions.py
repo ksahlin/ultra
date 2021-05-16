@@ -53,8 +53,8 @@ def remove_read_polyA_ends(seq, threshold_len, to_len):
     seq_mod = "".join([s for s in seq_list])
     return seq_mod
 
-def pickle_dump(args, data, filename):
-    with open(os.path.join(args.outfolder,filename), 'wb') as f:
+def pickle_dump(filepath, data, filename):
+    with open(os.path.join(filepath,filename), 'wb') as f:
         # Pickle the 'data' dictionary using the highest protocol available.
         pickle.dump(data, f, pickle.HIGHEST_PROTOCOL)
 

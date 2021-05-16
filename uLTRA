@@ -3,7 +3,7 @@ from __future__ import print_function
 
 import os
 import sys
-import os
+import glob
 from time import time
 import itertools
 from itertools import islice, chain
@@ -44,7 +44,12 @@ def load_reference(args):
     return refs, refs_lengths
 
 def prep_splicing(args, refs_lengths):
-    database = os.path.join(args.outfolder,'database.db')
+    if args.index:
+        help_functions.mkdir_p(args.index)
+        database = os.path.join(args.index,'database.db')        
+    else:
+        database = os.path.join(args.outfolder,'database.db')
+
     if os.path.isfile(database):
         print("Database found in directory using this one.")
         print("If you want to recreate the database, please remove the file: {0}".format(database))
@@ -77,20 +82,20 @@ def prep_splicing(args, refs_lengths):
 
     # dump to pickle here! Both graph and reference seqs
     # help_functions.pickle_dump(args, genes_to_ref, 'genes_to_ref.pickle')
-    help_functions.pickle_dump(args, segment_to_ref, 'segment_to_ref.pickle')
-    help_functions.pickle_dump(args, splices_to_transcripts, 'splices_to_transcripts.pickle')
-    help_functions.pickle_dump(args, transcripts_to_splices, 'transcripts_to_splices.pickle')
-    help_functions.pickle_dump(args, parts_to_segments, 'parts_to_segments.pickle')
-    help_functions.pickle_dump(args, all_splice_pairs_annotations, 'all_splice_pairs_annotations.pickle')
-    help_functions.pickle_dump(args, all_splice_sites_annotations, 'all_splice_sites_annotations.pickle')
-    help_functions.pickle_dump(args, segment_id_to_choordinates, 'segment_id_to_choordinates.pickle')
-    help_functions.pickle_dump(args, segment_to_gene, 'segment_to_gene.pickle')
-    help_functions.pickle_dump(args, gene_to_small_segments, 'gene_to_small_segments.pickle')
-    help_functions.pickle_dump(args, flank_choordinates, 'flank_choordinates.pickle')
-    help_functions.pickle_dump(args, max_intron_chr, 'max_intron_chr.pickle')
-    help_functions.pickle_dump(args, exon_choordinates_to_id, 'exon_choordinates_to_id.pickle')
-    help_functions.pickle_dump(args, chr_to_id, 'chr_to_id.pickle')
-    help_functions.pickle_dump(args, id_to_chr, 'id_to_chr.pickle')
+    help_functions.pickle_dump(args.index, segment_to_ref, 'segment_to_ref.pickle')
+    help_functions.pickle_dump(args.index, splices_to_transcripts, 'splices_to_transcripts.pickle')
+    help_functions.pickle_dump(args.index, transcripts_to_splices, 'transcripts_to_splices.pickle')
+    help_functions.pickle_dump(args.index, parts_to_segments, 'parts_to_segments.pickle')
+    help_functions.pickle_dump(args.index, all_splice_pairs_annotations, 'all_splice_pairs_annotations.pickle')
+    help_functions.pickle_dump(args.index, all_splice_sites_annotations, 'all_splice_sites_annotations.pickle')
+    help_functions.pickle_dump(args.index, segment_id_to_choordinates, 'segment_id_to_choordinates.pickle')
+    help_functions.pickle_dump(args.index, segment_to_gene, 'segment_to_gene.pickle')
+    help_functions.pickle_dump(args.index, gene_to_small_segments, 'gene_to_small_segments.pickle')
+    help_functions.pickle_dump(args.index, flank_choordinates, 'flank_choordinates.pickle')
+    help_functions.pickle_dump(args.index, max_intron_chr, 'max_intron_chr.pickle')
+    help_functions.pickle_dump(args.index, exon_choordinates_to_id, 'exon_choordinates_to_id.pickle')
+    help_functions.pickle_dump(args.index, chr_to_id, 'chr_to_id.pickle')
+    help_functions.pickle_dump(args.index, id_to_chr, 'id_to_chr.pickle')
 
     # tiling_segment_id_to_choordinates, tiling_segment_to_gene, tiling_segment_to_ref, tiling_parts_to_segments, tiling_gene_to_small_segments = tiling_structures # unpacking tiling structures
     # help_functions.pickle_dump(args, tiling_segment_id_to_choordinates, 'tiling_segment_id_to_choordinates.pickle')
@@ -101,13 +106,18 @@ def prep_splicing(args, refs_lengths):
 
 
 def prep_seqs(args, refs, refs_lengths):
-    parts_to_segments = help_functions.pickle_load( os.path.join(args.outfolder, 'parts_to_segments.pickle') )
-    segment_id_to_choordinates = help_functions.pickle_load( os.path.join(args.outfolder, 'segment_id_to_choordinates.pickle') )
-    segment_to_ref = help_functions.pickle_load( os.path.join(args.outfolder, 'segment_to_ref.pickle') )
-    flank_choordinates = help_functions.pickle_load( os.path.join(args.outfolder, 'flank_choordinates.pickle') )
-    exon_choordinates_to_id = help_functions.pickle_load( os.path.join(args.outfolder, 'exon_choordinates_to_id.pickle') )
-    chr_to_id = help_functions.pickle_load( os.path.join(args.outfolder, 'chr_to_id.pickle') )
-    id_to_chr = help_functions.pickle_load( os.path.join(args.outfolder, 'id_to_chr.pickle') )
+    if args.index:
+        index_folder = args.index
+    else:
+        index_folder = args.outfolder
+
+    parts_to_segments = help_functions.pickle_load( os.path.join(index_folder, 'parts_to_segments.pickle') )
+    segment_id_to_choordinates = help_functions.pickle_load( os.path.join(index_folder, 'segment_id_to_choordinates.pickle') )
+    segment_to_ref = help_functions.pickle_load( os.path.join(index_folder, 'segment_to_ref.pickle') )
+    flank_choordinates = help_functions.pickle_load( os.path.join(index_folder, 'flank_choordinates.pickle') )
+    exon_choordinates_to_id = help_functions.pickle_load( os.path.join(index_folder, 'exon_choordinates_to_id.pickle') )
+    chr_to_id = help_functions.pickle_load( os.path.join(index_folder, 'chr_to_id.pickle') )
+    id_to_chr = help_functions.pickle_load( os.path.join(index_folder, 'id_to_chr.pickle') )
 
     # tiling_parts_to_segments = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_parts_to_segments.pickle') )
     # tiling_segment_id_to_choordinates = help_functions.pickle_load( os.path.join(args.outfolder, 'tiling_segment_id_to_choordinates.pickle') )
@@ -126,8 +136,8 @@ def prep_seqs(args, refs, refs_lengths):
             refs_id[acc_id] = seq
 
     refs_id_lengths = { acc_id : len(seq) for acc_id, seq in refs_id.items()} 
-    help_functions.pickle_dump(args, refs_id_lengths, 'refs_id_lengths.pickle')
-    help_functions.pickle_dump(args, refs_lengths, 'refs_lengths.pickle')
+    help_functions.pickle_dump(index_folder, refs_id_lengths, 'refs_id_lengths.pickle')
+    help_functions.pickle_dump(index_folder, refs_lengths, 'refs_lengths.pickle')
 
     print( "Number of ref seqs in fasta:", len(refs.keys()))
 
@@ -153,11 +163,11 @@ def prep_seqs(args, refs, refs_lengths):
     ref_segment_sequences = augmented_gene.get_sequences_from_choordinates(segment_id_to_choordinates, refs_id)
     # ref_flank_sequences = augmented_gene.get_sequences_from_choordinates(flank_choordinates, refs_id)
     ref_exon_sequences = augmented_gene.get_sequences_from_choordinates(exon_choordinates_to_id, refs_id)
-    help_functions.pickle_dump(args, segment_id_to_choordinates, 'segment_id_to_choordinates.pickle')
-    help_functions.pickle_dump(args, ref_part_sequences, 'ref_part_sequences.pickle')
-    help_functions.pickle_dump(args, ref_segment_sequences, 'ref_segment_sequences.pickle')
-    help_functions.pickle_dump(args, ref_flank_sequences, 'ref_flank_sequences.pickle')
-    help_functions.pickle_dump(args, ref_exon_sequences, 'ref_exon_sequences.pickle')
+    help_functions.pickle_dump(index_folder, segment_id_to_choordinates, 'segment_id_to_choordinates.pickle')
+    help_functions.pickle_dump(index_folder, ref_part_sequences, 'ref_part_sequences.pickle')
+    help_functions.pickle_dump(index_folder, ref_segment_sequences, 'ref_segment_sequences.pickle')
+    help_functions.pickle_dump(index_folder, ref_flank_sequences, 'ref_flank_sequences.pickle')
+    help_functions.pickle_dump(index_folder, ref_exon_sequences, 'ref_exon_sequences.pickle')
 
     # tiling_ref_segment_sequences = augmented_gene.get_sequences_from_choordinates(tiling_segment_id_to_choordinates, refs_id)
     # help_functions.pickle_dump(args, tiling_ref_segment_sequences, 'tiling_ref_segment_sequences.pickle')
@@ -293,16 +303,26 @@ def align_reads(args):
         print("Environment set:", mp.get_context())
         print("Using {0} cores.".format(args.nr_cores))
 
+    if args.index:
+        if os.path.isdir(args.index):
+            index_folder = args.index
+        else:
+            print("The index folder specified for alignment is not found. You specified: ", args.index )
+            print("Build  the index to this folder, or specify another forder where the index has been built." )
+            sys.exit()
+    else:
+        index_folder = args.outfolder
+
     # topological_sorts = help_functions.pickle_load( os.path.join(args.outfolder, 'top_sorts.pickle') )
     # path_covers = help_functions.pickle_load( os.path.join(args.outfolder, 'paths.pickle') )
 
-    ref_part_sequences = help_functions.pickle_load( os.path.join(args.outfolder, 'ref_part_sequences.pickle') )
-    refs_id_lengths = help_functions.pickle_load( os.path.join(args.outfolder, 'refs_id_lengths.pickle') )
-    refs_lengths = help_functions.pickle_load( os.path.join(args.outfolder, 'refs_lengths.pickle') )
+    ref_part_sequences = help_functions.pickle_load( os.path.join(index_folder, 'ref_part_sequences.pickle') )
+    refs_id_lengths = help_functions.pickle_load( os.path.join(index_folder, 'refs_id_lengths.pickle') )
+    refs_lengths = help_functions.pickle_load( os.path.join(index_folder, 'refs_lengths.pickle') )
 
     if not args.disable_mm2:
         print("Filtering reads aligned to unindexed regions with minimap2 ")
-        nr_reads_to_ignore, path_reads_to_align = prefilter_genomic_reads.main(ref_part_sequences, args.ref, args.reads, args.outfolder, args.nr_cores, args.genomic_frac, args.mm2_ksize)
+        nr_reads_to_ignore, path_reads_to_align = prefilter_genomic_reads.main(ref_part_sequences, args.ref, args.reads, args.outfolder, index_folder, args.nr_cores, args.genomic_frac, args.mm2_ksize)
         args.reads = path_reads_to_align
         print("Done filtering. Reads filtered:{0}".format(nr_reads_to_ignore))
 
@@ -417,8 +437,8 @@ def align_reads(args):
         # Combine samfiles produced from each batch
         combine_start = time()
         # print(refs_lengths)
-        alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, "reads.sam"), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
-    
+        alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, args.prefix+".sam"), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
+
         for f in alignment_outfiles:
             samfile = pysam.AlignmentFile(f, "r")
             for read in samfile.fetch():
@@ -457,11 +477,35 @@ def align_reads(args):
     print(counts)
     print("total alignment coverage:", alignment_coverage)
 
+    if not args.keep_temporary_files:
+        print("Deleting temporary files...")
+        # mum = os.path.join(args.outfolder, "mummer_mems*")
+        mum = glob.glob(os.path.join(args.outfolder, "mummer*"))
+        sla = glob.glob(os.path.join(args.outfolder, "slamem*"))
+        reads_tmp = glob.glob(os.path.join(args.outfolder, "reads_batch*"))
+        minimap_tmp = glob.glob(os.path.join(args.outfolder, "minimap2*"))
+        ultra_tmp = glob.glob(os.path.join(args.outfolder, "uLTRA_batch*"))
+        
+        f1 = os.path.join(args.outfolder, "reads_after_genomic_filtering.fasta")
+        f2 = os.path.join(args.outfolder, "indexed.sam")
+        f3 = os.path.join(args.outfolder, "unindexed.sam")
+        f4 = os.path.join(args.outfolder, "refs_sequences.fa")
+        f5 = os.path.join(args.outfolder, "refs_sequences.fa")
+        f6 = os.path.join(args.outfolder, "reads_rc.fq")
+        f7 = os.path.join(args.outfolder, "reads_tmp.fq")
+        misc_files = [f1,f2,f3,f4,f5,f6,f7]
+        for f in mum + sla + reads_tmp + minimap_tmp + ultra_tmp+ misc_files:
+            if os.path.isfile(f):
+                os.remove(f)
+                print("removed:", f)
+    print("Done.")
+
+
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description="uLTRA -- Align and classify long transcriptomic reads based on colinear chaining algorithms to gene regions")
-    parser.add_argument('--version', action='version', version='%(prog)s 0.0.3')
+    parser.add_argument('--version', action='version', version='%(prog)s 0.0.3.1')
 
     subparsers = parser.add_subparsers(help='Subcommands for eaither constructing a graph, or align reads')
     # parser.add_argument("-v", help='Different subcommands for eaither constructing a graph, or align reads')
@@ -473,7 +517,7 @@ if __name__ == '__main__':
     pipeline_parser.add_argument('ref', type=str, help='Reference genome (fasta)')
     pipeline_parser.add_argument('gtf', type=str, help='Path to gtf or gtf file with gene models.')
     pipeline_parser.add_argument('reads', type=str, help='Path to fasta/fastq file with reads.')
-    pipeline_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
+    pipeline_parser.add_argument('outfolder', type=str, help='Path to output folder.')
     group = pipeline_parser.add_mutually_exclusive_group()
     group.add_argument('--ont', action="store_true", help='Set parameters suitable for ONT (Currently sets: --min_mem 15, --min_acc 0.6 --alignment_threshold 0.5).')
     group.add_argument('--isoseq', action="store_true", help='Set parameters suitable for IsoSeq (Currently sets: --min_mem 17, --min_acc 0.8 --alignment_threshold 0.5).')
@@ -495,6 +539,8 @@ if __name__ == '__main__':
                                                                                         match =2, subs=-2, gap open 3, gap ext=1. Default val (0.5) sets that a score\
                                                                                         higher than 2*0.5*read_length would be considered an alignment, otherwise unaligned.')
     pipeline_parser.add_argument('--t', dest = 'nr_cores', type=int, default=3, help='Number of cores.')
+    pipeline_parser.add_argument('--index', type=str, default="", help='Path to where index files will be written to (in indexing step) and read from (in alignment step) [default is the outfolder path].')
+    pipeline_parser.add_argument('--prefix', type=str, default="reads", help='Outfile prefix [default=reads]. "--prefix sample_X" will output a file sample_X.sam.')
     pipeline_parser.add_argument('--non_covered_cutoff', type=int, default=15, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
     pipeline_parser.add_argument('--dropoff', type=float, default=0.95, help='Ignore alignment to hits with read coverage of this fraction less than the best hit.')
     pipeline_parser.add_argument('--max_loc', type=float, default=5, help='Limit read to be aligned to at most max_loc places (default 5).\
@@ -507,12 +553,14 @@ if __name__ == '__main__':
                                                                                 An alignment is classified as genomic if more than --genomic_frac (default 10%%) of its aligned length is outside\
                                                                                 regions indexed by uLTRA. Note that uLTRA indexes flank regions such as 3 prime, 5 prime and (parts of) introns.')
     pipeline_parser.add_argument('--genomic_frac', type=float, default=0.1, help='If parameter prefilter_genomic is set, this is the threshild for fraction of aligned portion of read that is outside uLTRA indexed regions to be considered genomic (default 0.1).')
+    pipeline_parser.add_argument('--keep_temporary_files', action='store_true', help='Keeps all intermediate files used for the alignment. This parameter is manily good for bugfixing and development.')
 
     pipeline_parser.set_defaults(which='pipeline')
 
     indexing_parser.add_argument('ref', type=str, help='Reference genome (fasta)')
     indexing_parser.add_argument('gtf', type=str, help='Path to gtf or gtf file with gene models.')
     indexing_parser.add_argument('outfolder', type=str, help='Path to output folder.')
+    indexing_parser.add_argument('--index', type=str, default="", help='Path to where index files will be written to [default is the outfolder path].')
     indexing_parser.add_argument('--min_segm', type=int, default=25, help='Threshold for minimum segment size considered.')
     indexing_parser.add_argument('--flank_size', type=int, default=1000, help='Size of genomic regions surrounding genes.')
     indexing_parser.add_argument('--small_exon_threshold', type=int, default=200, help='Considered in MAM solution even if they cont contain MEMs.')
@@ -522,10 +570,12 @@ if __name__ == '__main__':
     indexing_parser.set_defaults(which='index')
 
 
-    align_reads_parser.add_argument('ref', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')    
-    align_reads_parser.add_argument('reads', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')
-    align_reads_parser.add_argument('outfolder', type=str, help='Path to fasta file with a nucleotide sequence (e.g., gene locus) to simulate isoforms from.')   
+    align_reads_parser.add_argument('ref', type=str, help='Reference genome (fasta).')    
+    align_reads_parser.add_argument('reads', type=str, help='Path to fasta/fastq file with reads.')
+    align_reads_parser.add_argument('outfolder', type=str, help='Path to output folder.')   
     align_reads_parser.add_argument('--t', dest = 'nr_cores', type=int, default=3, help='Number of cores.')
+    align_reads_parser.add_argument('--index', type=str, default="", help='Path to where index files will be read from [default is the outfolder path].')
+    align_reads_parser.add_argument('--prefix', default="reads", type=str, help='Outfile prefix [default=reads]. "--prefix sample_X" will output a file sample_X.sam.')
     align_reads_parser.add_argument('--max_intron', type=int, default=1200000, help='Set global maximum size between mems considered in chaining solution. This is otherwise inferred from GTF file per chromosome.')
     align_reads_parser.add_argument('--reduce_read_ployA', type=int, default=8, help='Reduces polyA tails longer than X bases (default 10) in reads to 5bp before MEM finding. This helps MEM matching to spurios regions but does not affect final read alignments.')
     align_reads_parser.add_argument('--alignment_threshold', type=int, default=0.5, help='Lower threshold for considering an alignment. \
@@ -549,6 +599,8 @@ if __name__ == '__main__':
                                                                                 regions indexed by uLTRA. Note that uLTRA indexes flank regions such as 3 prime, 5 prime and (parts of) introns.')
 
     align_reads_parser.add_argument('--genomic_frac', type=float, default=0.1, help='If parameter prefilter_genomic is set, this is the threshild for fraction of aligned portion of read that is outside uLTRA indexed regions to be considered genomic (default 0.1).')
+    align_reads_parser.add_argument('--keep_temporary_files', action='store_true', help='Keeps all intermediate files used for the alignment. This parameter is manily good for bugfixing and development.')
+
 
     group2 = align_reads_parser.add_mutually_exclusive_group()
     group2.add_argument('--ont', action="store_true", help='Set parameters suitable for ONT (Currently sets: --min_mem 15, --min_acc 0.6 --alignment_threshold 0.5).')
