@@ -97,7 +97,7 @@ uLTRA pipeline [/your/full/path/to/test]/SIRV_genes.fasta  \
                /your/full/path/to/test/SIRV_genes_C_170612a.gtf  \
                [/your/full/path/to/test]/reads.fa outfolder/  [optional parameters]
 ```
-Specify the **absolute path** to the GTF-file on your system, if an otherwise `gffutils` will complain and giva a cryptic `ValueError: unknown url type:` error message. Outfile will be `outfolder/reads.sam`, unless you specify your custom prefix filename with `--prefix`.
+Specify the **absolute path** to the GTF-file on your system, otherwise `gffutils` will complain and giva a cryptic `ValueError: unknown url type:` error message. Outfile will be `outfolder/reads.sam`, unless you specify your custom prefix filename with `--prefix`.
 
 
 #### 6. (Optional) Install of MUMmer 
