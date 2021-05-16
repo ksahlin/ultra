@@ -45,10 +45,12 @@ def load_reference(args):
 
 def prep_splicing(args, refs_lengths):
     if args.index:
-        help_functions.mkdir_p(args.index)
-        database = os.path.join(args.index,'database.db')        
+        index_folder = args.index
+        help_functions.mkdir_p(index_folder)
     else:
-        database = os.path.join(args.outfolder,'database.db')
+        index_folder = args.outfolder
+
+    database = os.path.join(index_folder,'database.db')
 
     if os.path.isfile(database):
         print("Database found in directory using this one.")
@@ -82,20 +84,20 @@ def prep_splicing(args, refs_lengths):
 
     # dump to pickle here! Both graph and reference seqs
     # help_functions.pickle_dump(args, genes_to_ref, 'genes_to_ref.pickle')
-    help_functions.pickle_dump(args.index, segment_to_ref, 'segment_to_ref.pickle')
-    help_functions.pickle_dump(args.index, splices_to_transcripts, 'splices_to_transcripts.pickle')
-    help_functions.pickle_dump(args.index, transcripts_to_splices, 'transcripts_to_splices.pickle')
-    help_functions.pickle_dump(args.index, parts_to_segments, 'parts_to_segments.pickle')
-    help_functions.pickle_dump(args.index, all_splice_pairs_annotations, 'all_splice_pairs_annotations.pickle')
-    help_functions.pickle_dump(args.index, all_splice_sites_annotations, 'all_splice_sites_annotations.pickle')
-    help_functions.pickle_dump(args.index, segment_id_to_choordinates, 'segment_id_to_choordinates.pickle')
-    help_functions.pickle_dump(args.index, segment_to_gene, 'segment_to_gene.pickle')
-    help_functions.pickle_dump(args.index, gene_to_small_segments, 'gene_to_small_segments.pickle')
-    help_functions.pickle_dump(args.index, flank_choordinates, 'flank_choordinates.pickle')
-    help_functions.pickle_dump(args.index, max_intron_chr, 'max_intron_chr.pickle')
-    help_functions.pickle_dump(args.index, exon_choordinates_to_id, 'exon_choordinates_to_id.pickle')
-    help_functions.pickle_dump(args.index, chr_to_id, 'chr_to_id.pickle')
-    help_functions.pickle_dump(args.index, id_to_chr, 'id_to_chr.pickle')
+    help_functions.pickle_dump(index_folder, segment_to_ref, 'segment_to_ref.pickle')
+    help_functions.pickle_dump(index_folder, splices_to_transcripts, 'splices_to_transcripts.pickle')
+    help_functions.pickle_dump(index_folder, transcripts_to_splices, 'transcripts_to_splices.pickle')
+    help_functions.pickle_dump(index_folder, parts_to_segments, 'parts_to_segments.pickle')
+    help_functions.pickle_dump(index_folder, all_splice_pairs_annotations, 'all_splice_pairs_annotations.pickle')
+    help_functions.pickle_dump(index_folder, all_splice_sites_annotations, 'all_splice_sites_annotations.pickle')
+    help_functions.pickle_dump(index_folder, segment_id_to_choordinates, 'segment_id_to_choordinates.pickle')
+    help_functions.pickle_dump(index_folder, segment_to_gene, 'segment_to_gene.pickle')
+    help_functions.pickle_dump(index_folder, gene_to_small_segments, 'gene_to_small_segments.pickle')
+    help_functions.pickle_dump(index_folder, flank_choordinates, 'flank_choordinates.pickle')
+    help_functions.pickle_dump(index_folder, max_intron_chr, 'max_intron_chr.pickle')
+    help_functions.pickle_dump(index_folder, exon_choordinates_to_id, 'exon_choordinates_to_id.pickle')
+    help_functions.pickle_dump(index_folder, chr_to_id, 'chr_to_id.pickle')
+    help_functions.pickle_dump(index_folder, id_to_chr, 'id_to_chr.pickle')
 
     # tiling_segment_id_to_choordinates, tiling_segment_to_gene, tiling_segment_to_ref, tiling_parts_to_segments, tiling_gene_to_small_segments = tiling_structures # unpacking tiling structures
     # help_functions.pickle_dump(args, tiling_segment_id_to_choordinates, 'tiling_segment_id_to_choordinates.pickle')
@@ -505,7 +507,7 @@ def align_reads(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description="uLTRA -- Align and classify long transcriptomic reads based on colinear chaining algorithms to gene regions")
-    parser.add_argument('--version', action='version', version='%(prog)s 0.0.3.1')
+    parser.add_argument('--version', action='version', version='%(prog)s 0.0.3.2')
 
     subparsers = parser.add_subparsers(help='Subcommands for eaither constructing a graph, or align reads')
     # parser.add_argument("-v", help='Different subcommands for eaither constructing a graph, or align reads')
