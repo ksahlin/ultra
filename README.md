@@ -165,7 +165,7 @@ You can set a custom location of where to get the index from using `--index [PAT
 Performs all the steps in one
 
 ```
-uLTRA pipeline genome.fasta annotation.gtf reads.fa outfolder/  [parameters]
+uLTRA pipeline genome.fasta /full/path/to/annotation.gtf reads.fa outfolder/  [parameters]
 ```
 
 #### Output
