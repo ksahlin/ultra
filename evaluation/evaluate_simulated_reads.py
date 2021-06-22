@@ -258,7 +258,7 @@ def get_alignment_classifications(true_exon_sites, aligned_exon_sites, correct_d
                 for i in range(len(exons_true)):
                     (true_start, true_stop) = exons_true[i]
                     (aln_start, aln_stop) = exons_aligned[i]
-                    tmp_diff = max(math.fabs(true_start - aln_start), math.fabs(true_stop - aln_stop) )
+                    tmp_diff = max(math.fabs(true_start - (aln_start - 1) ), math.fabs(true_stop - (aln_stop - 1) ) ) # SAM file is 1-indexed, hence we do (aln_start - 1) and (aln_stop - 1)
                     
                     if tmp_diff <= correct_dist_threshold:
                         correct_count_exon_sizes[true_stop-true_start + 1] += 1
