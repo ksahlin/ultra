@@ -145,12 +145,12 @@ def prep_seqs(args, refs, refs_lengths):
 
     not_in_ref = set(chr_to_id.keys()) - set(refs.keys())
     if not_in_ref:
-        print("Warning: Detected {0} sequences that are in annotation but not in reference fasta. Using only sequences present in fasta. The following annotations cannot be detected:\n".format(len(not_in_ref)))
+        print("Warning: Detected {0} sequences that are in annotation but not in reference fasta. Using only sequences present in fasta. The following sequences cannot be detected in reference fasta:\n".format(len(not_in_ref)))
         for s in not_in_ref:
             print(s)
 
     if not_in_annot:
-        print("Warning: Detected {0} sequences in reference fasta that are not in annotation. Will not be able to infer annotations from alignments on the following reference sequences:\n".format(len(not_in_annot)))
+        print("Warning: Detected {0} sequences in reference fasta that are not in annotation:\n".format(len(not_in_annot)))
         for s in not_in_annot:
             print(s, "with length:{0}".format(len(refs[s])))
     # ref_part_sequences, ref_flank_sequences = augmented_gene.get_part_sequences_from_choordinates(parts_to_segments, flank_choordinates, refs_id)
