@@ -258,8 +258,9 @@ def get_alignment_classifications(true_exon_sites, aligned_exon_sites, correct_d
                 for i in range(len(exons_true)):
                     (true_start, true_stop) = exons_true[i]
                     (aln_start, aln_stop) = exons_aligned[i]
-                    # print(true_start - aln_start, true_stop - aln_stop)
-                    tmp_diff = max(math.fabs(true_start - (aln_start + 1)), math.fabs(true_stop - aln_stop) ) # (aln_start + 1) to mkae 1-based coordinate because biomart is 1 based
+                    print(true_start - aln_start, true_stop - aln_stop)
+                    # tmp_diff = max(math.fabs(true_start - (aln_start + 1)), math.fabs(true_stop - aln_stop) ) # (aln_start + 1) to make 1-based coordinate because biomart is 1 based (for annotated datasets ENS and SIM_ANN)
+                    tmp_diff = max(math.fabs(true_start - aln_start), math.fabs(true_stop - aln_stop) ) # For SIM_NIC dataset which we simulate ourselves
                     
                     if tmp_diff <= correct_dist_threshold:
                         correct_count_exon_sizes[true_stop-true_start + 1] += 1
@@ -518,7 +519,7 @@ if __name__ == '__main__':
     parser.add_argument('--infer_genes', action= "store_true", help='Include pairwise alignment of original and corrected read.')
     parser.add_argument('--load_database', action= "store_true", help='Load already computed splice junctions and transcript annotations instead of constructing a new database.')
     parser.add_argument('--simulated', action= "store_true", help='Adds extra analysis that can be done for simulated data since known true locations.')
-    parser.add_argument('--correct_diff', type=int, default=0, help='Adds extra analysis that can be done for simulated data since known true locations.')
+    parser.add_argument('--correct_diff', type=int, default=1, help='Adds extra analysis that can be done for simulated data since known true locations.')
 
     # parser.add_argument('--align', action= "store_true", help='Include pairwise alignment of original and corrected read.')
 
