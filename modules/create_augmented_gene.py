@@ -439,9 +439,15 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segme
 
         assert active_start <= exon.start - 1
 
-    # addig the very last flank at the last chromosome in the annotation
-    # chr_length = refs_lengths[chr_name]
-    chr_length = refs_lengths.get(chr_name, active_stop + 2*flank_size) # if key 'chr_name' is not present in refs_lengths (i.e. in reference fasta), it means that we will not use the annotations to this chromosome anyway so value does not matter..
+    if i > 0:
+        # addig the very last flank at the last chromosome in the annotation
+        # chr_length = refs_lengths[chr_name]
+        chr_length = refs_lengths.get(chr_name, active_stop + 2*flank_size) # if key 'chr_name' is not present in refs_lengths (i.e. in reference fasta), it means that we will not use the annotations to this chromosome anyway so value does not matter..
+    else:
+        print("No record was read from the GTF file! This is likely because of a misformatting issue. For example, check so that 'exon', 'transcript', and 'gene' are found in column 3.")
+        print("Stopping here.")
+        sys.exit()
+
     # to avoid flank intervals of length 0
     if active_stop < chr_length:
         flank_name = array("L", [chr_id, max(0, active_stop), min(chr_length, active_stop + 2*flank_size)]).tobytes()
@@ -509,7 +515,7 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segme
             all_splice_sites_annotations[chr_id].add(transcript_exons[0][0])
             all_splice_sites_annotations[chr_id].add(transcript_exons[-1][-1])
         else:
-            print("Something is wrong with transcript annotation: {0} on gene: {1}, and could not be added. Check that the gene ID and transcript ID is not the same!".format(transcript.id, transcript.seqid))
+            print("Something is wrong with transcript annotation: {0} on gene: {1}, and could not be added. Check so that the gene ID and transcript ID are not the same!".format(transcript.id, transcript.seqid))
             # sys.exit()
     print("min_intron:", min_intron)
     # sys.exit()
