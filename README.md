@@ -152,13 +152,11 @@ uLTRA index genome.fasta  /full/path/to/annotation.gtf  outfolder/  [parameters]
 For example
 
 ```
-uLTRA align genome.fasta reads.[fa/fq] outfolder/  --ont --t 48   # ONT cDNA reads using 48 cores
-uLTRA align genome.fasta reads.[fa/fq] outfolder/  --isoseq --t 48 # PacBio isoseq reads
-uLTRA align genome.fasta reads.[fa/fq] outfolder/  --k 14  --t 48 # PacBio dRNA reads or reads with >10-12% error rate
+uLTRA align genome.fasta reads.[fa/fq] outfolder/  --ont --t 8   # ONT cDNA reads using 8 cores
+uLTRA align genome.fasta reads.[fa/fq] outfolder/  --isoseq --t 8 # PacBio isoseq reads
 ```
 
-You can set a custom location of where to get the index from using `--index [PATH]`. Otherwise, uLTRA will try to read the index from the `outfolder/` by default.
-
+You can set a custom location of where to get the index from using `--index [PATH]`. Otherwise, uLTRA will try to read the index from the `outfolder/` by default. The aligned reads will be written to `outfolder/reads.sam` unless `--prefix` is set. For example, `--prefix sample_X` will output the reads in `outfolder/sample_X.sam`.
 
 ### Pipeline
 
