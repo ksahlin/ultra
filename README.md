@@ -5,14 +5,6 @@ uLTRA is a tool for splice alignment of long transcriptomic reads to a genome, g
 
 uLTRA is distributed as a python package supported on Linux / OSX with python v>=3.4. [![Build Status](https://travis-ci.org/ksahlin/uLTRA.svg?branch=master)](https://travis-ci.org/ksahlin/uLTRA).
 
-### New since v0.0.2
-Since v0.0.2, uLTRA can be used as an **end-to-end aligner for annotation and detection of novel genes or isoforms** (default mode). This is because uLTRA (>=v0.0.2) now incorporates [minimap2](https://github.com/lh3/minimap2). [minimap2](https://github.com/lh3/minimap2) is run upon start of uLTRA, and the results are used both for (i) not aligning reads with uLTRA which had a primary alignment to regions not indexed by uLTRA (e.g. genomic regions or unannotated genes) and (ii) to consult at end of program which aligner had a better fit (based on cigar) of the primary alignment and chose this alignment to be primary. uLTRA still uses its own alignment algorithm to align to and around all annotated gene regions. uLTRA can therefore, at worst, be seen as an advanced wrapper around minimap2 that refines alignments around annotated regions. See updated `CREDITS` when using this version. uLTRA can still be used as a stand alone aligner as presented in our [paper](https://academic.oup.com/bioinformatics/advance-article/doi/10.1093/bioinformatics/btab540/6327681) by specifying `--disable_mm2`.
-
-### New since v0.0.3
-
-uLTRA now uses less than half of the memory used in previous versions and is about 20% faster.
-
-
 
 Table of Contents
 =================
@@ -31,9 +23,14 @@ Table of Contents
 
 
 INSTALLATION
-----------------
+=================
+
+There is a [bioconda recipe](https://bioconda.github.io/recipes/ultra_bioinformatics/README.html), [docker image](quay.io/biocontainers/ultra_bioinformatics:0.0.3.3--pyh5e36f6f_1), and a [singularity container](https://depot.galaxyproject.org/singularity/ultra_bioinformatics:0.0.3.3--pyh5e36f6f_1) of uLTRA created by [sguizard](https://github.com/sguizard). You can use, e.g., the bioconda recipe for an easy automated installation. 
+
+If (in the future) a newer version of uLTRA is not available through bioconda (or you simply want more control of/customize your installation), alternative ways of installations are provided below.
 
 ## Using conda
+
 Conda is the preferred way to install uLTRA. You can either clone this repository and 
 run the script `INSTALL.sh` or you can perform step 1-6 below manually for more control.
 
@@ -132,7 +129,7 @@ cd uLTRA
 
 
 USAGE
--------
+=================
 
 uLTRA can be used with either PacBio Iso-Seq or ONT cDNA/dRNA reads. 
 
@@ -200,5 +197,18 @@ LICENCE
 ----------------
 
 GPL v3.0, see [LICENSE.txt](https://github.com/ksahlin/uLTRA/blob/master/LICENCE.txt).
+
+
+VERSION INFO
+---------------
+
+### New since v0.0.3
+
+uLTRA now uses less than half of the memory used in previous versions and is about 20% faster.
+
+### New since v0.0.2
+Since v0.0.2, uLTRA can be used as an **end-to-end aligner for annotation and detection of novel genes or isoforms** (default mode). This is because uLTRA (>=v0.0.2) now incorporates [minimap2](https://github.com/lh3/minimap2). [minimap2](https://github.com/lh3/minimap2) is run upon start of uLTRA, and the results are used both for (i) not aligning reads with uLTRA which had a primary alignment to regions not indexed by uLTRA (e.g. genomic regions or unannotated genes) and (ii) to consult at end of program which aligner had a better fit (based on cigar) of the primary alignment and chose this alignment to be primary. uLTRA still uses its own alignment algorithm to align to and around all annotated gene regions. uLTRA can therefore, at worst, be seen as an advanced wrapper around minimap2 that refines alignments around annotated regions. See updated `CREDITS` when using this version. uLTRA can still be used as a stand alone aligner as presented in our [paper](https://academic.oup.com/bioinformatics/advance-article/doi/10.1093/bioinformatics/btab540/6327681) by specifying `--disable_mm2`.
+
+
 
 
