@@ -400,8 +400,8 @@ def align_single(reads, refs_lengths, args,  batch_number):
     auxillary_data = import_data(args)
     # import time
     # time.sleep(10000)
-    mems_path =  os.path.join( args.outfolder, "mummer_mems_batch_{0}.txt".format(batch_number) )
-    mems_path_rc =  os.path.join( args.outfolder, "mummer_mems_batch_{0}_rc.txt".format(batch_number) )
+    mems_path =  os.path.join( args.outfolder, "seeds_batch_{0}.txt".format(batch_number) )
+    mems_path_rc =  os.path.join( args.outfolder, "seeds_batch_{0}_rc.txt".format(batch_number) )
     nlog_n_instance_counter = 0
     quadratic_instance_counter = 0
     max_global_intron = args.max_intron
