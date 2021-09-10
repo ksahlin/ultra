@@ -22,7 +22,7 @@ import pysam
 import multiprocessing as mp
 from multiprocessing import Pool
 from collections import defaultdict
-
+# from collections import OrderedDict
 
 # from modules import create_splice_graph as splice_graph
 # from modules import graph_chainer 
@@ -201,19 +201,40 @@ def batch(dictionary, size, batch_type):
     
     return batches
 
-    # for i, (acc, seq) in enumerate(dictionary.items()):
-    #     if i > 0 and i % size == 0:
-    #         batches.append(sub_dict)
-    #         sub_dict = {}
-    #         sub_dict[acc] = seq
-    #     else:
-    #         sub_dict[acc] = seq
 
-    # if i/size != 0:
-    #     sub_dict[acc] = seq
-    #     batches.append(sub_dict)
-    
-    # return batches
+def strobemap_batching(reads, STROBEMAP_BATCH_SIZE, nr_cores):
+    batches = []
+    for j in range(nr_cores):
+        batches.append({})
+
+    # read_idx_to_thread_map = {}
+    # for i in range(len(reads)):
+    #     if i % STROBEMAP_BATCH_SIZE == 0:
+    #         if i > 0: # remove already parsed reads
+    #             remaining_reads -= min(STROBEMAP_BATCH_SIZE, remaining_reads)
+    #     for j in range(remaining_reads):
+
+    remaining_reads = len(reads)
+    for i, (acc, seq) in enumerate(reads.items()):
+        if i % STROBEMAP_BATCH_SIZE == 0:
+            if i > 0: # remove already parsed reads
+                remaining_reads -= min(STROBEMAP_BATCH_SIZE, remaining_reads)
+            min_strobemap_thread_split_size = min(STROBEMAP_BATCH_SIZE, remaining_reads) // nr_cores
+            max_strobemap_thread_split_size = math.ceil((min(STROBEMAP_BATCH_SIZE, remaining_reads) / nr_cores))
+            idx_cutoff = min(STROBEMAP_BATCH_SIZE, remaining_reads) % nr_cores
+            print(min_strobemap_thread_split_size,max_strobemap_thread_split_size)
+
+        idx_in_curr_batch = (i % STROBEMAP_BATCH_SIZE)
+        if idx_in_curr_batch < idx_cutoff * max_strobemap_thread_split_size:
+            thread_id = idx_in_curr_batch // max_strobemap_thread_split_size
+        else:
+            tmp = idx_in_curr_batch - idx_cutoff * max_strobemap_thread_split_size
+            thread_id = idx_cutoff + tmp // min_strobemap_thread_split_size
+
+        print(acc, thread_id, idx_in_curr_batch)
+        batches[thread_id][acc] = seq
+    return batches  
+
 
 def check_alignment_fit(aln_ultra, aln_other):
     """
@@ -355,9 +376,10 @@ def align_reads(args):
             # print(help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA))
             reads_tmp.write('>{0}\n{1}\n'.format(acc, help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5)))
         reads_tmp.close()
-        mem_wrapper.find_nams_strobemap(args.outfolder, args.reads_tmp, ref_path, args.outfolder, args.nr_cores)
+        args.reads_tmp = reads_tmp.name
+        mem_wrapper.find_nams_strobemap(args.outfolder, args.reads_tmp, ref_path, args.outfolder, args.nr_cores, args.min_mem)
         print("Time for StrobeMap to find NAMs:{0} seconds.".format(time()-mummer_start))
-    else:
+    else: # Use slaMEM
         if args.nr_cores == 1:
             print("Processing reads for MEM finding")
             reads_tmp = open(os.path.join(args.outfolder, 'reads_tmp.fq'), 'w')
@@ -369,7 +391,7 @@ def align_reads(args):
             args.reads_tmp = reads_tmp.name
             print("Finished processing reads for MEM finding ")
 
-            mummer_out_path =  os.path.join( args.outfolder, "mummer_mems_batch_-1.txt" )
+            mummer_out_path =  os.path.join( args.outfolder, "seeds_batch_-1.txt" )
             print("Running MEM finding forward") 
             mem_wrapper.find_mems_slamem(args.outfolder, args.reads_tmp, ref_path, mummer_out_path, args.min_mem)
             print("Completed MEM finding forward")
@@ -384,12 +406,12 @@ def align_reads(args):
             args.reads_rc = reads_rc.name
             print("Finished processing reverse complement reads for MEM finding")
 
-            mummer_out_path =  os.path.join(args.outfolder, "mummer_mems_batch_-1_rc.txt" )
+            mummer_out_path =  os.path.join(args.outfolder, "seeds_batch_-1_rc.txt" )
             print("Running MEM finding reverse")
             mem_wrapper.find_mems_slamem(args.outfolder, args.reads_rc, ref_path, mummer_out_path, args.min_mem)
             print("Completed MEM finding reverse")
         
-        else:
+        else: # multiprocess with slaMEM
             reads = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r'))}
             total_nt = sum([len(seq) for seq in reads.values() ])
             batch_size = int(total_nt/int(args.nr_cores) + 1)
@@ -413,8 +435,8 @@ def align_reads(args):
                 
                 read_batch = read_batch_temp_file.name
                 read_batch_rc = read_batch_temp_file_rc.name
-                mummer_batch_out_path =  os.path.join( args.outfolder, "mummer_mems_batch_{0}.txt".format(i) )
-                mummer_batch_out_path_rc =  os.path.join(args.outfolder, "mummer_mems_batch_{0}_rc.txt".format(i) )
+                mummer_batch_out_path =  os.path.join( args.outfolder, "seeds_batch_{0}.txt".format(i) )
+                mummer_batch_out_path_rc =  os.path.join(args.outfolder, "seeds_batch_{0}_rc.txt".format(i) )
                 batch_args.append( (args.outfolder, read_batch, ref_path, mummer_batch_out_path, args.min_mem ) )
                 batch_args.append( (args.outfolder, read_batch_rc, ref_path, mummer_batch_out_path_rc, args.min_mem ) )
 
@@ -433,36 +455,73 @@ def align_reads(args):
 
 
     print("Starting aligning reads.")
+    if args.use_NAM_seeds:
+        if args.nr_cores == 1:
+            reads = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r'))}
+            classifications, alignment_outfile_name = align.align_single(reads, refs_id_lengths, args, -1)
+        else:
+            # OrderedDict # dicts are ordered from python v3.6 and above. 
+            # One can use OrderedDict for compatibility with python v 3.4-3.5
+            reads = {acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r'))}
+            # batch reads and mems up: divide reads by  nr_cores to get batch size
+            # then write to separate SAM-files with a batch index, 
+            # finally merge sam file by simple cat in terminal 
+            aligning_start = time()
+            # batch_size = int(len(reads)/int(args.nr_cores) + 1)
+            STROBEMAP_BATCH_SIZE=500000
+            read_batches = strobemap_batching(reads, STROBEMAP_BATCH_SIZE, int(args.nr_cores))
+            print('Nr reads:', len(reads), "nr batches:", len(read_batches), [len(b) for b in read_batches])
+            classifications, alignment_outfiles = align.align_parallel(read_batches, refs_id_lengths, args)
+        
+            print("Time to align reads:{0} seconds.".format(time()-aligning_start))
 
-    if args.nr_cores == 1:
-        reads = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r'))}
-        classifications, alignment_outfile_name = align.align_single(reads, refs_id_lengths, args, -1)
-    else:
-        # batch reads and mems up: divide reads by  nr_cores to get batch size
-        # then write to separate SAM-files with a batch index, 
-        # finally merge sam file by simple cat in terminal 
-        aligning_start = time()
-        batch_size = int(len(reads)/int(args.nr_cores) + 1)
-        # read_batches = batch(reads, batch_size)
-        print('Nr reads:', len(reads), "nr batches:", len(read_batches), [len(b) for b in read_batches])
-        classifications, alignment_outfiles = align.align_parallel(read_batches, refs_id_lengths, args)
-    
-        print("Time to align reads:{0} seconds.".format(time()-aligning_start))
+            # Combine samfiles produced from each batch
+            combine_start = time()
+            # print(refs_lengths)
+            alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, args.prefix+".sam"), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
 
-        # Combine samfiles produced from each batch
-        combine_start = time()
-        # print(refs_lengths)
-        alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, args.prefix+".sam"), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
+            for f in alignment_outfiles:
+                samfile = pysam.AlignmentFile(f, "r")
+                for read in samfile.fetch():
+                    alignment_outfile.write(read)
+                samfile.close()
 
-        for f in alignment_outfiles:
-            samfile = pysam.AlignmentFile(f, "r")
-            for read in samfile.fetch():
-                alignment_outfile.write(read)
-            samfile.close()
+            alignment_outfile.close()
+            alignment_outfile_name = alignment_outfile.filename
+            print("Time to merge SAM-files:{0} seconds.".format(time() - combine_start))
 
-        alignment_outfile.close()
-        alignment_outfile_name = alignment_outfile.filename
-        print("Time to merge SAM-files:{0} seconds.".format(time() - combine_start))
+    else: # Use slaMEM
+        if args.nr_cores == 1:
+            reads = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r'))}
+            classifications, alignment_outfile_name = align.align_single(reads, refs_id_lengths, args, -1)
+        else:
+            # batch reads and mems up: divide reads by  nr_cores to get batch size
+            # then write to separate SAM-files with a batch index, 
+            # finally merge sam file by simple cat in terminal 
+            aligning_start = time()
+            batch_size = int(len(reads)/int(args.nr_cores) + 1)
+            # read_batches = batch(reads, batch_size)
+            print('Nr reads:', len(reads), "nr batches:", len(read_batches), [len(b) for b in read_batches])
+            classifications, alignment_outfiles = align.align_parallel(read_batches, refs_id_lengths, args)
+        
+            print("Time to align reads:{0} seconds.".format(time()-aligning_start))
+
+            # Combine samfiles produced from each batch
+            combine_start = time()
+            # print(refs_lengths)
+            alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, args.prefix+".sam"), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
+
+            for f in alignment_outfiles:
+                samfile = pysam.AlignmentFile(f, "r")
+                for read in samfile.fetch():
+                    alignment_outfile.write(read)
+                samfile.close()
+
+            alignment_outfile.close()
+            alignment_outfile_name = alignment_outfile.filename
+            print("Time to merge SAM-files:{0} seconds.".format(time() - combine_start))
+
+
 
     # need to merge genomic/unindexed alignments with the uLTRA-aligned alignments
     if not args.disable_mm2:
@@ -494,7 +553,7 @@ def align_reads(args):
 
     if not args.keep_temporary_files:
         print("Deleting temporary files...")
-        # mum = os.path.join(args.outfolder, "mummer_mems*")
+        seeds = glob.glob(os.path.join(args.outfolder, "seeds_*"))
         mum = glob.glob(os.path.join(args.outfolder, "mummer*"))
         sla = glob.glob(os.path.join(args.outfolder, "slamem*"))
         reads_tmp = glob.glob(os.path.join(args.outfolder, "reads_batch*"))
@@ -509,7 +568,7 @@ def align_reads(args):
         f6 = os.path.join(args.outfolder, "reads_rc.fq")
         f7 = os.path.join(args.outfolder, "reads_tmp.fq")
         misc_files = [f1,f2,f3,f4,f5,f6,f7]
-        for f in mum + sla + reads_tmp + minimap_tmp + ultra_tmp+ misc_files:
+        for f in seeds + mum + sla + reads_tmp + minimap_tmp + ultra_tmp+ misc_files:
             if os.path.isfile(f):
                 os.remove(f)
                 print("removed:", f)
