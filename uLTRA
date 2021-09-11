@@ -222,7 +222,7 @@ def strobemap_batching(reads, STROBEMAP_BATCH_SIZE, nr_cores):
             min_strobemap_thread_split_size = min(STROBEMAP_BATCH_SIZE, remaining_reads) // nr_cores
             max_strobemap_thread_split_size = math.ceil((min(STROBEMAP_BATCH_SIZE, remaining_reads) / nr_cores))
             idx_cutoff = min(STROBEMAP_BATCH_SIZE, remaining_reads) % nr_cores
-            print(min_strobemap_thread_split_size,max_strobemap_thread_split_size)
+            # print(min_strobemap_thread_split_size,max_strobemap_thread_split_size)
 
         idx_in_curr_batch = (i % STROBEMAP_BATCH_SIZE)
         if idx_in_curr_batch < idx_cutoff * max_strobemap_thread_split_size:
@@ -231,7 +231,7 @@ def strobemap_batching(reads, STROBEMAP_BATCH_SIZE, nr_cores):
             tmp = idx_in_curr_batch - idx_cutoff * max_strobemap_thread_split_size
             thread_id = idx_cutoff + tmp // min_strobemap_thread_split_size
 
-        print(acc, thread_id, idx_in_curr_batch)
+        # print(acc, thread_id, idx_in_curr_batch)
         batches[thread_id][acc] = seq
     return batches  
 
@@ -641,6 +641,8 @@ if __name__ == '__main__':
     indexing_parser.add_argument('--disable_infer', action='store_true', help='Makes splice creation step much faster. Thes parameter can be set if gene and transcript name fields are provided in gtf file.')
     indexing_parser.add_argument('--min_mem', type=int, default=17, help='Threshold for minimum mem size considered.')
     indexing_parser.add_argument('--mask_threshold', type=int, default=200, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
+    indexing_parser.add_argument('--use_NAM_seeds', action='store_true', help='Activate this is you plan to align with parameter --use_NAM_seeds. Will inactivate masking in the indexing step.')
+
     indexing_parser.set_defaults(which='index')
 
 
@@ -694,6 +696,7 @@ if __name__ == '__main__':
         parser.print_help()
         sys.exit()
 
+
     if args.which == 'align_reads' or args.which == 'pipeline':
         args.mm2_ksize = 15
         if args.ont:
@@ -706,6 +709,12 @@ if __name__ == '__main__':
             args.min_acc = 0.8
             # args.alignment_threshold = 0.5
 
+    if args.use_NAM_seeds: # Override som parameters. We dont need to mask abundant k-mers as stringently as we are using Strobemer seeds (NAMs)
+        args.mask_threshold = 200
+        # when --use_NAM_seeds is set, min_mem will only dictate the k-mers to mask.
+        # minimal strobemer length is here 9 + 6 + 9 for two 9bp strobes = 24 
+        # so we set min_mem to 24 when masking
+        args.min_mem = 20 
 
     if args.which == 'index':
         refs, refs_lengths = load_reference(args)
