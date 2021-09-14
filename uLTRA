@@ -714,7 +714,7 @@ if __name__ == '__main__':
         # when --use_NAM_seeds is set, min_mem will only dictate the k-mers to mask.
         # minimal strobemer length is here 9 + 6 + 9 for two 9bp strobes = 24 
         # so we set min_mem to 24 when masking
-        args.min_mem = 20 
+        args.min_mem = 25
 
     if args.which == 'index':
         refs, refs_lengths = load_reference(args)
