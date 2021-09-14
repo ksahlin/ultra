@@ -47,9 +47,9 @@ def find_nams_strobemap(outfolder, read_path, refs_path, out_path, nr_cores, min
     stderr_file = open(os.path.join(outfolder, "strobemap_stderr.1") , "w")
     stdout_file = open(os.path.join(outfolder, "strobemap_stdout.1") , "w")
     try: # slaMEM throws error if no MEMs are found in any of the sequences
-        subprocess.check_call([ 'StrobeMap', '-n' , "2", '-k' , "9", '-w' , "30", '-t', str(nr_cores), '-s', '-o', outfolder, refs_path, read_path ], stdout=stdout_file, stderr=stderr_file)
+        subprocess.check_call([ 'StrobeMap', '-n' , "2", '-k' , '11', '-v' , "15", '-w' , "45", '-t', str(nr_cores), '-s', '-o', outfolder, refs_path, read_path ], stdout=stdout_file, stderr=stderr_file)
         print("Using StrobeMap")
-        print([ 'StrobeMap', '-n' , "2", '-k' , "9", '-w' , "30", '-t', str(nr_cores), '-s', '-o', outfolder, refs_path, read_path ])
+        print([ 'StrobeMap', '-n' , "2", '-k' , '11', '-v' , "15", '-w' , "45", '-t', str(nr_cores), '-s', '-o', outfolder, refs_path, read_path ])
     except:
         find_mems_slamem(outfolder, read_path, refs_path, out_path, min_mem)
         print("An unexpected error happend in StrobeMap, check error log at:", stderr_file)
