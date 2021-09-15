@@ -710,11 +710,6 @@ if __name__ == '__main__':
             args.min_acc = 0.8
             # args.alignment_threshold = 0.5
 
-    if args.use_NAM_seeds: # Override some parameters. We dont need to mask abundant k-mers since StrobeMap and strobemer seeds (NAMs)
-        args.mask_threshold = 200
-        # Disable maksing, StrobeMap has internal parameter -C
-        # to decide maximum abundance of strobemer to consider for NAM finding 
-        args.min_mem = 2**32
 
     if args.which == 'index':
         refs, refs_lengths = load_reference(args)
