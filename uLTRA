@@ -160,9 +160,10 @@ def prep_seqs(args, refs, refs_lengths):
     ref_part_sequences = augmented_gene.get_sequences_from_choordinates(parts_to_segments, refs_id)
     ref_flank_sequences = augmented_gene.get_sequences_from_choordinates(flank_choordinates, refs_id)
 
+    if not args.use_NAM_seeds: # not using NAM seeds
+        augmented_gene.mask_abundant_kmers(ref_part_sequences, args.min_mem, args.mask_threshold)
+        augmented_gene.mask_abundant_kmers(ref_flank_sequences, args.min_mem, args.mask_threshold)
 
-    augmented_gene.mask_abundant_kmers(ref_part_sequences, args.min_mem, args.mask_threshold)
-    augmented_gene.mask_abundant_kmers(ref_flank_sequences, args.min_mem, args.mask_threshold)
     # print([unpack('LLL',t) for t in ref_flank_sequences.keys()])
     ref_part_sequences = help_functions.update_nested(ref_part_sequences, ref_flank_sequences)
     ref_segment_sequences = augmented_gene.get_sequences_from_choordinates(segment_id_to_choordinates, refs_id)
@@ -628,7 +629,7 @@ if __name__ == '__main__':
                                                                                 regions indexed by uLTRA. Note that uLTRA indexes flank regions such as 3 prime, 5 prime and (parts of) introns.')
     pipeline_parser.add_argument('--genomic_frac', type=float, default=0.1, help='If parameter prefilter_genomic is set, this is the threshild for fraction of aligned portion of read that is outside uLTRA indexed regions to be considered genomic (default 0.1).')
     pipeline_parser.add_argument('--keep_temporary_files', action='store_true', help='Keeps all intermediate files used for the alignment. This parameter is manily good for bugfixing and development.')
-    pipeline_parser.add_argument('--use_NAM_seeds', action='store_true', help='Uses StrobeMap to generate NAM seeds instead of MEMs. Uses StrobeMap parameters ./StrobeMap -n 2 -k 9 -w 30 -t [nr_cores] -s.')
+    pipeline_parser.add_argument('--use_NAM_seeds', action='store_true', help='Uses StrobeMap to generate NAM seeds instead of MEMs. Uses StrobeMap parameters ./StrobeMap -n 2 -k 15 -v 16 -w 45 -t [nr_cores] -s.')
     pipeline_parser.set_defaults(which='pipeline')
 
     indexing_parser.add_argument('ref', type=str, help='Reference genome (fasta)')
@@ -676,7 +677,7 @@ if __name__ == '__main__':
 
     align_reads_parser.add_argument('--genomic_frac', type=float, default=0.1, help='If parameter prefilter_genomic is set, this is the threshild for fraction of aligned portion of read that is outside uLTRA indexed regions to be considered genomic (default 0.1).')
     align_reads_parser.add_argument('--keep_temporary_files', action='store_true', help='Keeps all intermediate files used for the alignment. This parameter is manily good for bugfixing and development.')
-    align_reads_parser.add_argument('--use_NAM_seeds', action='store_true', help='Uses StrobeMap to generate NAM seeds instead of MEMs. Uses StrobeMap parameters ./StrobeMap -n 2 -k 9 -w 30 -t [nr_cores] -s.')
+    align_reads_parser.add_argument('--use_NAM_seeds', action='store_true', help='Uses StrobeMap to generate NAM seeds instead of MEMs. Uses StrobeMap parameters ./StrobeMap -n 2 -k 15 -v 16 -w 45 -t [nr_cores] -s.')
 
 
     group2 = align_reads_parser.add_mutually_exclusive_group()
@@ -709,12 +710,11 @@ if __name__ == '__main__':
             args.min_acc = 0.8
             # args.alignment_threshold = 0.5
 
-    if args.use_NAM_seeds: # Override som parameters. We dont need to mask abundant k-mers as stringently as we are using Strobemer seeds (NAMs)
+    if args.use_NAM_seeds: # Override some parameters. We dont need to mask abundant k-mers since StrobeMap and strobemer seeds (NAMs)
         args.mask_threshold = 200
-        # when --use_NAM_seeds is set, min_mem will only dictate the k-mers to mask.
-        # minimal strobemer length is here 9 + 6 + 9 for two 9bp strobes = 24 
-        # so we set min_mem to 24 when masking
-        args.min_mem = 25
+        # Disable maksing, StrobeMap has internal parameter -C
+        # to decide maximum abundance of strobemer to consider for NAM finding 
+        args.min_mem = 2**32
 
     if args.which == 'index':
         refs, refs_lengths = load_reference(args)
