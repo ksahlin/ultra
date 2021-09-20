@@ -25,9 +25,9 @@ Table of Contents
 INSTALLATION
 =================
 
-There is a [bioconda recipe](https://bioconda.github.io/recipes/ultra_bioinformatics/README.html), [docker image](quay.io/biocontainers/ultra_bioinformatics:0.0.3.3--pyh5e36f6f_1), and a [singularity container](https://depot.galaxyproject.org/singularity/ultra_bioinformatics:0.0.3.3--pyh5e36f6f_1) of uLTRA created by [sguizard](https://github.com/sguizard). You can use, e.g., the bioconda recipe for an easy automated installation. 
+There is a [bioconda recipe](https://bioconda.github.io/recipes/ultra_bioinformatics/README.html), [docker image](quay.io/biocontainers/ultra_bioinformatics:0.0.3.3--pyh5e36f6f_1), and a [singularity container](https://depot.galaxyproject.org/singularity/ultra_bioinformatics:0.0.3.3--pyh5e36f6f_1) of uLTRA v0.0.3.3 created by [sguizard](https://github.com/sguizard). You can use, e.g., the bioconda recipe for an easy automated installation. 
 
-If (in the future) a newer version of uLTRA is not available through bioconda (or you simply want more control of/customize your installation), alternative ways of installations are provided below.
+If a newer version of uLTRA is not available through bioconda (or you simply want more control of/customize your installation), alternative ways of installations are provided below. Current version of uLTRA is 0.0.4 (see changelog at end of this readme).
 
 ## Using conda
 
@@ -97,7 +97,18 @@ uLTRA pipeline [/your/full/path/to/test]/SIRV_genes.fasta  \
 Specify the **absolute path** to the GTF-file on your system, otherwise `gffutils` will complain and giva a cryptic `ValueError: unknown url type:` error message. Outfile will be `outfolder/reads.sam`, unless you specify your custom prefix filename with `--prefix`.
 
 
-#### 6. (Optional) Install of MUMmer 
+#### 6.(Optional) Install of StrobeMap
+
+Using NAM seeds is new since version 0.0.4. It can reduce runtime, disk usage and provide fixe memory usage to default MEM findin. See changlog at end of this file. [StrobeMap](https://github.com/ksahlin/strobemers) is installed on Linux with:
+
+```
+wget https://github.com/ksahlin/strobemers/raw/main/strobemers_cpp/binaries/Linux/StrobeMap-0.0.2
+mv StrobeMap-0.0.2 StrobeMap
+chmod +x StrobeMap
+```
+Place the generated binary `StrobeMap` in your path.
+
+#### 7. (Optional) Install of MUMmer 
 
 While MUMmer is usually not used in uLTRA, if slaMEM [fails](https://github.com/fjdf/slaMEM/issues/3), uLTRA falls back on finding MEMs with MUMmer until the slaMEM bug has been fixed. In this corner case, uLTRA needs MUMmer avaialble in the path. MUMmer can be installed with
 
@@ -117,7 +128,7 @@ Make sure the below-listed dependencies are installed (installation links below)
 * [intervaltree](https://github.com/chaimleib/intervaltree/tree/master/intervaltree)
 * [gffutils](https://pythonhosted.org/gffutils/)
 * [slaMEM](https://github.com/fjdf/slaMEM)
-
+* [StrobeMap](https://github.com/ksahlin/strobemers)
 
 With these dependencies installed. Run
 
@@ -201,6 +212,12 @@ GPL v3.0, see [LICENSE.txt](https://github.com/ksahlin/uLTRA/blob/master/LICENCE
 
 VERSION INFO
 ---------------
+
+### New since v0.0.4
+
+An option `--use_NAM_seeds` is added. This parameter changes the seeding of MEMs to NAMs (with strobemers). If `--use_NAM_seeds` is specified, uLTRA calls `StrobeMap` (binary can be acquired [here](https://github.com/ksahlin/strobemers/tree/main/strobemers_cpp/binaries) and put `StrobeMap` in your path). This seeding results in uLTRA being faster (say 15-70% depending on the number of threads) and produces much smaller intermediate files. However, the memory usage is fixed ~80-90Gb for human genome (regardless of number of cores/threads). This makes `--use_NAM_seeds` less memory consuming than the default option (MEMs) when uLTRA is given about 18 cores or more (with `--t`), and more memory consuming than the default version for `t < 18`. The alignment accuracy is largely the same. Using NAM seeds decreases the accuracy of about 0.01%-0.05% compared to MEMs (i.e., 1 alignment in every 2,000-10,000). Accuracy was measured as all correct splice sites identified compared to at least one nt alignment offset from a correct splice site.
+
+Due to the "fixed" memory usage, faster runtime, and smaller intermediate file size, I recommend `--use_NAM_seeds` option for large datasets (>5M reads) if running on nodes with more than 20 cores.
 
 ### New since v0.0.3
 
