@@ -39,12 +39,13 @@ run the script `INSTALL.sh` or you can perform step 1-6 below manually for more 
 ```
 git clone https://github.com/ksahlin/uLTRA.git --depth 1
 cd uLTRA
-./INSTALL.sh [An install directory in your PATH]
+./INSTALL.sh <install_directory>
 ```
 The install script is tested in bash environment and will perform the steps 1-6 below automatically
-for you. 
+for you. You need to have the `<install_directory>` included in your shell path or, alternatively, move the binaries 
+`minimap2`, `slaMEM`, `StrobeMap` installed to `<install_directory>` to a directory in your path so that uLTRA finds them.
 
-You need to activate the conda environment "ultra" to run uLTRA as:
+To run uLTRA, you need to activate the conda environment "ultra":
 ```
 conda activate ultra
 ```
@@ -99,7 +100,7 @@ Specify the **absolute path** to the GTF-file on your system, otherwise `gffutil
 
 #### 6.(Optional) Install of StrobeMap
 
-Using NAM seeds is new since version 0.0.4. It can reduce runtime, disk usage and provide fixe memory usage to default MEM findin. See changlog at end of this file. [StrobeMap](https://github.com/ksahlin/strobemers) is installed on Linux with:
+Using NAM seeds is new since version 0.0.4. It can reduce runtime, disk usage and provide fixed memory usage to default MEM finding. See changlog at end of this README. [StrobeMap](https://github.com/ksahlin/strobemers) is installed on Linux with:
 
 ```
 wget https://github.com/ksahlin/strobemers/raw/main/strobemers_cpp/binaries/Linux/StrobeMap-0.0.2
