@@ -28,6 +28,10 @@ install:
   - cd minimap2 && make
   - export PATH=$PATH:$PWD/
   - cd ..
+  - wget https://github.com/ksahlin/strobemers/raw/main/strobemers_cpp/binaries/Linux/StrobeMap-0.0.2
+  - mv StrobeMap-0.0.2 StrobeMap
+  - chmod +x StrobeMap
+  - export PATH=$PATH:$PWD/
   - conda install --yes -c bioconda mummer
   #- conda install --yes -c conda-forge -c bioconda medaka openblas==0.3.3 spoa racon minimap2
 
