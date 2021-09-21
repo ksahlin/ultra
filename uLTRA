@@ -22,7 +22,7 @@ import pysam
 import multiprocessing as mp
 from multiprocessing import Pool
 from collections import defaultdict
-
+# from collections import OrderedDict
 
 # from modules import create_splice_graph as splice_graph
 # from modules import graph_chainer 
@@ -160,9 +160,10 @@ def prep_seqs(args, refs, refs_lengths):
     ref_part_sequences = augmented_gene.get_sequences_from_choordinates(parts_to_segments, refs_id)
     ref_flank_sequences = augmented_gene.get_sequences_from_choordinates(flank_choordinates, refs_id)
 
+    if not args.use_NAM_seeds: # not using NAM seeds
+        augmented_gene.mask_abundant_kmers(ref_part_sequences, args.min_mem, args.mask_threshold)
+        augmented_gene.mask_abundant_kmers(ref_flank_sequences, args.min_mem, args.mask_threshold)
 
-    augmented_gene.mask_abundant_kmers(ref_part_sequences, args.min_mem, args.mask_threshold)
-    augmented_gene.mask_abundant_kmers(ref_flank_sequences, args.min_mem, args.mask_threshold)
     # print([unpack('LLL',t) for t in ref_flank_sequences.keys()])
     ref_part_sequences = help_functions.update_nested(ref_part_sequences, ref_flank_sequences)
     ref_segment_sequences = augmented_gene.get_sequences_from_choordinates(segment_id_to_choordinates, refs_id)
@@ -201,19 +202,40 @@ def batch(dictionary, size, batch_type):
     
     return batches
 
-    # for i, (acc, seq) in enumerate(dictionary.items()):
-    #     if i > 0 and i % size == 0:
-    #         batches.append(sub_dict)
-    #         sub_dict = {}
-    #         sub_dict[acc] = seq
-    #     else:
-    #         sub_dict[acc] = seq
 
-    # if i/size != 0:
-    #     sub_dict[acc] = seq
-    #     batches.append(sub_dict)
-    
-    # return batches
+def strobemap_batching(reads, STROBEMAP_BATCH_SIZE, nr_cores):
+    batches = []
+    for j in range(nr_cores):
+        batches.append({})
+
+    # read_idx_to_thread_map = {}
+    # for i in range(len(reads)):
+    #     if i % STROBEMAP_BATCH_SIZE == 0:
+    #         if i > 0: # remove already parsed reads
+    #             remaining_reads -= min(STROBEMAP_BATCH_SIZE, remaining_reads)
+    #     for j in range(remaining_reads):
+
+    remaining_reads = len(reads)
+    for i, (acc, seq) in enumerate(reads.items()):
+        if i % STROBEMAP_BATCH_SIZE == 0:
+            if i > 0: # remove already parsed reads
+                remaining_reads -= min(STROBEMAP_BATCH_SIZE, remaining_reads)
+            min_strobemap_thread_split_size = min(STROBEMAP_BATCH_SIZE, remaining_reads) // nr_cores
+            max_strobemap_thread_split_size = math.ceil((min(STROBEMAP_BATCH_SIZE, remaining_reads) / nr_cores))
+            idx_cutoff = min(STROBEMAP_BATCH_SIZE, remaining_reads) % nr_cores
+            # print(min_strobemap_thread_split_size,max_strobemap_thread_split_size)
+
+        idx_in_curr_batch = (i % STROBEMAP_BATCH_SIZE)
+        if idx_in_curr_batch < idx_cutoff * max_strobemap_thread_split_size:
+            thread_id = idx_in_curr_batch // max_strobemap_thread_split_size
+        else:
+            tmp = idx_in_curr_batch - idx_cutoff * max_strobemap_thread_split_size
+            thread_id = idx_cutoff + tmp // min_strobemap_thread_split_size
+
+        # print(acc, thread_id, idx_in_curr_batch)
+        batches[thread_id][acc] = seq
+    return batches  
+
 
 def check_alignment_fit(aln_ultra, aln_other):
     """
@@ -347,7 +369,7 @@ def align_reads(args):
     #############################################
 
     mummer_start = time()
-    if args.nr_cores == 1:
+    if args.use_NAM_seeds:
         print("Processing reads for MEM finding")
         reads_tmp = open(os.path.join(args.outfolder, 'reads_tmp.fq'), 'w')
         for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r')):
@@ -356,103 +378,151 @@ def align_reads(args):
             reads_tmp.write('>{0}\n{1}\n'.format(acc, help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5)))
         reads_tmp.close()
         args.reads_tmp = reads_tmp.name
-        print("Finished processing reads for MEM finding ")
+        mem_wrapper.find_nams_strobemap(args.outfolder, args.reads_tmp, ref_path, args.outfolder, args.nr_cores, args.min_mem)
+        print("Time for StrobeMap to find NAMs:{0} seconds.".format(time()-mummer_start))
+    else: # Use slaMEM
+        if args.nr_cores == 1:
+            print("Processing reads for MEM finding")
+            reads_tmp = open(os.path.join(args.outfolder, 'reads_tmp.fq'), 'w')
+            for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r')):
+                # print(seq)
+                # print(help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA))
+                reads_tmp.write('>{0}\n{1}\n'.format(acc, help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5)))
+            reads_tmp.close()
+            args.reads_tmp = reads_tmp.name
+            print("Finished processing reads for MEM finding ")
 
-        mummer_out_path =  os.path.join( args.outfolder, "mummer_mems_batch_-1.txt" )
-        print("Running MEM finding forward") 
-        mem_wrapper.find_mems_slamem(args.outfolder, args.reads_tmp, ref_path, mummer_out_path, args.min_mem)
-        print("Completed MEM finding forward")
+            mummer_out_path =  os.path.join( args.outfolder, "seeds_batch_-1.txt" )
+            print("Running MEM finding forward") 
+            mem_wrapper.find_mems_slamem(args.outfolder, args.reads_tmp, ref_path, mummer_out_path, args.min_mem)
+            print("Completed MEM finding forward")
 
-        print("Processing reverse complement reads for MEM finding")
-        reads_rc = open(os.path.join(args.outfolder, 'reads_rc.fq'), 'w')
-        for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r')):
-            # print(help_functions.reverse_complement(seq))
-            # print(help_functions.remove_read_polyA_ends(help_functions.reverse_complement(seq), args.reduce_read_ployA))
-            reads_rc.write('>{0}\n{1}\n'.format(acc, help_functions.reverse_complement(help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5))))
-        reads_rc.close()
-        args.reads_rc = reads_rc.name
-        print("Finished processing reverse complement reads for MEM finding")
+            print("Processing reverse complement reads for MEM finding")
+            reads_rc = open(os.path.join(args.outfolder, 'reads_rc.fq'), 'w')
+            for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r')):
+                # print(help_functions.reverse_complement(seq))
+                # print(help_functions.remove_read_polyA_ends(help_functions.reverse_complement(seq), args.reduce_read_ployA))
+                reads_rc.write('>{0}\n{1}\n'.format(acc, help_functions.reverse_complement(help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5))))
+            reads_rc.close()
+            args.reads_rc = reads_rc.name
+            print("Finished processing reverse complement reads for MEM finding")
 
-        mummer_out_path =  os.path.join(args.outfolder, "mummer_mems_batch_-1_rc.txt" )
-        print("Running MEM finding reverse")
-        mem_wrapper.find_mems_slamem(args.outfolder, args.reads_rc, ref_path, mummer_out_path, args.min_mem)
-        print("Completed MEM finding reverse")
-    
-    else:
-        reads = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r'))}
-        total_nt = sum([len(seq) for seq in reads.values() ])
-        batch_size = int(total_nt/int(args.nr_cores) + 1)
-        print("batch nt:", batch_size, "total_nt:", total_nt)
-        read_batches = batch(reads, batch_size, 'nt')
+            mummer_out_path =  os.path.join(args.outfolder, "seeds_batch_-1_rc.txt" )
+            print("Running MEM finding reverse")
+            mem_wrapper.find_mems_slamem(args.outfolder, args.reads_rc, ref_path, mummer_out_path, args.min_mem)
+            print("Completed MEM finding reverse")
         
-        #### TMP remove not to call mummer repeatedly when bugfixing #### 
-        
-        batch_args = []
-        for i, read_batch_dict in enumerate(read_batches):
-            print(len(read_batch_dict))
-            read_batch_temp_file = open(os.path.join(args.outfolder, "reads_batch_{0}.fa".format(i)), "w")
-            read_batch_temp_file_rc = open(os.path.join(args.outfolder, "reads_batch_{0}_rc.fa".format(i) ), "w")
-            for acc, seq in read_batch_dict.items():
-                read_batch_temp_file.write('>{0}\n{1}\n'.format(acc, help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5)))
-            read_batch_temp_file.close()
-
-            for acc, seq in read_batch_dict.items():
-                read_batch_temp_file_rc.write('>{0}\n{1}\n'.format(acc, help_functions.reverse_complement(help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5))))
-            read_batch_temp_file_rc.close()
+        else: # multiprocess with slaMEM
+            reads = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r'))}
+            total_nt = sum([len(seq) for seq in reads.values() ])
+            batch_size = int(total_nt/int(args.nr_cores) + 1)
+            print("batch nt:", batch_size, "total_nt:", total_nt)
+            read_batches = batch(reads, batch_size, 'nt')
             
-            read_batch = read_batch_temp_file.name
-            read_batch_rc = read_batch_temp_file_rc.name
-            mummer_batch_out_path =  os.path.join( args.outfolder, "mummer_mems_batch_{0}.txt".format(i) )
-            mummer_batch_out_path_rc =  os.path.join(args.outfolder, "mummer_mems_batch_{0}_rc.txt".format(i) )
-            batch_args.append( (args.outfolder, read_batch, ref_path, mummer_batch_out_path, args.min_mem ) )
-            batch_args.append( (args.outfolder, read_batch_rc, ref_path, mummer_batch_out_path_rc, args.min_mem ) )
+            #### TMP remove not to call mummer repeatedly when bugfixing #### 
+            
+            batch_args = []
+            for i, read_batch_dict in enumerate(read_batches):
+                print(len(read_batch_dict))
+                read_batch_temp_file = open(os.path.join(args.outfolder, "reads_batch_{0}.fa".format(i)), "w")
+                read_batch_temp_file_rc = open(os.path.join(args.outfolder, "reads_batch_{0}_rc.fa".format(i) ), "w")
+                for acc, seq in read_batch_dict.items():
+                    read_batch_temp_file.write('>{0}\n{1}\n'.format(acc, help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5)))
+                read_batch_temp_file.close()
 
-        pool = Pool(processes=int(args.nr_cores))
-        results = pool.starmap(mem_wrapper.find_mems_slamem, batch_args)
-        pool.close()
-        pool.join() 
-        
-        ####################################################################
+                for acc, seq in read_batch_dict.items():
+                    read_batch_temp_file_rc.write('>{0}\n{1}\n'.format(acc, help_functions.reverse_complement(help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5))))
+                read_batch_temp_file_rc.close()
+                
+                read_batch = read_batch_temp_file.name
+                read_batch_rc = read_batch_temp_file_rc.name
+                mummer_batch_out_path =  os.path.join( args.outfolder, "seeds_batch_{0}.txt".format(i) )
+                mummer_batch_out_path_rc =  os.path.join(args.outfolder, "seeds_batch_{0}_rc.txt".format(i) )
+                batch_args.append( (args.outfolder, read_batch, ref_path, mummer_batch_out_path, args.min_mem ) )
+                batch_args.append( (args.outfolder, read_batch_rc, ref_path, mummer_batch_out_path_rc, args.min_mem ) )
 
-        pass
+            pool = Pool(processes=int(args.nr_cores))
+            results = pool.starmap(mem_wrapper.find_mems_slamem, batch_args)
+            pool.close()
+            pool.join() 
+            
+            ####################################################################
 
-    print("Time for mummer to find mems:{0} seconds.".format(time()-mummer_start))
+
+        print("Time for slaMEM to find mems:{0} seconds.".format(time()-mummer_start))
     #############################################
     #############################################
     #############################################
 
 
     print("Starting aligning reads.")
+    if args.use_NAM_seeds:
+        if args.nr_cores == 1:
+            reads = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r'))}
+            classifications, alignment_outfile_name = align.align_single(reads, refs_id_lengths, args, -1)
+        else:
+            # OrderedDict # dicts are ordered from python v3.6 and above. 
+            # One can use OrderedDict for compatibility with python v 3.4-3.5
+            reads = {acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r'))}
+            # batch reads and mems up: divide reads by  nr_cores to get batch size
+            # then write to separate SAM-files with a batch index, 
+            # finally merge sam file by simple cat in terminal 
+            aligning_start = time()
+            # batch_size = int(len(reads)/int(args.nr_cores) + 1)
+            STROBEMAP_BATCH_SIZE=500000
+            read_batches = strobemap_batching(reads, STROBEMAP_BATCH_SIZE, int(args.nr_cores))
+            print('Nr reads:', len(reads), "nr batches:", len(read_batches), [len(b) for b in read_batches])
+            classifications, alignment_outfiles = align.align_parallel(read_batches, refs_id_lengths, args)
+        
+            print("Time to align reads:{0} seconds.".format(time()-aligning_start))
 
-    if args.nr_cores == 1:
-        reads = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r'))}
-        classifications, alignment_outfile_name = align.align_single(reads, refs_id_lengths, args, -1)
-    else:
-        # batch reads and mems up: divide reads by  nr_cores to get batch size
-        # then write to separate SAM-files with a batch index, 
-        # finally merge sam file by simple cat in terminal 
-        aligning_start = time()
-        batch_size = int(len(reads)/int(args.nr_cores) + 1)
-        # read_batches = batch(reads, batch_size)
-        print('Nr reads:', len(reads), "nr batches:", len(read_batches), [len(b) for b in read_batches])
-        classifications, alignment_outfiles = align.align_parallel(read_batches, refs_id_lengths, args)
-    
-        print("Time to align reads:{0} seconds.".format(time()-aligning_start))
+            # Combine samfiles produced from each batch
+            combine_start = time()
+            # print(refs_lengths)
+            alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, args.prefix+".sam"), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
 
-        # Combine samfiles produced from each batch
-        combine_start = time()
-        # print(refs_lengths)
-        alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, args.prefix+".sam"), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
+            for f in alignment_outfiles:
+                samfile = pysam.AlignmentFile(f, "r")
+                for read in samfile.fetch():
+                    alignment_outfile.write(read)
+                samfile.close()
 
-        for f in alignment_outfiles:
-            samfile = pysam.AlignmentFile(f, "r")
-            for read in samfile.fetch():
-                alignment_outfile.write(read)
-            samfile.close()
+            alignment_outfile.close()
+            alignment_outfile_name = alignment_outfile.filename
+            print("Time to merge SAM-files:{0} seconds.".format(time() - combine_start))
 
-        alignment_outfile.close()
-        alignment_outfile_name = alignment_outfile.filename
-        print("Time to merge SAM-files:{0} seconds.".format(time() - combine_start))
+    else: # Use slaMEM
+        if args.nr_cores == 1:
+            reads = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r'))}
+            classifications, alignment_outfile_name = align.align_single(reads, refs_id_lengths, args, -1)
+        else:
+            # batch reads and mems up: divide reads by  nr_cores to get batch size
+            # then write to separate SAM-files with a batch index, 
+            # finally merge sam file by simple cat in terminal 
+            aligning_start = time()
+            batch_size = int(len(reads)/int(args.nr_cores) + 1)
+            # read_batches = batch(reads, batch_size)
+            print('Nr reads:', len(reads), "nr batches:", len(read_batches), [len(b) for b in read_batches])
+            classifications, alignment_outfiles = align.align_parallel(read_batches, refs_id_lengths, args)
+        
+            print("Time to align reads:{0} seconds.".format(time()-aligning_start))
+
+            # Combine samfiles produced from each batch
+            combine_start = time()
+            # print(refs_lengths)
+            alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, args.prefix+".sam"), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
+
+            for f in alignment_outfiles:
+                samfile = pysam.AlignmentFile(f, "r")
+                for read in samfile.fetch():
+                    alignment_outfile.write(read)
+                samfile.close()
+
+            alignment_outfile.close()
+            alignment_outfile_name = alignment_outfile.filename
+            print("Time to merge SAM-files:{0} seconds.".format(time() - combine_start))
+
+
 
     # need to merge genomic/unindexed alignments with the uLTRA-aligned alignments
     if not args.disable_mm2:
@@ -484,7 +554,7 @@ def align_reads(args):
 
     if not args.keep_temporary_files:
         print("Deleting temporary files...")
-        # mum = os.path.join(args.outfolder, "mummer_mems*")
+        seeds = glob.glob(os.path.join(args.outfolder, "seeds_*"))
         mum = glob.glob(os.path.join(args.outfolder, "mummer*"))
         sla = glob.glob(os.path.join(args.outfolder, "slamem*"))
         reads_tmp = glob.glob(os.path.join(args.outfolder, "reads_batch*"))
@@ -499,7 +569,7 @@ def align_reads(args):
         f6 = os.path.join(args.outfolder, "reads_rc.fq")
         f7 = os.path.join(args.outfolder, "reads_tmp.fq")
         misc_files = [f1,f2,f3,f4,f5,f6,f7]
-        for f in mum + sla + reads_tmp + minimap_tmp + ultra_tmp+ misc_files:
+        for f in seeds + mum + sla + reads_tmp + minimap_tmp + ultra_tmp+ misc_files:
             if os.path.isfile(f):
                 os.remove(f)
                 print("removed:", f)
@@ -510,7 +580,7 @@ def align_reads(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description="uLTRA -- Align and classify long transcriptomic reads based on colinear chaining algorithms to gene regions")
-    parser.add_argument('--version', action='version', version='%(prog)s 0.0.3.3')
+    parser.add_argument('--version', action='version', version='%(prog)s 0.0.4')
 
     subparsers = parser.add_subparsers(help='Subcommands for eaither constructing a graph, or align reads')
     # parser.add_argument("-v", help='Different subcommands for eaither constructing a graph, or align reads')
@@ -520,7 +590,7 @@ if __name__ == '__main__':
     align_reads_parser = subparsers.add_parser('align', help="Classify and align reads with colinear chaining to DAGs")
 
     pipeline_parser.add_argument('ref', type=str, help='Reference genome (fasta)')
-    pipeline_parser.add_argument('gtf', type=str, help='Path to gtf or gtf file with gene models.')
+    pipeline_parser.add_argument('gtf', type=str, help='Path to gtf file with gene models.')
     pipeline_parser.add_argument('reads', type=str, help='Path to fasta/fastq file with reads.')
     pipeline_parser.add_argument('outfolder', type=str, help='Path to output folder.')
     group = pipeline_parser.add_mutually_exclusive_group()
@@ -552,26 +622,27 @@ if __name__ == '__main__':
                                                                             This prevents time blowup for reads from highly repetitive regions (e.g. some genomic intra-priming reads)\
                                                                             but may limit all posible alignments to annotated gene families with many highly similar copies.')
     pipeline_parser.add_argument('--ignore_rc', action='store_true', help='Ignore to map to reverse complement.')
-    pipeline_parser.add_argument('--disable_infer', action='store_true', help='Makes splice creation step much faster. Thes parameter can be set if gene and transcript name fields are provided in gtf file.')
-    pipeline_parser.add_argument('--mask_threshold', type=int, default=200, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
+    pipeline_parser.add_argument('--disable_infer', action='store_true', help='Makes splice creation step much faster. This parameter can be set if gene and transcript name fields are provided in gtf file, which is standard for the ones provided by GENCODE and Ensemble.')
+    pipeline_parser.add_argument('--mask_threshold', type=int, default=200, help='Abundance occurance threshold. Masks more abundant k-mers than this threshold before MEM finding.')
     pipeline_parser.add_argument('--disable_mm2', action='store_true', help='Disables utilizing minimap2 to detect genomic primary alignments and to quality check uLTRAs primary alignments.\
                                                                                 An alignment is classified as genomic if more than --genomic_frac (default 10%%) of its aligned length is outside\
                                                                                 regions indexed by uLTRA. Note that uLTRA indexes flank regions such as 3 prime, 5 prime and (parts of) introns.')
     pipeline_parser.add_argument('--genomic_frac', type=float, default=0.1, help='If parameter prefilter_genomic is set, this is the threshild for fraction of aligned portion of read that is outside uLTRA indexed regions to be considered genomic (default 0.1).')
     pipeline_parser.add_argument('--keep_temporary_files', action='store_true', help='Keeps all intermediate files used for the alignment. This parameter is manily good for bugfixing and development.')
-
+    pipeline_parser.add_argument('--use_NAM_seeds', action='store_true', help='Uses StrobeMap to generate NAM seeds instead of MEMs. Uses StrobeMap parameters ./StrobeMap -n 2 -k 15 -v 16 -w 45 -t [nr_cores] -s.')
     pipeline_parser.set_defaults(which='pipeline')
 
     indexing_parser.add_argument('ref', type=str, help='Reference genome (fasta)')
     indexing_parser.add_argument('gtf', type=str, help='Path to gtf or gtf file with gene models.')
     indexing_parser.add_argument('outfolder', type=str, help='Path to output folder.')
-    indexing_parser.add_argument('--index', type=str, default="", help='Path to where index files will be written to [default is the outfolder path].')
     indexing_parser.add_argument('--min_segm', type=int, default=25, help='Threshold for minimum segment size considered.')
     indexing_parser.add_argument('--flank_size', type=int, default=1000, help='Size of genomic regions surrounding genes.')
     indexing_parser.add_argument('--small_exon_threshold', type=int, default=200, help='Considered in MAM solution even if they cont contain MEMs.')
     indexing_parser.add_argument('--disable_infer', action='store_true', help='Makes splice creation step much faster. Thes parameter can be set if gene and transcript name fields are provided in gtf file.')
     indexing_parser.add_argument('--min_mem', type=int, default=17, help='Threshold for minimum mem size considered.')
-    indexing_parser.add_argument('--mask_threshold', type=int, default=200, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
+    indexing_parser.add_argument('--mask_threshold', type=int, default=200, help='Abundance occurance threshold. Masks more abundant k-mers than this threshold before MEM finding.')
+    indexing_parser.add_argument('--use_NAM_seeds', action='store_true', help='Activate this is you plan to align with parameter --use_NAM_seeds. Will inactivate masking in the indexing step.')
+
     indexing_parser.set_defaults(which='index')
 
 
@@ -596,7 +667,7 @@ if __name__ == '__main__':
                                                                             but may limit all posible alignments to annotated gene families with many highly similar copies.')
 
     align_reads_parser.add_argument('--ignore_rc', action='store_true', help='Ignore to map to reverse complement.')
-    align_reads_parser.add_argument('--min_mem', type=int, default=17, help='Threshold for what is counted as varation/intron in alignment as opposed to deletion.')
+    align_reads_parser.add_argument('--min_mem', type=int, default=17, help='Threshold for minimum mem size considered.')
     align_reads_parser.add_argument('--min_acc', type=float, default=0.5, help='Minimum accuracy of MAM to be considered in mam chaining.')
 
     align_reads_parser.add_argument('--disable_mm2', action='store_true', help='Disables utilizing minimap2 to detect genomic primary alignments and to quality check uLTRAs primary alignments.\
@@ -605,6 +676,7 @@ if __name__ == '__main__':
 
     align_reads_parser.add_argument('--genomic_frac', type=float, default=0.1, help='If parameter prefilter_genomic is set, this is the threshild for fraction of aligned portion of read that is outside uLTRA indexed regions to be considered genomic (default 0.1).')
     align_reads_parser.add_argument('--keep_temporary_files', action='store_true', help='Keeps all intermediate files used for the alignment. This parameter is manily good for bugfixing and development.')
+    align_reads_parser.add_argument('--use_NAM_seeds', action='store_true', help='Uses StrobeMap to generate NAM seeds instead of MEMs. Uses StrobeMap parameters ./StrobeMap -n 2 -k 15 -v 16 -w 45 -t [nr_cores] -s.')
 
 
     group2 = align_reads_parser.add_mutually_exclusive_group()
@@ -624,6 +696,7 @@ if __name__ == '__main__':
         parser.print_help()
         sys.exit()
 
+
     if args.which == 'align_reads' or args.which == 'pipeline':
         args.mm2_ksize = 15
         if args.ont:
@@ -638,6 +711,7 @@ if __name__ == '__main__':
 
 
     if args.which == 'index':
+        args.index = args.outfolder
         refs, refs_lengths = load_reference(args)
         prep_splicing(args, refs_lengths)
         prep_seqs(args, refs, refs_lengths)
