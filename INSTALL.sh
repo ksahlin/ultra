@@ -78,6 +78,23 @@ echo
 conda install --yes -c bioconda mummer
 
 
+# Install NAM finder StrobeMap 
+echo
+echo "INSTALLING StrobeMap"
+echo
+installed_strobemap=false
+if ! command -v StrobeMap &> /dev/null
+then
+    echo "StrobeMap not found in path. Installing"
+    wget https://github.com/ksahlin/strobemers/raw/main/strobemers_cpp/binaries/Linux/StrobeMap-0.0.2
+    mv StrobeMap-0.0.2 StrobeMap
+    chmod +x StrobeMap
+    mv StrobeMap $path
+    echo
+    echo "I have put StrobeMap in:" $path " please make sure that this folder is in your path, or move StrobeMap to your path"
+    echo
+    installed_strobemap=true
+fi
 
 
 echo
@@ -86,6 +103,8 @@ echo
 
 cd ..
 uLTRA pipeline $PWD/test/SIRV_genes.fasta $PWD/test/SIRV_genes_C_170612a.gtf $PWD/test/reads.fa temp_install_ultra/
+
+uLTRA pipeline --use_NAM_seeds $PWD/test/SIRV_genes.fasta $PWD/test/SIRV_genes_C_170612a.gtf $PWD/test/reads.fa temp_install_ultra_nam_seeds/
 
 echo
 echo "INSTALLATION WORKED"
@@ -103,6 +122,10 @@ fi
 
 if [ "$installed_slamem" = true ] ; then
     echo "I have put slaMEM in:" $path " please make sure that this folder is in your path, or move slaMEM to your path"
+fi
+
+if [ "$installed_strobemap" = true ] ; then
+    echo "I have put StrobeMap in:" $path " please make sure that this folder is in your path, or move StrobeMap to your path"
 fi
 
 echo "Please activate the environment as 'conda activate ultra' before running uLTRA."
