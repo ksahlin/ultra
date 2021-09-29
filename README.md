@@ -1,9 +1,11 @@
 uLTRA
 ===========
+[![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/ultra_bioinformatics/README.html) [![Build Status](https://travis-ci.org/ksahlin/uLTRA.svg?branch=master)](https://travis-ci.org/ksahlin/uLTRA)
+
 
 uLTRA is a tool for splice alignment of long transcriptomic reads to a genome, guided by a database of exon annotations. uLTRA takes reads in fast(a/q) and a genome annotation as input and outputs a SAM-file. The SAM-file includes information on which splice sites are found and if the read is a full splice match (and to which transcript), incomplete splice match, Novel in catalog, or novel not in the catalog, as defined in [SQANTI](https://github.com/ConesaLab/SQANTI). uLTRA is particularly accurate when aligning to small exons [see some examples](https://github.com/ksahlin/ultra/tree/master/data/images). 
 
-uLTRA is distributed as a python package supported on Linux / OSX with python v>=3.4. [![Build Status](https://travis-ci.org/ksahlin/uLTRA.svg?branch=master)](https://travis-ci.org/ksahlin/uLTRA).
+uLTRA is distributed as a python package supported on Linux / OSX with python v>=3.4. 
 
 
 Table of Contents
@@ -25,7 +27,7 @@ Table of Contents
 INSTALLATION
 =================
 
-There is a [bioconda recipe](https://bioconda.github.io/recipes/ultra_bioinformatics/README.html), [docker image](quay.io/biocontainers/ultra_bioinformatics:0.0.3.3--pyh5e36f6f_1), and a [singularity container](https://depot.galaxyproject.org/singularity/ultra_bioinformatics:0.0.3.3--pyh5e36f6f_1) of uLTRA v0.0.3.3 created by [sguizard](https://github.com/sguizard). You can use, e.g., the bioconda recipe for an easy automated installation. 
+There is a [bioconda recipe](https://bioconda.github.io/recipes/ultra_bioinformatics/README.html), [docker image](https://quay.io/repository/biocontainers/ultra_bioinformatics?tab=tags), and a [singularity container](https://depot.galaxyproject.org/singularity/ultra_bioinformatics%3A0.0.4--pyh5e36f6f_1) of uLTRA v0.0.4 created by [sguizard](https://github.com/sguizard). You can use, e.g., the bioconda recipe for an easy automated installation. 
 
 If a newer version of uLTRA is not available through bioconda (or you simply want more control of/customize your installation), alternative ways of installations are provided below. Current version of uLTRA is 0.0.4 (see changelog at end of this readme).
 
