@@ -97,7 +97,8 @@ uLTRA pipeline [/your/full/path/to/test]/SIRV_genes.fasta  \
                /your/full/path/to/test/SIRV_genes_C_170612a.gtf  \
                [/your/full/path/to/test]/reads.fa outfolder/  [optional parameters]
 ```
-Specify the **absolute path** to the GTF-file on your system, otherwise `gffutils` will complain and giva a cryptic `ValueError: unknown url type:` error message. Outfile will be `outfolder/reads.sam`, unless you specify your custom prefix filename with `--prefix`.
+
+Specify the **absolute path** to the GTF-file on your system, otherwise `gffutils` will complain and giva a cryptic `ValueError: unknown url type:` error message. Outfile will be `outfolder/reads.sam`, unless you specify your custom prefix filename with `--prefix`. **Update: As from version 0.0.4.1 and upwards you don't need the absolute path.** 
 
 
 #### 6.(Optional) Install of StrobeMap
@@ -215,6 +216,10 @@ GPL v3.0, see [LICENSE.txt](https://github.com/ksahlin/uLTRA/blob/master/LICENCE
 
 VERSION INFO
 ---------------
+
+### New since v0.0.4.1
+
+Removed requirement to specify full path to GTF annotation, making implementation in [nf-core modules](https://github.com/nf-core/modules/pull/871#pullrequestreview-787413998) and pipelines easier.
 
 ### New since v0.0.4
 
