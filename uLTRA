@@ -59,13 +59,11 @@ def prep_splicing(args, refs_lengths):
         db = gffutils.FeatureDB(database, keep_order=True)
         # sys.exit()
     elif not args.disable_infer:
-        fn = gffutils.example_filename(args.gtf)
-        db = gffutils.create_db(fn, dbfn=database, force=True, keep_order=True, merge_strategy='merge', 
+        db = gffutils.create_db(args.gtf, dbfn=database, force=True, keep_order=True, merge_strategy='merge', 
                                 sort_attribute_values=True)
         db = gffutils.FeatureDB(database, keep_order=True)
     else:
-        fn = gffutils.example_filename(args.gtf)
-        db = gffutils.create_db(fn, dbfn=database, force=True, keep_order=True, merge_strategy='merge', 
+        db = gffutils.create_db(args.gtf, dbfn=database, force=True, keep_order=True, merge_strategy='merge', 
                                 sort_attribute_values=True, disable_infer_genes=True, disable_infer_transcripts=True)
         db = gffutils.FeatureDB(database, keep_order=True)
 
@@ -580,7 +578,7 @@ def align_reads(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description="uLTRA -- Align and classify long transcriptomic reads based on colinear chaining algorithms to gene regions")
-    parser.add_argument('--version', action='version', version='%(prog)s 0.0.4')
+    parser.add_argument('--version', action='version', version='%(prog)s 0.0.4.1')
 
     subparsers = parser.add_subparsers(help='Subcommands for eaither constructing a graph, or align reads')
     # parser.add_argument("-v", help='Different subcommands for eaither constructing a graph, or align reads')
