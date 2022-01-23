@@ -187,25 +187,9 @@ uLTRA outputs a SAM-file with alignments to the genome. In addition, it outputs 
 CREDITS
 ----------------
 
-Please cite [1] when using uLTRA. If you are using uLTRA v0.0.2 or later **please also cite** [minimap2](https://github.com/lh3/minimap2) as uLTRA incorporates minimap2 for alignment of some reads. For example "We aligned reads to the genome using uLTRA [1], which incorporates minimap2 [CIT].".
+Please cite [1] when using uLTRA. **Please also cite** [minimap2](https://github.com/lh3/minimap2) as uLTRA incorporates minimap2 for alignment of some genomic reads outside indexed regions. For example "We aligned reads to the genome using uLTRA [1], which incorporates minimap2 [CIT].".
 
-1. Kristoffer Sahlin, Veli Makinen. 2020. "Accurate spliced alignment of long RNA sequencing reads" [paper available here](https://academic.oup.com/bioinformatics/advance-article/doi/10.1093/bioinformatics/btab540/6327681).
-
-Bib record: 
-
-@article{10.1093/bioinformatics/btab540,
-    author = {Sahlin, Kristoffer and Mäkinen, Veli},
-    title = "{Accurate spliced alignment of long RNA sequencing reads}",
-    journal = {Bioinformatics},
-    year = {2021},
-    month = {07},
-    abstract = "{Long-read RNA sequencing technologies are establishing themselves as the primary techniques to detect novel isoforms, and many such analyses are dependent on read alignments. However, the error rate and sequencing length of the reads create new challenges for accurately aligning them, particularly around small exons.We present an alignment method uLTRA for long RNA sequencing reads based on a novel two-pass collinear chaining algorithm. We show that uLTRA produces higher accuracy over state-of-the-art aligners with substantially higher accuracy for small exons on simulated and synthetic data. On simulated data, uLTRA achieves an accuracy of about 60\\% for exons of length 10 nucleotides or smaller and close to 90\\% accuracy for exons of length between 11 to 20 nucleotides. On biological data where true read location is unknown, we show several examples where uLTRA aligns to known and novel isoforms containing small exons that are not detected with other aligners. While uLTRA obtains its accuracy using annotations, it can also be used as a wrapper around minimap2 to align reads outside annotated regions.uLTRA is available at https://github.com/ksahlin/ultra.Supplementary data are available at Bioinformatics online.}",
-    issn = {1367-4803},
-    doi = {10.1093/bioinformatics/btab540},
-    url = {https://doi.org/10.1093/bioinformatics/btab540},
-    note = {btab540},
-    eprint = {https://academic.oup.com/bioinformatics/advance-article-pdf/doi/10.1093/bioinformatics/btab540/39307625/btab540.pdf},
-}
+1. Kristoffer Sahlin, Veli Mäkinen, Accurate spliced alignment of long RNA sequencing reads, Bioinformatics, Volume 37, Issue 24, 15 December 2021, Pages 4643–4651, https://doi.org/10.1093/bioinformatics/btab540
 
 
 LICENCE
