@@ -148,6 +148,12 @@ USAGE
 
 uLTRA can be used with either PacBio Iso-Seq or ONT cDNA/dRNA reads. 
 
+Before running uLTRA, notice that it reqires a _properly formatted GTF file_. If you have a GFF file or other annotation format, it is adviced to use [AGAT](https://github.com/NBISweden/AGAT) for file conversion to GTF as many other conversion tools do not respect GTF format. For example, you can run AGAT as:
+
+```
+agat_convert_sp_gff2gtf.pl --gff annot.gff3 --gtf annot.gtf
+```
+
 
 ### Indexing
 
