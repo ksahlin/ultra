@@ -29,7 +29,7 @@ INSTALLATION
 
 There is a [bioconda recipe](https://bioconda.github.io/recipes/ultra_bioinformatics/README.html), [docker image](https://quay.io/repository/biocontainers/ultra_bioinformatics?tab=tags), and a [singularity container](https://depot.galaxyproject.org/singularity/ultra_bioinformatics%3A0.0.4--pyh5e36f6f_1) of uLTRA v0.0.4 created by [sguizard](https://github.com/sguizard). You can use, e.g., the bioconda recipe for an easy automated installation. 
 
-If a newer version of uLTRA is not available through bioconda (or you simply want more control of/customize your installation), alternative ways of installations are provided below. Current version of uLTRA is 0.0.4 (see changelog at end of this readme).
+If a newer version of uLTRA is not available through bioconda (or you simply want more control of/customize your installation), alternative ways of installations are provided below. Current version of uLTRA is 0.0.4.2 (see changelog at end of this readme).
 
 ## Using conda
 
