@@ -414,11 +414,11 @@ def align_single(reads, refs_lengths, args,  batch_number):
     # ref_exon_sequences, chr_to_id, id_to_chr, tiling_structures = auxillary_data
 
     if batch_number == -1:
-        alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, args.prefix+".sam"), "w", reference_names=list([id_to_chr[id_] for id_ in refs_lengths.keys()]), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
+        alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, args.prefix+".sam"), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
         warning_log_file = open(os.path.join(args.outfolder, "uLTRA.stderr"), "w")
 
-    else:  
-        alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, "reads_batch_{0}.sam".format(batch_number)), "w", reference_names=list([id_to_chr[id_] for id_ in refs_lengths.keys()]), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
+    else:
+        alignment_outfile = pysam.AlignmentFile( os.path.join(args.outfolder, "reads_batch_{0}.sam".format(batch_number)), "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
         warning_log_file = open(os.path.join(args.outfolder, "uLTRA_batch_{0}.stderr".format(batch_number)), "w")
 
 
@@ -586,7 +586,7 @@ def align_single(reads, refs_lengths, args,  batch_number):
                 genome_start = mam_solution[0].x
                 genome_stop = mam_solution[-1].y
                 read_alignments.append( (alignment_score, genome_start, genome_stop, read_acc, chr_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, is_rc, coverage) )
-            
+
             # else:
             #     print(i_nr_sol, mem_solution[0].x, "OK", chaining_score, mam_value, mem_solution[-1].y - mem_solution[0].x, mem_solution[0].x)    
         # if read_acc == "100:823|c8740d7a-53bd-4690-aa53-de3ebd003d20": #len(all_chainings) > 20: 
@@ -640,7 +640,7 @@ def align_single(reads, refs_lengths, args,  batch_number):
                         if alignment_score == sorted_wrt_alignement_score[1][0]:
                             map_score = 0
                         else:
-                            map_score = 60                           
+                            map_score = 60  # TODO: predict this value with formula instead.                           
                     else:
                         map_score = 60
                     classifications[read_acc] = (classification, coverage )

@@ -457,7 +457,7 @@ def align_reads(args):
     if args.use_NAM_seeds:
         if args.nr_cores == 1:
             reads = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r'))}
-            classifications, alignment_outfile_name = align.align_single(reads, refs_id_lengths, args, -1)
+            classifications, alignment_outfile_name = align.align_single(reads, refs_lengths, args, -1)
         else:
             # OrderedDict # dicts are ordered from python v3.6 and above. 
             # One can use OrderedDict for compatibility with python v 3.4-3.5
@@ -470,7 +470,7 @@ def align_reads(args):
             STROBEMAP_BATCH_SIZE=500000
             read_batches = strobemap_batching(reads, STROBEMAP_BATCH_SIZE, int(args.nr_cores))
             print('Nr reads:', len(reads), "nr batches:", len(read_batches), [len(b) for b in read_batches])
-            classifications, alignment_outfiles = align.align_parallel(read_batches, refs_id_lengths, args)
+            classifications, alignment_outfiles = align.align_parallel(read_batches, refs_lengths, args)
         
             print("Time to align reads:{0} seconds.".format(time()-aligning_start))
 
@@ -492,7 +492,7 @@ def align_reads(args):
     else: # Use slaMEM
         if args.nr_cores == 1:
             reads = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r'))}
-            classifications, alignment_outfile_name = align.align_single(reads, refs_id_lengths, args, -1)
+            classifications, alignment_outfile_name = align.align_single(reads, refs_lengths, args, -1)
         else:
             # batch reads and mems up: divide reads by  nr_cores to get batch size
             # then write to separate SAM-files with a batch index, 
@@ -501,7 +501,7 @@ def align_reads(args):
             batch_size = int(len(reads)/int(args.nr_cores) + 1)
             # read_batches = batch(reads, batch_size)
             print('Nr reads:', len(reads), "nr batches:", len(read_batches), [len(b) for b in read_batches])
-            classifications, alignment_outfiles = align.align_parallel(read_batches, refs_id_lengths, args)
+            classifications, alignment_outfiles = align.align_parallel(read_batches, refs_lengths, args)
         
             print("Time to align reads:{0} seconds.".format(time()-aligning_start))
 
@@ -578,7 +578,7 @@ def align_reads(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description="uLTRA -- Align and classify long transcriptomic reads based on colinear chaining algorithms to gene regions")
-    parser.add_argument('--version', action='version', version='%(prog)s 0.0.4.1')
+    parser.add_argument('--version', action='version', version='%(prog)s 0.0.4.2')
 
     subparsers = parser.add_subparsers(help='Subcommands for eaither constructing a graph, or align reads')
     # parser.add_argument("-v", help='Different subcommands for eaither constructing a graph, or align reads')
