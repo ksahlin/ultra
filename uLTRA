@@ -368,7 +368,7 @@ def align_reads(args):
 
     mummer_start = time()
     if args.use_NAM_seeds:
-        print("Processing reads for MEM finding")
+        print("Processing reads for NAM finding")
         reads_tmp = open(os.path.join(args.outfolder, 'reads_tmp.fq'), 'w')
         for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r')):
             # print(seq)
@@ -446,7 +446,6 @@ def align_reads(args):
             
             ####################################################################
 
-
         print("Time for slaMEM to find mems:{0} seconds.".format(time()-mummer_start))
     #############################################
     #############################################
@@ -456,20 +455,13 @@ def align_reads(args):
     print("Starting aligning reads.")
     if args.use_NAM_seeds:
         if args.nr_cores == 1:
-            reads = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r'))}
+            #reads = { acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r'))}
             classifications, alignment_outfile_name = align.align_single(reads, refs_lengths, args, -1)
         else:
-            # OrderedDict # dicts are ordered from python v3.6 and above. 
-            # One can use OrderedDict for compatibility with python v 3.4-3.5
-            reads = {acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r'))}
-            # batch reads and mems up: divide reads by  nr_cores to get batch size
-            # then write to separate SAM-files with a batch index, 
-            # finally merge sam file by simple cat in terminal 
+            # reads = {acc : seq for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r'))}
             aligning_start = time()
-            # batch_size = int(len(reads)/int(args.nr_cores) + 1)
-            STROBEMAP_BATCH_SIZE=500000
-            read_batches = strobemap_batching(reads, STROBEMAP_BATCH_SIZE, int(args.nr_cores))
-            print('Nr reads:', len(reads), "nr batches:", len(read_batches), [len(b) for b in read_batches])
+            # read_batches = strobemap_batching(reads, STROBEMAP_BATCH_SIZE, int(args.nr_cores))
+            # print('Nr reads:', len(reads), "nr batches:", len(read_batches), [len(b) for b in read_batches])
             classifications, alignment_outfiles = align.align_parallel(read_batches, refs_lengths, args)
         
             print("Time to align reads:{0} seconds.".format(time()-aligning_start))
@@ -578,7 +570,7 @@ def align_reads(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description="uLTRA -- Align and classify long transcriptomic reads based on colinear chaining algorithms to gene regions")
-    parser.add_argument('--version', action='version', version='%(prog)s 0.0.4.2')
+    parser.add_argument('--version', action='version', version='%(prog)s 0.1')
 
     subparsers = parser.add_subparsers(help='Subcommands for eaither constructing a graph, or align reads')
     # parser.add_argument("-v", help='Different subcommands for eaither constructing a graph, or align reads')
@@ -604,7 +596,7 @@ if __name__ == '__main__':
     pipeline_parser.add_argument('--flank_size', type=int, default=1000, help='Size of genomic regions surrounding genes.')
     pipeline_parser.add_argument('--max_intron', type=int, default=1200000, help='Set global maximum size between mems considered in chaining solution. This is otherwise inferred from GTF file per chromosome.')
     pipeline_parser.add_argument('--small_exon_threshold', type=int, default=200, help='Considered in MAM solution even if they cont contain MEMs.')
-    pipeline_parser.add_argument('--reduce_read_ployA', type=int, default=8, help='Reduces polyA tails longer than X bases (default 10) in reads to 5bp before MEM finding. This helps MEM matching to spurios regions but does not affect final read alignments.')
+    pipeline_parser.add_argument('--reduce_read_ployA', type=int, default=8, help='Reduces polyA tails longer than X bases (default 8) in reads to 5bp before MEM finding. This helps MEM matching to spurios regions but does not affect final read alignments.')
     pipeline_parser.add_argument('--alignment_threshold', type=int, default=0.5, help='Lower threshold for considering an alignment. \
                                                                                         Counted as the difference between total match score and total mismatch penalty. \
                                                                                         If a read has 25%% errors (under edit distance scoring), the difference between \
@@ -651,7 +643,7 @@ if __name__ == '__main__':
     align_reads_parser.add_argument('--index', type=str, default="", help='Path to where index files will be read from [default is the outfolder path].')
     align_reads_parser.add_argument('--prefix', default="reads", type=str, help='Outfile prefix [default=reads]. "--prefix sample_X" will output a file sample_X.sam.')
     align_reads_parser.add_argument('--max_intron', type=int, default=1200000, help='Set global maximum size between mems considered in chaining solution. This is otherwise inferred from GTF file per chromosome.')
-    align_reads_parser.add_argument('--reduce_read_ployA', type=int, default=8, help='Reduces polyA tails longer than X bases (default 10) in reads to 5bp before MEM finding. This helps MEM matching to spurios regions but does not affect final read alignments.')
+    align_reads_parser.add_argument('--reduce_read_ployA', type=int, default=8, help='Reduces polyA tails longer than X bases (default 8) in reads to 5bp before MEM finding. This helps MEM matching to spurios regions but does not affect final read alignments.')
     align_reads_parser.add_argument('--alignment_threshold', type=int, default=0.5, help='Lower threshold for considering an alignment. \
                                                                                         Counted as the difference between total match score and total mismatch penalty. \
                                                                                         If a read has 25%% errors (under edit distance scoring), the difference between \

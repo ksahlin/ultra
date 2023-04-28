@@ -47,14 +47,13 @@ def find_nams_strobemap(outfolder, read_path, refs_path, out_path, nr_cores, min
     stderr_file = open(os.path.join(outfolder, "strobemap_stderr.1") , "w")
     stdout_file = open(os.path.join(outfolder, "strobemap_stdout.1") , "w")
     try: # slaMEM throws error if no MEMs are found in any of the sequences
-        subprocess.check_call([ 'StrobeMap', '-n' , "2", '-k' , '10', '-v' , "11", '-w' , "35", '-C' , '500', '-L' , '1000', '-S', '-t', str(nr_cores), '-s', '-o', outfolder, refs_path, read_path ], stdout=stdout_file, stderr=stderr_file)
-        print("Using StrobeMap")
-        print([ 'StrobeMap', '-n' , "2", '-k' , '10', '-v' , "11", '-w' , "35", '-C' , '500', '-L' , '1000', '-S', '-t', str(nr_cores), '-s', '-o', outfolder, refs_path, read_path ])
+        print("Using namfinder")
+        print([ 'namfinder', '-k' , '10', '-s' , '10', '-l' , "11", '-u' , "35", '-C' , '500', '-L' , '1000', '-t', str(nr_cores), '-s', '-o', outfolder, refs_path, read_path ])
+        subprocess.check_call([ 'namfinder', '-k' , '10', '-s' , '10', '-l' , "11", '-u' , "35", '-C' , '500', '-L' , '1000', '-t', str(nr_cores), '-s', '-o', outfolder, refs_path, read_path ], stdout=stdout_file, stderr=stderr_file)
     except:
-        find_mems_slamem(outfolder, read_path, refs_path, out_path, min_mem)
-        print("An unexpected error happend in StrobeMap, check error log at:", stderr_file)
-        print("If you beileive this is a bug in StrobeMap, report an issue at: https://github.com/ksahlin/strobemers")
-        print("You can always sidestep this issue by providing another seed finder to uLTRA, i.e., remove option --use_NAM_seeds.")
+        print("An unexpected error happend in namfinder, check error log at:", stderr_file)
+        print("If you beileive this is a bug in namfinder, report an issue at: https://github.com/ksahlin/namfinder")
+        print("Avoid this issue by providing another seed finder to uLTRA, i.e., remove option --use_NAM_seeds.")
         sys.exit()
     stdout.flush()
 
