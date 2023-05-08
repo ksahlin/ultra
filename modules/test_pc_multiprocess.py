@@ -105,6 +105,20 @@ def read_seeds(seeds):
                 read_mems[chr_id].append( info_tuple )
 
 
+    # Last record
+    if curr_acc and curr_acc_rev:
+        for chr_id in list(read_mems.keys()):
+            coordinate_sorted_tuples = sorted(read_mems[chr_id], key = lambda x: x[1])
+            sorted_mems = [ mem(x,y,c,d,val,j,e_id) for j, (x, y, c, d, val, e_id) in enumerate(coordinate_sorted_tuples) ]
+            read_mems[chr_id] = sorted_mems
+
+        for chr_id in list(read_mems_rev.keys()):
+            coordinate_sorted_tuples = sorted(read_mems_rev[chr_id], key = lambda x: x[1])
+            sorted_mems = [ mem(x,y,c,d,val,j,e_id) for j, (x, y, c, d, val, e_id) in enumerate(coordinate_sorted_tuples) ]
+            read_mems_rev[chr_id] = sorted_mems
+
+        yield curr_acc, read_mems, curr_acc_rev, read_mems_rev
+
     print("READ {0} RECORDS (FW and RC counted as 2 records).".format(nr_reads))
 
 
@@ -129,7 +143,8 @@ def file_IO(input_queue, reads, seeds, output_sam_buffer, outfile_name):
     batch_id = 1
     # generate reads and their seeds
     for (acc, (seq, _)), (r_acc, read_mems, r_acc_rev, r_mems_rev) in zip(readfq(open(reads,"r")), read_seeds(seeds)):
-        # print(acc, r_acc, r_acc_rev)
+        # if acc == 'SRR13893500.92670.1':
+        #     print(acc, r_acc, r_acc_rev)
         assert acc == r_acc
 
         batch.append((acc, seq, read_mems, r_mems_rev))
@@ -140,16 +155,15 @@ def file_IO(input_queue, reads, seeds, output_sam_buffer, outfile_name):
             batch_id += 1
         read_cnt += 1
 
-        if output_sam_buffer.qsize() > 100:
+        if output_sam_buffer.qsize() >= 100:
             tot_written = write(outfile, output_sam_buffer, tot_written)
 
     # last batch
     input_queue.put((batch_id, batch))
-    tot_written = write(outfile, output_sam_buffer, tot_written)
     input_queue.put(None)
-
+    tot_written = write(outfile, output_sam_buffer, tot_written)
     print('file_IO: Tot written records:', tot_written)
-    print('file_IO: Reading records done. Tot read:', read_cnt)
+    print('file_IO: Reading records done. Tot read:', read_cnt - 1)
 
 
 def consumer(c_id, input_queue, output_sam_buffer):
