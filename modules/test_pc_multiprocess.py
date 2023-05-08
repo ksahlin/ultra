@@ -1,6 +1,7 @@
 import argparse
 import multiprocessing as mp
 from queue import Empty
+import dill as pickle
 
 from collections import namedtuple, defaultdict
 
@@ -107,75 +108,107 @@ def read_seeds(seeds):
     print("READ {0} RECORDS (FW and RC counted as 2 records).".format(nr_reads))
 
 
+def write(outfile, output_sam_buffer, tot_written):
+    rec_cnt = 0
+    while True:
+        try:
+            record = output_sam_buffer.get( False )
+            outfile.write(''.join([r for r in record]))
+            rec_cnt += 1
+            tot_written += len(record)
+        except Empty:
+            print("Wrote {0} records.".format(rec_cnt))
+            break
+    return tot_written
 
-def producer(queue, reads, seeds):
+def file_IO(input_queue, reads, seeds, output_sam_buffer, outfile_name):
+    outfile = open(outfile_name, 'w')
+    tot_written = 0
     batch = []
-    i = 1
+    read_cnt = 1
     batch_id = 1
     # generate reads and their seeds
     for (acc, (seq, _)), (r_acc, read_mems, r_acc_rev, r_mems_rev) in zip(readfq(open(reads,"r")), read_seeds(seeds)):
+        # print(acc, r_acc, r_acc_rev)
+        assert acc == r_acc
+
         batch.append((acc, seq, read_mems, r_mems_rev))
 
-        if i % 10 == 0:
-            queue.put((batch_id, batch))
+        if read_cnt % 10 == 0:
+            input_queue.put((batch_id, batch))
             batch = []
             batch_id += 1
-        i += 1
+        read_cnt += 1
 
-    queue.put(None)
-    print('Producer: Done')
+        if output_sam_buffer.qsize() > 100:
+            tot_written = write(outfile, output_sam_buffer, tot_written)
+
+    # last batch
+    input_queue.put((batch_id, batch))
+    tot_written = write(outfile, output_sam_buffer, tot_written)
+    input_queue.put(None)
+
+    print('file_IO: Tot written records:', tot_written)
+    print('file_IO: Reading records done. Tot read:', read_cnt)
 
 
-def consumer(c_id, queue):
+def consumer(c_id, input_queue, output_sam_buffer):
     while True:
-        batch = queue.get()
+        batch = input_queue.get()
         # check for stop
         if batch is None:
             # add the signal back for other consumers
-            queue.put(batch)
+            input_queue.put(batch)
             # stop running
             break
 
+        output = []
         # Simulate alignment effort
         p = 'AACGAGCTAGGTCAGGCATCACTGCGTA'
         r = 'AACGAGCTAGTTCAGGAATCACTGCGTA'
-        for i in range(100000):
-            h = sum([1 for n1, n2 in zip(p,r) if p==r])
+        for i in range(100):
+            h = sum([1 for n1, n2 in zip(p,r) if n1==n2])
+        for b in batch[1]:
+            output.append(b[0] + '\t' + p+'\t'+r+'\t'+ str(h) + '\n')
+        output_sam_buffer.put(output)
+        print('Consumer {0} got batch id {1}, size now {2}'.format(c_id, batch[0], input_queue.qsize()))
 
-        print('Consumer {0} got batch id {1}, size now {2}'.format(c_id, batch[0], queue.qsize()))
+
 
 
 class Managers:
-   def __init__(self, reads, seeds, n_proc):
+   def __init__(self, reads, seeds, outfile_name, n_proc):
     self.reads = reads
     self.seeds = seeds    
+    self.outfile_name = outfile_name    
     self.m = mp.Manager()
-    self.queue = self.m.Queue()
+    self.input_queue = self.m.Queue(200)
+    self.output_sam_buffer = self.m.Queue()
     self.n_proc = n_proc
 
    def start(self):
-     self.p = mp.Process(target=producer, args=(self.queue, self.reads, self.seeds))
+     self.p = mp.Process(target=file_IO, args=(self.input_queue, self.reads, self.seeds, self.output_sam_buffer, self.outfile_name))
      self.p.start()
-     self.workers = [mp.Process(target=consumer, args=(i, self.queue,))
+     self.workers = [mp.Process(target=consumer, args=(i, self.input_queue, self.output_sam_buffer))
                         for i in range(self.n_proc - 1)]
      for w in self.workers:
        w.start()
 
    def join(self):
-     self.p.join()
      for w in self.workers:
        w.join()
-
+     self.p.join()
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description="Parses seeds")
     parser.add_argument('nams', type=str, help='seeds')
     parser.add_argument('reads', type=str, help='reads fast(a/q)')
+    parser.add_argument('outfile', type=str, help='SAM file output')
     parser.add_argument('--t', type=int, default= 1, help='Nr processes')
     args = parser.parse_args()
 
-    m = Managers(args.reads, args.nams, args.t)
+    m = Managers(args.reads, args.nams, args.outfile, args.t)
     m.start()
     m.join()
 
