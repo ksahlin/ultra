@@ -85,8 +85,8 @@ def read_seeds(seeds):
         else:
             vals =  line.split() #11404_11606           1     11405       202
             exon_part_id = vals[0]
-            # chr_id, ref_coord_start, ref_coord_end = exon_part_id.split('^')
-            chr_id, ref_coord_start, ref_coord_end = ['1', '1', '1'] # CURRENT DUMMY LINE FOR TESTING OUTSIDE ULTRA'S FORMAT
+            chr_id, ref_coord_start, ref_coord_end = exon_part_id.split('^')
+            # chr_id, ref_coord_start, ref_coord_end = ['1', '1', '1'] # CURRENT DUMMY LINE FOR TESTING OUTSIDE ULTRA'S FORMAT
             chr_id = int(chr_id)
             mem_len = int(vals[3])
             
@@ -116,7 +116,7 @@ def read_seeds(seeds):
             coordinate_sorted_tuples = sorted(read_mems_rev[chr_id], key = lambda x: x[1])
             sorted_mems = [ mem(x,y,c,d,val,j,e_id) for j, (x, y, c, d, val, e_id) in enumerate(coordinate_sorted_tuples) ]
             read_mems_rev[chr_id] = sorted_mems
-
+        
         yield curr_acc, read_mems, curr_acc_rev, read_mems_rev
 
     print("READ {0} RECORDS (FW and RC counted as 2 records).".format(nr_reads))
@@ -124,6 +124,7 @@ def read_seeds(seeds):
 
 def write(outfile, output_sam_buffer, tot_written):
     rec_cnt = 0
+    # print('HEREEE')
     while True:
         try:
             record = output_sam_buffer.get( False )
@@ -131,7 +132,7 @@ def write(outfile, output_sam_buffer, tot_written):
             rec_cnt += 1
             tot_written += len(record)
         except Empty:
-            print("Wrote {0} records.".format(rec_cnt))
+            print("Wrote {0} batches of reads.".format(rec_cnt))
             break
     return tot_written
 
@@ -143,10 +144,7 @@ def file_IO(input_queue, reads, seeds, output_sam_buffer, outfile_name):
     batch_id = 1
     # generate reads and their seeds
     for (acc, (seq, _)), (r_acc, read_mems, r_acc_rev, r_mems_rev) in zip(readfq(open(reads,"r")), read_seeds(seeds)):
-        # if acc == 'SRR13893500.92670.1':
-        #     print(acc, r_acc, r_acc_rev)
         assert acc == r_acc
-
         batch.append((acc, seq, read_mems, r_mems_rev))
 
         if read_cnt % 10 == 0:
@@ -160,10 +158,16 @@ def file_IO(input_queue, reads, seeds, output_sam_buffer, outfile_name):
 
     # last batch
     input_queue.put((batch_id, batch))
+    # print(batch)
+    # print()
+    # print(input_queue.qsize())
     input_queue.put(None)
+    # print(input_queue.qsize())
     tot_written = write(outfile, output_sam_buffer, tot_written)
-    print('file_IO: Tot written records:', tot_written)
     print('file_IO: Reading records done. Tot read:', read_cnt - 1)
+    print('file_IO: Written records in producer process:', tot_written)
+    outfile.close()
+    return tot_written
 
 
 def consumer(c_id, input_queue, output_sam_buffer):
@@ -191,27 +195,33 @@ def consumer(c_id, input_queue, output_sam_buffer):
 
 
 class Managers:
-   def __init__(self, reads, seeds, outfile_name, n_proc):
-    self.reads = reads
-    self.seeds = seeds    
-    self.outfile_name = outfile_name    
-    self.m = mp.Manager()
-    self.input_queue = self.m.Queue(200)
-    self.output_sam_buffer = self.m.Queue()
-    self.n_proc = n_proc
+    def __init__(self, reads, seeds, outfile_name, n_proc):
+        self.reads = reads
+        self.seeds = seeds    
+        self.outfile_name = outfile_name    
+        self.m = mp.Manager()
+        self.input_queue = self.m.Queue(200)
+        self.output_sam_buffer = self.m.Queue()
+        self.n_proc = n_proc
 
-   def start(self):
-     self.p = mp.Process(target=file_IO, args=(self.input_queue, self.reads, self.seeds, self.output_sam_buffer, self.outfile_name))
-     self.p.start()
-     self.workers = [mp.Process(target=consumer, args=(i, self.input_queue, self.output_sam_buffer))
+    def start(self):
+        self.p = mp.Process(target=file_IO, args=(self.input_queue, self.reads, self.seeds, self.output_sam_buffer, self.outfile_name))
+        self.p.start()
+        self.workers = [mp.Process(target=consumer, args=(i, self.input_queue, self.output_sam_buffer))
                         for i in range(self.n_proc - 1)]
-     for w in self.workers:
-       w.start()
+        for w in self.workers:
+            w.start()
 
-   def join(self):
-     for w in self.workers:
-       w.join()
-     self.p.join()
+    def join(self):
+        for w in self.workers:
+            w.join()
+
+        self.p.join()
+
+        f = open(self.outfile_name,'a')
+        tot_written = write(f, self.output_sam_buffer, 0)
+        f.close()
+        print('file_IO: Remainig written records after consumer join:', tot_written)
 
 if __name__ == '__main__':
 
