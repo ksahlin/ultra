@@ -34,7 +34,7 @@ def file_IO(input_queue, reads, seeds, output_sam_buffer, outfile_name):
         assert acc == r_acc
         batch.append((acc, seq, read_mems, r_mems_rev))
 
-        if read_cnt % 10 == 0:
+        if read_cnt % 1000 == 0:
             input_queue.put((batch_id, batch))
             batch = []
             batch_id += 1
