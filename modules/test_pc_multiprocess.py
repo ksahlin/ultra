@@ -207,8 +207,7 @@ class Managers:
     def start(self):
         self.p = mp.Process(target=file_IO, args=(self.input_queue, self.reads, self.seeds, self.output_sam_buffer, self.outfile_name))
         self.p.start()
-        self.workers = [mp.Process(target=consumer, args=(i, self.input_queue, self.output_sam_buffer))
-                        for i in range(self.n_proc - 1)]
+        self.workers = [mp.Process(target=consumer, args=(i, self.input_queue, self.output_sam_buffer)) for i in range(self.n_proc)]
         for w in self.workers:
             w.start()
 
