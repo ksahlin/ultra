@@ -257,6 +257,7 @@ def main(read_id, read_seq, ref_id, classification, predicted_exons, read_aln, r
     sam_entry = []
     sam_entry.append(read_id)
     sam_entry.append("\t")
+    reference_name = ref_id
 
     if classification != 'unaligned':
         genomic_cigar, start_offset = get_genomic_cigar(read_aln, ref_aln, predicted_exons)
@@ -269,9 +270,6 @@ def main(read_id, read_seq, ref_id, classification, predicted_exons, read_aln, r
         else:
             flag = 0 
 
-        reference_name = ref_id
-        mapping_quality = 60 # TODO: calculate mapping quality 
-
         cigarstring = genomic_cigar 
         reference_start = predicted_exons[0][0] + start_offset + 1 # SAM file used 1-based coordinate system, hence +1
         mapping_quality = map_score 
@@ -279,6 +277,7 @@ def main(read_id, read_seq, ref_id, classification, predicted_exons, read_aln, r
         cigarstring = '*'
         reference_start = 0
         flag = 4
+        mapping_quality = 0 
 
     sam_entry.append(str(flag))
     sam_entry.append("\t")
