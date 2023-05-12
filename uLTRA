@@ -158,9 +158,6 @@ def prep_seqs(args, refs, refs_lengths):
     ref_part_sequences = augmented_gene.get_sequences_from_choordinates(parts_to_segments, refs_id)
     ref_flank_sequences = augmented_gene.get_sequences_from_choordinates(flank_choordinates, refs_id)
 
-    # if not args.use_NAM_seeds: # not using NAM seeds
-    #     augmented_gene.mask_abundant_kmers(ref_part_sequences, args.min_seed, args.mask_threshold)
-    #     augmented_gene.mask_abundant_kmers(ref_flank_sequences, args.min_seed, args.mask_threshold)
 
     # print([unpack('LLL',t) for t in ref_flank_sequences.keys()])
     ref_part_sequences = help_functions.update_nested(ref_part_sequences, ref_flank_sequences)
@@ -331,7 +328,7 @@ def align_reads(args):
     reads_tmp.close()
     print("Completed processing poly-A tails")
     args.reads_tmp = reads_tmp.name
-    seed_file_name = seed_wrapper.find_nams_strobemap(args.outfolder, args.reads_tmp, ref_path, args.outfolder, args.nr_cores, args.min_seed, args.s, args.thinning)
+    seed_file_name = seed_wrapper.find_nams_namfinder(args.outfolder, args.reads_tmp, ref_path, args.outfolder, args.nr_cores, args.s, args.thinning)
     print("Time for namfinder to find seeds:{0} seconds.".format(time() - namfinder_start))
     #############################################
     #############################################
@@ -403,7 +400,6 @@ if __name__ == '__main__':
     group.add_argument('--ont', action="store_true", help='Set parameters suitable for ONT (Sets: --min_seed 18 --s 9 --min_acc 0.6 --alignment_threshold 0.5).')
     group.add_argument('--isoseq', action="store_true", help='Set parameters suitable for IsoSeq (Sets: --min_seed 20 --s 10 --min_acc 0.8 --alignment_threshold 0.5).')
 
-    pipeline_parser.add_argument('--min_seed', type=int, default=18, help='Threshold for minimum mem size considered.')
     pipeline_parser.add_argument('--min_segm', type=int, default=25, help='Threshold for minimum segment size considered.')
     pipeline_parser.add_argument('--min_acc', type=float, default=0.5, help='Minimum accuracy of MAM to be considered in mam chaining.')
     pipeline_parser.add_argument('--flank_size', type=int, default=1000, help='Size of genomic regions surrounding genes.')
@@ -443,7 +439,6 @@ if __name__ == '__main__':
     indexing_parser.add_argument('--flank_size', type=int, default=1000, help='Size of genomic regions surrounding genes.')
     indexing_parser.add_argument('--small_exon_threshold', type=int, default=200, help='Considered in MAM solution even if they cont contain MEMs.')
     indexing_parser.add_argument('--disable_infer', action='store_true', help='Makes splice creation step much faster. Thes parameter can be set if gene and transcript name fields are provided in gtf file.')
-    indexing_parser.add_argument('--min_seed', type=int, default=18, help='Threshold for minimum mem size considered.')
     # indexing_parser.add_argument('--mask_threshold', type=int, default=200, help='Abundance occurance threshold. Masks more abundant k-mers than this threshold before MEM finding.')
     indexing_parser.add_argument('--thinning', type=int, default=0, help='Seed thinning level 0-2: 0 (deactivated, default) 1 (in expectation every third base) or 2 (in expectation every fifth base). Thinning makes seedins step much faster and less memory consuming at cost of accuracy.')
     indexing_parser.add_argument('--s', type=int, default=10, help='Strobe size (default s=10). Uses strobemers of (2, s, s+1, 35).')
@@ -472,7 +467,6 @@ if __name__ == '__main__':
                                                                             but may limit all posible alignments to annotated gene families with many highly similar copies.')
 
     align_reads_parser.add_argument('--ignore_rc', action='store_true', help='Ignore to map to reverse complement.')
-    align_reads_parser.add_argument('--min_seed', type=int, default=18, help='Threshold for minimum mem size considered.')
     align_reads_parser.add_argument('--min_acc', type=float, default=0.5, help='Minimum accuracy of MAM to be considered in mam chaining.')
 
     align_reads_parser.add_argument('--disable_mm2', action='store_true', help='Disables utilizing minimap2 to detect genomic primary alignments and to quality check uLTRAs primary alignments.\
@@ -486,8 +480,8 @@ if __name__ == '__main__':
 
 
     group2 = align_reads_parser.add_mutually_exclusive_group()
-    group2.add_argument('--ont', action="store_true", help='Set parameters suitable for ONT (Sets: --min_seed 18 --s 9 --min_acc 0.6).')
-    group2.add_argument('--isoseq', action="store_true", help='Set parameters suitable for IsoSeq (Sets: --min_seed 20 --s 10 --min_acc 0.8).')
+    group2.add_argument('--ont', action="store_true", help='Set parameters suitable for ONT (Sets: --s 9 --min_acc 0.6).')
+    group2.add_argument('--isoseq', action="store_true", help='Set parameters suitable for IsoSeq (Sets: --s 10 --min_acc 0.8).')
 
 
     align_reads_parser.set_defaults(which='align_reads')
@@ -509,12 +503,10 @@ if __name__ == '__main__':
     if args.which == 'align_reads' or args.which == 'pipeline':
         args.mm2_ksize = 15
         if args.ont:
-            args.min_seed = 18
             args.min_acc = 0.6
             args.mm2_ksize = 14
             args.s = 9
         if args.isoseq:
-            args.min_seed = 20
             args.min_acc = 0.8
             args.s = 10
 
