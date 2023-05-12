@@ -587,7 +587,7 @@ def align_reads(args):
     alignment_outfile = pysam.AlignmentFile(aln_file_name , "w", reference_names=list(refs_lengths.keys()), reference_lengths=list(refs_lengths.values()) ) #, template=samfile)
     alignment_outfile.close()
     aligning_start = time()
-    pc.main(args.reads, seed_file_name, aln_file_name, args)
+    tot_counts = pc.main(args.reads, seed_file_name, aln_file_name, args)
     print("Time to align reads:{0} seconds.".format(time()-aligning_start))
     alignment_outfile.close()
     alignment_outfile_name = alignment_outfile.filename
@@ -600,25 +600,8 @@ def align_reads(args):
         path_unindexed_aligned = os.path.join(args.outfolder, "unindexed.sam")
         output_final_alignments(alignment_outfile_name, path_indexed_aligned, path_unindexed_aligned)
 
-    # counts = defaultdict(int)
-    # alignment_coverage = 0
-    # for read_acc in reads:
-    #     if read_acc not in classifications:
-    #         # print(read_acc, "did not meet the threshold")
-    #         pass
-    #     elif classifications[read_acc][0] != 'FSM':
-    #         # print(read_acc, classifications[read_acc]) 
-    #         pass
-    #     if read_acc in classifications:
-    #         alignment_coverage += classifications[read_acc][1]
-    #         if classifications[read_acc][1] < 1.0:
-    #             # print(read_acc, 'alignemnt coverage:', classifications[read_acc][1])
-    #             pass
-    #         counts[classifications[read_acc][0]] += 1
-    #     else:
-    #         counts['unaligned'] += 1
-    # print(counts)
-    # print("total alignment coverage:", alignment_coverage)
+    print("FSM : {0}, unaligned : {1}, NO_SPLICE : {2}, Insufficient_junction_coverage_unclassified : {3}, ISM/NIC_known : {4}, NIC_novel : {5}, NNC : {6}".format(*tot_counts[1:]))
+    print("total alignment coverage:", tot_counts[0])
 
     if not args.keep_temporary_files:
         print("Deleting temporary files...")

@@ -352,7 +352,7 @@ def get_exact_alignment(read_seq, created_ref_seq, mam_sol_exons_length):
 
 
 
-def align_single(batch_number, input_queue, output_sam_buffer, args):
+def align_single(process_id, input_queue, output_sam_buffer, classification_and_aln_cov, args):
 
     # set counters
     nlog_n_instance_counter = 0
@@ -370,7 +370,11 @@ def align_single(batch_number, input_queue, output_sam_buffer, args):
     segment_to_gene, gene_to_small_segments, max_intron_chr, \
     ref_exon_sequences, chr_to_id, id_to_chr = auxillary_data
 
-    warning_log_file = open(os.path.join(args.outfolder, "uLTRA_batch_{0}.stderr".format(batch_number)), "w")
+    warning_log_file = open(os.path.join(args.outfolder, "uLTRA_batch_{0}.stderr".format(process_id)), "w")
+    
+    classification_list = [0, 0, 0, 0, 0, 0, 0, 0] # entries: [aln_cov, 'FSM', 'unaligned', 'NO_SPLICE', 'Insufficient_junction_coverage_unclassified', 'ISM/NIC_known', 'NIC_novel', 'NNC']
+    # code: aln_cov (0), 'FSM' (1), 'unaligned' (2), 'NO_SPLICE' (3), 'Insufficient_junction_coverage_unclassified' (4), 'ISM/NIC_known' (5), 'NIC_novel' (6), 'NNC' (7)
+    class_to_offset = {'FSM' : 1, 'unaligned' : 2, 'NO_SPLICE' : 3, 'Insufficient_junction_coverage_unclassified' : 4, 'ISM/NIC_known' : 5, 'NIC_novel' : 6 , 'NNC': 7}
 
     while True:
         batch = input_queue.get()
@@ -392,7 +396,7 @@ def align_single(batch_number, input_queue, output_sam_buffer, args):
             # print()
             processed_read_counter += 1
             if processed_read_counter % 5000 == 0:
-                print('Processed {0} reads in batch {1}'.format(processed_read_counter, batch_number))
+                print('Processed {0} reads in consumer process {1}'.format(processed_read_counter, process_id))
             # do the chaining here immediately!
             all_chainings = []
             best_solution_value = 0
@@ -492,6 +496,8 @@ def align_single(batch_number, input_queue, output_sam_buffer, args):
                         else:
                             map_score = 60
                         # classifications[read_acc] = (classification, coverage )
+                        classification_list[0] += coverage
+                        classification_list[class_to_offset[classification]] += 1
                     else:
                         is_secondary =  True
                         map_score = 0
@@ -501,6 +507,7 @@ def align_single(batch_number, input_queue, output_sam_buffer, args):
                     alignments_output.append(sam_aln_entry)
         
         output_sam_buffer.put(alignments_output)
+        classification_and_aln_cov.put(classification_list)
 
     warning_log_file.close()
     print("Number of instances solved with quadratic collinear chainer solution:", quadratic_instance_counter)

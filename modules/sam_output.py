@@ -128,11 +128,13 @@ def get_cigars(segments):
 
 
 def get_genomic_cigar(read_aln, ref_aln, predicted_exons):
-    # print('here', read_aln)
-    # print('here', ref_aln)
+    # print('read_aln', read_aln)
+    # print('ref_aln', ref_aln)
+    # print('predicted_exons', predicted_exons)
     segments = get_segments(read_aln, ref_aln, predicted_exons)
+    # print('segments', segments)
     cigars, start_offset = get_cigars(segments)
-    # print('cigar segments', cigars)
+    # print('cigar segments', cigars, start_offset)
 
     # ######## ORIGINAL  ###########################
     # for c in cigars:
