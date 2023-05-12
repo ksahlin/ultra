@@ -600,7 +600,7 @@ def align_reads(args):
         path_unindexed_aligned = os.path.join(args.outfolder, "unindexed.sam")
         output_final_alignments(alignment_outfile_name, path_indexed_aligned, path_unindexed_aligned)
 
-    print("FSM : {0}, unaligned : {1}, NO_SPLICE : {2}, Insufficient_junction_coverage_unclassified : {3}, ISM/NIC_known : {4}, NIC_novel : {5}, NNC : {6}".format(*tot_counts[1:]))
+    print("FSM : {0}, NO_SPLICE : {1}, Insufficient_junction_coverage_unclassified : {2}, ISM/NIC_known : {3}, NIC_novel : {4}, NNC : {5}".format(tot_counts[1], *tot_counts[3:]))
     print("total alignment coverage:", tot_counts[0])
 
     if not args.keep_temporary_files:

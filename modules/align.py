@@ -507,7 +507,9 @@ def align_single(process_id, input_queue, output_sam_buffer, classification_and_
                     alignments_output.append(sam_aln_entry)
         
         output_sam_buffer.put(alignments_output)
-        classification_and_aln_cov.put(classification_list)
+
+    classification_and_aln_cov.put(classification_list)
+    print('Process:', classification_list)
 
     warning_log_file.close()
     print("Number of instances solved with quadratic collinear chainer solution:", quadratic_instance_counter)
