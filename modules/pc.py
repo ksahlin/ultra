@@ -96,8 +96,8 @@ class Managers:
         return tot_counts
 
 
-def main(reads, nams, outfile, args):
-    m = Managers(reads, nams, outfile, args.nr_cores, args)
+def main(reads, seeds, outfile, args):
+    m = Managers(reads, seeds, outfile, args.nr_cores, args)
     m.start()
     tot_counts = m.join()
     return tot_counts
