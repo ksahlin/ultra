@@ -62,13 +62,14 @@ class Managers:
         self.m = mp.Manager()
         self.input_queue = self.m.Queue(200)
         self.output_sam_buffer = self.m.Queue()
+        self.classification_and_aln_cov = self.m.Queue()
         self.n_proc = n_proc
         self.args = args
 
     def start(self):
         self.p = mp.Process(target=file_IO, args=(self.input_queue, self.reads, self.seeds, self.output_sam_buffer, self.outfile_name))
         self.p.start()
-        self.workers = [mp.Process(target=align.align_single, args=(i, self.input_queue, self.output_sam_buffer, self.args)) for i in range(self.n_proc)]
+        self.workers = [mp.Process(target=align.align_single, args=(i, self.input_queue, self.output_sam_buffer, self.classification_and_aln_cov, self.args)) for i in range(self.n_proc)]
         for w in self.workers:
             w.start()
 
@@ -83,8 +84,20 @@ class Managers:
         f.close()
         print('file_IO: Remainig written records after consumer join:', tot_written)
 
+        tot_counts = [0, 0, 0, 0, 0, 0, 0, 0] # entries: [aln_cov, 'FSM', 'unaligned', 'NO_SPLICE', 'Insufficient_junction_coverage_unclassified', 'ISM/NIC_known', 'NIC_novel', 'NNC']
+        while True:
+            try:
+                res = self.classification_and_aln_cov.get( False )
+                for i in range(len(res)):
+                    tot_counts[i] += res[i]
+            except Empty:
+                break
+        print('Done joining processes.')
+        return tot_counts
+
 
 def main(reads, nams, outfile, args):
     m = Managers(reads, nams, outfile, args.nr_cores, args)
     m.start()
-    m.join()
+    tot_counts = m.join()
+    return tot_counts
