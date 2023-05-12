@@ -9,6 +9,7 @@ import itertools
 from itertools import islice, chain
 from struct import *
 import shutil
+import gzip
 
 import argparse
 import errno
@@ -322,9 +323,10 @@ def align_reads(args):
 
     namfinder_start = time()
     print("Processing reads for NAM finding")
-    reads_tmp = open(os.path.join(args.outfolder, 'reads_tmp.fq'), 'w')
+    reads_tmp = gzip.open(os.path.join(args.outfolder, 'reads_tmp.fa.gz'), 'wb', compresslevel=1)
     for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r')):
-        reads_tmp.write('>{0}\n{1}\n'.format(acc, help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5)))
+        record = '>{0}\n{1}\n'.format(acc, help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5))
+        reads_tmp.write(record.encode('utf-8'))
     reads_tmp.close()
     print("Completed processing poly-A tails")
     args.reads_tmp = reads_tmp.name
@@ -371,7 +373,7 @@ def align_reads(args):
         f4 = os.path.join(args.outfolder, "refs_sequences.fa")
         f5 = os.path.join(args.outfolder, "refs_sequences.fa")
         f6 = os.path.join(args.outfolder, "reads_rc.fq")
-        f7 = os.path.join(args.outfolder, "reads_tmp.fq")
+        f7 = os.path.join(args.outfolder, "reads_tmp.fa")
         misc_files = [f1,f2,f3,f4,f5,f6,f7]
         for f in seeds + mum + sla + reads_tmp + minimap_tmp + ultra_tmp+ misc_files:
             if os.path.isfile(f):
