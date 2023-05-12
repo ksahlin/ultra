@@ -39,7 +39,7 @@ def find_mems_slamem(outfolder, read_path, refs_path, out_path, min_mem):
     # output_file.close()
 
 
-def find_nams_strobemap(outfolder, read_path, refs_path, out_path, nr_cores, min_mem, strobe_size, thinning_level):
+def find_nams_namfinder(outfolder, read_path, refs_path, out_path, nr_cores, strobe_size, thinning_level):
     # /usr/bin/time -l ./StrobeMap -n 2 -k 9 -w 30 -t 3 -s  -o /Users/kxs624/tmp/ULTRA/human_test/refs_sequences.fa /Users/kxs624/tmp/ULTRA/human_test_new_flanking_strat/reads_tmp.fq
     # StrobeMap -n 2 -k 9 -w 30 -t 3 -s  -o ~/tmp/STROBEMERS/multithreading/ /Users/kxs624/tmp/ULTRA/dros_tmp/refs_sequences.fa /Users/kxs624/tmp/ULTRA/dros_test/reads_16xrep.fa
     # with open(out_path, "w") as output_file:
@@ -49,16 +49,16 @@ def find_nams_strobemap(outfolder, read_path, refs_path, out_path, nr_cores, min
     outfile = os.path.join(outfolder, "seeds.txt")
     if thinning_level == 0:
         s = strobe_size
-        l = strobe_size + 1
-        u = 35 # seems to be ok value based on some tests
+        l = strobe_size
+        u = strobe_size + 1 # seems to be ok value based on some tests
     elif thinning_level == 1: # expected seed distance: 3
         s = strobe_size - 2
         l = (strobe_size + 1)//3 # Need to scale down offsets since seeds subsampled
-        u = 35//3 # seems to be ok value based on some tests
+        u = (strobe_size + 1)//3 + 1 # seems to be ok value based on some tests
     elif thinning_level == 2: # expected seed distance: 5
         s = strobe_size - 4 
         l = (strobe_size + 1)//5 # Need to scale down offsets since seeds subsampled
-        u = 35//5 # seems to be ok value based on some tests
+        u = (strobe_size + 1)//5 +1 # seems to be ok value based on some tests
 
     try: # slaMEM throws error if no MEMs are found in any of the sequences
         print("Using namfinder")
