@@ -320,7 +320,7 @@ def find_exons(chr_id, mam_solution, ref_exon_sequences, ref_segment_sequences, 
             else:
                 print("Bug encountered, {0} is not in {1}".format((x, y), mam_solution))
 
-        if prev_y_coord == x: #adjacent segments means its a flank and we should not add an new exon (i.e., intron split)
+        if prev_y_coord >= x: #adjacent segments means its a flank and we should not add an new exon (i.e., intron split)
             predicted_exons[-1] = (predicted_exons[-1][0], y)  # update the last exon
         else:
             predicted_exons.append( (x, y) )
