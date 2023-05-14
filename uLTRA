@@ -431,7 +431,6 @@ def align_reads(args):
     #############################################
     #############################################
 
-    namfinder_start = time()
     print("Processing reads for NAM finding")
     reads_tmp = gzip.open(os.path.join(args.outfolder, 'reads_tmp.fa.gz'), 'wb', compresslevel=1)
     for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r')):
@@ -440,6 +439,7 @@ def align_reads(args):
     reads_tmp.close()
     print("Completed processing poly-A tails")
     args.reads_tmp = reads_tmp.name
+    namfinder_start = time()
     seed_file_name = seed_wrapper.find_nams_namfinder(args.outfolder, args.reads_tmp, ref_path, args.outfolder, args.nr_cores, args.s, args.thinning)
     print("Time for namfinder to find seeds:{0} seconds.".format(time() - namfinder_start))
     #############################################
