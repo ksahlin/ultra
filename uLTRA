@@ -200,90 +200,200 @@ def batch(dictionary, size, batch_type):
 
 
 
-def check_alignment_fit(aln_ultra, aln_other):
-    """
-        returns: 
-        1. the differnce in scoring is positive if uLTRA better
-        2. the classification obtained by uLTRA
-    """
+# def check_alignment_fit(aln_ultra, aln_other):
+#     """
+#         returns: 
+#         1. the differnce in scoring is positive if uLTRA better
+#         2. the classification obtained by uLTRA
+#     """
+#     diffs = {1,2,8} # cigar IDs for INS, DEL, SUBS
+#     matches_ultra = sum([length for type_, length in aln_ultra.cigartuples if type_ == 7])
+#     diffs_ultra = sum([length for type_, length in aln_ultra.cigartuples if type_ in diffs]) 
+#     matches_other = sum([length for type_, length in aln_other.cigartuples if type_ == 7])
+#     diffs_other = sum([length for type_, length in aln_other.cigartuples if type_ in diffs]) 
+#     # print(matches_ultra, diffs_ultra, matches_other, diffs_other, matches_other - diffs_other <= matches_ultra - diffs_ultra)
+#     # return matches_other - diffs_other <= matches_ultra - diffs_ultra
+#     return (matches_ultra - diffs_ultra) - (matches_other - diffs_other), aln_ultra.get_tag('XC')
+
+
+# def output_final_alignments( ultra_alignments_path, path_indexed_aligned, path_unindexed_aligned):
+#     # read in all reads from alternative aligner that was also mapped by uLTRA
+    
+#     alt_alignments_file = pysam.AlignmentFile(path_indexed_aligned, "r", check_sq=False)
+#     alt_alignments = { read.query_name : read for read in alt_alignments_file.fetch(until_eof=True) if not read.is_secondary }
+
+
+#     alignment_infile = pysam.AlignmentFile( ultra_alignments_path, "r" )
+#     tmp_merged_outfile = pysam.AlignmentFile( ultra_alignments_path.decode()+ 'tmp', "w", template= alignment_infile)
+#     replaced_unaligned_cntr = 0
+#     tot_counter = 0
+#     scoring_dict = defaultdict(int)
+#     for read in alignment_infile.fetch():
+#         if not read.is_secondary:
+#             tot_counter += 1
+
+#         if read.query_name in alt_alignments:
+#             if read.flag == 4:
+#                read = alt_alignments[ read.query_name ] # replace unmapped uLTRA read with alternative alignment if mapped
+#                replaced_unaligned_cntr += 1
+#             elif not read.is_secondary: 
+#                 ultra_scoring_diff, classification = check_alignment_fit(read,  alt_alignments[ read.query_name ])
+#                 scoring_dict[ultra_scoring_diff] += 1
+#                 if ultra_scoring_diff < 0:
+#                     read = alt_alignments[ read.query_name ] # replace uLTRA read with alternative alignment if better fit
+
+#         tmp_merged_outfile.write(read)
+#     alignment_infile.close()
+
+#     # add all reads that we did not attempt to align with uLTRA
+#     # these reads had a primary alignment to unindexed regions by other pre-processing aligner (minimap2 as of now)
+#     not_attempted_cntr = 0
+#     unindexed = pysam.AlignmentFile(path_unindexed_aligned, "r")
+#     for read in unindexed.fetch():
+#         tmp_merged_outfile.write(read)
+#         if not read.is_secondary: 
+#             not_attempted_cntr += 1
+#     unindexed.close()
+#     tmp_merged_outfile.close()
+#     print("{0} reads were not attempted to be aligned with ultra, instead alternative aligner was used.".format(not_attempted_cntr))
+#     print("{0} reads with primary alignments were replaced with alternative aligner because they were unaligned with uLTRA.".format(replaced_unaligned_cntr))
+#     print("{0} primary alignments had best fit with uLTRA.".format(sum([v for k,v in scoring_dict.items() if k > 0])))
+#     print("{0} primary alignments had equal fit.".format(scoring_dict[0]))
+#     print("{0} primary alignments had best fit with alternative aligner.".format(sum([v for k,v in scoring_dict.items() if k < 0])))
+
+#     bin_boundaries = [-2**32, -100,-50,-20,-10,-5,-4,-3,-2,-1, 0, 1, 2, 3, 4, 5, 10, 20, 50, 100, 2**32]
+#     n = len(bin_boundaries)
+#     counts = [0]*n #{ (b_l, b_u) : 0 for b_l, b_u in zip(bin_boundaries[:-1], bin_boundaries[1:])}
+#     start_next = 0
+#     for k in sorted(scoring_dict.keys()):
+#         for i in range(start_next, n):
+#             b = bin_boundaries[i]
+#             if k < b:
+#                 counts[i] += scoring_dict[k]
+#             else:
+#                 start_next = i
+
+
+#     print("Table of score-difference between alignment methods (negative number: alternative aligner better fit, positive number is uLTRA better fit)")
+#     print("Score is calculated as sum(identities) - sum(ins, del, subs)")
+#     print("Format: Score difference: Number of primary alignments ")
+#     for i in range(len(counts)-1):
+#         print("[{0} - {1}): {2}".format(bin_boundaries[i],bin_boundaries[i+1], counts[i+1] - counts[i]))
+
+#     shutil.move(ultra_alignments_path.decode()+ 'tmp', ultra_alignments_path)
+
+
+def score(cigartuples):
     diffs = {1,2,8} # cigar IDs for INS, DEL, SUBS
-    matches_ultra = sum([length for type_, length in aln_ultra.cigartuples if type_ == 7])
-    diffs_ultra = sum([length for type_, length in aln_ultra.cigartuples if type_ in diffs]) 
-    matches_other = sum([length for type_, length in aln_other.cigartuples if type_ == 7])
-    diffs_other = sum([length for type_, length in aln_other.cigartuples if type_ in diffs]) 
-    # print(matches_ultra, diffs_ultra, matches_other, diffs_other, matches_other - diffs_other <= matches_ultra - diffs_ultra)
-    # return matches_other - diffs_other <= matches_ultra - diffs_ultra
-    return (matches_ultra - diffs_ultra) - (matches_other - diffs_other), aln_ultra.get_tag('XC')
+    matches = sum([length for type_, length in cigartuples if type_ == 7])
+    diffs = sum([length for type_, length in cigartuples if type_ in diffs]) 
+    return (matches - diffs)
 
 
 def output_final_alignments( ultra_alignments_path, path_indexed_aligned, path_unindexed_aligned):
-    # read in all reads from alternative aligner that was also mapped by uLTRA
+    """
+        This function have been improved in memory usage at the cost of speed. 
+        As opposed ot previous solution, we now never keep a full set of SAM records 
+        in memory for comparison as in previous functions. Steps:
+
+        1. Read in dictionary  {read_acc : score} from uLTRA's alignments
+        2. Steam over alternative aligner's (only mm2 impl currently) reads and log in a set {read_acc} where uLtra's alignments are better. 
+        3. Delete dictionary {read_acc : score} from step 1.
+        4. Stream over uLTRA's reads and save {read_acc : read (full SAM record)} for uLTRA's primary alignments with better score
+        5. Steam over alternative aligners records and replace the records from step 4 with uLTRA's
     
-    alt_alignments_file = pysam.AlignmentFile(path_indexed_aligned, "r", check_sq=False)
-    alt_alignments = { read.query_name : read for read in alt_alignments_file.fetch(until_eof=True) if not read.is_secondary }
-
-
-    alignment_infile = pysam.AlignmentFile( ultra_alignments_path, "r" )
-    tmp_merged_outfile = pysam.AlignmentFile( ultra_alignments_path.decode()+ 'tmp', "w", template= alignment_infile)
+        Instead of parsing two SAM files (keeping one in RAM for coparison) as previous solution, 
+        this approach contains four parses at but is only keeping either all the read accessions plus an integer (cores)
+        or all uLTRA alignments and therir full sam record as max memory. 
+    """
     replaced_unaligned_cntr = 0
-    tot_counter = 0
-    scoring_dict = defaultdict(int)
-    for read in alignment_infile.fetch():
-        if not read.is_secondary:
-            tot_counter += 1
+    equal_score = 0
+    slightly_worse_score = 0
+    worse_score = 0
+    ultra_unmapped = 0
+    # Step 1
+    ultra_SAM = pysam.AlignmentFile( ultra_alignments_path, "r" )
+    # take only primary alignments
+    ultra_scores = { read.query_name : score(read.cigartuples) for read in ultra_SAM.fetch() if (not read.is_secondary) and (not read.is_unmapped) }
+    ultra_SAM.close()
 
-        if read.query_name in alt_alignments:
-            if read.flag == 4:
-               read = alt_alignments[ read.query_name ] # replace unmapped uLTRA read with alternative alignment if mapped
-               replaced_unaligned_cntr += 1
-            elif not read.is_secondary: 
-                ultra_scoring_diff, classification = check_alignment_fit(read,  alt_alignments[ read.query_name ])
-                scoring_dict[ultra_scoring_diff] += 1
-                if ultra_scoring_diff < 0:
-                    read = alt_alignments[ read.query_name ] # replace uLTRA read with alternative alignment if better fit
+    # Step 2
+    mm2_SAM = pysam.AlignmentFile(path_indexed_aligned, "r", check_sq=False)
+    ultra_better = set()
+    for read in mm2_SAM.fetch(until_eof=True):
+        if read.query_name not in ultra_scores:
+            ultra_unmapped += 1
+            continue
 
-        tmp_merged_outfile.write(read)
-    alignment_infile.close()
-    # path_genomic_aligned = os.path.join(args.outfolder, "unindexed.sam")
+        if read.is_unmapped:
+            if read.query_name in ultra_scores: # uLTRA aligned the read
+                ultra_better.add(read.query_name)
+                replaced_unaligned_cntr += 1
+            else:
+                pass
+
+        if (not read.is_secondary): # primary alignment in both files
+            mm2_score = score(read.cigartuples)
+
+            if mm2_score < ultra_scores[read.query_name]: 
+                ultra_better.add(read.query_name)
+            elif mm2_score == ultra_scores[read.query_name]:
+                equal_score += 1
+            elif mm2_score <= ultra_scores[read.query_name] + 10:
+                slightly_worse_score += 1
+            else:
+                worse_score += 1
+                
+        if (not read.is_secondary):
+            del ultra_scores[read.query_name]
+
+    mm2_SAM.close()
+
+    print("Total mm2's primary alignments replaced with uLTRA:", len(ultra_better))
+    print("Total mm2's alignments unmapped but mapped with uLTRA:", replaced_unaligned_cntr)
+
+    # Step 3
+    del ultra_scores
+
+    # Step 4
+    ultra_SAM = pysam.AlignmentFile( ultra_alignments_path, "r" )
+    ultra_better_records = { read.query_name: read for read in ultra_SAM.fetch() if (not read.is_secondary) and (read.query_name in ultra_better) }
+    tmp_merged_sam = pysam.AlignmentFile( ultra_alignments_path.decode()+ 'tmp', "w", template= ultra_SAM)
+    ultra_SAM.close()
+
+    # Step 5
+    mm2_SAM = pysam.AlignmentFile(path_indexed_aligned, "r", check_sq=False)
+    for read in mm2_SAM.fetch(until_eof=True):
+        if not read.is_secondary: # replacing primary alignments
+            if read.query_name in ultra_better_records:
+                read = ultra_better_records[read.query_name]
+
+        tmp_merged_sam.write(read)
+
+    mm2_SAM.close()
+
 
     # add all reads that we did not attempt to align with uLTRA
     # these reads had a primary alignment to unindexed regions by other pre-processing aligner (minimap2 as of now)
     not_attempted_cntr = 0
     unindexed = pysam.AlignmentFile(path_unindexed_aligned, "r")
     for read in unindexed.fetch():
-        tmp_merged_outfile.write(read)
+        tmp_merged_sam.write(read)
         if not read.is_secondary: 
             not_attempted_cntr += 1
     unindexed.close()
-    tmp_merged_outfile.close()
-    print("{0} reads were not attempted to be aligned with ultra, instead alternative aligner was used.".format(not_attempted_cntr))
-    print("{0} reads with primary alignments were replaced with alternative aligner because they were unaligned with uLTRA.".format(replaced_unaligned_cntr))
-    print("{0} primary alignments had best fit with uLTRA.".format(sum([v for k,v in scoring_dict.items() if k > 0])))
-    print("{0} primary alignments had equal fit.".format(scoring_dict[0]))
-    print("{0} primary alignments had best fit with alternative aligner.".format(sum([v for k,v in scoring_dict.items() if k < 0])))
-
-    bin_boundaries = [-2**32, -100,-50,-20,-10,-5,-4,-3,-2,-1, 0, 1, 2, 3, 4, 5, 10, 20, 50, 100, 2**32]
-    n = len(bin_boundaries)
-    counts = [0]*n #{ (b_l, b_u) : 0 for b_l, b_u in zip(bin_boundaries[:-1], bin_boundaries[1:])}
-    start_next = 0
-    for k in sorted(scoring_dict.keys()):
-        for i in range(start_next, n):
-            b = bin_boundaries[i]
-        # for i, b in enumerate(bin_boundaries):
-            if k < b:
-                counts[i] += scoring_dict[k]
-            else:
-                start_next = i
-
-
-    print("Table of score-difference between alignment methods (negative number: alternative aligner better fit, positive number is uLTRA better fit)")
-    print("Score is calculated as sum(identities) - sum(ins, del, subs)")
-    print("Format: Score difference: Number of primary alignments ")
-    for i in range(len(counts)-1):
-        print("[{0} - {1}): {2}".format(bin_boundaries[i],bin_boundaries[i+1], counts[i+1] - counts[i]))
-    # print("{0} read with primary alignments aligned with uLTRA.".format(tot_counter - replaced_unaligned_cntr - replaced_fit_cntr))
+    tmp_merged_sam.close()
+    print("{0} primary alignments had better score with uLTRA.".format(len(ultra_better_records)))
+    print("{0} primary alignments had equal score with alternative aligner.".format(equal_score))
+    print("{0} primary alignments had slightly better score with alternative aligner (typically ends bonus giving better scoring in ends, which needs to be implemented in uLTRA).".format(slightly_worse_score))
+    print("{0} primary alignments had significantly better score with alternative aligner.".format(worse_score))
+    print("{0} reads were unmapped with ultra but not by alternative aligner.".format(ultra_unmapped))
+    print("{0} reads were not attempted to be aligned with ultra (unindexed regions), instead alternative aligner was used.".format(not_attempted_cntr))
 
     shutil.move(ultra_alignments_path.decode()+ 'tmp', ultra_alignments_path)
+
+    #########################
+
 
 
 def align_reads(args):
