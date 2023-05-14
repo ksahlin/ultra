@@ -534,7 +534,6 @@ if __name__ == '__main__':
                                                                             but may limit all posible alignments to annotated gene families with many highly similar copies.')
     pipeline_parser.add_argument('--ignore_rc', action='store_true', help='Ignore to map to reverse complement.')
     pipeline_parser.add_argument('--disable_infer', action='store_true', help='Makes splice creation step much faster. This parameter can be set if gene and transcript name fields are provided in gtf file, which is standard for the ones provided by GENCODE and Ensemble.')
-    # pipeline_parser.add_argument('--mask_threshold', type=int, default=200, help='Abundance occurance threshold. Masks more abundant k-mers than this threshold before MEM finding.')
     pipeline_parser.add_argument('--disable_mm2', action='store_true', help='Disables utilizing minimap2 to detect genomic primary alignments and to quality check uLTRAs primary alignments.\
                                                                                 An alignment is classified as genomic if more than --genomic_frac (default 10%%) of its aligned length is outside\
                                                                                 regions indexed by uLTRA. Note that uLTRA indexes flank regions such as 3 prime, 5 prime and (parts of) introns.')
@@ -551,7 +550,6 @@ if __name__ == '__main__':
     indexing_parser.add_argument('--flank_size', type=int, default=1000, help='Size of genomic regions surrounding genes.')
     indexing_parser.add_argument('--small_exon_threshold', type=int, default=200, help='Considered in MAM solution even if they cont contain MEMs.')
     indexing_parser.add_argument('--disable_infer', action='store_true', help='Makes splice creation step much faster. Thes parameter can be set if gene and transcript name fields are provided in gtf file.')
-    # indexing_parser.add_argument('--mask_threshold', type=int, default=200, help='Abundance occurance threshold. Masks more abundant k-mers than this threshold before MEM finding.')
     indexing_parser.add_argument('--thinning', type=int, default=0, help='Seed thinning level 0-2: 0 (deactivated, default) 1 (in expectation every third base) or 2 (in expectation every fifth base). Thinning makes seedins step much faster and less memory consuming at cost of accuracy.')
     indexing_parser.add_argument('--s', type=int, default=10, help='Strobe size (default s=10). Uses strobemers of (2, s, s+1, 35).')
 
