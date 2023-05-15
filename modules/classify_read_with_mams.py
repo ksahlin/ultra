@@ -403,7 +403,7 @@ def add_segment_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, segm_id,
     
 
 
-def main(solution, ref_segment_sequences, ref_flank_sequences, parts_to_segments, segment_to_gene, gene_to_small_segments, read_seq, warning_log_file, min_acc, is_tiling_instance = False):
+def main(solution, ref_segment_sequences, ref_flank_sequences, parts_to_segments, segment_to_gene, gene_to_small_segments, read_seq, warning_log_file, min_acc):
     """
         NOTE: if paramerer task = 'path' is given to edlib_alignment function calls below, it will give exact accuracy of the aligmnent but the program will be ~40% slower to calling task = 'locations'
             Now we are approxmating accuracy by dividing by start and end of the reference coordinates of the alignment. This is not good approw if there is a large instertion
@@ -558,7 +558,7 @@ def main(solution, ref_segment_sequences, ref_flank_sequences, parts_to_segments
     ###################################################################################################
     # print("MAM INSTANCE", mam_instance)
     if mam_instance:
-        if is_tiling_instance and len(mam_instance) > 100:
+        if len(mam_instance) > 100:
             # mam_solution_old, value_old, unique_old = colinear_solver.read_coverage_mam_score(mam_instance, overlap_threshold = 5)
             mam_solution, value, unique = colinear_solver.n_logn_read_coverage_mams(mam_instance, overlap_threshold = 5)
             # if mam_solution != mam_solution2:
