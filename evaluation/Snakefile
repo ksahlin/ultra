@@ -66,30 +66,9 @@ rule all:
             config["ROOT_OUT"] + "/results/plots_exon_size.zip",
             config["ROOT_OUT"] + "/results/plots_sirv_analysis.zip",
             config["ROOT_OUT"] + "/results/map_concordance_bio.zip",
-            config["ROOT_OUT"] + "/results/pacbio_alzheimer_success_cases_sam_files.tar.bz2", 
-            config["ROOT_OUT"] + "/results/drosophila_success_cases_sam_files.tar.bz2",
-            config["ROOT_OUT"] + "/results/ont_human_success_cases_sam_files.tar.bz2",
-
-
-
-            #[config["ROOT_OUT"] + "/evaluation/{dataset}/results_per_read.csv".format(dataset=dataset) for dataset in ["ont_human", "pacbio_alzheimer", "sirv", "simulated", "simulated_nic", "simulated_ens"]],
-            #[config["ROOT_OUT"] + "/evaluation/{dataset}/results.pdf".format(dataset=dataset) for dataset in ["ont_human", "pacbio_alzheimer", "sirv", "simulated", "simulated_nic", "simulated_ens"]],            
-
-            # config["ROOT_OUT"] + "/evaluation/ont_human/results_per_read.csv",
-            # config["ROOT_OUT"] + "/evaluation/simulated/results_per_read.csv",
-            # config["ROOT_OUT"] + "/evaluation/simulated_nic/results_per_read.csv",
-            # config["ROOT_OUT"] + "/evaluation/pacbio_alzheimer/results_per_read.csv",
-            # config["ROOT_OUT"] + "/evaluation/sirv/results_per_read.csv",
-            # config["ROOT_OUT"] + "/evaluation/simulated_ens/results_per_read.csv",
-            # config["ROOT_OUT"] + "/evaluation/ont_human/results.pdf",
-            # config["ROOT_OUT"] + "/evaluation/simulated/results.pdf",
-            # config["ROOT_OUT"] + "/evaluation/simulated_nic/results.pdf",
-            # config["ROOT_OUT"] + "/evaluation/pacbio_alzheimer/results.pdf",
-            # config["ROOT_OUT"] + "/evaluation/sirv/results.pdf",
-            # config["ROOT_OUT"] + "/evaluation/simulated_ens/results.pdf",
-
-            # config["ROOT_OUT"] + "/evaluation/ont_human/results_per_read_cigar.csv",
-            # config["ROOT_OUT"] + "/evaluation/pacbio_alzheimer/results_per_read_cigar.csv"
+            # config["ROOT_OUT"] + "/results/pacbio_alzheimer_success_cases_sam_files.tar.bz2", 
+            # config["ROOT_OUT"] + "/results/drosophila_success_cases_sam_files.tar.bz2",
+            # config["ROOT_OUT"] + "/results/ont_human_success_cases_sam_files.tar.bz2",
 
 
 rule biological:
@@ -508,7 +487,7 @@ rule evaluate_biological:
                                                                     {ref} {annotation} {outfolder} {wildcards.tool}")
 
 rule summarize_biological_results:
-    input: tool_csv_files = lambda wildcards: expand(rules.evaluate_biological.output.csv_file, dataset = wildcards.dataset, tool=["ultra", "ultra_mm2", 'minimap2', 'minimap2_gtf', 'desalt', 'desalt_gtf']) # 'graphmap2', 'graphmap2_gtf'
+    input: tool_csv_files = lambda wildcards: expand(rules.evaluate_biological.output.csv_file, dataset = wildcards.dataset, tool=["ultra", "ultra_mm2", 'minimap2', 'desalt_gtf']) # 'graphmap2', 'graphmap2_gtf', 'desalt', 'minimap2_gtf',
     output: csv_file = config["ROOT_OUT"] + "/evaluation_bio/{dataset}/results_per_read.csv"
     run:
         header = "acc,read_type,error_rate,read_length,tot_splices,read_sm_junctions,read_nic_junctions,annotation,donor_acceptors,donor_acceptors_choords,transcript_fsm_id,chr_id,reference_start,reference_end,sam_flag,is_exonic\n"
@@ -629,29 +608,6 @@ rule get_sam_files_success_cases:
         pattern = config["ROOT_OUT"] + "/evaluation_bio/{0}/*_sorted.sam".format(wildcards.dataset)
         shell("tar -cvjf {output.zip_file} {pattern}")
         shell("split -b 49M {output.zip_file} {output.zip_file}.part")
-
-
-        # # desalt
-        # desalt_sam = rules.output.desalt_gtf_align.sam
-        # desalt_sam_filtered = config["ROOT_OUT"] + "/evaluation_bio/{0}/desalt_ultra_unique_FSMs.sam".format(wildcards.dataset)
-        # shell("python get_sam_records_from_fa {input.ultra_unique_FSMs} {desalt_sam} {desalt_sam_filtered}")
-        # desalt_sam_filtered_sorted = config["ROOT_OUT"] + "/evaluation_bio/{0}/desalt_ultra_unique_FSMs_sorted.sam".format(wildcards.dataset)
-        # shell("samtools sort {desalt_sam_filtered} -o {desalt_sam_filtered_sorted}")
-
-        # # minimap2
-        # minimap2_sam = rules.output.minimap2_gtf_align.sam
-        # minimap2_sam_filtered = config["ROOT_OUT"] + "/evaluation_bio/{0}/minimap2_ultra_unique_FSMs.sam".format(wildcards.dataset)
-        # shell("python get_sam_records_from_fa {input.ultra_unique_FSMs} {minimap2_sam} {minimap2_sam_filtered}")
-        # minimap2_sam_filtered_sorted = config["ROOT_OUT"] + "/evaluation_bio/{0}/minimap2_ultra_unique_FSMs_sorted.sam".format(wildcards.dataset)
-        # shell("samtools sort {minimap2_sam_filtered} -o {minimap2_sam_filtered_sorted}")
-
-        # # uLTRA
-        # ultra_sam = rules.output.ultra_align.sam
-        # ultra_sam_filtered = config["ROOT_OUT"] + "/evaluation_bio/{0}/ultra_ultra_unique_FSMs.sam".format(wildcards.dataset)
-        # shell("python get_sam_records_from_fa {input.ultra_unique_FSMs} {ultra_sam} {ultra_sam_filtered}")
-        # ultra_sam_filtered_sorted = config["ROOT_OUT"] + "/evaluation_bio/{0}/ultra_ultra_unique_FSMs_sorted.sam".format(wildcards.dataset)
-        # shell("samtools sort {ultra_sam_filtered} -o {ultra_ssam_filtered_sorted}")
-
 
 
 
