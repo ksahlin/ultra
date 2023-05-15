@@ -18,6 +18,9 @@ from modules import classify_alignment2
 from modules import sam_output
 from modules import seed_wrapper
 
+from collections import namedtuple
+mem = namedtuple('Mem', ['x', 'y', 'c', 'd', 'val', 'j', "exon_part_id"])
+globals()[mem.__name__] = mem # Global needed for multiprocessing
 
 ############### TMP #######
 from types import ModuleType, FunctionType
@@ -351,6 +354,40 @@ def get_exact_alignment(read_seq, created_ref_seq, mam_sol_exons_length):
     return read_aln, ref_aln, alignment_score 
 
 
+def get_mems_from_input(hits):
+    # speed this parsing up by providing already sorted
+    # hits per ref_id and ref coord from namfinder
+
+    read_mems = defaultdict(list)
+    read_mems_rev = defaultdict(list)
+
+    for line in hits:
+        vals =  line.split() #11404_11606           1     11405       202
+        exon_part_id = vals[0]
+        chr_id, ref_coord_start, ref_coord_end = exon_part_id.split('^')
+        # chr_id, ref_coord_start, ref_coord_end = ['1', '1', '1'] # CURRENT DUMMY LINE FOR TESTING OUTSIDE ULTRA'S FORMAT
+        chr_id = int(chr_id)
+        mem_len = int(vals[3])
+
+        mem_ref_exon_part_start = int(vals[1]) - 1 # convert to 0-indexed reference as in python
+        mem_read_start = int(vals[2]) - 1
+        ref_coord_start = int(ref_coord_start) # has already been 0-indexed when constructing parts
+        mem_genome_start = ref_coord_start + mem_ref_exon_part_start
+        
+        info_tuple = ( mem_genome_start, mem_genome_start + mem_len - 1,
+                        mem_read_start, mem_read_start + mem_len - 1, 
+                        mem_len, exon_part_id) # however, for MEM length last coordinate is inclusive of the hit in MEM solvers, not as in python end-indexing
+
+        read_mems[chr_id].append(info_tuple)
+
+    for chr_id in list(read_mems.keys()):
+        coordinate_sorted_tuples = sorted(read_mems[chr_id], key = lambda x: x[1])
+        sorted_mems = [ mem(x,y,c,d,val,j,e_id) for j, (x, y, c, d, val, e_id) in enumerate(coordinate_sorted_tuples) ]
+        read_mems[chr_id] = sorted_mems
+
+    return read_mems
+
+
 
 def align_single(process_id, input_queue, output_sam_buffer, classification_and_aln_cov, args):
 
@@ -388,7 +425,9 @@ def align_single(process_id, input_queue, output_sam_buffer, classification_and_
         alignments_output = []
 
         for b in batch[1]:
-            (read_acc, seq, mems, mems_rc) = b
+            (read_acc, seq, hits, hits_rc) = b
+            mems = get_mems_from_input(hits)
+            mems_rc = get_mems_from_input(hits_rc)
             read_seq_mod = help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 1)
 
             upper_bound = annotate_guaranteed_optimal_bound(mems, False, max_intron_chr, max_global_intron)
@@ -396,7 +435,7 @@ def align_single(process_id, input_queue, output_sam_buffer, classification_and_
             # print()
             processed_read_counter += 1
             if processed_read_counter % 5000 == 0:
-                print('Processed {0} reads in consumer process {1}'.format(processed_read_counter, process_id))
+                print('Processed {0} reads in consumer process {1}. Queue size: {2}'.format(processed_read_counter, process_id, input_queue.qsize()))
             # do the chaining here immediately!
             all_chainings = []
             best_solution_value = 0

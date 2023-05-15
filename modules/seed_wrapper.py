@@ -6,8 +6,8 @@ import gzip
 from collections import defaultdict
 from collections import namedtuple
 
-mem = namedtuple('Mem', ['x', 'y', 'c', 'd', 'val', 'j', "exon_part_id"])
-globals()[mem.__name__] = mem # Global needed for multiprocessing
+# mem = namedtuple('Mem', ['x', 'y', 'c', 'd', 'val', 'j', "exon_part_id"])
+# globals()[mem.__name__] = mem # Global needed for multiprocessing
 
 def find_mems_mummer(outfolder, read_path, refs_path, mummer_out_path, min_mem):
     with open(mummer_out_path, "w") as output_file:
@@ -128,32 +128,42 @@ def get_mem_records(mems_path, reads):
 def read_seeds(seeds):
     curr_acc = ''
     curr_acc_rev = ''
-    read_mems = defaultdict(list)
-    read_mems_rev = defaultdict(list)
+    # read_mems = defaultdict(list)
+    # read_mems_rev = defaultdict(list)
     is_rc = False
     nr_reads = 0
+    hits = []
+    hits_rc = []
+    # j = 0
+    # prev_part_id = None
     for i, encoded_line in enumerate(gzip.open(seeds, 'rb')):
         line = encoded_line.decode('utf-8')
         if line[0] == '>':
             if curr_acc and curr_acc_rev:
-                for chr_id in list(read_mems.keys()):
-                    coordinate_sorted_tuples = sorted(read_mems[chr_id], key = lambda x: x[1])
-                    sorted_mems = [ mem(x,y,c,d,val,j,e_id) for j, (x, y, c, d, val, e_id) in enumerate(coordinate_sorted_tuples) ]
-                    read_mems[chr_id] = sorted_mems
+                # for chr_id in list(read_mems.keys()):
+                #     coordinate_sorted_tuples = sorted(read_mems[chr_id], key = lambda x: x[1])
+                #     sorted_mems = [ mem(x,y,c,d,val,j,e_id) for j, (x, y, c, d, val, e_id) in enumerate(coordinate_sorted_tuples) ]
+                #     read_mems[chr_id] = sorted_mems
 
-                for chr_id in list(read_mems_rev.keys()):
-                    coordinate_sorted_tuples = sorted(read_mems_rev[chr_id], key = lambda x: x[1])
-                    sorted_mems = [ mem(x,y,c,d,val,j,e_id) for j, (x, y, c, d, val, e_id) in enumerate(coordinate_sorted_tuples) ]
-                    read_mems_rev[chr_id] = sorted_mems
+                # for chr_id in list(read_mems_rev.keys()):
+                #     coordinate_sorted_tuples = sorted(read_mems_rev[chr_id], key = lambda x: x[1])
+                #     sorted_mems = [ mem(x,y,c,d,val,j,e_id) for j, (x, y, c, d, val, e_id) in enumerate(coordinate_sorted_tuples) ]
+                #     read_mems_rev[chr_id] = sorted_mems
 
-                yield curr_acc, read_mems, curr_acc_rev, read_mems_rev
+                # yield curr_acc, read_mems, curr_acc_rev, read_mems_rev
+
+                yield curr_acc, hits, curr_acc_rev, hits_rc
 
                 # Reset
                 curr_acc = ''
                 curr_acc_rev = ''
-                read_mems = defaultdict(list)
-                read_mems_rev = defaultdict(list)   
+                # read_mems = defaultdict(list)
+                # read_mems_rev = defaultdict(list)   
                 is_rc = False
+                hits = []
+                hits_rc = []
+                # j = 0
+                # prev_part_id = None
 
             if 'Reverse' in line:
                 curr_acc_rev = line[1:].strip()
@@ -164,41 +174,56 @@ def read_seeds(seeds):
 
             nr_reads += 1
 
+        elif is_rc:
+            hits_rc.append(line)
         else:
-            vals =  line.split() #11404_11606           1     11405       202
-            exon_part_id = vals[0]
-            chr_id, ref_coord_start, ref_coord_end = exon_part_id.split('^')
-            # chr_id, ref_coord_start, ref_coord_end = ['1', '1', '1'] # CURRENT DUMMY LINE FOR TESTING OUTSIDE ULTRA'S FORMAT
-            chr_id = int(chr_id)
-            mem_len = int(vals[3])
-            
-            
-            mem_ref_exon_part_start = int(vals[1]) - 1 # convert to 0-indexed reference as in python
-            mem_read_start = int(vals[2]) - 1
-            ref_coord_start = int(ref_coord_start) # has already been 0-indexed when constructing parts
-            mem_genome_start = ref_coord_start + mem_ref_exon_part_start
-            
-            info_tuple = ( mem_genome_start, mem_genome_start + mem_len - 1,
-                            mem_read_start, mem_read_start + mem_len - 1, 
-                            mem_len, exon_part_id) # however, for MEM length last coordinate is inclusive of the hit in MEM solvers, not as in python end-indexing
-            if is_rc:
-                read_mems_rev[chr_id].append( info_tuple )
-            else:
-                read_mems[chr_id].append( info_tuple )
+            hits.append(line)
 
+        # else:
+        #     vals =  line.split() #11404_11606           1     11405       202
+        #     exon_part_id = vals[0]
+        #     chr_id, ref_coord_start, ref_coord_end = exon_part_id.split('^')
+        #     # chr_id, ref_coord_start, ref_coord_end = ['1', '1', '1'] # CURRENT DUMMY LINE FOR TESTING OUTSIDE ULTRA'S FORMAT
+        #     chr_id = int(chr_id)
+        #     mem_len = int(vals[3])
+
+            # mem_ref_exon_part_start = int(vals[1]) - 1 # convert to 0-indexed reference as in python
+            # mem_read_start = int(vals[2]) - 1
+            # ref_coord_start = int(ref_coord_start) # has already been 0-indexed when constructing parts
+            # mem_genome_start = ref_coord_start + mem_ref_exon_part_start
+            
+            # info_tuple = ( mem_genome_start, mem_genome_start + mem_len - 1,
+            #                 mem_read_start, mem_read_start + mem_len - 1, 
+            #                 mem_len, exon_part_id) # however, for MEM length last coordinate is inclusive of the hit in MEM solvers, not as in python end-indexing
+            # if is_rc:
+            #     read_mems_rev[chr_id].append( ( mem_genome_start, mem_genome_start + mem_len - 1,
+            #                 mem_read_start, mem_read_start + mem_len - 1, 
+            #                 mem_len, exon_part_id) )
+            # else:
+            #     read_mems[chr_id].append( ( mem_genome_start, mem_genome_start + mem_len - 1,
+            #                 mem_read_start, mem_read_start + mem_len - 1, 
+            #                 mem_len, exon_part_id) )
+            
+            # if chr_id == prev_part_id:
+            #     j += 1
+            # else:
+            #     j = 0
+            # prev_part_id = chr_id
 
     # Last record
     if curr_acc and curr_acc_rev:
-        for chr_id in list(read_mems.keys()):
-            coordinate_sorted_tuples = sorted(read_mems[chr_id], key = lambda x: x[1])
-            sorted_mems = [ mem(x,y,c,d,val,j,e_id) for j, (x, y, c, d, val, e_id) in enumerate(coordinate_sorted_tuples) ]
-            read_mems[chr_id] = sorted_mems
+        # for chr_id in list(read_mems.keys()):
+        #     coordinate_sorted_tuples = sorted(read_mems[chr_id], key = lambda x: x[1])
+        #     sorted_mems = [ mem(x,y,c,d,val,j,e_id) for j, (x, y, c, d, val, e_id) in enumerate(coordinate_sorted_tuples) ]
+        #     read_mems[chr_id] = sorted_mems
 
-        for chr_id in list(read_mems_rev.keys()):
-            coordinate_sorted_tuples = sorted(read_mems_rev[chr_id], key = lambda x: x[1])
-            sorted_mems = [ mem(x,y,c,d,val,j,e_id) for j, (x, y, c, d, val, e_id) in enumerate(coordinate_sorted_tuples) ]
-            read_mems_rev[chr_id] = sorted_mems
+        # for chr_id in list(read_mems_rev.keys()):
+        #     coordinate_sorted_tuples = sorted(read_mems_rev[chr_id], key = lambda x: x[1])
+        #     sorted_mems = [ mem(x,y,c,d,val,j,e_id) for j, (x, y, c, d, val, e_id) in enumerate(coordinate_sorted_tuples) ]
+        #     read_mems_rev[chr_id] = sorted_mems
         
-        yield curr_acc, read_mems, curr_acc_rev, read_mems_rev
-
+        # yield curr_acc, read_mems, curr_acc_rev, read_mems_rev
+        
+        yield curr_acc, hits, curr_acc_rev, hits_rc
+        
     print("READ {0} RECORDS (FW and RC counted as 2 records).".format(nr_reads))

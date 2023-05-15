@@ -1,3 +1,4 @@
+import sys
 import multiprocessing as mp
 from queue import Empty
 
@@ -29,19 +30,27 @@ def file_IO(input_queue, reads, seeds, output_sam_buffer, outfile_name):
     batch = []
     read_cnt = 1
     batch_id = 1
+    reads_aln = []
+    buffer_write_cnt = 0
     # generate reads and their seeds
     for (acc, (seq, _)), (r_acc, read_mems, r_acc_rev, r_mems_rev) in zip(help_functions.readfq(open(reads,"r")), seed_wrapper.read_seeds(seeds)):
         assert acc == r_acc
-        batch.append((acc, seq, read_mems, r_mems_rev))
+        batch.append([acc, seq, read_mems, r_mems_rev])
 
         if read_cnt % 1000 == 0:
-            input_queue.put((batch_id, batch))
+            input_queue.put([batch_id, batch])
             batch = []
             batch_id += 1
         read_cnt += 1
 
-        if output_sam_buffer.qsize() >= 100:
-            tot_written = write(outfile, output_sam_buffer, tot_written)
+        # reads_aln.append('\t'.join([s for s in [acc,seq, r_acc, r_acc_rev]])) 
+        # if len(reads_aln) > 1000:
+        #     output_sam_buffer.put(reads_aln)
+        #     reads_aln = []
+ 
+        if buffer_write_cnt >= 50000:
+           tot_written = write(outfile, output_sam_buffer, tot_written)
+           buffer_write_cnt = 0
 
     # last batch
     input_queue.put((batch_id, batch))
@@ -97,6 +106,15 @@ class Managers:
 
 
 def main(reads, seeds, outfile, args):
+
+    # # for profiling
+    # m = mp.Manager()
+    # input_queue = m.Queue(1000)
+    # output_sam_buffer = m.Queue()
+    # file_IO(input_queue, reads, seeds, output_sam_buffer, outfile)
+    # sys.exit()
+    # ############
+
     m = Managers(reads, seeds, outfile, args.nr_cores, args)
     m.start()
     tot_counts = m.join()
