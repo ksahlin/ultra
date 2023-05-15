@@ -414,9 +414,11 @@ def align_reads(args):
     if not args.disable_mm2:
         print("Filtering reads aligned to unindexed regions with minimap2 ")
         print("Running minimap2...")
+        mm2_start = time()
         nr_reads_to_ignore, path_reads_to_align = prefilter_genomic_reads.main(ref_part_sequences, args.ref, args.reads, args.outfolder, index_folder, args.nr_cores, args.genomic_frac, args.mm2_ksize)
         args.reads = path_reads_to_align
         print("Done filtering. Reads filtered:{0}".format(nr_reads_to_ignore))
+        print("Time for minimap2:{0} seconds.".format(time() - mm2_start))
 
     ref_path = os.path.join(args.outfolder, "refs_sequences.fa")
     refs_file = open(ref_path, 'w')
@@ -432,12 +434,14 @@ def align_reads(args):
     #############################################
 
     print("Processing reads for NAM finding")
+    processing_start = time()
     reads_tmp = gzip.open(os.path.join(args.outfolder, 'reads_tmp.fa.gz'), 'wb', compresslevel=1)
     for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r')):
         record = '>{0}\n{1}\n'.format(acc, help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5))
         reads_tmp.write(record.encode('utf-8'))
     reads_tmp.close()
     print("Completed processing poly-A tails")
+    print("Time for processing reads:{0} seconds.".format(time() - processing_start))
     args.reads_tmp = reads_tmp.name
     namfinder_start = time()
     seed_file_name = seed_wrapper.find_nams_namfinder(args.outfolder, args.reads_tmp, ref_path, args.outfolder, args.nr_cores, args.s, args.thinning)
@@ -445,6 +449,12 @@ def align_reads(args):
     #############################################
     #############################################
     #############################################
+
+    
+    # ## For development omitting prefilter and namfinder steps.
+    # seed_file_name = os.path.join(args.outfolder, "seeds.txt.gz") 
+    # args.reads = os.path.join(args.outfolder, "reads_after_genomic_filtering.fasta")
+    # ############################################################
 
 
     print("Starting aligning reads.")
