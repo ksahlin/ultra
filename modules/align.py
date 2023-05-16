@@ -461,7 +461,7 @@ def align_single(process_id, input_queue, output_sam_buffer, classification_and_
             is_secondary =  False
             is_rc =  False
             if not all_chainings:
-                sam_output.main(read_acc, read_seq_mod, '*', 'unaligned', [], '*', '*', '*', is_rc, is_secondary, 0)
+                sam_aln_entry = sam_output.main(read_acc, read_seq_mod, '*', 'unaligned', [], '*', '*', '*', is_rc, is_secondary, 0)
                 alignments_output.append(sam_aln_entry)
 
                 continue
