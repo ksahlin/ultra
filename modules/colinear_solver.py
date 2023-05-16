@@ -178,8 +178,8 @@ def read_coverage(mems, max_intron):
     """
     # assert mems == sorted(mems, key = lambda x: x.y )
 
-    if len(mems) > 1000:
-        print('MEM',len(mems))
+    # if len(mems) > 1000:
+    #     print('MEM',len(mems))
 
     # print("Going in to mem chaining:", mems)
     T = [ (v.d, v.val)  for v in mems]
@@ -290,8 +290,8 @@ def read_coverage_mam_score(mams, overlap_threshold = 20):
     # print("MAM INSTANCE", mams)
     # for mam in mams:
     #     print(mam.mam_id, mam.x, mam.y, mam.c, mam.d, '\t', mam.val, mam.min_segment_length)
-    if len(mams) > 1000:
-        print('MAM',len(mams))
+    # if len(mams) > 1000:
+    #     print('MAM',len(mams))
     T = [ (v.d, v.val)  for v in mams]
     I = [ (v.d, v.val)  for v in mams]
     
@@ -399,6 +399,10 @@ def n_logn_read_coverage_mams(mams, overlap_threshold = 5):
         so n log n time complexity. Each mem is an Namedtuple. python object
 
     """
+    
+    # if len(mams) > 1000:
+    #     print('MAM',len(mams))
+
     # assert mams == sorted(mams, key=lambda x: x.y)
     # for mam in mams:
     #     print(mam.mam_id, mam.x, mam.y, mam.c, mam.d, '\t', mam.val, mam.min_segment_length)
