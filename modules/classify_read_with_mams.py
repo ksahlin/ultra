@@ -558,7 +558,7 @@ def main(solution, ref_segment_sequences, ref_flank_sequences, parts_to_segments
     ###################################################################################################
     # print("MAM INSTANCE", mam_instance)
     if mam_instance:
-        if len(mam_instance) > 0:
+        if len(mam_instance) > 200:
             # mam_solution_old, value_old, unique_old = colinear_solver.read_coverage_mam_score(mam_instance, overlap_threshold = 5)
             mam_solution, value, unique = colinear_solver.n_logn_read_coverage_mams(mam_instance, overlap_threshold = 5)
             # if mam_solution != mam_solution2:
