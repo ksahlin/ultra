@@ -128,11 +128,13 @@ def get_cigars(segments):
 
 
 def get_genomic_cigar(read_aln, ref_aln, predicted_exons):
-    # print('here', read_aln)
-    # print('here', ref_aln)
+    # print('read_aln', read_aln)
+    # print('ref_aln', ref_aln)
+    # print('predicted_exons', predicted_exons)
     segments = get_segments(read_aln, ref_aln, predicted_exons)
+    # print('segments', segments)
     cigars, start_offset = get_cigars(segments)
-    # print('cigar segments', cigars)
+    # print('cigar segments', cigars, start_offset)
 
     # ######## ORIGINAL  ###########################
     # for c in cigars:
@@ -210,49 +212,104 @@ def edit_distance(cigar):
     return ed 
 
 
-def main(read_id, read_seq, ref_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, alignment_outfile, is_rc, is_secondary, map_score, aln_score = 0):
-    # print(ref_id, classification, predicted_exons, read_aln, ref_aln, alignment_outfile)
-    read_sam_entry = pysam.AlignedSegment(alignment_outfile.header)
+# def main(read_id, read_seq, ref_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, alignment_outfile, is_rc, is_secondary, map_score, aln_score = 0):
+#     # print(ref_id, classification, predicted_exons, read_aln, ref_aln, alignment_outfile)
+#     read_sam_entry = pysam.AlignedSegment(alignment_outfile.header)
+#     if classification != 'unaligned':
+#         genomic_cigar, start_offset = get_genomic_cigar(read_aln, ref_aln, predicted_exons)
+#         # if genomic_cigar == "":
+#         #     print(classification, is_rc, is_secondary, aln_score)
+#         #     print('genomic cigar:', genomic_cigar, read_id)
+#         #     print(read_aln)
+#         #     print(ref_aln)
+#         #     print(predicted_exons)
+#         if is_secondary and is_rc:
+#             read_sam_entry.flag = 256 + 16 
+#         elif is_secondary:
+#             read_sam_entry.flag = 256
+#         elif is_rc:
+#             read_sam_entry.flag = 16 
+#         else:
+#             read_sam_entry.flag = 0 
+
+#         read_sam_entry.reference_name = ref_id
+#         read_sam_entry.mapping_quality = 60 # TODO: calculate mapping quality 
+
+#         read_sam_entry.cigarstring = genomic_cigar 
+#         read_sam_entry.reference_start = predicted_exons[0][0] + start_offset
+#         read_sam_entry.mapping_quality = map_score 
+#         # print(predicted_exons[0][0], start_offset)
+#         read_sam_entry.set_tag('XA', annotated_to_transcript_id)
+#         read_sam_entry.set_tag('XC', classification)
+#         read_sam_entry.set_tag('NM', edit_distance(genomic_cigar))
+#     else:
+#         read_sam_entry.cigarstring = '*'
+#         read_sam_entry.reference_start = -1
+#         read_sam_entry.flag = 4
+
+
+#     read_sam_entry.query_sequence  = read_seq
+#     read_sam_entry.query_name = read_id
+
+#     return read_sam_entry.to_string()
+#     #alignment_outfile.write(read_sam_entry)
+
+
+def main(read_id, read_seq, ref_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, is_rc, is_secondary, map_score, aln_score = 0):
+    sam_entry = []
+    sam_entry.append(read_id)
+    sam_entry.append("\t")
+    reference_name = ref_id
+
     if classification != 'unaligned':
         genomic_cigar, start_offset = get_genomic_cigar(read_aln, ref_aln, predicted_exons)
-        # if genomic_cigar == "":
-        #     print(classification, is_rc, is_secondary, aln_score)
-        #     print('genomic cigar:', genomic_cigar, read_id)
-        #     print(read_aln)
-        #     print(ref_aln)
-        #     print(predicted_exons)
         if is_secondary and is_rc:
-            read_sam_entry.flag = 256 + 16 
+            flag = 256 + 16 
         elif is_secondary:
-            read_sam_entry.flag = 256
+            flag = 256
         elif is_rc:
-            read_sam_entry.flag = 16 
+            flag = 16 
         else:
-            read_sam_entry.flag = 0 
+            flag = 0 
 
-        read_sam_entry.reference_name = ref_id
-        read_sam_entry.mapping_quality = 60 # TODO: calculate mapping quality 
-
-        read_sam_entry.cigarstring = genomic_cigar 
-        read_sam_entry.reference_start = predicted_exons[0][0] + start_offset
-        read_sam_entry.mapping_quality = map_score 
-        # print(predicted_exons[0][0], start_offset)
-        read_sam_entry.set_tag('XA', annotated_to_transcript_id)
-        read_sam_entry.set_tag('XC', classification)
-        read_sam_entry.set_tag('NM', edit_distance(genomic_cigar))
+        cigarstring = genomic_cigar 
+        reference_start = predicted_exons[0][0] + start_offset + 1 # SAM file used 1-based coordinate system, hence +1
+        mapping_quality = map_score 
     else:
-        read_sam_entry.cigarstring = '*'
-        read_sam_entry.reference_start = -1
-        read_sam_entry.flag = 4
+        cigarstring = '*'
+        reference_start = 0
+        flag = 4
+        mapping_quality = 0 
 
+    sam_entry.append(str(flag))
+    sam_entry.append("\t")
+    sam_entry.append(reference_name)
+    sam_entry.append("\t")
+    sam_entry.append(str(reference_start))
+    sam_entry.append("\t")
+    sam_entry.append(str(mapping_quality))
+    sam_entry.append("\t")
+    sam_entry.append(cigarstring)
+    sam_entry.append("\t")
 
-    read_sam_entry.query_sequence  = read_seq
-    read_sam_entry.query_name = read_id
+    sam_entry.append('*')
+    sam_entry.append("\t")
+    sam_entry.append('0')
+    sam_entry.append("\t")
+    sam_entry.append('0')
+    sam_entry.append("\t")
 
+    sam_entry.append(read_seq)
+    sam_entry.append("\t")
+    sam_entry.append('*')
+    sam_entry.append("\t")
 
+    if classification != 'unaligned':
+        sam_entry.append('XA:Z:{0}'.format(annotated_to_transcript_id))
+        sam_entry.append("\t")
+        sam_entry.append('XC:Z:{0}'.format(classification))
+        sam_entry.append("\t")
+        sam_entry.append('NM:i:{0}'.format(edit_distance(genomic_cigar)))
+    sam_entry.append('\n')
 
-
-    alignment_outfile.write(read_sam_entry)
-    # sys.exit()
-
-
+    return ''.join( [e for e in sam_entry])

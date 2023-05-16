@@ -1,13 +1,13 @@
 {
 
-    "ROOT_OUT" : "/proj/snic2020-16-138/ultra_eval",
+    "ROOT_OUT" : "/proj/snic2022-6-341/nobackup/ultra_eval",
     "ROOT_IN" : "/home/kris/source/ultra",
-    "ANNOTATION" : "/proj/snic2020-16-138/ultra_eval/gtf_annotations",
+    "ANNOTATION" : "/proj/snic2022-6-341/nobackup/ultra_eval/gtf_annotations",
     "deSALT_src" : "/home/kris/source/deSALT/src",
     "uLTRA_src" : "/home/kris/source/ultra",
 
-    "SIRV" : "/proj/snic2020-16-138/ultra_eval/genomes/SIRV_isoforms_multi-fasta_170612a.fasta",
-    "HG38" : "/proj/snic2020-16-138/ultra_eval/genomes/Homo_sapiens.GRCh38.dna.primary_assembly_modified_headers.fa",
-    "drosophila97" : "/proj/snic2020-16-138/ultra_eval/genomes/Drosophila_melanogaster.BDGP6.22.dna.toplevel.fa",
+    "SIRV" : "/proj/snic2022-6-341/nobackup/ultra_eval/genomes/SIRV_isoforms_multi-fasta_170612a.fasta",
+    "HG38" : "/proj/snic2022-6-341/nobackup/ultra_eval/genomes/Homo_sapiens.GRCh38.dna.primary_assembly_modified_headers.fa",
+    "drosophila97" : "/proj/snic2022-6-341/nobackup/ultra_eval/genomes/Drosophila_melanogaster.BDGP6.22.dna.toplevel.fa",
     "TRANSCRIPTOME" : "/home/kris/source/ultra/data/all_transcripts_ENSEMBL.txt",
 }

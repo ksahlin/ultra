@@ -2,7 +2,7 @@
 
     "__default__" : 
     {
-        "account" : "snic2020-5-651",
+        "account" : "snic2022-5-592",
         "cpus-per-task" : "8",
         "C" : "mem128GB",
         "Nodes" : 1,
@@ -14,7 +14,7 @@
 
     "simulate" : 
     {
-        "account" : "snic2020-5-651",
+        "account" : "snic2022-5-592",
         "cpus-per-task" : "8",
         "C" : "mem128GB",
         "Nodes" : 1,
@@ -26,7 +26,7 @@
 
     "evaluate_biological": 
     {
-        "account" : "snic2020-5-651",
+        "account" : "snic2022-5-592",
         "jobname" : "evaluate_biological",
         "cpus-per-task" : "20",
         "Nodes" : 1,
@@ -38,7 +38,7 @@
 
     "mapping_concordance": 
     {
-        "account" : "snic2020-5-651",
+        "account" : "snic2022-5-592",
         "jobname" : "mapping_concordance",
         "cpus-per-task" : "20",
         "Nodes" : 1,
@@ -51,7 +51,7 @@
 
     "evaluate_biological_cigar": 
     {
-        "account" : "snic2020-5-651",
+        "account" : "snic2022-5-592",
         "jobname" : "evaluate_biological_cigar",
         "cpus-per-task" : "20",
         "Nodes" : 1,
@@ -63,7 +63,7 @@
 
     "desalt_index" : 
     {
-        "account" : "snic2020-5-651",
+        "account" : "snic2022-5-592",
         "jobname" : "desalt_index",
         "cpus-per-task" : "20",
         "Nodes" : 1,
@@ -76,7 +76,7 @@
 
     "minimap2_align": 
     {
-        "account" : "snic2020-5-651",
+        "account" : "snic2022-5-592",
         "jobname" : "minimap2",
         "cpus-per-task" : "20",
         "Nodes" : 1,
@@ -88,7 +88,7 @@
 
     "minimap2_gtf_align": 
     {
-        "account" : "snic2020-5-651",
+        "account" : "snic2022-5-592",
         "jobname" : "minimap2",
         "cpus-per-task" : "20",
         "Nodes" : 1,
@@ -100,7 +100,7 @@
 
     "ultra_prep": 
     {
-        "account" : "snic2020-5-651",
+        "account" : "snic2022-5-592",
         "jobname" : "ultra_prep",
         "cpus-per-task" : "20",
         "Nodes" : 1,
@@ -112,7 +112,7 @@
 
     "ultra_mm2_prep": 
     {
-        "account" : "snic2020-5-651",
+        "account" : "snic2022-5-592",
         "jobname" : "ultra_prep",
         "cpus-per-task" : "20",
         "Nodes" : 1,
@@ -124,31 +124,31 @@
 
     "ultra_align": 
     {
-        "account" : "snic2020-5-651",
+        "account" : "snic2022-5-592",
         "jobname" : "ultra_align",
         "cpus-per-task" : "20",
         "Nodes" : 1,
         "C" : "mem128GB",
-        "runtime" : "10:00:00",
+        "runtime" : "15:00:00",
         "mail" : "ksahlin@kth.se",
         "mail_type" : "FAIL"
     },
 
     "ultra_mm2_align": 
     {
-        "account" : "snic2020-5-651",
+        "account" : "snic2022-5-592",
         "jobname" : "ultra_align",
         "cpus-per-task" : "20",
         "Nodes" : 1,
         "C" : "mem128GB",
-        "runtime" : "10:00:00",
+        "runtime" : "15:00:00",
         "mail" : "ksahlin@kth.se",
         "mail_type" : "FAIL"
     },
 
     "desalt_align" : 
     {
-        "account" : "snic2020-5-651",
+        "account" : "snic2022-5-592",
         "jobname" : "desalt_align",
         "cpus-per-task" : "20",
         "Nodes" : 1,
@@ -160,7 +160,7 @@
 
     "desalt_gtf_align" : 
     {
-        "account" : "snic2020-5-651",
+        "account" : "snic2022-5-592",
         "jobname" : "desalt_gtf_align",
         "cpus-per-task" : "20",
         "Nodes" : 1,
@@ -172,7 +172,7 @@
 
     "graphmap2_index" : 
     {
-        "account" : "snic2020-5-651",
+        "account" : "snic2022-5-592",
         "jobname" : "graphmap2_index",
         "cpus-per-task" : "20",
         "Nodes" : 1,
@@ -184,7 +184,7 @@
 
     "graphmap2_gtf_align" : 
     {
-        "account" : "snic2020-5-651",
+        "account" : "snic2022-5-592",
         "jobname" : "graphmap2_align",
         "cpus-per-task" : "20",
         "Nodes" : 1,
@@ -195,7 +195,7 @@
     },
     "graphmap2_align" : 
     {
-        "account" : "snic2020-5-651",
+        "account" : "snic2022-5-592",
         "jobname" : "graphmap2_align",
         "cpus-per-task" : "20",
         "Nodes" : 1,
@@ -207,8 +207,8 @@
 
     "plot_biological" : 
     {
-        "account" : "snic2020-5-651",
-        "cpus-per-task" : "2",
+        "account" : "snic2022-5-592",
+        "cpus-per-task" : "20",
         "C" : "mem256GB",
         "Nodes" : 1,
         "runtime" : "5:00:00",
@@ -219,7 +219,7 @@
 
     "plot_sim" : 
     {
-        "account" : "snic2020-5-651",
+        "account" : "snic2022-5-592",
         "cpus-per-task" : "2",
         "C" : "mem128GB",
         "Nodes" : 1,

@@ -186,9 +186,9 @@ def parasail_alignment(s1, s2, match_score = 2, mismatch_penalty = -2, opening_p
     user_matrix = parasail.matrix_create("ACGT", match_score, mismatch_penalty)
     result = parasail.sg_trace_scan_16(s1, s2, opening_penalty, gap_ext, user_matrix)
     if result.saturated:
-        print("SATURATED!",len(s1), len(s2))
+        # print("SATURATED!",len(s1), len(s2))
         result = parasail.sg_trace_scan_32(s1, s2, opening_penalty, gap_ext, user_matrix)
-        print("computed 32 bit instead")
+        # print("computed 32 bit instead")
 
     # difference in how to obtain string from parasail between python v2 and v3... 
     if sys.version_info[0] < 3:
@@ -247,9 +247,9 @@ def parasail_local(s1, s2, match_score = 2, mismatch_penalty = -2, opening_penal
     user_matrix = parasail.matrix_create("ACGT", match_score, mismatch_penalty)
     result = parasail.sw_trace_scan_16(s1, s2, opening_penalty, gap_ext, user_matrix)
     if result.saturated:
-        print("SATURATED!",len(s1), len(s2))
+        # print("SATURATED!",len(s1), len(s2))
         result = parasail.sg_trace_scan_32(s1, s2, opening_penalty, gap_ext, user_matrix)
-        print("computed 32 bit instead")
+        # print("computed 32 bit instead")
 
     # difference in how to obtain string from parasail between python v2 and v3... 
     if sys.version_info[0] < 3:
