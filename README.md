@@ -12,8 +12,6 @@ Table of Contents
 =================
 
   * [INSTALLATION](#INSTALLATION)
-    * [Using conda](#Using-conda)
-    * [Downloading source from GitHub](#Downloading-source-from-github)
   * [USAGE](#USAGE)
     * [Indexing](#Indexing)
     * [aligning](#Aligning)
@@ -125,22 +123,15 @@ USAGE
 
 uLTRA can be used with either PacBio Iso-Seq or ONT cDNA/dRNA reads. 
 
-Before running uLTRA, notice that it reqires a _properly formatted GTF file_. If you have a GFF file or other annotation format, it is adviced to use [AGAT](https://github.com/NBISweden/AGAT) for file conversion to GTF as many other conversion tools do not respect GTF format. For example, you can run AGAT as:
-
-```
-agat_convert_sp_gff2gtf.pl --gff annot.gff3 --gtf annot.gtf
-```
-
-
 ### Indexing
-
-First, we construct the data structures used in uLTRA using a genome annotation GTF file and a genome fasta file.
-Make sure to specify full path to annotation, otherwise `gffutils` will complain.
 
 ```
 uLTRA index genome.fasta  /full/path/to/annotation.gtf  outfolder/  [parameters]
 ```
 
+Important parameters: 
+
+1. `--disable_infer` can speed up the indexing considerably, but it only works if you have the `gene feature` and `transcript feature` in your GTF file.
 
 ### Aligning
 
@@ -151,19 +142,26 @@ uLTRA align genome.fasta reads.[fa/fq] outfolder/  --ont --t 8   # ONT cDNA read
 uLTRA align genome.fasta reads.[fa/fq] outfolder/  --isoseq --t 8 # PacBio isoseq reads
 ```
 
-You can set a custom location of where to get the index from using `--index [PATH]`. Otherwise, uLTRA will try to read the index from the `outfolder/` by default. The aligned reads will be written to `outfolder/reads.sam` unless `--prefix` is set. For example, `--prefix sample_X` will output the reads in `outfolder/sample_X.sam`.
+Important parameters:
+
+1. `--index [PATH]`: You can set a custom location of where to get the index from using, otherwise, uLTRA will try to read the index from the `outfolder/` by default. 
+2. `--prefix [PREFIX OF FILE]`: The aligned reads will be written to `outfolder/reads.sam` unless `--prefix` is set. For example, `--prefix sample_X` will output the reads in `outfolder/sample_X.sam`.
 
 ### Pipeline
 
-Performs all the steps in one
+Perform all the steps in one
 
 ```
 uLTRA pipeline genome.fasta /full/path/to/annotation.gtf reads.fa outfolder/  [parameters]
 ```
 
-#### Output
+### Common errors
 
-uLTRA outputs a SAM-file with alignments to the genome.
+Not having a properly formatted GTF file. Before running uLTRA, notice that it reqires a _properly formatted GTF file_. If you have a GFF file or other annotation format, it is adviced to use [AGAT](https://github.com/NBISweden/AGAT) for file conversion to GTF as many other conversion tools do not respect GTF format. For example, you can run AGAT as:
+
+```
+agat_convert_sp_gff2gtf.pl --gff annot.gff3 --gtf annot.gtf
+```
 
 
 
