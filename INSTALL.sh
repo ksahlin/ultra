@@ -28,7 +28,7 @@ echo
 pip install ultra-bioinformatics
 
 
-# Install MEM finder slaMEM 
+# Install MEM finder namfinder 
 echo
 echo "INSTALLING NAMFINDER"
 echo
@@ -40,9 +40,9 @@ then
     cd namfinder
     cmake -B build -DCMAKE_C_FLAGS="-march=native" -DCMAKE_CXX_FLAGS="-march=native"
     make -j -C build 
-    mv slaMEM $path
+    mv namfinder $path
     echo
-    echo "I have put namfinder in:" $path " please make sure that this folder is in your path, or move slaMEM to your path"
+    echo "I have put namfinder in:" $path " please make sure that this folder is in your path, or move namfinder to your path"
     echo
     cd ..
     rm -rf namfinder
