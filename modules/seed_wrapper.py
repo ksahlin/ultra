@@ -56,10 +56,21 @@ def find_nams_namfinder(outfolder, read_path, refs_path, out_path, nr_cores, str
         l = (strobe_size + 1)//5 # Need to scale down offsets since seeds subsampled
         u = (strobe_size + 1)//5 +1 # seems to be ok value based on some tests
 
+    stderr = open('/dev/null', 'r')
+    stdout = open('/dev/null', 'r')
+    try:
+        res = subprocess.run(['namfinder', '--help'], check = True, stdout = stdout, stderr = stderr)
+    except:
+        print ('Command "namfinder --help" returned an error. Check your installation of namfinder')
+        sys.exit()
+
     stderr_file = os.path.join(outfolder, "namfinder_stderr.1")
     stdout_file = os.path.join(outfolder, "seeds.txt.gz") 
     cmd = " ".join(c for c in [ 'namfinder', '-k' , str(strobe_size), '-s' , str(s), '-l' , str(l), '-u' , str(u), '-C' , '500', '-L' , '1000', '-t', str(nr_cores), '-S', refs_path, read_path, "2>", stderr_file, "|", "gzip", "-1", "--stdout", ">", stdout_file ])
+
+    print('RUNNING NAMFINDER USING COMMAND:')
     print(cmd)
+
     returncode = os.system(cmd)
     if returncode != 0:
         print("An unexpected error happend in namfinder, check error log at:", stderr_file)
