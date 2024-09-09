@@ -7,6 +7,8 @@ uLTRA is a tool for splice alignment of long transcriptomic reads to a genome, g
 
 uLTRA is distributed as a python package supported on Linux / OSX with python (versions 3.4 or above). 
 
+Here is a [YouTube video](https://www.youtube.com/watch?v=M7cK80kXXMU) that describes uLTRA.
+
 
 Table of Contents
 =================
