@@ -255,7 +255,7 @@ def edit_distance(cigar):
 #     #alignment_outfile.write(read_sam_entry)
 
 
-def main(read_id, read_seq, ref_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, is_rc, is_secondary, map_score, aln_score = 0):
+def main(read_id, read_seq, read_qual, ref_id, classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, is_rc, is_secondary, map_score, aln_score = 0):
     sam_entry = []
     sam_entry.append(read_id)
     sam_entry.append("\t")
@@ -301,7 +301,10 @@ def main(read_id, read_seq, ref_id, classification, predicted_exons, read_aln, r
 
     sam_entry.append(read_seq)
     sam_entry.append("\t")
-    sam_entry.append('*')
+    if read_qual is not None and len(read_seq) == len( read_qual):
+        sam_entry.append(read_qual)
+    else:
+        sam_entry.append('*')
     sam_entry.append("\t")
 
     if classification != 'unaligned':

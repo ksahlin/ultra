@@ -33,9 +33,9 @@ def file_IO(input_queue, reads, seeds, output_sam_buffer, outfile_name):
     reads_aln = []
     buffer_write_cnt = 0
     # generate reads and their seeds
-    for (acc, (seq, _)), (r_acc, read_mems, r_acc_rev, r_mems_rev) in zip(help_functions.readfq(open(reads,"r")), seed_wrapper.read_seeds(seeds)):
+    for (acc, (seq, qual)), (r_acc, read_mems, r_acc_rev, r_mems_rev) in zip(help_functions.readfq(open(reads,"r")), seed_wrapper.read_seeds(seeds)):
         assert acc == r_acc
-        batch.append([acc, seq, read_mems, r_mems_rev])
+        batch.append([acc, seq, qual, read_mems, r_mems_rev])
 
         if read_cnt % 1000 == 0:
             input_queue.put([batch_id, batch])

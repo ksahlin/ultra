@@ -353,7 +353,8 @@ def align_reads(args):
     processing_start = time()
     reads_tmp = gzip.open(os.path.join(args.outfolder, 'reads_tmp.fa.gz'), 'wb', compresslevel=1)
     for acc, (seq, qual) in help_functions.readfq(open(args.reads, 'r')):
-        record = '>{0}\n{1}\n'.format(acc, help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 5))
+        seq_mod, _ = help_functions.remove_read_polyA_ends(seq, qual, args.reduce_read_ployA, 5)
+        record = '>{0}\n{1}\n'.format(acc, seq_mod )
         reads_tmp.write(record.encode('utf-8'))
     reads_tmp.close()
     print("Completed processing poly-A tails")
@@ -405,7 +406,7 @@ def align_reads(args):
         minimap_tmp = glob.glob(os.path.join(args.outfolder, "minimap2*"))
         ultra_tmp = glob.glob(os.path.join(args.outfolder, "uLTRA_batch*"))
         
-        f1 = os.path.join(args.outfolder, "reads_after_genomic_filtering.fasta")
+        f1 = os.path.join(args.outfolder, "reads_after_genomic_filtering.fastq")
         f2 = os.path.join(args.outfolder, "indexed.sam")
         f3 = os.path.join(args.outfolder, "unindexed.sam")
         f4 = os.path.join(args.outfolder, "refs_sequences.fa")
