@@ -425,11 +425,11 @@ def align_single(process_id, input_queue, output_sam_buffer, classification_and_
         alignments_output = []
 
         for b in batch[1]:
-            (read_acc, seq, hits, hits_rc) = b
+            (read_acc, seq, qual, hits, hits_rc) = b
             mems = get_mems_from_input(hits)
             mems_rc = get_mems_from_input(hits_rc)
-            read_seq_mod = help_functions.remove_read_polyA_ends(seq, args.reduce_read_ployA, 1)
-
+            read_seq_mod, read_qual_mod = help_functions.remove_read_polyA_ends(seq, qual, args.reduce_read_ployA, 1)
+            
             upper_bound = annotate_guaranteed_optimal_bound(mems, False, max_intron_chr, max_global_intron)
             upper_bound_rc = annotate_guaranteed_optimal_bound(mems_rc, True, max_intron_chr, max_global_intron)
             # print()
@@ -461,7 +461,7 @@ def align_single(process_id, input_queue, output_sam_buffer, classification_and_
             is_secondary =  False
             is_rc =  False
             if not all_chainings:
-                sam_aln_entry = sam_output.main(read_acc, read_seq_mod, '*', 'unaligned', [], '*', '*', '*', is_rc, is_secondary, 0)
+                sam_aln_entry = sam_output.main(read_acc, read_seq_mod, read_qual_mod ,'*', 'unaligned', [], '*', '*', '*', is_rc, is_secondary, 0)
                 alignments_output.append(sam_aln_entry)
 
                 continue
@@ -476,8 +476,13 @@ def align_single(process_id, input_queue, output_sam_buffer, classification_and_
 
                 if is_rc:
                     read_seq = help_functions.reverse_complement(read_seq_mod)
+                    if read_qual_mod is None:
+                        read_qual = None
+                    else:
+                        read_qual = read_qual_mod[::-1]
                 else:
                     read_seq = read_seq_mod
+                    read_qual = read_qual_mod
 
                 non_covered_regions, mam_value, mam_solution = classify_read_with_mams.main(mem_solution, ref_segment_sequences, ref_flank_sequences, parts_to_segments, \
                                                                                                                         segment_to_gene, gene_to_small_segments, \
@@ -516,7 +521,7 @@ def align_single(process_id, input_queue, output_sam_buffer, classification_and_
 
             ##################  Process alignments and decide primary
             if len(read_alignments) == 0:
-                sam_aln_entry = sam_output.main(read_acc, read_seq, '*', 'unaligned', [], '*', '*', '*', is_rc, is_secondary, 0)
+                sam_aln_entry = sam_output.main(read_acc, read_seq, read_qual , '*', 'unaligned', [], '*', '*', '*', is_rc, is_secondary, 0)
                 alignments_output.append(sam_aln_entry)
             else:
                 sorted_wrt_alignement_score = sorted(read_alignments, key = lambda x: (-x[0], (x[2] - x[1]), x[5]))
@@ -542,7 +547,7 @@ def align_single(process_id, input_queue, output_sam_buffer, classification_and_
                         map_score = 0
 
 
-                    sam_aln_entry = sam_output.main(read_acc, read_seq, id_to_chr[chr_id], classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, is_rc, is_secondary, map_score, aln_score = alignment_score)
+                    sam_aln_entry = sam_output.main(read_acc, read_seq, read_qual, id_to_chr[chr_id], classification, predicted_exons, read_aln, ref_aln, annotated_to_transcript_id, is_rc, is_secondary, map_score, aln_score = alignment_score)
                     alignments_output.append(sam_aln_entry)
         
         output_sam_buffer.put(alignments_output)

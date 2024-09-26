@@ -85,7 +85,7 @@ def is_overlapping(a_start,a_stop, b_start,b_stop):
 def filter_reads_to_align(minimap2_samfile_path, indexed_regions, outfolder, genomic_frac_cutoff):
     SAM_file = pysam.AlignmentFile(minimap2_samfile_path, "r", check_sq=False)
 
-    reads_to_align = open(os.path.join(outfolder, "reads_after_genomic_filtering.fasta"), "w")
+    reads_to_align = open(os.path.join(outfolder, "reads_after_genomic_filtering.fastq"), "w")
     unindexed_aligned = pysam.AlignmentFile(os.path.join(outfolder, "unindexed.sam"), "w", template=SAM_file)
     indexed_aligned = pysam.AlignmentFile(os.path.join(outfolder, "indexed.sam"), "w", template=SAM_file)
 
@@ -94,6 +94,7 @@ def filter_reads_to_align(minimap2_samfile_path, indexed_regions, outfolder, gen
     nr_reads_unindexed = 0 
 
     for read in SAM_file.fetch(until_eof=True):
+        qual_chars = pysam.qualities_to_qualitystring( read.query_qualities )
         if read.flag == 0 or read.flag == 16:
 
             aligned_choordinates = get_exons_from_cigar(read)
@@ -113,12 +114,12 @@ def filter_reads_to_align(minimap2_samfile_path, indexed_regions, outfolder, gen
                 nr_reads_unindexed += 1
             else:
                 seq = help_functions.reverse_complement(read.query_sequence) if read.is_reverse else read.query_sequence
-                reads_to_align.write(">{0}\n{1}\n".format(read.query_name, seq))
+                reads_to_align.write(">{0}\n{1}\n+\n{2}\n".format(read.query_name, seq, qual_chars))
                 indexed_aligned.write(read)
                 # reads_indexed[read.query_name] = read
         
         elif read.flag == 4: # unmapped
-            reads_to_align.write(">{0}\n{1}\n".format(read.query_name, read.query_sequence))
+            reads_to_align.write(">{0}\n{1}\n+\n{2}\n".format(read.query_name, read.query_sequence, qual_chars))
 
 
     unindexed_aligned.close()
