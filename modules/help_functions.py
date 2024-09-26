@@ -38,20 +38,39 @@ def update_nested(d, u):
     return d
 
 
-def remove_read_polyA_ends(seq, threshold_len, to_len):
+def remove_read_polyA_ends(seq, qual, threshold_len, to_len):
     end_length_window = min(len(seq)//2, 100)
     seq_list = [ seq[:-end_length_window] ]
+    if qual is not None:
+        qual_list = [ qual[:-end_length_window] ]
+        seq_qual_pair = zip( seq[-end_length_window:] , qual[-end_length_window:])
+        grouped = itertools.groupby(seq_qual_pair, key= lambda x: x[0])
+        for ch, g in grouped:
+            qualgroup = [x[1] for x in g]
+            h_len = len(qualgroup)
+            # print(ch, h_len, g )
+            if h_len > threshold_len and (ch == "A" or ch == "T"):
+                seq_list.append(ch*to_len)
+                qual_list.extend( qualgroup[:to_len] )
+            else:
+                seq_list.append( ch*h_len )
+                qual_list.extend( qualgroup[:h_len] )
 
-    for ch, g in itertools.groupby(seq[-end_length_window:]):
-        h_len = sum(1 for x in g)
-        # print(ch, h_len, g )
-        if h_len > threshold_len and (ch == "A" or ch == "T"):
-            seq_list.append(ch*to_len)
-        else:
-            seq_list.append(ch*h_len)
 
-    seq_mod = "".join([s for s in seq_list])
-    return seq_mod
+        seq_mod = "".join([s for s in seq_list])
+        qual_mod = "".join([s for s in qual_list])
+    else:
+        for ch, g in itertools.groupby(seq[-end_length_window:]):
+            h_len = sum(1 for x in g)
+            # print(ch, h_len, g )
+            if h_len > threshold_len and (ch == "A" or ch == "T"):
+                seq_list.append(ch*to_len)
+            else:
+                seq_list.append(ch*h_len)
+
+        qual_mod = None
+        seq_mod = "".join([s for s in seq_list])
+    return seq_mod, qual_mod
 
 def pickle_dump(filepath, data, filename):
     with open(os.path.join(filepath,filename), 'wb') as f:
