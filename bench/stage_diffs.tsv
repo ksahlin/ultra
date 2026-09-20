@@ -21,3 +21,4 @@
 #
 stage	structure	finding	corpora	notes
 index	gene_to_small_segments	22	droso-20k	the port fills every active gene; the reference uses a leaked loop variable. On SIRV this must still MATCH - 22 of 22 sites there have a single active gene - so SIRV is the control and droso is the test.
+align	reads.sam:QUAL	34	*	the port writes QUAL in the same orientation as SEQ; the reference leaves it in the aligned orientation for reverse-strand reads that minimap2 mapped, so its QUAL is reversed relative to its own SEQ. Measured: 8 of 24 reverse-strand records on a 100-read sample. Affects only the QUAL column.

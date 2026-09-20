@@ -1253,7 +1253,71 @@ assert!(failures.len() <= BUDGET, "find_exons divergence grew past its budget ..
 
 which fails if the divergence ever widens, and prints the count every run.
 
-> Findings 34+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
+### Finding 34 — QUAL is reversed relative to SEQ for reverse-strand reads
+
+`prefilter_genomic_reads.filter_reads_to_align` writes the reads that survive the genomic filter:
+
+```python
+seq = help_functions.reverse_complement(read.query_sequence) if read.is_reverse else read.query_sequence
+reads_to_align.write(">{0}\n{1}\n+\n{2}\n".format(read.query_name, seq, qual_chars))
+```
+
+For a reverse-strand alignment pysam returns `query_sequence` **and** `query_qualities` in the
+aligned orientation, i.e. both already reversed relative to the original read. The code puts the
+**sequence** back to the original orientation and leaves the **quality** alone, so from that point on
+`QUAL[i]` is no longer the quality of `SEQ[i]` — the two are reversed with respect to each other.
+
+It propagates: that file is what uLTRA aligns, so the error reaches `reads.sam`. Measured on 100 real
+ONT reads, comparing every record against the input fastq in the orientation its own SEQ implies:
+
+| | QUAL correct | QUAL mismatched |
+| --- | --- | --- |
+| forward-strand records | 75 | **0** |
+| reverse-strand records | 16 | **8** |
+
+The 16 correct reverse-strand records are the ones minimap2 left unmapped, which take the `flag == 4`
+branch and are written untouched; the 8 wrong ones went through the reverse-strand branch above.
+
+A downstream tool that trusts per-base qualities — a polisher, a variant caller, anything weighting
+by phred — gets them backwards for those reads. The fix is one `[::-1]`.
+
+The port writes the quality in the same orientation as the sequence. **That is a divergence** and it
+changes `reads.sam`, so it is listed in `bench/stage_diffs.tsv` rather than applied silently.
+
+### Finding 35 — `reads_after_genomic_filtering.fastq` is not valid FASTQ
+
+The same `write` above emits `">{0}\n{1}\n+\n{2}\n"` — four lines per record, in FASTQ shape, with
+a **`>`** header instead of `@`:
+
+```
+>read1
+TACCGTGAAAAGAGATTGTCGGTGTC...
++
+IIIIIIIIIIIIIIIIIIIIIIIIII...
+```
+
+Nothing catches it because uLTRA reads the file back with its own `readfq`, whose header test is
+`if l[0] in '>@'`, and which then sees the `+` line and takes the fastq path. Any other FASTQ parser
+rejects this, and the file is left behind by `--keep_temporary_files` where a user may well pick it up.
+
+### Finding 36 — with FASTA input the quality line is the literal string `None`
+
+`qual_chars = pysam.qualities_to_qualitystring(read.query_qualities)` returns `None` when the input
+had no qualities, and `"...{2}\n".format(..., None)` formats it as the text `None`:
+
+```
+>read1
+TACCGTGAAAAGAGATTGTCGG...
++
+None
+```
+
+Measured on the repository's own `test/reads.fa`. So every FASTA run writes a four-line record whose
+quality field is four characters long regardless of the read. uLTRA survives it only because
+`readfq` requires the quality to be at least as long as the sequence, never reaches that length,
+hits EOF and degrades the record to "fasta, no quality" — the right answer by accident.
+
+> Findings 37+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
 > the most useful artifact of the project.
 
 ---
