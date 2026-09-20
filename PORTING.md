@@ -972,7 +972,54 @@ For the port this is load-bearing, not optional: the port sorts (its structures 
 without this fix it could only ever match a reference index that happened to have been built with a
 compatible hash seed.
 
-> Findings 28+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
+### Finding 28 — there are only three live aligner call sites, and two library wrappers that nothing calls
+
+The aligner surface is much smaller than the dependency list suggests. Auditing every function in
+`help_functions.py` that touches parasail or edlib, against its callers:
+
+| wrapper | engine | callers |
+| --- | --- | --- |
+| `help_functions.edlib_alignment` | `edlib.align(task="path")` | 4 |
+| `help_functions.parasail_alignment` | `sg_trace_scan_16` → `_32` | 1 |
+| `classify_read_with_mams.edlib_alignment` | `edlib.align(...)` | 3 |
+| `help_functions.ssw_alignment` | `parasail.ssw` | **0 — dead** |
+| `help_functions.parasail_local` | `parasail.sw_trace_scan_16` | **0 — dead** |
+
+So the port needs `edlib.align` and one parasail entry point, and nothing else.
+
+Measured call mix on sirv-10k, recorded from a real run:
+
+| site | calls |
+| --- | --- |
+| `edlib.align`, all `mode="HW", task="path"` | 11 810 |
+| `parasail_alignment` | 190 |
+
+**The ratio is misleading, and worth stating so nobody optimises the wrong one.** edlib dominates the
+*count* because it is used for every MAM-level accuracy check, but parasail is the DEFAULT branch of
+`get_exact_alignment` — edlib only takes over above 20 kb — so parasail produces most of the final
+CIGARs that reach `reads.sam`.
+
+**Both are linked, not reimplemented**, for the reason Finding 26 gives: edlib is vendored as a single
+1 482-line `.cpp` (MIT, 88 KB), and parasail comes from `libparasail-sys`, which bundles its C
+sources. This settles the one thing the API does not define — which optimal location edlib returns
+first, given that `help_functions.edlib_alignment` reads exactly `locations[0]`.
+
+Verified by replaying calls recorded from the reference, comparing full outputs rather than scores:
+
+| oracle | records | compared | result |
+| --- | --- | --- | --- |
+| `tests/edlib_oracle.rs` | **1 866** | edit distance, full locations list, CIGAR | identical |
+| `tests/parasail_oracle.rs` | **194** | score, CIGAR | identical |
+
+The edlib replay also answers a question that is not discoverable from Python: `python-edlib`
+1.3.9.post1 does not expose which edlib it bundles, and the replay confirms it behaves as v1.2.7.
+
+Recording these required `bench/recorder/sitecustomize.py` rather than ordinary monkey-patching:
+uLTRA aligns inside worker processes spawned by `pc.Managers`, and under `spawn` those children
+re-import everything, so a patched parent records nothing. `sitecustomize` is imported during every
+interpreter's site initialisation, children included.
+
+> Findings 29+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
 > the most useful artifact of the project.
 
 ---
@@ -1095,11 +1142,14 @@ stay so. Finding 8 has dissolved: there is no `os.system` string left.
 gzip seed reader, and the read parser with a real error on malformed fastq instead of the silent
 `zip()` truncation of *Finding 6*.
 
-### Stage 4 — the alignment core
+### Stage 4 — the alignment core — **aligners DONE; chaining outstanding**
 
-`colinear_solver.py` + `range_query_max_search_tree.py` + `classify_read_with_mams.py` +
-`align.py` — the 59 % of wall clock. Each aligner call site gets a recorded oracle **before** it is
-written, the way the NGSpeciesID port measured edlib's tie-break rather than guessing it.
+**The aligners are done and exact.** Only three live call sites exist (*Finding 28*); edlib is
+vendored and parasail comes from `libparasail-sys`, and both replay recorded reference calls
+identically — 1 866 and 194 records respectively, comparing CIGARs and locations rather than scores.
+
+**Still outstanding, and it is the bulk of the 59 %:** `colinear_solver.py`,
+`range_query_max_search_tree.py`, `classify_read_with_mams.py` and `align.py` — the chaining itself.
 
 ### Stage 5 — SAM output and the minimap2 merge
 

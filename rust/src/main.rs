@@ -8,6 +8,8 @@
 
 mod cli;
 mod dump;
+mod edlib;
+mod parasail;
 mod fasta;
 mod gtf;
 mod index;

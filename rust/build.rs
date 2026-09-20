@@ -57,6 +57,19 @@ fn main() {
         .warnings(false)
         .compile("xxhash");
 
+    // edlib: one .cpp, vendored for the same reason namfinder is -- exact by
+    // construction, and it settles the "which location comes first" tie-break
+    // that help_functions.edlib_alignment depends on.
+    let edlib = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("vendor/edlib");
+    cc::Build::new()
+        .cpp(true)
+        .std("c++11")
+        .file(edlib.join("edlib.cpp"))
+        .include(&edlib)
+        .warnings(false)
+        .compile("edlib");
+    println!("cargo:rerun-if-changed=vendor/edlib");
+
     println!("cargo:rustc-link-lib=z");
     println!("cargo:rerun-if-changed=vendor/namfinder");
 }
