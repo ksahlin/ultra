@@ -1,0 +1,32 @@
+# Rust build artifacts
+rust/target/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+build/
+dist/
+.eggs/
+
+# macOS
+.DS_Store
+
+# uLTRA runtime output
+*.pickle
+database.db
+seeds.txt.gz
+reads_tmp.fa*
+refs_sequences.fa
+*.sam
+!data/results/*.sam
+namfinder_stderr.*
+minimap2_errors.*
+uLTRA_batch_*.stderr
+
+# editors / envs
+.venv/
+venv/
+.idea/
+.vscode/

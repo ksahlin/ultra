@@ -1,0 +1,82 @@
+usage: uLTRA align [-h] [--t NR_CORES] [--index INDEX] [--prefix PREFIX]
+                   [--max_intron MAX_INTRON]
+                   [--reduce_read_ployA REDUCE_READ_PLOYA]
+                   [--alignment_threshold ALIGNMENT_THRESHOLD]
+                   [--non_covered_cutoff NON_COVERED_CUTOFF]
+                   [--dropoff DROPOFF] [--max_loc MAX_LOC] [--ignore_rc]
+                   [--min_acc MIN_ACC] [--disable_mm2]
+                   [--genomic_frac GENOMIC_FRAC] [--keep_temporary_files]
+                   [--thinning THINNING] [--s S] [--ont | --isoseq]
+                   ref reads outfolder
+
+positional arguments:
+  ref                   Reference genome (fasta).
+  reads                 Path to fasta/fastq file with reads.
+  outfolder             Path to output folder.
+
+options:
+  -h, --help            show this help message and exit
+  --t NR_CORES          Number of cores.
+  --index INDEX         Path to where index files will be read from [default
+                        is the outfolder path].
+  --prefix PREFIX       Outfile prefix [default=reads]. "--prefix sample_X"
+                        will output a file sample_X.sam.
+  --max_intron MAX_INTRON
+                        Set global maximum size between mems considered in
+                        chaining solution. This is otherwise inferred from GTF
+                        file per chromosome.
+  --reduce_read_ployA REDUCE_READ_PLOYA
+                        Reduces polyA tails longer than X bases (default 8) in
+                        reads to 5bp before MEM finding. This helps MEM
+                        matching to spurios regions but does not affect final
+                        read alignments.
+  --alignment_threshold ALIGNMENT_THRESHOLD
+                        Lower threshold for considering an alignment. Counted
+                        as the difference between total match score and total
+                        mismatch penalty. If a read has 25% errors (under edit
+                        distance scoring), the difference between matches and
+                        mismatches would be (very roughly) 0.75 - 0.25 = 0.5
+                        with default alignment parameters match =2, subs=-2,
+                        gap open 3, gap ext=1. Default val (0.5) sets that a
+                        score higher than 2*0.5*read_length would be
+                        considered an alignment, otherwise unaligned.
+  --non_covered_cutoff NON_COVERED_CUTOFF
+                        Threshold for what is counted as varation/intron in
+                        alignment as opposed to deletion.
+  --dropoff DROPOFF     Ignore alignment to hits with read coverage of this
+                        fraction less than the best hit.
+  --max_loc MAX_LOC     Limit read to be aligned to at most max_loc places
+                        (default 5). This prevents time blowup for reads from
+                        highly repetitive regions (e.g. some genomic intra-
+                        priming reads) but may limit all posible alignments to
+                        annotated gene families with many highly similar
+                        copies.
+  --ignore_rc           Ignore to map to reverse complement.
+  --min_acc MIN_ACC     Minimum accuracy of MAM to be considered in mam
+                        chaining.
+  --disable_mm2         Disables utilizing minimap2 to detect genomic primary
+                        alignments and to quality check uLTRAs primary
+                        alignments. An alignment is classified as genomic if
+                        more than --genomic_frac (default 10%) of its aligned
+                        length is outside regions indexed by uLTRA. Note that
+                        uLTRA indexes flank regions such as 3 prime, 5 prime
+                        and (parts of) introns.
+  --genomic_frac GENOMIC_FRAC
+                        If parameter prefilter_genomic is set, this is the
+                        threshild for fraction of aligned portion of read that
+                        is outside uLTRA indexed regions to be considered
+                        genomic (default 0.1).
+  --keep_temporary_files
+                        Keeps all intermediate files used for the alignment.
+                        This parameter is manily good for bugfixing and
+                        development.
+  --thinning THINNING   Seed thinning level (0-2): 0 (deactivated, default) 1
+                        (in expectation every third base) or 2 (in expectation
+                        every fifth base). Thinning makes seedins step much
+                        faster and less memory consuming at cost of accuracy.
+  --s S                 Strobe size (default s=10). Uses strobemers of (2, s,
+                        s+1, 35).
+  --ont                 Set parameters suitable for ONT (Sets: --s 9 --min_acc
+                        0.6).
+  --isoseq              Set parameters suitable for IsoSeq (Sets: --s 10
+                        --min_acc 0.8).

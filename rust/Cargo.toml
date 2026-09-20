@@ -1,0 +1,22 @@
+[package]
+name = "ultra"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.74"
+description = "Splice alignment of long transcriptomic reads to a genome, guided by exon annotations"
+license = "GPL-3.0-only"
+repository = "https://github.com/ksahlin/ultra"
+
+# The binary keeps the reference's exact name. Anything else and every script,
+# Snakemake rule and conda recipe in the wild breaks.
+[[bin]]
+name = "uLTRA"
+path = "src/main.rs"
+
+[dependencies]
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"

@@ -647,7 +647,32 @@ Build  the index to this folder, or specify another forder where the index has b
 message already exists; it is the reference path that is unchecked, and the exit code that is wrong.
 (Two typos in that message, `forder` and the double space, are contract until deliberately changed.)
 
-> Findings 19+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
+### Finding 19 — argparse's help text depends on `$COLUMNS`, so it is machine-dependent output
+
+`argparse` wraps usage and help to the terminal width, which it takes from `$COLUMNS` (falling back
+to 80 when it cannot tell). Measured on `uLTRA --help`:
+
+| `COLUMNS` | bytes | longest line |
+| --- | --- | --- |
+| unset | 761 | 78 |
+| 80 | 761 | 78 |
+| 100 | 713 | 97 |
+| 200 | 689 | 110 |
+
+So the *same* reference, on the *same* input, emits different bytes depending on an environment
+variable the user probably does not know is set. Any CLI golden recorded without pinning it is a
+false failure waiting for the first developer with a wide terminal.
+
+`equivalence.sh` now sets `COLUMNS=80` on both the reference and the port. Re-recording all 25 CLI
+goldens with the pin in place was a byte-for-byte no-op, which confirms 80 is what they were
+originally captured at.
+
+For the port this is a small liberation: the Rust binary emits **fixed** strings extracted from the
+goldens, so it is correct at `COLUMNS=80` and does not reflow. Matching argparse's reflow at other
+widths is not attempted and is not contract — if it ever needs to be, this Finding is where the
+decision gets recorded.
+
+> Findings 20+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
 > the most useful artifact of the project.
 
 ---

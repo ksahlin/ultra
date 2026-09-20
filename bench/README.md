@@ -145,6 +145,22 @@ Teeth, same method as above — `p7_thinning_exit` changes exactly one thing, `s
 
 Three cases, exactly the three that should move. The faithful control passes 25/25.
 
+## Two traps this harness now guards against
+
+**The binary name.** `PORT_BIN` defaults to `rust/target/release/uLTRA`. It was briefly
+`.../ultra`, which *works on macOS* because the filesystem is case-insensitive — and would have
+failed on Linux while the suite stayed green here. `check_bin_fresh` now compares the basename
+against a directory listing, which is case-sensitive:
+
+```
+equivalence: PORT_BIN resolves but its name does not match on a case-sensitive
+  filesystem: rust/target/release/ultra
+  the directory contains: uLTRA
+```
+
+**`$COLUMNS`.** argparse wraps help to the terminal width: 761 bytes at 80, 713 at 100, 689 at 200.
+Both the reference and the port are run with `COLUMNS=80` pinned. See `PORTING.md` Finding 19.
+
 ## A trap worth knowing
 
 **Do not edit `equivalence.sh` while a run of it is in flight.** Bash reads a script incrementally,

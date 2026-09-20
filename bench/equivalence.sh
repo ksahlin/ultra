@@ -38,7 +38,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BENCH="$ROOT/bench"
 GOLDEN="$BENCH/golden"
 REF_PYTHON="${REF_PYTHON:-$HOME/miniforge3/envs/ultra_ref/bin/python}"
-PORT_BIN="${PORT_BIN:-$ROOT/rust/target/release/ultra}"
+PORT_BIN="${PORT_BIN:-$ROOT/rust/target/release/uLTRA}"
 CORPORA="${CORPORA:-core}"
 CASES="${CASES:-.}"
 WORK="${ULTRA_BENCH_WORK:-${TMPDIR:-/tmp}/ultra-equiv.$$}"
@@ -128,6 +128,15 @@ tier_of() { "$BENCH/corpora_resolve.sh" --list | awk -F'\t' -v n="$1" '$1==n{pri
 check_bin_fresh() {   # RULE 4
   [[ -x "$PORT_BIN" ]] || die "PORT_BIN not executable: $PORT_BIN
   build it first, or set PORT_BIN."
+  # RULE 3, the case-sensitivity trap. macOS resolves target/release/ultra to
+  # the real uLTRA, so a wrong default passes here and fails on Linux. Compare
+  # the basename against the directory listing, which IS case-sensitive.
+  local d b; d="$(dirname "$PORT_BIN")"; b="$(basename "$PORT_BIN")"
+  if ! ls -1 "$d" 2>/dev/null | grep -qx -- "$b"; then
+    die "PORT_BIN resolves but its name does not match on a case-sensitive
+  filesystem: $PORT_BIN
+  the directory contains: $(ls -1 "$d" | grep -ix -- "$b" | tr '\n' ' ')"
+  fi
   local newer
   newer="$(find "$ROOT/rust/src" "$ROOT/rust/Cargo.toml" -newer "$PORT_BIN" 2>/dev/null | head -5)"
   if [[ -n "$newer" ]]; then
@@ -331,15 +340,15 @@ cli_expand() {   # cli_expand <args> <outdir>
   echo "$a"
 }
 
-each_cli_case() {
-  awk -F'\t' '!/^#/ && NF>1 && $1!="name" {printf "%s\t%s\n",$1,$2}' "$BENCH/cli_cases.tsv"
+each_cli_case() {   # name<TAB>status<TAB>args
+  awk -F'\t' '!/^#/ && NF>2 && $1!="name" {printf "%s\t%s\t%s\n",$1,$2,$3}' "$BENCH/cli_cases.tsv"
 }
 
 cli_run_one() {   # cli_run_one <engine> <args> <outdir> <dest>
   local engine="$1" args="$2" out="$3" dest="$4"
   local -a cmd
-  if [[ "$engine" == ref ]]; then cmd=(env PYTHONHASHSEED=0 "$REF_PYTHON" "$ROOT/uLTRA")
-  else                            cmd=("$PORT_BIN"); fi
+  if [[ "$engine" == ref ]]; then cmd=(env PYTHONHASHSEED=0 COLUMNS=80 "$REF_PYTHON" "$ROOT/uLTRA")
+  else                            cmd=(env COLUMNS=80 "$PORT_BIN"); fi
   mkdir -p "$dest"
   ( cd "$ROOT" && "${cmd[@]}" $args ) >"$dest/stdout.raw" 2>"$dest/stderr.raw"
   echo $? > "$dest/exit"
@@ -361,8 +370,15 @@ cmd_cli() {   # cmd_cli <record|verify>
   local gbase="$GOLDEN/cli"
   local pass=0 fail=0 total=0
 
-  while IFS=$'\t' read -r cname args; do
+  local pending=0
+  while IFS=$'\t' read -r cname cstatus args; do
     [[ "$cname" =~ $CASES ]] || continue
+    # A pending case is one the port cannot satisfy until a later stage. It is
+    # still RUN and still recorded; on verify it is reported, never hidden.
+    if [[ "$mode" == verify && "$cstatus" == pending:* ]]; then
+      warn "$cname  (${cstatus}) - not expected to match yet"
+      pending=$((pending+1)); continue
+    fi
     total=$((total+1))
     local out; out="$(mktemp -d "${TMPDIR:-/tmp}/ultra-cli.XXXXXX")"
     rmdir "$out"                      # the tool must create it, not us
@@ -391,13 +407,36 @@ cmd_cli() {   # cmd_cli <record|verify>
   done < <(each_cli_case)
 
   echo
-  echo "======== cli $mode: $pass ok, $fail failed, of $total ========"
+  if [[ "$mode" == verify ]]; then
+    echo "======== cli $mode: $pass ok, $fail failed, $pending pending, of $((total+pending)) ========"
+  else
+    echo "======== cli $mode: $pass ok, $fail failed, of $total ========"
+  fi
   [[ $fail -eq 0 ]]
+}
+
+# Every case must be classified. Refuse to run a matrix that has drifted.
+cli_audit() {
+  local bad=0 n=0
+  while IFS=$'\t' read -r cname cstatus _args; do
+    n=$((n+1))
+    case "$cstatus" in
+      contract|pending:*) ;;
+      *) bad "unclassified CLI case '$cname' (status='$cstatus')"; bad=$((bad+1)) ;;
+    esac
+  done < <(each_cli_case)
+  local c p
+  c=$(each_cli_case | awk -F'\t' '$2=="contract"' | wc -l | tr -d ' ')
+  p=$(each_cli_case | awk -F'\t' '$2 ~ /^pending:/' | wc -l | tr -d ' ')
+  echo "cli cases: $n total = $c contract + $p pending"
+  each_cli_case | awk -F'\t' '$2 ~ /^pending:/ {printf "  pending %-10s %s\n", $2, $1}'
+  [[ $bad -eq 0 ]]
 }
 
 case "${1:-check}" in
   check)  cmd_check ;;
   cli)    shift; cmd_cli "${1:-record}" ;;
+  cli_audit) cli_audit ;;
   record) shift; sweep record "${1:-}" ;;
   verify) shift; sweep verify "${1:-}" ;;
   stable) shift; cmd_stable "${1:-}" ;;

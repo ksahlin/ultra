@@ -1,0 +1,10 @@
+usage: uLTRA align [-h] [--t NR_CORES] [--index INDEX] [--prefix PREFIX]
+                   [--max_intron MAX_INTRON]
+                   [--reduce_read_ployA REDUCE_READ_PLOYA]
+                   [--alignment_threshold ALIGNMENT_THRESHOLD]
+                   [--non_covered_cutoff NON_COVERED_CUTOFF]
+                   [--dropoff DROPOFF] [--max_loc MAX_LOC] [--ignore_rc]
+                   [--min_acc MIN_ACC] [--disable_mm2]
+                   [--genomic_frac GENOMIC_FRAC] [--keep_temporary_files]
+                   [--thinning THINNING] [--s S] [--ont | --isoseq]
+                   ref reads outfolder
