@@ -177,7 +177,8 @@ transcript, 78 724 gene), using uLTRA's own `create_db` argument set:
 
 So sqlite dominates `index` **time** (140 s before uLTRA's own work begins) and **disk** (a 3.7 GB
 database), and is **cheap in memory** (174 MB). Note this is the *fast* path: `--disable_infer` is
-set. The default path infers genes and transcripts and is slower still.
+set. The default path infers genes and transcripts and is slower still — measured on Drosophila at
+**240.3 s against 21.1 s**, for a semantically identical index. See *Finding 23*.
 
 And uLTRA's actual use of gffutils is **three query patterns**:
 
@@ -749,7 +750,37 @@ rendering structure by structure, so this divergence is confined to one named fi
 leaks into a second structure is a bug, not a decision. The expected-diff list lives in
 `bench/stage_diffs.tsv` so it cannot be widened silently.
 
-> Findings 23+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
+### Finding 23 — the default `index` path spends 219 of its 240 seconds producing an identical index
+
+`--disable_infer` tells gffutils not to infer `gene` and `transcript` features. The README calls it a
+speed-up "if you have the gene feature and transcript feature in your GTF file". Measured on
+Drosophila (Ensembl BDGP6.46, 167 MB, which *does* carry 24 278 `gene` and 41 610 `transcript` rows)
+against `genomes/fruitfly.fa`:
+
+| path | wall | peak tree RSS | `database.db` | pickles |
+| --- | --- | --- | --- | --- |
+| default | **240.3 s** | 863.1 MB | 399 MB | 271 MB |
+| `--disable_infer` | **21.1 s** | 827.0 MB | 388 MB | 270 MB |
+
+**11.4× faster — and the index is semantically identical**: the stage oracle renders
+**0 of 20 structures differently** between the two. The 11 MB of extra `database.db` is the inferred
+features themselves, which nothing downstream reads.
+
+So on any annotation that already declares its genes and transcripts — GENCODE, Ensembl, essentially
+every modern GTF — the default path burns 219 seconds building rows that make no difference. The
+flag is documented as a speed-up and is really closer to "do not waste four minutes".
+
+Note the converse still holds: for a GTF that genuinely lacks `gene`/`transcript` rows, inference is
+required and `--disable_infer` would produce a *different* and wrong index. So the port cannot simply
+hardwire it. What it can do is **detect** the features and skip inference when they are present,
+which is the same decision the user is currently asked to make by hand — and get it right by
+construction.
+
+The port replaces gffutils entirely (Finding 1 of the hypotheses, Part 3), so neither path survives
+as such. This Finding exists to record what the target is: a GTF parse, not 240 seconds and a 399 MB
+database.
+
+> Findings 24+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
 > the most useful artifact of the project.
 
 ---
