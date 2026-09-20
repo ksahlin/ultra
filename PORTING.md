@@ -1019,7 +1019,47 @@ uLTRA aligns inside worker processes spawned by `pc.Managers`, and under `spawn`
 re-import everything, so a patched parent records nothing. `sitecustomize` is imported during every
 interpreter's site initialisation, children included.
 
-> Findings 29+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
+### Finding 29 — the n log n chaining path almost never runs, which is exactly why it needs an oracle
+
+`align.py` picks between two chaining implementations per chromosome per read:
+
+```python
+if len(all_mems_to_chromosome) < 90:
+    solutions, v = colinear_solver.read_coverage(all_mems_to_chromosome, max_allowed_intron)
+else:
+    solutions, v = colinear_solver.n_logn_read_coverage(all_mems_to_chromosome)
+```
+
+Measured by recording every call on real data:
+
+| corpus | `read_coverage` | `n_logn_read_coverage` | largest mem set |
+| --- | --- | --- | --- |
+| SIRV, 10 000 ONT reads | 281 | **0** | 38 |
+| Drosophila, 20 000 reads | 23 169 | **45** | 340 |
+
+So the n log n branch is **0.19 %** of chaining calls on Drosophila and **never fires at all** on
+every SIRV corpus — which is five of the seven registered corpora, including the one the whole
+project developed against.
+
+That is the argument for the oracle in one line. A branch that runs on two reads in a thousand is a
+branch whose bugs reach production: it is too rare to notice in a spot check and common enough to
+corrupt a large run. It also carries the port's most delicate code — a range-max segment tree whose
+tie-breaks (`max(sorted(V, key=j_max, reverse=True), key=Cj)`, in three separate places) decide which
+of several equal-scoring chains is returned.
+
+`bench/oracle/chaining_calls.jsonl.gz` therefore keeps **all 45** recorded n log n calls and only a
+sample of the far more numerous quadratic ones. `tests/chaining_oracle.rs` replays both and compares
+the **full solution set** — every mem of every optimal chaining, in order — not the score, because a
+score-only check passes a port that returns a different equally-scoring chain, which is precisely
+what a mis-ordered tie-break produces.
+
+Result: **445 recorded calls replay identically, 45 of them through the n log n path**, up to a
+340-mem instance.
+
+Corpus consequence: droso-20k is the only registered corpus that exercises this code at all. If it is
+ever dropped to save time, the n log n path silently stops being tested.
+
+> Findings 30+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
 > the most useful artifact of the project.
 
 ---
@@ -1148,8 +1188,14 @@ gzip seed reader, and the read parser with a real error on malformed fastq inste
 vendored and parasail comes from `libparasail-sys`, and both replay recorded reference calls
 identically — 1 866 and 194 records respectively, comparing CIGARs and locations rather than scores.
 
-**Still outstanding, and it is the bulk of the 59 %:** `colinear_solver.py`,
-`range_query_max_search_tree.py`, `classify_read_with_mams.py` and `align.py` — the chaining itself.
+**The colinear solver is done and exact.** Both implementations — `read_coverage` (quadratic) and
+`n_logn_read_coverage` with its range-max segment tree — replay recorded reference calls identically:
+445 calls, 45 of them through the n log n path, compared on the full solution set rather than the
+score. See *Finding 29* for why the rare branch got the careful treatment.
+
+**Still outstanding:** `classify_read_with_mams.py` (596 lines, the MAM layer, including its own two
+chaining variants `read_coverage_mam_score` and `n_logn_read_coverage_mams`),
+`align.annotate_guaranteed_optimal_bound`, and `align.find_exons`.
 
 ### Stage 5 — SAM output and the minimap2 merge
 
