@@ -1,0 +1,18 @@
+usage: uLTRA [-h] [--version] {pipeline,index,align} ...
+
+uLTRA -- Align and classify long transcriptomic reads based on colinear
+chaining algorithms to gene regions
+
+positional arguments:
+  {pipeline,index,align}
+                        Subcommands for eaither constructing a graph, or align
+                        reads
+    pipeline            Perform all in one: prepare splicing database and
+                        reference sequences and align reads.
+    index               Construct data structures used for alignment.
+    align               Classify and align reads with colinear chaining to
+                        DAGs
+
+options:
+  -h, --help            show this help message and exit
+  --version             show program's version number and exit

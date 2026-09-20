@@ -108,6 +108,50 @@ That is `PORTING.md` Finding 10 caught in the act. Re-running the *same* fake po
 So the argument for the `core` tier is not a matter of taste: **a green smoke run means nothing on
 its own**, and here is a concrete bug it would have shipped.
 
+## The CLI contract
+
+`bench/equivalence.sh cli record|verify` captures, for each of 25 cases: **exit code**, **stdout**,
+**stderr**, and **whether the output folder was created and how many entries it has**. They run in
+well under a second each and need no corpus beyond `test/`, so they are the fastest signal that
+argument handling has drifted.
+
+Scrubbed (varies legitimately): the temp outfolder path, the repository root, `$HOME`, traceback
+line numbers, and float seconds. **Everything else is contract** — wording, argparse usage blocks,
+even the two typos in the missing-index message (`forder`, and a double space).
+
+The outfolder column is recorded because the side effect splits along `parse_args()`
+(`uLTRA:528`) and `mkdir_p` (`uLTRA:533`):
+
+| failure class | exit | outfolder |
+| --- | --- | --- |
+| argparse (bad flag, bad value, preset conflict, missing positionals) | 2 | not created |
+| the `--thinning` range check | **0** | created, empty |
+| missing index folder | **0** | created, empty |
+| missing reference / reads / gtf | 1 | created, empty |
+
+The two zeros are `PORTING.md` Finding 16: a detected, reported user error that exits successfully.
+
+Teeth, same method as above — `p7_thinning_exit` changes exactly one thing, `sys.exit()` to
+`sys.exit(1)` on the thinning check, leaving both streams untouched:
+
+```
+  ok      no-args
+  ok      version
+  FAIL    thinning-3
+  FAIL    thinning-neg
+  FAIL    thinning-3-index
+  ======== cli verify: 22 ok, 3 failed, of 25 ========
+```
+
+Three cases, exactly the three that should move. The faithful control passes 25/25.
+
+## A trap worth knowing
+
+**Do not edit `equivalence.sh` while a run of it is in flight.** Bash reads a script incrementally,
+so an edit mid-run shifts the file under the interpreter and the run silently does something else —
+in our case it fell through to the usage branch and reported nothing, which looks like a pass if you
+are only reading the tail.
+
 ## Layout
 
 | file | role |

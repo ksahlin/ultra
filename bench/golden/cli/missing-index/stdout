@@ -1,0 +1,3 @@
+creating {OUT}
+The index folder specified for alignment is not found. You specified:  /nonexistent_index_dir
+Build  the index to this folder, or specify another forder where the index has been built.

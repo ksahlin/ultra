@@ -1,0 +1,5 @@
+usage: uLTRA index [-h] [--min_segm MIN_SEGM] [--flank_size FLANK_SIZE]
+                   [--small_exon_threshold SMALL_EXON_THRESHOLD]
+                   [--disable_infer] [--thinning THINNING] [--s S]
+                   ref gtf outfolder
+uLTRA index: error: the following arguments are required: ref, gtf, outfolder

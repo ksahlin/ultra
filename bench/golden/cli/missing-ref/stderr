@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "{ROOT}/uLTRA", line N, in <module>
+    align_reads(args)
+  File "{ROOT}/uLTRA", line N, in align_reads
+    ref_part_sequences = help_functions.pickle_load( os.path.join(index_folder, 'ref_part_sequences.pickle') )
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "{ROOT}/modules/help_functions.py", line N, in pickle_load
+    with open(filename, 'rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '{OUT}/ref_part_sequences.pickle'

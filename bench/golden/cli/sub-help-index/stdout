@@ -1,0 +1,27 @@
+usage: uLTRA index [-h] [--min_segm MIN_SEGM] [--flank_size FLANK_SIZE]
+                   [--small_exon_threshold SMALL_EXON_THRESHOLD]
+                   [--disable_infer] [--thinning THINNING] [--s S]
+                   ref gtf outfolder
+
+positional arguments:
+  ref                   Reference genome (fasta)
+  gtf                   Path to gtf or gtf file with gene models.
+  outfolder             Path to output folder.
+
+options:
+  -h, --help            show this help message and exit
+  --min_segm MIN_SEGM   Threshold for minimum segment size considered.
+  --flank_size FLANK_SIZE
+                        Size of genomic regions surrounding genes.
+  --small_exon_threshold SMALL_EXON_THRESHOLD
+                        Considered in MAM solution even if they cont contain
+                        MEMs.
+  --disable_infer       Makes splice creation step much faster. Thes parameter
+                        can be set if gene and transcript name fields are
+                        provided in gtf file.
+  --thinning THINNING   Seed thinning level 0-2: 0 (deactivated, default) 1
+                        (in expectation every third base) or 2 (in expectation
+                        every fifth base). Thinning makes seedins step much
+                        faster and less memory consuming at cost of accuracy.
+  --s S                 Strobe size (default s=10). Uses strobemers of (2, s,
+                        s+1, 35).

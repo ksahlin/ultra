@@ -6,6 +6,8 @@
 #   bench/equivalence.sh verify [corpus]    run the PORT, compare against the goldens
 #   bench/equivalence.sh stable [corpus]    record twice and diff - proves the goldens
 #                                           are reproducible before you trust them
+#   bench/equivalence.sh cli record|verify  the CLI contract: exit codes, stdout,
+#                                           stderr and the outfolder side effect
 #   bench/equivalence.sh list               show cases and corpora
 #
 # Environment:
@@ -295,8 +297,107 @@ cmd_list() {
   echo "== cases =="; each_case | awk -F'\t' '{printf "  %-22s %-9s %-6s %s\n",$1,$2,$3,$5}'
 }
 
+# ---------------------------------------------------------------------------
+# CLI contract.
+#
+# Captures exit code, stdout, stderr and the outfolder side effect. Everything
+# that legitimately varies between machines and runs is scrubbed; everything
+# else is contract.
+#
+# What is scrubbed and why:
+#   the temp outfolder path   -> {OUT}     differs every run
+#   the repository root       -> {ROOT}    differs per checkout
+#   "line 123," in tracebacks -> "line N," moves whenever the .py file is edited
+#   float seconds             -> {T}       timings
+# Anything else - wording, argparse usage blocks, the order of the flags in the
+# usage line - IS the contract. See PORTING.md Findings 15-18.
+# ---------------------------------------------------------------------------
+scrub() {   # scrub <outdir>
+  local out="$1"
+  sed -e "s|$out|{OUT}|g" \
+      -e "s|$ROOT|{ROOT}|g" \
+      -e "s|$HOME|{HOME}|g" \
+      -e 's|line [0-9][0-9]*,|line N,|g' \
+      -e 's|[0-9][0-9]*\.[0-9][0-9]*e-[0-9]*|{T}|g' \
+      -e 's|[0-9][0-9]*\.[0-9][0-9][0-9][0-9]*|{T}|g'
+}
+
+cli_expand() {   # cli_expand <args> <outdir>
+  local a="$1" out="$2"
+  a="${a//\{OUT\}/$out}"
+  a="${a//\{REF\}/$ROOT/test/SIRV_genes.fasta}"
+  a="${a//\{GTF\}/$ROOT/test/SIRV_genes_C_170612a.gtf}"
+  a="${a//\{READS\}/$ROOT/test/reads.fa}"
+  echo "$a"
+}
+
+each_cli_case() {
+  awk -F'\t' '!/^#/ && NF>1 && $1!="name" {printf "%s\t%s\n",$1,$2}' "$BENCH/cli_cases.tsv"
+}
+
+cli_run_one() {   # cli_run_one <engine> <args> <outdir> <dest>
+  local engine="$1" args="$2" out="$3" dest="$4"
+  local -a cmd
+  if [[ "$engine" == ref ]]; then cmd=(env PYTHONHASHSEED=0 "$REF_PYTHON" "$ROOT/uLTRA")
+  else                            cmd=("$PORT_BIN"); fi
+  mkdir -p "$dest"
+  ( cd "$ROOT" && "${cmd[@]}" $args ) >"$dest/stdout.raw" 2>"$dest/stderr.raw"
+  echo $? > "$dest/exit"
+  scrub "$out" < "$dest/stdout.raw" > "$dest/stdout"
+  scrub "$out" < "$dest/stderr.raw" > "$dest/stderr"
+  rm -f "$dest/stdout.raw" "$dest/stderr.raw"
+  # Finding 17: the outfolder side effect is observable, so it is recorded.
+  if [[ -d "$out" ]]; then
+    printf 'created=yes entries=%s\n' "$(ls -A "$out" 2>/dev/null | wc -l | tr -d ' ')" > "$dest/outfolder"
+  else
+    printf 'created=no\n' > "$dest/outfolder"
+  fi
+}
+
+cmd_cli() {   # cmd_cli <record|verify>
+  local mode="${1:-record}"
+  local engine=ref; [[ "$mode" == verify ]] && engine=port
+  [[ "$engine" == port ]] && check_bin_fresh
+  local gbase="$GOLDEN/cli"
+  local pass=0 fail=0 total=0
+
+  while IFS=$'\t' read -r cname args; do
+    [[ "$cname" =~ $CASES ]] || continue
+    total=$((total+1))
+    local out; out="$(mktemp -d "${TMPDIR:-/tmp}/ultra-cli.XXXXXX")"
+    rmdir "$out"                      # the tool must create it, not us
+    local exp; exp="$(cli_expand "$args" "$out")"
+    local dest="$WORK/cli/$mode/$cname"
+    rm -rf "$dest"
+    cli_run_one "$engine" "$exp" "$out" "$dest"
+    rm -rf "$out"
+
+    if [[ "$mode" == record ]]; then
+      mkdir -p "$gbase/$cname"
+      cp "$dest/exit" "$dest/stdout" "$dest/stderr" "$dest/outfolder" "$gbase/$cname/"
+      ok "$cname  (exit $(cat "$dest/exit"), $(cat "$dest/outfolder"))"
+      pass=$((pass+1))
+    else
+      if [[ ! -d "$gbase/$cname" ]]; then warn "$cname  no golden"; continue; fi
+      local d=""
+      for f in exit stdout stderr outfolder; do
+        if ! diff -q "$gbase/$cname/$f" "$dest/$f" >/dev/null 2>&1; then
+          d+=$'\n'"    --- $f ---"$'\n'"$(diff "$gbase/$cname/$f" "$dest/$f" | head -12)"
+        fi
+      done
+      if [[ -z "$d" ]]; then ok "$cname"; pass=$((pass+1))
+      else bad "$cname"; echo "$d" | sed 's/^/    /'; fail=$((fail+1)); fi
+    fi
+  done < <(each_cli_case)
+
+  echo
+  echo "======== cli $mode: $pass ok, $fail failed, of $total ========"
+  [[ $fail -eq 0 ]]
+}
+
 case "${1:-check}" in
   check)  cmd_check ;;
+  cli)    shift; cmd_cli "${1:-record}" ;;
   record) shift; sweep record "${1:-}" ;;
   verify) shift; sweep verify "${1:-}" ;;
   stable) shift; cmd_stable "${1:-}" ;;

@@ -1,0 +1,14 @@
+usage: uLTRA pipeline [-h] [--ont | --isoseq] [--min_segm MIN_SEGM]
+                      [--min_acc MIN_ACC] [--flank_size FLANK_SIZE]
+                      [--max_intron MAX_INTRON]
+                      [--small_exon_threshold SMALL_EXON_THRESHOLD]
+                      [--reduce_read_ployA REDUCE_READ_PLOYA]
+                      [--alignment_threshold ALIGNMENT_THRESHOLD]
+                      [--t NR_CORES] [--index INDEX] [--prefix PREFIX]
+                      [--non_covered_cutoff NON_COVERED_CUTOFF]
+                      [--dropoff DROPOFF] [--max_loc MAX_LOC] [--ignore_rc]
+                      [--disable_infer] [--disable_mm2]
+                      [--genomic_frac GENOMIC_FRAC] [--keep_temporary_files]
+                      [--thinning THINNING] [--s S]
+                      ref gtf reads outfolder
+uLTRA pipeline: error: the following arguments are required: ref, gtf, reads, outfolder

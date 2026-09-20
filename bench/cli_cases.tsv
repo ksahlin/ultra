@@ -1,0 +1,42 @@
+# uLTRA CLI contract cases.
+#
+# These capture exit code, stdout and stderr - scrubbed of paths, timings and
+# traceback line numbers - plus whether the output folder was created and how
+# many entries it has (PORTING.md Finding 17: every validation failure still
+# does mkdir_p on the outfolder before it fails).
+#
+# Unlike the output matrix, these run in well under a second and need no corpus
+# beyond the repo's own test/ files, so they are the fastest possible signal
+# that the port's argument handling has drifted.
+#
+# {OUT} is replaced with a fresh empty temp directory.
+# {REF} {GTF} {READS} are replaced with the repo's test fixtures.
+#
+# columns:  name  args  notes
+#
+name	args	notes
+no-args		prints top-level help and exits 0 (the len(sys.argv)==1 branch)
+help	--help	same text as no-args
+help-short	-h	
+version	--version	"uLTRA 0.1" - and the version lives in setup.py too; they must agree
+sub-help-pipeline	pipeline --help	
+sub-help-index	index --help	
+sub-help-align	align --help	
+bad-subcommand	badsub	exit 2, argparse invalid choice
+align-no-args	align	exit 2, missing positionals
+index-no-args	index	exit 2
+pipeline-no-args	pipeline	exit 2
+unknown-flag	index --nope {REF} {GTF} {OUT}	exit 2 - NOTE argparse reports the TOP-LEVEL usage here, not index's
+presets-conflict	align --ont --isoseq {REF} {READS} {OUT}	exit 2, mutually exclusive group
+bad-t	align --t abc {REF} {READS} {OUT}	exit 2, invalid int
+bad-s	align --s abc {REF} {READS} {OUT}	exit 2, invalid int
+bad-min-acc	align --min_acc abc {REF} {READS} {OUT}	exit 2, invalid float
+aln-thresh-float	align --alignment_threshold 0.3 {REF} {READS} {OUT}	FINDING 15: type=int with a float default, so the documented value is rejected
+aln-thresh-int	align --alignment_threshold 1 {REF} {READS} {OUT}	the same flag with a value argparse accepts
+thinning-3	align --thinning 3 {REF} {READS} {OUT}	FINDING 16: prints an error and exits 0
+thinning-neg	align --thinning -1 {REF} {READS} {OUT}	FINDING 16, the other side of the range
+thinning-3-index	index --thinning 3 {REF} {GTF} {OUT}	the check sits before the dispatch, so index behaves the same
+missing-ref	align /nonexistent_ref.fa {READS} {OUT}	FINDING 18: blames ref_part_sequences.pickle, not the reference
+missing-reads	align {REF} /nonexistent_reads.fa {OUT}	
+missing-gtf	index {REF} /nonexistent.gtf {OUT}	
+missing-index	align --index /nonexistent_index_dir {REF} {READS} {OUT}	indistinguishable from missing-ref today

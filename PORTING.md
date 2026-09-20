@@ -582,7 +582,72 @@ The port must decide: reproduce the `int` restriction exactly (and keep a flag n
 correctly), or make it `float` and take the divergence. Recommend `float`, as its own commit, with
 the CLI golden for `aln-aln-thresh-03` changing from exit 2 to exit 0 as the documented cost.
 
-> Findings 16+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
+### Finding 16 — an invalid `--thinning` prints an error and exits **0**
+
+```
+$ uLTRA align --thinning 3 ref.fa reads.fa out/
+Invalid thinning level. Choose 0, 1 or 2.
+$ echo $?
+0
+```
+
+`uLTRA:551` does `print(...)` then a bare `sys.exit()`, and `sys.exit()` with no argument exits **0**.
+So a rejected input is indistinguishable from a successful run to any caller that checks the exit
+status — a Snakemake rule, a nextflow process, `set -e`. Same for `--thinning -1`.
+
+Contrast with the argparse failures, which are correct: `--t abc`, `--ont --isoseq` and an unknown
+flag all exit 2.
+
+**And it happens in a second place**: a missing `--index` folder is detected, reported clearly, and
+also exits 0 (see Finding 18). So two distinct "user got it wrong" paths both report success.
+
+One line each: `sys.exit(1)`. It is a behaviour change, so both get their own CLI goldens.
+
+### Finding 17 — failures after argument parsing leave an empty output folder behind
+
+`parse_args()` is at `uLTRA:528` and `help_functions.mkdir_p(args.outfolder)` at `uLTRA:533`, so the
+side effect splits cleanly along that line. Measured across all 25 CLI cases:
+
+| failure class | exit | outfolder |
+| --- | --- | --- |
+| argparse (`--t abc`, `--ont --isoseq`, unknown flag, bad subcommand, missing positionals) | 2 | **not created** |
+| the `--thinning` range check | 0 | **created, empty** |
+| missing index folder | 0 | **created, empty** |
+| runtime failures (missing reference / reads / gtf) | 1 | **created, empty** |
+
+So a user who mistypes a flag gets nothing on disk, and a user who mistypes a *path* gets a stray
+empty directory. It is observable, so the CLI goldens record `created=` and `entries=` next to the
+exit code.
+
+### Finding 18 — `align` against a nonexistent reference blames the wrong file
+
+```
+$ uLTRA align /nonexistent.fa reads.fa out/
+FileNotFoundError: ... '/tmp/out/ref_part_sequences.pickle'
+```
+
+Exit 1 with a traceback. The reference path is never checked, so the first thing that actually fails
+is the index load, and the error names an index pickle the user has never heard of rather than the
+reference they mistyped. The same shape of error appears for a missing index folder, which makes the
+two indistinguishable.
+
+Cheap to improve in the port (check inputs exist, name the one that is missing), and it is exactly
+the kind of thing the *more stable* goal is about — but it changes stderr, so it is a Finding with a
+CLI golden, not a silent fix.
+
+Note the contrast with a missing **index folder**, which the tool does handle properly — it is
+detected, named, and explained:
+
+```
+The index folder specified for alignment is not found. You specified:  /nonexistent_index_dir
+Build  the index to this folder, or specify another forder where the index has been built.
+```
+
+…and then exits **0**, which is Finding 16 again in a second place. So the machinery for a good error
+message already exists; it is the reference path that is unchecked, and the exit code that is wrong.
+(Two typos in that message, `forder` and the double space, are contract until deliberately changed.)
+
+> Findings 19+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
 > the most useful artifact of the project.
 
 ---

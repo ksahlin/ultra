@@ -1,0 +1,12 @@
+Traceback (most recent call last):
+  File "{ROOT}/uLTRA", line N, in <module>
+    prep_splicing(args, refs_lengths)
+  File "{ROOT}/uLTRA", line N, in prep_splicing
+    db = gffutils.create_db(args.gtf, dbfn=database, force=True, keep_order=True, merge_strategy='merge', 
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "{HOME}/miniforge3/envs/ultra_ref/lib/python3.12/site-packages/gffutils/create.py", line N, in create_db
+    iterator = iterators.DataIterator(**kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "{HOME}/miniforge3/envs/ultra_ref/lib/python3.12/site-packages/gffutils/iterators.py", line N, in DataIterator
+    raise ValueError(
+ValueError: /nonexistent.gtf cannot be found and does not appear to be a URL
