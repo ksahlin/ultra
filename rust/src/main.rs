@@ -9,12 +9,14 @@
 mod cli;
 mod aligndriver;
 mod colinear;
+mod driver;
 mod dump;
 mod edlib;
 mod parasail;
 mod fasta;
 mod gtf;
 mod index;
+mod indexio;
 mod mam;
 mod namfinder;
 mod prefilter;
@@ -123,11 +125,14 @@ fn main() -> ExitCode {
                 }
             }
 
-            eprintln!(
-                "uLTRA: {} is not implemented in the Rust port yet (stage 1: CLI only)",
-                args.sub.name()
-            );
-            ExitCode::from(70)
+            match args.sub {
+                cli::Sub::Index => run_index(&args),
+                cli::Sub::Align => run_align(&args),
+                cli::Sub::Pipeline => match run_index(&args) {
+                    c if c == ExitCode::from(0) => run_align(&args),
+                    c => c,
+                },
+            }
         }
     }
 }
@@ -257,4 +262,71 @@ fn dump_reads(args: &[String]) -> ExitCode {
     }
     let _ = w.flush();
     ExitCode::from(0)
+}
+
+/// `uLTRA index`: build the annotation index and write it as one binary file.
+fn run_index(args: &cli::Args) -> ExitCode {
+    let refs = match fasta::read(&args.reference) {
+        Ok(r) => r,
+        Err(e) => { eprintln!("uLTRA: cannot read reference {}: {e}", args.reference); return ExitCode::from(1); }
+    };
+    let mut refs_lengths: std::collections::BTreeMap<String, u64> = Default::default();
+    for r in &refs { refs_lengths.insert(r.name.clone(), r.seq.len() as u64); }
+
+    let parsed = match gtf::parse(&args.gtf) {
+        Ok(g) => g,
+        Err(e) => { eprintln!("uLTRA: {e}"); return ExitCode::from(1); }
+    };
+    let mut ix = index::build(&parsed, &refs_lengths, &index::Params {
+        flank_size: args.flank_size as u64,
+        small_exon_threshold: args.small_exon_threshold as u64,
+        min_segm: args.min_segm as u64,
+    });
+    let mut by_id: std::collections::HashMap<u64, &[u8]> = Default::default();
+    for r in &refs {
+        if let Some(&cid) = ix.chr_to_id.get(&r.name) {
+            by_id.insert(cid, &r.seq);
+            ix.refs_id_lengths.insert(cid, r.seq.len() as u64);
+        }
+    }
+    let grab = |keys: Vec<index::Key>| -> std::collections::BTreeMap<index::Key, String> {
+        let mut out = std::collections::BTreeMap::new();
+        for key in keys {
+            if let Some(seq) = by_id.get(&key.0) {
+                let a = std::cmp::min(key.1 as usize, seq.len());
+                let b = std::cmp::min(key.2 as usize, seq.len());
+                if a <= b { out.insert(key, String::from_utf8_lossy(&seq[a..b]).into_owned()); }
+            }
+        }
+        out
+    };
+    ix.ref_segment_sequences = grab(ix.segment_id_to_choordinates.keys().cloned().collect());
+    ix.ref_exon_sequences = grab(ix.exon_choordinates_to_id.iter().cloned().collect());
+    ix.ref_flank_sequences = grab(ix.flank_choordinates.iter().cloned().collect());
+    let mut parts = grab(ix.parts_to_segments.keys().cloned().collect());
+    for (k, v) in ix.ref_flank_sequences.iter() { parts.insert(*k, v.clone()); }
+    ix.ref_part_sequences = parts;
+
+    let dest = index_dir(args).join("ultra.idx");
+    match indexio::write(&ix, &dest) {
+        Ok(()) => { println!("wrote {}", dest.display()); ExitCode::from(0) }
+        Err(e) => { eprintln!("uLTRA: cannot write {}: {e}", dest.display()); ExitCode::from(1) }
+    }
+}
+
+fn index_dir(args: &cli::Args) -> std::path::PathBuf {
+    if args.index.is_empty() { std::path::PathBuf::from(&args.outfolder) }
+    else { std::path::PathBuf::from(&args.index) }
+}
+
+/// `uLTRA align`.
+fn run_align(args: &cli::Args) -> ExitCode {
+    let idx_path = index_dir(args).join("ultra.idx");
+    let ix = match indexio::read(&idx_path) {
+        Ok(i) => i,
+        Err(e) => { eprintln!("uLTRA: cannot read index {}: {e}", idx_path.display()); return ExitCode::from(1); }
+    };
+    eprintln!("uLTRA: align is not fully wired yet (index loads: {} parts, {} segments)",
+        ix.ref_part_sequences.len(), ix.ref_segment_sequences.len());
+    ExitCode::from(70)
 }

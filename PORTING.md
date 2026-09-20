@@ -1516,10 +1516,34 @@ landed in `indexed.sam`, `unindexed.sam` or neither) rather than from re-running
 only a *strictly* lower minimap2 score hands the read to uLTRA; equal and better both keep
 minimap2's — is pinned by unit assertions.
 
-**Still outstanding:** the streaming half of `output_final_alignments` (five passes over two files,
-with a `del` that assumes each read appears once as primary), and the `align_single` driver that
-sequences everything and applies `--dropoff` and `--max_loc`. Neither can be checked per function:
-they are checked by `reads.sam`.
+**The per-read driver is written, and deliberately does not copy `align_single`'s shape.**
+
+In Python `align_single` is the entry point of a *spawned worker process*: it calls `import_data()`
+to load the whole index into that process, then pulls read batches off a `Manager().Queue()` and
+pushes SAM records back. Two properties of that arrangement are defects the port should not inherit:
+
+- the index is loaded **once per worker** (*Finding 4*), so memory scales with `--t` — this is what
+  makes [issue #15](https://github.com/ksahlin/ultra/issues/15) run out of memory at `--t 48`;
+- the output is in worker-completion order and therefore **not reproducible** (*Finding 32*).
+
+So the port's unit is `align_read(&Index, read) -> Vec<SamRecord>`: pure, one read, borrowing a
+single shared index. Threads take **chunks of reads** and results are collected by input position,
+which needs no queue, no batching and no manager process — and makes the output order deterministic,
+which the reference's is not.
+
+**The on-disk index format exists.** `uLTRA index` writes one binary file, `ultra.idx`, with an
+explicit little-endian layout using the same u64 encoding the reference's `array("L")` already
+produces (*Finding 20*). On SIRV it is **303 KB against the reference's 608 KB** of pickles plus
+sqlite. `tests/indexio_roundtrip.rs` builds a real index from the repository's fixtures, writes it,
+reads it back and compares every structure — nothing external validates this format, so a silent
+truncation would surface much later as an alignment bug. A second test checks that a foreign file is
+*refused with a message telling the user to rebuild*, rather than parsed as garbage.
+
+**Still outstanding:** wiring `run_align` to actually drive `align_read` over a corpus — the seed
+file, the minimap2 prefilter and the merge have to be sequenced — and the streaming half of
+`output_final_alignments` (five passes over two files, with a `del` that assumes each read appears
+once as primary). Until that is done `reads.sam` is not produced, and none of the twelve oracles has
+yet been checked against the real contract.
 
 ### Stage 6 — parallelism
 

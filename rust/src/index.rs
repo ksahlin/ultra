@@ -16,7 +16,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 /// every platform uLTRA runs on.
 pub type Key = (u64, u64, u64);
 
-#[derive(Default)]
+#[derive(Default, Debug, PartialEq)]
 pub struct Index {
     pub chr_to_id: BTreeMap<String, u64>,
     pub id_to_chr: BTreeMap<u64, String>,

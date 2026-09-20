@@ -302,3 +302,62 @@ pub fn classify_alignment(
 
     ("NNC", String::new())
 }
+
+/// `help_functions.cigar_to_seq`: rebuild the two gapped strings from a CIGAR.
+///
+/// `=`/`X` consume both, `I` consumes the query and emits a gap in the
+/// reference, `D` the reverse. `S` is skipped in the reference's version.
+pub fn expand_cigar_full(cigar: &str, query: &[u8], rf: &[u8]) -> (String, String) {
+    let (mut q, mut r) = (String::new(), String::new());
+    let (mut qi, mut ri) = (0usize, 0usize);
+    let mut num = String::new();
+    for ch in cigar.chars() {
+        if ch.is_ascii_digit() {
+            num.push(ch);
+            continue;
+        }
+        let l: usize = num.parse().unwrap_or(0);
+        num.clear();
+        match ch {
+            '=' | 'X' | 'M' => {
+                let qe = (qi + l).min(query.len());
+                let re = (ri + l).min(rf.len());
+                q.push_str(&String::from_utf8_lossy(&query[qi..qe]));
+                r.push_str(&String::from_utf8_lossy(&rf[ri..re]));
+                qi = qe; ri = re;
+            }
+            'I' => {
+                let qe = (qi + l).min(query.len());
+                q.push_str(&String::from_utf8_lossy(&query[qi..qe]));
+                r.push_str(&"-".repeat(qe - qi));
+                qi = qe;
+            }
+            'D' => {
+                let re = (ri + l).min(rf.len());
+                q.push_str(&"-".repeat(re - ri));
+                r.push_str(&String::from_utf8_lossy(&rf[ri..re]));
+                ri = re;
+            }
+            _ => {}
+        }
+    }
+    (q, r)
+}
+
+/// `help_functions.edlib_alignment`: like the above but for an HW alignment,
+/// where the CIGAR covers only `ref[start..=stop]` and the flanks are padded
+/// with gaps on the query side.
+pub fn expand_cigar(cigar: &str, query: &[u8], rf: &[u8], loc: Option<(i64, i64)>) -> (String, String) {
+    let (start, stop) = match loc {
+        Some((a, b)) => (a.max(0) as usize, b.max(0) as usize),
+        None => (0, rf.len().saturating_sub(1)),
+    };
+    let end = (stop + 1).min(rf.len());
+    let (q, r) = expand_cigar_full(cigar, query, &rf[start.min(rf.len())..end]);
+    let tail = rf.len().saturating_sub(stop + 1);
+    let qa = format!("{}{}{}", "-".repeat(start), q, "-".repeat(tail));
+    let ra = format!("{}{}{}",
+        String::from_utf8_lossy(&rf[..start.min(rf.len())]), r,
+        String::from_utf8_lossy(&rf[end.min(rf.len())..]));
+    (qa, ra)
+}
