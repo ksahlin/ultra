@@ -704,18 +704,32 @@ comparing two indexes built at seeds 0 and 12345:
 | oracle rendering, arrays in stored order | 2 of 20 — exactly these two |
 | oracle rendering, arrays sorted | **0 of 20** |
 
-The order is noise, not data, and this is established two independent ways rather than assumed:
+> **THIS FINDING WAS WRONG AND IS CORRECTED BY FINDING 27.** It is left here, with the mistake
+> intact, because how it was wrong is more useful than the conclusion was.
+
+The claim was that the order is noise, on two grounds:
 
 - **Both consumers de-duplicate.** `gene_to_small_segments` is read into a `set(...)` at
   `classify_read_with_mams.py:266`. `parts_to_segments` feeds `segment_hit_locations`, which is
   `list(set(segment_hit_locations))` and then sorted at `:244-245`.
 - **`reads.sam` is byte-identical across hash seeds** while 14 of the 20 pickles are not.
 
-So the port is free to build these in any order, and `bench/dump_reference.py` sorts them by default
-rather than pinning an order the reference does not really have. `--array-order stored` shows the raw
-order for debugging.
+Both statements are true. **Neither supports the conclusion.**
 
-This is the reason the index oracle is a *semantic* contract and not a byte one, stated concretely.
+De-duplicating into a `set` does not remove order: it replaces the input order with the *set's*
+iteration order, which still depends on the insertion sequence. And the sort at `:245` has key
+`x[1]` only, so entries tied on `x[1]` keep whatever order the set produced. Python's sort is stable,
+which is exactly what lets the upstream order survive.
+
+The second was a measurement taken where it could not fail: on the 4-read smoke corpus, and on runs
+that reused one pre-built index, so the array order never actually varied between the things being
+compared. Measured properly — two indexes built at different hash seeds, 10 000 real reads —
+`reads.sam` **differs**. See Finding 27.
+
+`bench/dump_reference.py` still sorts arrays, and that is now a deliberate weakening of the oracle
+rather than a free canonicalisation: it means the stage-index comparison cannot see an order
+difference that does reach output. Finding 27's fix makes the reference's order deterministic, which
+is what restores the guarantee.
 
 ### Finding 22 — DIVERGENCE TAKEN: `gene_to_small_segments` is built for every active gene
 
@@ -907,7 +921,58 @@ What this buys, beyond not writing a strobemer implementation:
 Cost: a C++17 compiler and zlib at **build** time, nothing at run time. `libz` is currently a dynamic
 link; making it static is a Stage 7 distribution question, not a correctness one.
 
-> Findings 27+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
+### Finding 27 — the reference's alignments are not reproducible across index builds
+
+Two indexes built from the same GTF on the same machine, differing only in `PYTHONHASHSEED`, produce
+**different alignments**. Measured on sirv-10k, 10 000 real ONT reads, with the *alignment* runs both
+pinned to `PYTHONHASHSEED=0` so the only variable is the index:
+
+| file | identical? |
+| --- | --- |
+| `refs_sequences.fa` | **no** |
+| `seeds.txt.gz` | **no** (same content, different line order) |
+| **`reads.sam`** | **no — 2 lines, 1 read of 9 996** |
+
+One read in ten thousand, and it is not a subtle difference: that read flips between **minimap2's
+alignment and uLTRA's**, 22 SAM fields against 14, `NM/ms/AS` against `XA/XC:NIC_novel/NM`. The seed
+order changed uLTRA's alignment slightly, which tipped `output_final_alignments`' choice of which
+aligner won.
+
+There are **two** independent causes, and fixing one is not enough:
+
+1. **`refs_sequences.fa` is written in dict-insertion order** (`uLTRA:341`), which for the flank half
+   is Python **set**-iteration order. Different order → namfinder reports tied NAMs in a different
+   order → `seeds.txt.gz` differs.
+2. **`parts_to_segments` and `gene_to_small_segments` hold their triples in set-iteration order**,
+   which survives into `segment_hit_locations` as Finding 21's correction explains.
+
+Fixing only (1) leaves `reads.sam` differing; fixing both makes it identical. Measured:
+
+| | `refs_sequences.fa` | `seeds.txt.gz` | `reads.sam` |
+| --- | --- | --- | --- |
+| unpatched | differs | differs | **differs** |
+| sort `refs_sequences.fa` only | same | same | **still differs** |
+| sort both | same | same | **identical** |
+
+**Why a user would ever hit this.** They would not set `PYTHONHASHSEED` at all, so every index build
+picks a fresh order. Rebuild your index — same GTF, same genome, same version — and roughly one read
+in ten thousand aligns differently. On a 10 M read dataset that is ~1 000 reads, silently, with
+nothing in the output indicating which run you are looking at.
+
+**The fix is two small changes, both semantically free**: write `refs_sequences.fa` sorted by the
+unpacked `(chr, start, stop)` key, and sort the two arrays at index build. The consumers de-duplicate,
+so sorting removes nothing; it only removes the arbitrariness.
+
+It **does** change results — 2 lines on this corpus against a `PYTHONHASHSEED=0` baseline — so it
+lands on its own branch and the goldens are re-recorded against it, exactly as the NGSpeciesID port
+had to do with `--seed`. Goldens recorded against the unfixed reference would pin one arbitrary
+ordering out of many.
+
+For the port this is load-bearing, not optional: the port sorts (its structures are `BTreeMap`), so
+without this fix it could only ever match a reference index that happened to have been built with a
+compatible hash seed.
+
+> Findings 28+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
 > the most useful artifact of the project.
 
 ---

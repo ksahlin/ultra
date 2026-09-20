@@ -12,6 +12,7 @@ mod fasta;
 mod gtf;
 mod index;
 mod namfinder;
+mod reads;
 mod text;
 
 use std::io::Write;
@@ -32,6 +33,26 @@ fn main() -> ExitCode {
     //                    [--small_exon_threshold N] [--min_segm N]
     if argv.first().map(|s| s.as_str()) == Some("dump-index") {
         return dump_index(&argv[1..]);
+    }
+
+    // Port-only: emit the preprocessed reads uLTRA feeds to namfinder, i.e.
+    // the contents of reads_tmp.fa.gz, so the harness can diff them against
+    // the reference's.
+    //   uLTRA dump-reads <reads.[fa|fq]> [--reduce_read_ployA N] [--strict]
+    if argv.first().map(|s| s.as_str()) == Some("dump-reads") {
+        return dump_reads(&argv[1..]);
+    }
+
+    // Port-only: summarise parsed seed records, to diff against the
+    // reference's read_seeds on real output.
+    if argv.first().map(|s| s.as_str()) == Some("dump-seeds") {
+        let f = std::fs::File::open(&argv[1]).expect("open seeds");
+        let gz = flate2::read::GzDecoder::new(f);
+        let recs = reads::read_seeds(std::io::BufReader::new(gz)).expect("parse");
+        for r in &recs {
+            println!("{}\t{}\t{}\t{}", r.acc, r.hits.len(), r.acc_rev, r.hits_rc.len());
+        }
+        return ExitCode::from(0);
     }
 
     // Also port-only: a passthrough to the LINKED namfinder, so the harness can
@@ -188,4 +209,45 @@ fn dump_index(args: &[String]) -> ExitCode {
         }
         Err(e) => { eprintln!("uLTRA: cannot write rendering to {out}: {e}"); ExitCode::from(1) }
     }
+}
+
+/// Reproduce the `reads_tmp.fa.gz` payload: every read, polyA-compressed,
+/// written as `>{acc}\n{seq}\n`. uLTRA gzips this at level 1; the harness
+/// compares decompressed, so this writes plain text.
+fn dump_reads(args: &[String]) -> ExitCode {
+    let mut path: Option<&str> = None;
+    let mut polya: usize = 8;
+    let mut strict = false;
+    let mut i = 0;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--reduce_read_ployA" => { i += 1; polya = args[i].parse().unwrap_or(polya); }
+            "--strict" => strict = true,
+            other => path = Some(other),
+        }
+        i += 1;
+    }
+    let path = match path {
+        Some(p) => p,
+        None => { eprintln!("usage: uLTRA dump-reads <reads.[fa|fq]> [--reduce_read_ployA N] [--strict]"); return ExitCode::from(2); }
+    };
+    let f = match std::fs::File::open(path) {
+        Ok(f) => f,
+        Err(e) => { eprintln!("uLTRA: cannot read {path}: {e}"); return ExitCode::from(1); }
+    };
+    let recs = match reads::readfq(std::io::BufReader::new(f), strict) {
+        Ok(r) => r,
+        Err(e) => { eprintln!("uLTRA: {e}"); return ExitCode::from(1); }
+    };
+    let stdout = std::io::stdout();
+    let mut w = std::io::BufWriter::new(stdout.lock());
+    for r in &recs {
+        // remove_read_polyA_ends(seq, qual, args.reduce_read_ployA, 5)
+        let s = reads::remove_read_polya_ends(&r.seq, polya, 5);
+        if writeln!(w, ">{}", r.name).is_err() || writeln!(w, "{s}").is_err() {
+            return ExitCode::from(1);
+        }
+    }
+    let _ = w.flush();
+    ExitCode::from(0)
 }
