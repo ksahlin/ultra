@@ -308,7 +308,7 @@ def create_graph_from_exon_parts(db, flank_size, small_exon_threshold, min_segme
     part_to_active_gene = defaultdict(set)
     exon_ids = set() #defaultdict(dd_set)
 
-    for i, exon in enumerate(db.features_of_type('exon', order_by='seqid')):
+    for i, exon in enumerate(db.features_of_type('exon', order_by='seqid,start')):
         chr_name = exon.seqid
         # if chr_name in refs_lengths:
         #     chr_length = refs_lengths[chr_name]
