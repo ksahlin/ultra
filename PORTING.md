@@ -1500,9 +1500,26 @@ pattern the order of the `XA:Z` tag is CPython's string-set order. The port sort
 `tests/sam_oracle.rs` counts the multi-transcript cases it sees, printing the number every run, so a
 corpus that does produce them cannot pass silently.
 
-**Still outstanding:** `prefilter_genomic_reads` (the minimap2 driver and the genomic/indexed split),
-`output_final_alignments` (the minimap2-vs-uLTRA cross-check), and the `align_single` driver that
-sequences everything and applies `--dropoff` and `--max_loc`.
+**The genomic prefilter is done.** `classify_record` reproduces **2 182 of 2 182** decisions the
+reference actually made on Drosophila — `Indexed` 1 847, `Ignored` 182, `Unmapped` 147,
+`Unindexed` 6 — where the expected answer is taken from what the reference *wrote* (which reads
+landed in `indexed.sam`, `unindexed.sam` or neither) rather than from re-running its logic.
+`intervaltree` is replaced by a sorted vector and binary search.
+
+> The first version of that oracle was built from SIRV and classified all 100 records `Indexed`.
+> It would have passed an implementation that always answers `Indexed`. The test now asserts that
+> the oracle contains at least three distinct decisions, so a degenerate corpus fails loudly
+> instead of passing vacuously.
+
+**The cross-check's scoring is done.** `cigar_score` reproduces the reference's
+`score(cigartuples) = matches - (I + D + X)` on **2 081 distinct CIGARs**, and the winner rule —
+only a *strictly* lower minimap2 score hands the read to uLTRA; equal and better both keep
+minimap2's — is pinned by unit assertions.
+
+**Still outstanding:** the streaming half of `output_final_alignments` (five passes over two files,
+with a `del` that assumes each read appears once as primary), and the `align_single` driver that
+sequences everything and applies `--dropoff` and `--max_loc`. Neither can be checked per function:
+they are checked by `reads.sam`.
 
 ### Stage 6 — parallelism
 

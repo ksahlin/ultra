@@ -17,6 +17,7 @@ mod gtf;
 mod index;
 mod mam;
 mod namfinder;
+mod prefilter;
 mod reads;
 mod samout;
 mod text;
