@@ -257,6 +257,19 @@ def get_canonical_segments(part_to_canonical_pos, part_count_to_choord, part_to_
                 open_starts_e_ids.difference_update(pos_to_exon_ids[(chr_id, part_id)][p2, False])
 
 
+    # Make the two array structures deterministic. Their contents are in
+    # set-iteration order, which varies with PYTHONHASHSEED, and that order
+    # reaches reads.sam through segment_hit_locations' stable sort on x[1].
+    # Both consumers de-duplicate, so sorting is semantically free.
+    for _d in (parts_to_segments, gene_to_small_segments):
+        for _k in list(_d.keys()):
+            _xs = list(_d[_k])
+            _tr = sorted(tuple(_xs[i:i+3]) for i in range(0, len(_xs) - 2, 3))
+            _new = array("L")
+            for _t in _tr:
+                _new.append(_t[0]); _new.append(_t[1]); _new.append(_t[2])
+            _d[_k] = _new
+
     print("total_unique_segment_counter", total_unique_segment_counter)
     print("total_segments_bad", total_segments_bad)
     print("bad", bad)
