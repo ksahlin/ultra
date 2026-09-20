@@ -24,7 +24,7 @@ codegen-units = 1
 panic = "abort"
 
 [dev-dependencies]
-serde_json = "1"
+serde_json = { version = "1", features = ["float_roundtrip"] }
 flate2 = "1"
 
 [build-dependencies]

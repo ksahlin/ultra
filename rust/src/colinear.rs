@@ -358,3 +358,132 @@ pub fn n_logn_read_coverage(mems: &[Mem]) -> (Vec<Vec<Mem>>, i64) {
     let idxs = all_max_indices(&c, c_max);
     (reconstruct_all(mems, &idxs, &trace), c_max)
 }
+
+// ---------------------------------------------------------------------------
+// The MAM layer's chaining: `read_coverage_mam_score`.
+//
+// Structurally similar to `read_coverage` but NOT the same, and the
+// differences all matter:
+//
+//   * the scores are FLOATS -- there are `- 0.1 * gap` penalties -- so the
+//     arithmetic must be performed in the same order to land on the same f64.
+//   * `C` is NOT shifted by one here; it is indexed 0..n-1, and traceback
+//     pointers are Option rather than a 0 sentinel.
+//   * the I-window is `v.c <= m.d <= v.c - 1 + overlap_threshold`, a fixed
+//     overlap allowance, rather than `m.d <= v.d`.
+//   * it returns a SINGLE solution plus a `unique` flag, not every optimal one.
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Mam {
+    pub x: i64,
+    pub y: i64,
+    pub c: i64,
+    pub d: i64,
+    /// A FLOAT, not a length: `add_segment_to_mam` stores an accuracy-weighted
+    /// score here (`score`), unlike `Mem.val` which is a match length.
+    pub val: f64,
+    pub j: i64,
+    pub min_segment_length: i64,
+    pub mam_id: String,
+    pub ref_chr_id: i64,
+}
+
+/// `read_coverage_mam_score(mams, overlap_threshold=20)`
+/// -> (solution, value, unique)
+pub fn read_coverage_mam_score(mams: &[Mam], overlap_threshold: i64) -> (Vec<Mam>, f64, bool) {
+    let n = mams.len();
+    let mut c: Vec<f64> = vec![0.0; n];
+    let mut trace: Vec<Option<usize>> = vec![None; n];
+
+    for j in 0..n {
+        let v = &mams[j];
+
+        // T: predecessors ending before v starts, with a 0.1-per-base gap
+        // penalty. `max(reversed(...))` -> largest j_prime among ties.
+        let mut t_idx: Option<usize> = None;
+        let mut t_best = 0.0f64;
+        {
+            let mut found = false;
+            for j_prime in 0..j {
+                let m = &mams[j_prime];
+                if m.d < v.c {
+                    // written exactly as the reference does it
+                    let val = c[j_prime] - 0.1 * ((v.c - m.d - 1) as f64);
+                    if !found || val >= t_best {
+                        t_best = val;
+                        t_idx = Some(j_prime);
+                        found = true;
+                    }
+                }
+            }
+            if !found {
+                t_best = 0.0;
+                t_idx = None;
+            }
+        }
+
+        // I: predecessors overlapping v by at most `overlap_threshold`.
+        let mut i_idx: Option<usize> = None;
+        let mut c_b = 0.0f64;
+        {
+            let mut found = false;
+            let mut best = 0.0f64;
+            for j_prime in 0..j {
+                let m = &mams[j_prime];
+                if v.c <= m.d && m.d <= v.c - 1 + overlap_threshold {
+                    let ov = (m.d - v.c + 1) as f64;
+                    let val = c[j_prime] + (v.val - ov - 0.1 * ov);
+                    if !found || val >= best {
+                        best = val;
+                        i_idx = Some(j_prime);
+                        found = true;
+                    }
+                }
+            }
+            c_b = if found { best } else { 0.0 };
+            if !found {
+                i_idx = None;
+            }
+        }
+
+        let c_a = t_best + v.val;
+        trace[j] = if c_a >= c_b { t_idx } else { i_idx };
+        c[j] = if c_a > c_b { c_a } else { c_b };
+    }
+
+    if n == 0 {
+        return (Vec::new(), 0.0, true);
+    }
+
+    // argmax: first maximal index
+    let mut si = 0usize;
+    for (i, x) in c.iter().enumerate() {
+        if *x > c[si] {
+            si = i;
+        }
+    }
+    let value = c[si];
+
+    let mut solution = Vec::new();
+    let mut idx = Some(si);
+    while let Some(i) = idx {
+        solution.push(mams[i].clone());
+        idx = trace[i];
+    }
+    solution.reverse();
+
+    // `non_unique = [x for x in set(C) if C.count(x) > 1]` -- unique is false
+    // if ANY value repeats.
+    let mut unique = true;
+    'outer: for i in 0..n {
+        for k in (i + 1)..n {
+            if c[i] == c[k] {
+                unique = false;
+                break 'outer;
+            }
+        }
+    }
+
+    (solution, value, unique)
+}

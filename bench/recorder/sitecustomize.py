@@ -115,9 +115,38 @@ if _dir:
             return out
         cs.n_logn_read_coverage = n_logn_read_coverage
 
+        def _mam(m):
+            return [m.x, m.y, m.c, m.d, m.val, m.j, m.min_segment_length, m.mam_id, m.ref_chr_id]
+
+        _rcm = cs.read_coverage_mam_score
+        def read_coverage_mam_score(mams, overlap_threshold=20):
+            out = _rcm(mams, overlap_threshold)
+            _rec("read_coverage_mam_score", {
+                "mams": [_mam(m) for m in mams], "overlap_threshold": overlap_threshold,
+                "solution": [_mam(m) for m in out[0]], "value": out[1], "unique": out[2],
+            })
+            return out
+        cs.read_coverage_mam_score = read_coverage_mam_score
+
+        _nlm = cs.n_logn_read_coverage_mams
+        def n_logn_read_coverage_mams(mams, overlap_threshold=5):
+            out = _nlm(mams, overlap_threshold)
+            _rec("n_logn_read_coverage_mams", {
+                "mams": [_mam(m) for m in mams], "overlap_threshold": overlap_threshold,
+                "solution": [_mam(m) for m in out[0]], "value": out[1], "unique": out[2],
+            })
+            return out
+        cs.n_logn_read_coverage_mams = n_logn_read_coverage_mams
+
         import modules.align as am
         am.colinear_solver.read_coverage = read_coverage
         am.colinear_solver.n_logn_read_coverage = n_logn_read_coverage
+        try:
+            from modules import classify_read_with_mams as cw
+            cw.colinear_solver.read_coverage_mam_score = read_coverage_mam_score
+            cw.colinear_solver.n_logn_read_coverage_mams = n_logn_read_coverage_mams
+        except Exception:
+            pass
         cs._ultra_recorded = True
 
     # modules/ is only importable once uLTRA has set up sys.path, so defer the

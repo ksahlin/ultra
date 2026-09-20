@@ -1059,7 +1059,49 @@ Result: **445 recorded calls replay identically, 45 of them through the n log n 
 Corpus consequence: droso-20k is the only registered corpus that exercises this code at all. If it is
 ever dropped to save time, the n log n path silently stops being tested.
 
-> Findings 30+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
+### Finding 30 — the oracle harness was silently corrupting its own floats
+
+Not a finding in the reference; a finding in **this port's verification**, and the most useful kind.
+
+`read_coverage_mam_score` scores in floating point, so its oracle compares values **exactly**, with no
+epsilon. 57 of 368 recorded calls failed by about `2e-13`, with the chosen chain identical every
+time — the classic signature of reassociated arithmetic.
+
+It was not the arithmetic. A verbatim Python re-implementation of the reference algorithm reproduced
+all 368 recorded values exactly, which located the fault in the Rust side. Instrumenting both to dump
+the `C` vector found the first divergence, and the input at that step read:
+
+| | |
+| --- | --- |
+| Python | `v.val = 36.660000000000004` |
+| Rust | `v.val = 36.66` |
+
+from the *same* JSON file, whose text really does say `36.660000000000004`.
+
+**`serde_json`'s default float parser is not correctly rounded.** Measured:
+
+```
+serde_json  36.660000000000004  ->  0x4042547ae147ae14   (== 36.66)
+Rust literal 36.660000000000004 ->  0x4042547ae147ae15
+```
+
+One ULP, on every float in every oracle. The fix is the crate's `float_roundtrip` feature, which is
+off by default; with it enabled all 368 calls replay identically under exact comparison.
+
+**Why this is worth a numbered finding.** The obvious response to "differs by 2e-13" is to compare
+with a tolerance. That would have passed, felt reasonable, and permanently blinded the oracle to real
+1-ULP divergences — in a program where `argmax` over near-equal float scores decides which alignment
+is reported. The harness would have been green and wrong, which is the failure mode this project
+exists to avoid.
+
+Two rules earned:
+
+- **An oracle must round-trip its own data losslessly, and that must be tested.** Any float-carrying
+  oracle added later inherits this; `float_roundtrip` is now on for the workspace.
+- **When a comparison fails by an amount that looks like rounding, find the cause before loosening
+  the comparison.** The epsilon is the last resort, not the first.
+
+> Findings 31+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
 > the most useful artifact of the project.
 
 ---
@@ -1193,9 +1235,14 @@ identically — 1 866 and 194 records respectively, comparing CIGARs and locatio
 445 calls, 45 of them through the n log n path, compared on the full solution set rather than the
 score. See *Finding 29* for why the rare branch got the careful treatment.
 
-**Still outstanding:** `classify_read_with_mams.py` (596 lines, the MAM layer, including its own two
-chaining variants `read_coverage_mam_score` and `n_logn_read_coverage_mams`),
-`align.annotate_guaranteed_optimal_bound`, and `align.find_exons`.
+**The MAM layer's chaining is done**: `read_coverage_mam_score` replays 368 recorded calls
+identically, including the float score compared **exactly** — see *Finding 30* for what that
+uncovered.
+
+**Still outstanding:** `n_logn_read_coverage_mams` (the >200-mam variant, not yet observed firing on
+any corpus), `add_segment_to_mam` and the two `get_unique_*` helpers,
+`classify_read_with_mams.main`'s orchestration, `align.annotate_guaranteed_optimal_bound`, and
+`align.find_exons`.
 
 ### Stage 5 — SAM output and the minimap2 merge
 
