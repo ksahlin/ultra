@@ -149,6 +149,26 @@ if _dir:
             pass
         cs._ultra_recorded = True
 
+    def _install_mamplumbing():
+        from modules import classify_read_with_mams as cw
+        if getattr(cw, "_ultra_recorded_plumb", False):
+            return
+        _g = cw.get_unique_exon_and_flank_locations
+        def get_unique_exon_and_flank_locations(solution, parts_to_segments):
+            out = _g(solution, parts_to_segments)
+            shl, psh, fhl, pfh, c2e, fps, lps = out
+            _rec("get_unique_exon_and_flank_locations", {
+                "solution": [[m.x, m.y, m.c, m.d, m.val, m.j, m.exon_part_id] for m in solution],
+                "segment_hit_locations": [list(t) for t in shl],
+                "flank_hit_locations": [list(t) for t in fhl],
+                "partial_segment_hit_locations": {repr(k): v for k, v in psh.items()},
+                "partial_flank_hit_locations": {repr(k): v for k, v in pfh.items()},
+                "first_part_stop": fps, "last_part_start": lps,
+            })
+            return out
+        cw.get_unique_exon_and_flank_locations = get_unique_exon_and_flank_locations
+        cw._ultra_recorded_plumb = True
+
     # modules/ is only importable once uLTRA has set up sys.path, so defer the
     # install until the first import of the package rather than doing it here.
     import importlib.abc
@@ -157,7 +177,7 @@ if _dir:
 
     class _Hook(importlib.abc.MetaPathFinder):
         def find_spec(self, fullname, path=None, target=None):
-            if fullname in ("modules.help_functions", "modules.align"):
+            if fullname in ("modules.help_functions", "modules.align", "modules.classify_read_with_mams"):
                 spec = importlib.machinery.PathFinder.find_spec(fullname, path)
                 if spec and spec.loader:
                     orig_exec = spec.loader.exec_module
@@ -167,6 +187,8 @@ if _dir:
                         _orig(module)
                         if _w == "modules.help_functions":
                             _install()
+                        elif _w == "modules.classify_read_with_mams":
+                            _install_mamplumbing()
                         else:
                             _install_chaining()
 

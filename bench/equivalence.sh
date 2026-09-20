@@ -62,7 +62,15 @@ die()  { echo "equivalence: $*" >&2; exit 1; }
 # Output classification. This is the contract, and it is the most important
 # thing in the file. See PORTING.md Part 5.
 #
-#   hash      byte-for-byte. reads.sam and friends.
+#   hash      byte-for-byte.
+#   sam       header byte-for-byte, alignment records SORTED before hashing.
+#             uLTRA emits records in worker-completion order, which is
+#             scheduling-dependent: measured, four concurrent runs of the same
+#             input at the default --t 3 produced THREE different files, all
+#             with identical content in a different order. At --t 1 it is
+#             stable. So record order is not a contract the reference offers,
+#             and hashing it would make the suite fail on a busy machine.
+#             See PORTING.md Finding 32.
 #   gunzip    hash the DECOMPRESSED bytes. gzip stores an mtime in header bytes
 #             5-8, so seeds.txt.gz and reads_tmp.fa.gz differ every run while
 #             their contents are identical. Measured, not assumed.
@@ -78,6 +86,7 @@ classify() {
     *.pickle|database.db)                      echo oracle ;;
     *.gz)                                      echo gunzip ;;
     minimap2.sam|indexed.sam|unindexed.sam)    echo scrub_pg ;;
+    *.sam)                                     echo sam ;;
     minimap2_errors.*|namfinder_stderr.*|*.stderr) echo exists ;;
     *)                                         echo hash ;;
   esac
@@ -89,6 +98,7 @@ digest_for() {
     hash)     SHA "$f" ;;
     gunzip)   gzip -dc "$f" 2>/dev/null | { if command -v shasum >/dev/null 2>&1; then shasum -a 256; else sha256sum; fi; } | cut -d' ' -f1 ;;
     scrub_pg) grep -v '^@PG' "$f" | grep -v '^@HD' | { if command -v shasum >/dev/null 2>&1; then shasum -a 256; else sha256sum; fi; } | cut -d' ' -f1 ;;
+    sam)      { grep '^@' "$f"; grep -v '^@' "$f" | LC_ALL=C sort; } | { if command -v shasum >/dev/null 2>&1; then shasum -a 256; else sha256sum; fi; } | cut -d' ' -f1 ;;
     exists)   echo "size:$(wc -c < "$f" | tr -d ' ')" ;;
     oracle)   echo "oracle" ;;
   esac
@@ -141,6 +151,14 @@ check_bin_fresh() {   # RULE 4
   filesystem: $PORT_BIN
   the directory contains: $(ls -1 "$d" | grep -ix -- "$b" | tr '\n' ' ')"
   fi
+  # Only meaningful when PORT_BIN really is built from rust/src. The harness's
+  # own test doubles (bench's deliberately-broken "ports") live elsewhere and
+  # are not compiled from anything, so comparing mtimes against them is a false
+  # alarm -- one that fired during development and cost a confusing few minutes.
+  case "$PORT_BIN" in
+    "$ROOT/rust/target/"*) ;;
+    *) return 0 ;;
+  esac
   local newer
   newer="$(find "$ROOT/rust/src" "$ROOT/rust/Cargo.toml" -newer "$PORT_BIN" 2>/dev/null | head -5)"
   if [[ -n "$newer" ]]; then

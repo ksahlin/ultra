@@ -9,7 +9,7 @@ oracle	oracle	id_to_chr.pickle
 oracle	oracle	max_intron_chr.pickle
 exists	size:1456	namfinder_stderr.1
 oracle	oracle	parts_to_segments.pickle
-hash	ca4de15d8d5669c670cab5054ce0bf19ecf5ba106f1e4cdab98c1e7b336dfcc3	reads.sam
+sam	90cbb6e2daf8f7fe211a23ad0de372fd017359d35960a68dbd880a2d5db15c8a	reads.sam
 gunzip	a7f2cbb4390da7f986773e6f546c184296715a63dcd89faab472da1d9aa38833	reads_tmp.fa.gz
 oracle	oracle	ref_exon_sequences.pickle
 oracle	oracle	ref_flank_sequences.pickle
@@ -17,7 +17,7 @@ oracle	oracle	ref_part_sequences.pickle
 oracle	oracle	ref_segment_sequences.pickle
 oracle	oracle	refs_id_lengths.pickle
 oracle	oracle	refs_lengths.pickle
-gunzip	96e6c3a129f1e4382ba5c462ffe25848140f82f19e30bc308bf8a35f6a9c7dfc	seeds.txt.gz
+gunzip	84db2334530027fe94186ba2db8ab67250c0d073e3a699f7751a617b0693b40c	seeds.txt.gz
 oracle	oracle	segment_id_to_choordinates.pickle
 oracle	oracle	segment_to_gene.pickle
 oracle	oracle	segment_to_ref.pickle

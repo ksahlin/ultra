@@ -1151,7 +1151,44 @@ The port reproduces the wrap-around, because the alternative is a silent behavio
 that is already hard to test. It is marked in `colinear.rs` as a faithful bug, and it is a candidate
 for *Deferred improvements* once the port is exact.
 
-> Findings 32+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
+### Finding 32 — `reads.sam` record order is not reproducible at `--t > 1`, and the harness had been passing on luck
+
+Four *concurrent* runs of the same input, same index, `PYTHONHASHSEED=0`, at the default `--t 3`:
+
+| run | `reads.sam` sha256 (first 16) |
+| --- | --- |
+| a | `84d36b83e09ec111` |
+| b | `84d36b83e09ec111` |
+| c | `5db454f5209ea9f7` |
+| d | `b905f304690a664e` |
+
+**Three different files.** The same four runs on a quiet machine give one hash every time, which is
+why this had gone unnoticed — including by this project, whose align goldens were recorded and
+verified at `--t 3` throughout.
+
+The difference is **order only**: identical read set, and identical content once the records are
+sorted. uLTRA's workers push finished batches into a `mp.Manager().Queue()` and `file_IO` drains it,
+so the file is in worker-completion order, which is scheduling. At `--t 1` there is one worker and
+the output is stable — verified, three concurrent runs, identical.
+
+Consequences, and they are not small:
+
+- **Record order is not a contract the reference offers**, so the port must not be held to it, and
+  Stage 6 does not have to reproduce uLTRA's worker interleaving. That removes what would have been
+  the hardest constraint on the parallel implementation.
+- **The harness was wrong**, not merely lucky: it hashed `reads.sam` byte-for-byte, so a busy CI
+  machine would have produced a red suite with no defect behind it. `classify()` now has a `sam`
+  class that hashes the header verbatim and the alignment records **sorted**. Measured: the three
+  divergent files above collapse to one digest under it.
+- **A raw `diff` of two SAMs is misleading** and misled me here. Comparing `reads.sam` before and
+  after an unrelated change reported "2 010 of 10 000 lines differ"; comparing per read showed **6**.
+  The rest was reordering. Any claim about how many reads a change affects must be made per read.
+
+For the user this is worth knowing in its own right: rerun uLTRA at `--t 8` on a loaded cluster node
+and you get a byte-different SAM from the same inputs. Nothing is wrong with the alignments, but
+`md5sum` is not a valid check of whether two runs agree.
+
+> Findings 33+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
 > the most useful artifact of the project.
 
 ---
