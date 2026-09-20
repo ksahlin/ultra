@@ -475,16 +475,26 @@ cmd_stage() {   # cmd_stage index record|verify [corpus]
     local idx="$WORK/stage/$corpus/idx" ren="$WORK/stage/$corpus/$mode"
     rm -rf "$idx" "$ren"; mkdir -p "$idx" "$ren"
 
-    # Build the index with whichever engine we are testing.
-    run_case "$engine" "$corpus" idx-default index - "" "$idx"
-    local rc; rc="$(cat "$idx.exit")"
-    if [[ "$rc" != 0 ]]; then bad "$corpus: index build failed (exit $rc)"; failed=$((failed+1)); continue; fi
+    # The reference must build an index directory to be rendered from; the port
+    # renders straight from the inputs.
+    if [[ "$engine" == ref ]]; then
+      run_case "$engine" "$corpus" idx-default index - "" "$idx"
+      local rc; rc="$(cat "$idx.exit")"
+      if [[ "$rc" != 0 ]]; then bad "$corpus: index build failed (exit $rc)"; failed=$((failed+1)); continue; fi
+    fi
 
     if [[ "$engine" == ref ]]; then
       "$REF_PYTHON" "$BENCH/dump_reference.py" --index "$idx" --out "$ren" >/dev/null || {
         bad "$corpus: dump_reference.py failed"; failed=$((failed+1)); continue; }
     else
-      "$PORT_BIN" dump-index "$idx" "$ren" >/dev/null || {
+      # The port takes the INPUTS, not an index directory. Stage 2 verifies index
+      # CONSTRUCTION; the on-disk index format is a separate concern that arrives
+      # when `align` needs to load one. Passing the inputs also means the port is
+      # never handed a reference-built index it could accidentally read.
+      local resolved ref gtf _reads
+      resolved="$("$BENCH/corpora_resolve.sh" "$corpus")" || { failed=$((failed+1)); continue; }
+      IFS=$'\t' read -r ref gtf _reads <<< "$resolved"
+      "$PORT_BIN" dump-index "$ref" "$gtf" "$ren" >/dev/null || {
         bad "$corpus: port dump-index failed"; failed=$((failed+1)); continue; }
     fi
 

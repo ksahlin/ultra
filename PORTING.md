@@ -750,6 +750,22 @@ rendering structure by structure, so this divergence is confined to one named fi
 leaks into a second structure is a bug, not a decision. The expected-diff list lives in
 `bench/stage_diffs.tsv` so it cannot be widened silently.
 
+**Measured, now that the port exists.** Across all six corpora, 120 structures:
+**119 match, 1 diverged, 0 failed, 0 stale.** The single divergence is this one, on droso-20k, and
+its shape is exactly what the diagnosis predicted:
+
+| | |
+| --- | --- |
+| SIRV `gene_to_small_segments` | **matches** — as it must; every SIRV part has one active gene |
+| droso genes in the reference / the port | 16 640 / **16 642** |
+| shared genes where the port is a superset | 16 635, **strictly larger in 836** |
+| shared genes where the port has fewer entries | **5 genes, 6 entries** |
+
+The 836 are the multi-gene parts the reference filed under only one gene (it measured 835 sites; one
+gene is reached twice). The 6 entries the port "loses" are exactly the 6 the reference filed under a
+gene that was **not active there at all** — the port is right to omit them, and the count matching
+the independent instrumentation is what confirms the two measurements are describing one bug.
+
 ### Finding 23 — the default `index` path spends 219 of its 240 seconds producing an identical index
 
 `--disable_infer` tells gffutils not to infer `gene` and `transcript` features. The README calls it a
@@ -780,7 +796,72 @@ The port replaces gffutils entirely (Finding 1 of the hypotheses, Part 3), so ne
 as such. This Finding exists to record what the target is: a GTF parse, not 240 seconds and a 399 MB
 database.
 
-> Findings 24+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
+### Finding 24 — a dedup guard compares a tuple to a bytes-keyed dict, and is dead
+
+In `get_canonical_segments`, the "extend forwards" branch guards with
+
+```python
+if (chr_id, p1, pos_tuples[i+k][1]) not in segment_id_to_choordinates:
+```
+
+while its "extend backwards" sibling twenty lines earlier correctly uses the bytes key:
+
+```python
+if segment_name not in segment_id_to_choordinates:
+```
+
+`segment_id_to_choordinates` is keyed by `array("L",...).tobytes()`, so a **tuple** can never be in
+it and the guard is always true. It is dead code.
+
+I predicted from reading that this would produce duplicate entries, and **measured that it does
+not**: zero duplicate triples in `parts_to_segments` and `gene_to_small_segments` on both SIRV
+(275 / 221 triples) and Drosophila (102 065 / 66 790). Each `i` adds at most one forward segment
+before `break`, and distinct `i` give distinct `p1`, so nothing collides in practice.
+
+So it is a latent defect with no observable effect. The port reproduces the *behaviour* — always add
+— rather than the *intent*, because implementing a working dedup here could drop a segment the
+reference keeps, which would be a real divergence in exchange for nothing.
+
+Worth recording as a method note too: this is the second time in this port that reading the code
+predicted something the measurement contradicted.
+
+### Finding 25 — `--disable_infer` on a GTF without transcript lines silently empties the annotation
+
+`--disable_infer` tells gffutils not to infer `gene` and `transcript` features. **The repository's own
+test GTF has neither** — `test/SIRV_genes_C_170612a.gtf` is 339 `exon` lines and nothing else.
+
+Running the reference with `--disable_infer` on it:
+
+```
+$ uLTRA index --disable_infer test/SIRV_genes.fasta test/SIRV_genes_C_170612a.gtf out/
+$ echo $?
+0
+```
+
+and the resulting index has **every splice structure empty**:
+
+| structure | default | `--disable_infer` |
+| --- | --- | --- |
+| `splices_to_transcripts` | 7 | **0** |
+| `transcripts_to_splices` | 7 | **0** |
+| `all_splice_pairs_annotations` | 7 | **0** |
+| `all_splice_sites_annotations` | 7 | **0** |
+| `max_intron_chr` | 7 | **0** |
+
+Exit 0, no warning. uLTRA is an *annotation-guided* aligner, so this silently removes the guidance
+that is the entire point of the tool — and Finding 23 actively encourages users towards this flag by
+making it 11.4× faster.
+
+The two findings together are the trap: the flag is a large speed-up on annotations that declare
+their transcripts and a silent correctness disaster on annotations that do not, and nothing tells the
+user which they have.
+
+**The port does not offer the choice.** It always infers what is missing: a `transcript_id` seen on
+an exon but never declared gets a transcript, one that was declared is left alone. There is no flag,
+because there is no decision the user is better placed to make. `--disable_infer` is still accepted
+and ignored.
+
+> Findings 26+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
 > the most useful artifact of the project.
 
 ---
@@ -863,11 +944,32 @@ four positionals; `pipeline` takes 24 `add_argument` calls, `align` 19, `index` 
 (Finding 12). Hand-written argparse-compatible parser, exit codes and stderr captured as goldens.
 Everything past validation exits non-zero until implemented.
 
-### Stage 2 — `index`, and it is the biggest single win
+### Stage 2 — `index` — **DONE, and it was the biggest single win**
 
-GTF parser replacing gffutils and its 3.7 GB sqlite; the augmented-gene graph
-(`create_augmented_gene.py`, 641 lines); the segment/exon/flank structures. Verified against the
-stage oracle, not against bytes. **Expected: 140 s and 3.7 GB of sqlite → seconds and no database.**
+GTF parser replacing gffutils and its sqlite; the augmented-gene graph; the segment, exon, flank and
+splice structures; sequence extraction. Verified against the stage oracle, not against bytes:
+**119 of 120 structures match across all six corpora, with one approved divergence** (Finding 22) and
+zero failures.
+
+Measured, port against reference, same machine:
+
+| corpus | reference (default) | reference (`--disable_infer`) | **port** |
+| --- | --- | --- | --- |
+| SIRV | 0.32 s, 62.9 MB | — | **0.08 s, 2.6 MB** |
+| Drosophila | 240.3 s, 863.1 MB | 21.1 s, 827.0 MB | **1.12 s, 828.3 MB** |
+
+**215× against the default path and 19× against `--disable_infer`**, and no 399 MB sqlite database is
+written at all. On SIRV the memory drop is 24×, which is mostly the Python interpreter and gffutils
+not being there.
+
+Two honest caveats. The Drosophila memory is essentially unchanged because both implementations hold
+the genome and every extracted sequence in memory at once; streaming that is a separate change, not
+something the rewrite gave for free. And the port currently renders the index rather than writing a
+loadable on-disk format — index *construction* is what this stage verifies, and the format arrives
+when `align` needs to read one.
+
+Bugs the reference has here, all found by running the new corpus rather than by reading:
+Findings 13, 14, 22, 23, 24, 25.
 
 ### Stage 3 — seeds and I/O
 
