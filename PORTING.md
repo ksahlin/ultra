@@ -276,10 +276,24 @@ osx-arm64** (Finding 2). Three ways out, and they are not equivalent:
 | **B. compute strobemers inside the Rust binary** | **removes an external tool and fixes osx-arm64 outright**; only minimap2 left | achievable *if* the NAM output is reproduced exactly — an oracle problem of the same shape as spoa in the NGSpeciesID port | a port, plus one hard oracle |
 | **C. revive MEM seeding** | still needs mummer or slaMEM, or a new MEM finder | **impossible** — different seeds give different alignments | a research change, not a port |
 
-Recommendation: **B, with A as the fallback if the oracle cannot be made exact.** C belongs in
-*Deferred improvements*: MEMs may well be more sensitive than NAMs, but changing the seeds changes
-every output file, so it cannot be evaluated until the port is exact enough to be a control. Do the
-port first, then measure MEMs against it.
+**Decision taken: B.** Strobemers are computed inside the Rust binary; namfinder stops being a
+runtime dependency. **A is the fallback** if the NAM oracle cannot be made exact — that is a
+measurement, not a preference, and it is made before the seeding stage is written, not after.
+
+C is *Deferred improvements*. MEMs may well be more sensitive than NAMs, but changing the seeds
+changes every output file, so C cannot be evaluated until the port is exact enough to serve as the
+control. Port first, then measure MEMs against a known-good baseline. Reviving it would also mean
+reviving `get_mem_records`, which is dead *and* broken (Finding 7).
+
+Because B is a byte-identity risk concentrated in one place, it gets the treatment spoa got in the
+NGSpeciesID port: `bench/dump_reference.py --stage seeds` records namfinder's NAM output on every
+corpus, and `rust/tests/nam_oracle.rs` replays it. The port does not proceed past seeding until that
+oracle is green or A has been adopted with a Finding explaining why.
+
+Filed upstream: **[ksahlin/namfinder#1](https://github.com/ksahlin/namfinder/issues/1)** asks for
+`osx-arm64` in the bioconda recipe. That fixes the *reference's* install on Apple Silicon
+independently of the port, and it stays worth doing even under B, because the reference environment
+the harness runs against still needs a namfinder binary.
 
 ---
 
@@ -513,8 +527,13 @@ stage oracle, not against bytes. **Expected: 140 s and 3.7 GB of sqlite → seco
 
 ### Stage 3 — seeds and I/O
 
-`namfinder` subprocess with an argument vector (Finding 8), the gzip seed reader, the read parser
-with a real error on malformed fastq (Finding 6).
+**Strobemers computed natively (decision B).** The NAM oracle comes first: record namfinder's output
+across every corpus, then make the Rust seeder reproduce it exactly. `--s` and `--thinning` map onto
+namfinder's `-k/-s/-l/-u` exactly as `find_nams_namfinder` derives them, including the
+`(strobe_size + 1)//3` and `//5` thinning arithmetic, which is integer division and must stay so.
+
+Also here: the read parser, with a real error on malformed fastq instead of silent truncation
+(Finding 6). Finding 8 dissolves — there is no `os.system` line left to quote badly.
 
 ### Stage 4 — the alignment core
 
@@ -533,15 +552,18 @@ that peak RSS is flat in `--t` rather than +337 MB per worker.
 
 ### Stage 7 — distribution
 
-cargo-zigbuild to `x86_64-unknown-linux-gnu.2.17` and aarch64, plus a bioconda recipe. Test the way
+cargo-zigbuild to `x86_64-unknown-linux-gnu.2.17` and aarch64, plus a bioconda recipe. Under
+decision B the recipe's only runtime dependency is `minimap2`, which is present on all four subdirs
+— so the port's own install works on Apple Silicon without waiting on namfinder#1. Test the way
 a stranger installs: a real `pip`/`conda` install into a clean environment, and a release binary
 downloaded through a **browser** so macOS actually sets the quarantine xattr — never via
 `gh release download` (rule 1).
 
 ### Running in parallel, off `master`, not waiting for the port
 
-A `fix/installation` branch: Findings 1, 7 and 9. And an issue on the **namfinder** feedstock for the
-osx-arm64 build (Finding 2), which is the single highest-leverage action for goal 1.
+A `fix/installation` branch: Findings 1, 7 and 9, plus the `.gitignore` the repository has never had.
+And **[ksahlin/namfinder#1](https://github.com/ksahlin/namfinder/issues/1)** — filed — for the
+osx-arm64 bioconda build (Finding 2), which fixes the reference's install on Apple Silicon.
 
 ---
 
