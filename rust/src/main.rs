@@ -14,6 +14,7 @@ mod parasail;
 mod fasta;
 mod gtf;
 mod index;
+mod mam;
 mod namfinder;
 mod reads;
 mod text;

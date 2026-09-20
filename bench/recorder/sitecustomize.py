@@ -167,6 +167,22 @@ if _dir:
             })
             return out
         cw.get_unique_exon_and_flank_locations = get_unique_exon_and_flank_locations
+
+        _a = cw.add_segment_to_mam
+        def add_segment_to_mam(read_seq, ref_chr_id, exon_seq, e_start, e_stop, segm_id,
+                               mam_instance, min_acc, annot_label):
+            before = len(mam_instance)
+            _a(read_seq, ref_chr_id, exon_seq, e_start, e_stop, segm_id,
+               mam_instance, min_acc, annot_label)
+            added = mam_instance[before:]
+            _rec("add_segment_to_mam", {
+                "read_seq": read_seq, "ref_chr_id": ref_chr_id, "exon_seq": exon_seq,
+                "e_start": e_start, "e_stop": e_stop, "segm_id": str(segm_id),
+                "min_acc": min_acc, "annot_label": annot_label,
+                "added": [[m.x, m.y, m.c, m.d, m.val, m.j, m.min_segment_length,
+                           m.mam_id, m.ref_chr_id] for m in added],
+            })
+        cw.add_segment_to_mam = add_segment_to_mam
         cw._ultra_recorded_plumb = True
 
     # modules/ is only importable once uLTRA has set up sys.path, so defer the

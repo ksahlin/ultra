@@ -1188,7 +1188,58 @@ For the user this is worth knowing in its own right: rerun uLTRA at `--t 8` on a
 and you get a byte-different SAM from the same inputs. Nothing is wrong with the alignments, but
 `md5sum` is not a valid check of whether two runs agree.
 
-> Findings 33+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
+### Finding 33 — DIVERGENCE TAKEN: segment ordering uses a total order, not CPython's set iteration
+
+`get_unique_exon_and_flank_locations` ends with
+
+```python
+segment_hit_locations = list(set(segment_hit_locations))
+segment_hit_locations.sort(key=lambda x: x[1])
+```
+
+a **stable sort on the start coordinate alone**, over a `list(set(...))`. Entries tied on start
+therefore emerge in CPython's `set` iteration order for tuples of ints, and that order decides which
+segments are aligned first, which reaches the MAM chain and the final alignment.
+
+Measured on 140 recorded calls: **128 have tied starts**, and a total-order sort reproduces the
+reference's order in only **27** of them.
+
+Two further places share the mechanism: `all_segm_ids.pop()` in `main` takes an arbitrary element of
+a set, and `small_segments` is iterated as a set to seed `unique_segment_choordinates`.
+
+**Decision taken by the author on 2026-09-20: use a total order and document the divergence.**
+The port sorts by the full `(start, chr, stop)` triple and takes the smallest id rather than an
+arbitrary one.
+
+**What it costs**, measured end to end:
+
+| corpus | reads differing | nature |
+| --- | --- | --- |
+| SIRV, 10 000 reads | **6** (0.06 %) | same POS, different CIGAR |
+| Drosophila, 2 000 reads | **0** | — |
+
+SIRV is the worse case because its transcripts are near-identical by construction, which is exactly
+what produces tied starts.
+
+**Why not reproduce it.** Matching would mean emulating CPython's tuple hash plus `setobject.c`'s
+probe sequence and resize schedule — perhaps 200 lines of interpreter internals, pinned to a CPython
+version, maintained forever, to reproduce an order the reference never chose on purpose. The
+alternative was judged the better trade.
+
+**How it is bounded.** `rust/tests/hit_locations_oracle.rs` asserts on every recorded call that
+the **set** of segment hit locations is identical and that the sequence is still sorted by start —
+the reference's own invariant — and deliberately does not compare tie order. It also *prints the
+cost on every run*:
+
+```
+hit locations: 800 calls, sets identical in all; order identical in 134,
+               reordered in 666 (Finding 33's divergence, 83% of calls)
+```
+
+So the divergence is an assertion with a visible magnitude rather than a note in a document, and if
+it ever started changing the *set* rather than the order, the test fails.
+
+> Findings 34+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
 > the most useful artifact of the project.
 
 ---
@@ -1329,9 +1380,12 @@ uncovered.
 **Both MAM chainers are ported.** `read_coverage_mam_score` against 368 real recorded calls and
 `n_logn_read_coverage_mams` against 25 synthetic ones (*Finding 31*): 393 total, all identical.
 
-**Still outstanding:** `add_segment_to_mam` and the two `get_unique_*` helpers,
-`classify_read_with_mams.main`'s orchestration, `align.annotate_guaranteed_optimal_bound`, and
-`align.find_exons`.
+**The MAM layer is complete.** `add_segment_to_mam` replays 1 500 recorded calls identically,
+including the float scores and its buggy `max_score` bookkeeping; the two `get_unique_*` helpers and
+`classify_read_with_mams.main` are ported, with the one bounded divergence of *Finding 33*.
+
+**Still outstanding in stage 4:** `align.annotate_guaranteed_optimal_bound` and `align.find_exons`,
+then the `align_single` driver that ties them together.
 
 ### Stage 5 — SAM output and the minimap2 merge
 
