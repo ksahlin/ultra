@@ -1,0 +1,55 @@
+# uLTRA equivalence case matrix.
+#
+# One row = one invocation. The harness runs each row against every corpus of a
+# matching tier, hashes the outputs, and stores them under
+# bench/golden/<corpus>/<case>/manifest.tsv.
+#
+# WHY A MATRIX AND NOT "run it once". PORTING.md Finding 12: --ont silently
+# overrides an explicit --s. A preset that quietly resolves to the wrong numbers
+# is invisible in output that agrees for other reasons, so every preset and every
+# parameter that can change a decision gets its own row.
+#
+# entry:  index | align | pipeline
+#   index cases run the indexing step alone.
+#   align cases reuse the index built by the case named in "needs".
+#   pipeline cases do both in one invocation.
+#
+# tier:   smoke | core | heavy   - the minimum corpus tier this case runs on.
+#
+# columns:  name  entry  tier  needs  args  notes
+#
+name	entry	tier	needs	args	notes
+idx-default	index	smoke	-		the default index; every align case below reuses it
+idx-disable-infer	index	core	-	--disable_infer	the path the README recommends for GENCODE/Ensembl; Finding 13 was found here
+idx-flank-100	index	core	-	--flank_size 100	flank size reaches ref_flank_sequences and the genomic-region interval tree
+idx-small-exon-50	index	core	-	--small_exon_threshold 50	changes which segments survive into gene_to_small_segments
+idx-min-segm-10	index	core	-	--min_segm 10	segment granularity; interacts with small_exon_threshold
+idx-thinning-1	index	core	-	--thinning 1	seed thinning is applied at index AND align; both must agree
+idx-thinning-2	index	core	-	--thinning 2	the (strobe_size+1)//5 branch, which is integer division
+idx-s-12	index	core	-	--s 12	strobe size at index time
+aln-default	align	smoke	idx-default		the baseline; reads.sam is the byte-identity target
+aln-t1	align	core	idx-default	--t 1	single worker; no manager queue contention
+aln-t3	align	core	idx-default	--t 3	the DEFAULT, and therefore the most important row
+aln-t8	align	core	idx-default	--t 8	8 workers; peak RSS 3475 MB on sirv-100k (PORTING.md Part 2)
+aln-ont	align	smoke	idx-default	--ont	preset: min_acc 0.6, mm2_ksize 14, s 9
+aln-isoseq	align	smoke	idx-default	--isoseq	preset: min_acc 0.8, s 10 (s is already the default, so half of it is a no-op)
+aln-ont-s12	align	smoke	idx-default	--ont --s 12	FINDING 12: this must resolve to s=9, not 12. A port that honours --s here is wrong.
+aln-isoseq-s12	align	smoke	idx-default	--isoseq --s 12	FINDING 12, the other preset: must resolve to s=10
+aln-disable-mm2	align	core	idx-default	--disable_mm2	removes minimap2 entirely: no indexed/unindexed split, no cross-check
+aln-keep-temp	align	smoke	idx-default	--keep_temporary_files	the ONLY case where the minimap2 SAMs are observable; @PG is scrubbed, see equivalence.sh
+aln-prefix	align	smoke	idx-default	--prefix sample_X	output becomes sample_X.sam; pins the naming contract
+aln-ignore-rc	align	core	idx-default	--ignore_rc	forward strand only; halves the seed records read_seeds yields
+aln-min-acc-08	align	core	idx-default	--min_acc 0.8	MAM acceptance threshold
+aln-aln-thresh-03	align	core	idx-default	--alignment_threshold 0.3	lower bar for calling something aligned
+aln-max-intron-1k	align	core	idx-default	--max_intron 1000	global cap; overrides the per-chromosome value inferred from the GTF
+aln-max-loc-1	align	core	idx-default	--max_loc 1	single best location; the repeat guard
+aln-dropoff-05	align	core	idx-default	--dropoff 0.5	coverage dropoff relative to the best hit
+aln-non-covered-5	align	core	idx-default	--non_covered_cutoff 5	the intron-vs-deletion boundary; reaches the CIGAR directly
+aln-genomic-frac-05	align	core	idx-default	--genomic_frac 0.5	the indexed/unindexed classification threshold
+aln-polya-4	align	core	idx-default	--reduce_read_ployA 4	polyA compression before seeding; mutates the read seen by namfinder
+aln-thinning-1	align	core	idx-thinning-1	--thinning 1	must be paired with the matching index
+aln-thinning-2	align	core	idx-thinning-2	--thinning 2	must be paired with the matching index
+aln-s-12	align	core	idx-s-12	--s 12	must be paired with the matching index
+pipe-default	pipeline	smoke	-		index+align in one call; checks the combined path writes the same bytes
+pipe-ont	pipeline	core	-	--ont	the invocation the README actually shows
+pipe-disable-infer	pipeline	core	-	--disable_infer --ont	the realistic large-annotation invocation

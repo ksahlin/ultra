@@ -1,0 +1,4 @@
+exists	size:1465	namfinder_stderr.1
+hash	dfbb335eff4dfb5f01e9dbec88b2f584d7f84c338b2f51d45590cec54499c5ed	reads.sam
+gunzip	a7f2cbb4390da7f986773e6f546c184296715a63dcd89faab472da1d9aa38833	reads_tmp.fa.gz
+gunzip	bebf868d8ad83705c5ca10c8dc406cae318fb5a1c6214e1041b4730aad1519d3	seeds.txt.gz

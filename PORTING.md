@@ -491,7 +491,98 @@ step and the connection is not yet proven.
 Belongs on `fix/installation` — or rather a `fix/exon-ordering` branch, since it is a correctness fix
 and not an installation one, and it changes index bytes.
 
-> Findings 14+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
+### Finding 14 — `gene_to_small_segments` is built from a leaked loop variable, and is silently wrong on any real annotation
+
+Found by the case matrix, not by reading: `idx-small-exon-50` recorded **exit 1** on SIRV.
+
+```
+File "modules/create_augmented_gene.py", line 251, in get_canonical_segments
+    add_items(gene_to_small_segments[gene_id], chr_id, e_start, e_stop)
+UnboundLocalError: cannot access local variable 'gene_id' where it is not associated with a value
+```
+
+`get_canonical_segments` tests `<= small_segment_threshold` in **three** places. Two of them are
+written correctly:
+
+```python
+if p2 - p1 <= small_segment_threshold:
+    for gene_id in active_gene_ids:                       # <- binds gene_id
+        add_items(gene_to_small_segments[gene_id], chr_id, p1, p2)
+```
+
+The third omits the loop and uses a bare `gene_id`:
+
+```python
+if e_stop - e_start <= small_segment_threshold:
+    add_items(gene_to_small_segments[gene_id], chr_id, e_start, e_stop)   # <- line 251
+```
+
+So it reads whatever `gene_id` Python left bound from an **earlier, unrelated** iteration of one of
+the other two loops. `--small_exon_threshold 50` crashes only because at that threshold the earlier
+loops do not run first, leaving the name unbound.
+
+**The crash is the harmless symptom. The silent version is the bug.** Instrumenting the site to print
+the leaked `gene_id` alongside the `active_gene_ids` actually in scope, at the **default**
+`--small_exon_threshold 200`:
+
+| corpus | site reached | leaked gene not in `active_gene_ids` | more than one active gene |
+| --- | --- | --- | --- |
+| SIRV | 22 | **0** | **0** |
+| Drosophila (Ensembl BDGP6.46) | 1 048 | **6** | **835** |
+
+On SIRV every part has exactly one active gene, so the leaked value is always the only correct value
+and the bug is invisible. On a real annotation it is wrong twice over:
+
+- **6 segments are filed under a gene that is not active there at all** — and one of the leaked
+  values is not even a gene id but a transcript id, `FBtr0309646_df_nrg`:
+  ```
+  gene_id='FBgn0035170' in_active=False active=['FBgn0035171', 'FBti0020010']
+  gene_id='FBtr0309646_df_nrg' in_active=False active=['FBgn0259163']
+  ```
+- **835 segments reach a part with several active genes** and are filed under one of them instead of
+  all, so `gene_to_small_segments` is incomplete for the rest.
+
+`gene_to_small_segments` is one of the 14 pickled index structures and feeds the small-exon handling
+that is uLTRA's headline claim, so this is not cosmetic.
+
+The fix is one line — wrap site three in `for gene_id in active_gene_ids:` like its two siblings. It
+**will** change index bytes and may change alignments, so it is a behaviour change needing its own
+branch, its own goldens and a measured before/after, not a drive-by.
+
+For the port: the Rust code cannot reproduce "whatever was left in a local variable" and should not
+try. This is a *deliberate divergence* — implement the evident intent (all active genes), and record
+the diff against the reference on every corpus as the cost.
+
+### Finding 15 — `--alignment_threshold` is `type=int` with a float default, so it cannot be set to the value its own help describes
+
+Found by the case matrix: `aln-aln-thresh-03` recorded **exit 2**.
+
+```
+uLTRA align: error: argument --alignment_threshold: invalid int value: '0.3'
+```
+
+Both declarations say:
+
+```python
+add_argument('--alignment_threshold', type=int, default=0.5, help='... Default val (0.5) sets that a
+             score higher than 2*0.5*read_length would be considered an alignment ...')
+```
+
+`argparse` does not run `type` over a default that is not a string, so the **float default of 0.5 is
+used as-is and works**, while **anything the user passes must parse as an `int`**. The help text
+describes a fraction and gives 0.5 as the example, so the one value the documentation points at is
+the one value that cannot be typed on the command line. `--alignment_threshold 1` is accepted and
+means something entirely different.
+
+Exit code 2 is argparse's, so this is a clean CLI-contract case rather than a crash. `--max_loc` is
+declared `type=float, default=5` — harmless in the other direction, and worth keeping an eye on for
+the same reason.
+
+The port must decide: reproduce the `int` restriction exactly (and keep a flag nobody can use
+correctly), or make it `float` and take the divergence. Recommend `float`, as its own commit, with
+the CLI golden for `aln-aln-thresh-03` changing from exit 2 to exit 0 as the documented cost.
+
+> Findings 16+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
 > the most useful artifact of the project.
 
 ---
