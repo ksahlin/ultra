@@ -1239,6 +1239,20 @@ hit locations: 800 calls, sets identical in all; order identical in 134,
 So the divergence is an assertion with a visible magnitude rather than a note in a document, and if
 it ever started changing the *set* rather than the order, the test fails.
 
+**A fourth site, found while porting `find_exons`.** `help_functions.find_all_paths` explores
+`set(graph[start]).difference(path)` on a LIFO stack, and `find_exons` reads only `paths[0]`, so when
+several equally valid exon chains span a region the reference's choice again depends on set
+iteration. Measured against 600 recorded calls: iterating ascending reproduces the reference in
+**597**, descending in **595**. Ascending is used, and the residual 3 is a **budget** in
+`tests/aligndriver_oracle.rs` — not a tolerance:
+
+```rust
+const BUDGET: usize = 3;
+assert!(failures.len() <= BUDGET, "find_exons divergence grew past its budget ...");
+```
+
+which fails if the divergence ever widens, and prints the count every run.
+
 > Findings 34+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
 > the most useful artifact of the project.
 
@@ -1384,8 +1398,26 @@ uncovered.
 including the float scores and its buggy `max_score` bookkeeping; the two `get_unique_*` helpers and
 `classify_read_with_mams.main` are ported, with the one bounded divergence of *Finding 33*.
 
-**Still outstanding in stage 4:** `align.annotate_guaranteed_optimal_bound` and `align.find_exons`,
-then the `align_single` driver that ties them together.
+**`annotate_guaranteed_optimal_bound` and `find_exons` are done**: 600 of 600 and 597 of 600
+recorded calls replay identically, the residual 3 being the `find_all_paths` facet of *Finding 33*,
+budgeted in the test.
+
+So **stage 4's algorithms are complete and each is checked against recorded reference calls**:
+
+| component | oracle | result |
+| --- | --- | --- |
+| edlib | 1 866 calls | identical |
+| parasail | 194 calls | identical |
+| `read_coverage` / `n_logn_read_coverage` | 445 calls (45 n log n) | identical |
+| `read_coverage_mam_score` / `n_logn_..._mams` | 393 calls (25 synthetic) | identical |
+| `add_segment_to_mam` | 1 500 calls | identical |
+| `get_unique_exon_and_flank_locations` | 800 calls | sets identical; order diverges (Finding 33) |
+| `annotate_guaranteed_optimal_bound` | 600 calls | identical |
+| `find_exons` | 600 calls | 597 identical, 3 budgeted |
+
+What is **not** yet written is the `align_single` driver itself — the loop that calls these in order,
+applies `--dropoff` and `--max_loc`, handles the reverse complement, and emits SAM. That is stage 5
+work, because it cannot be verified per function: it is verified by `reads.sam`.
 
 ### Stage 5 — SAM output and the minimap2 merge
 

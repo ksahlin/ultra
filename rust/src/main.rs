@@ -7,6 +7,7 @@
 //! mistaken for a pass.
 
 mod cli;
+mod aligndriver;
 mod colinear;
 mod dump;
 mod edlib;

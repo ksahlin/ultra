@@ -139,6 +139,51 @@ if _dir:
         cs.n_logn_read_coverage_mams = n_logn_read_coverage_mams
 
         import modules.align as am
+
+        _ag = am.annotate_guaranteed_optimal_bound
+        def annotate_guaranteed_optimal_bound(mems, is_rc, max_intron_chr, max_global_intron):
+            out = _ag(mems, is_rc, max_intron_chr, max_global_intron)
+            _rec("annotate_guaranteed_optimal_bound", {
+                "mems": {str(c): [[m.x, m.y, m.c, m.d, m.val, m.j, m.exon_part_id] for m in v]
+                         for c, v in mems.items()},
+                "is_rc": is_rc,
+                "max_intron_chr": {str(k): v for k, v in max_intron_chr.items()},
+                "max_global_intron": max_global_intron,
+                "upper_bound": {f"{c}|{i}": [tc, rc,
+                                 [[m.x, m.y, m.c, m.d, m.val, m.j, m.exon_part_id] for m in ms]]
+                                for (c, i), (tc, rc, ms) in out.items()},
+            })
+            return out
+        am.annotate_guaranteed_optimal_bound = annotate_guaranteed_optimal_bound
+
+        _fe = am.find_exons
+        def find_exons(chr_id, mam_solution, ref_exon_sequences, ref_segment_sequences,
+                       ref_flank_sequences, all_splice_pairs_annotations):
+            out = _fe(chr_id, mam_solution, ref_exon_sequences, ref_segment_sequences,
+                      ref_flank_sequences, all_splice_pairs_annotations)
+            exons, created_ref_seq, predicted_exons, predicted_splices, covered = out
+            _rec("find_exons", {
+                "chr_id": chr_id,
+                "mam_solution": [[m.x, m.y, m.c, m.d, m.val, m.j, m.min_segment_length,
+                                  m.mam_id, m.ref_chr_id] for m in mam_solution],
+                "splice_pairs": sorted("%d,%d" % t for t in all_splice_pairs_annotations[chr_id]),
+                # find_exons builds its coverage graph from ref_exon_sequences,
+                # so a replay needs the keys on this chromosome. Recording the
+                # keys alone (not the sequences) keeps the oracle small.
+                "exon_keys": sorted(
+                    "%d,%d" % (st, sp)
+                    for (c, st, sp) in (__import__("struct").unpack("LLL", k)
+                                        for k in ref_exon_sequences)
+                    if c == chr_id),
+                "exons": [list(e) for e in exons],
+                "created_ref_seq": created_ref_seq,
+                "predicted_exons": [list(e) for e in predicted_exons],
+                "predicted_splices": [list(e) for e in predicted_splices],
+                "covered": covered,
+            })
+            return out
+        am.find_exons = find_exons
+
         am.colinear_solver.read_coverage = read_coverage
         am.colinear_solver.n_logn_read_coverage = n_logn_read_coverage
         try:
