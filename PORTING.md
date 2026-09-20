@@ -436,7 +436,62 @@ gets the preset with no warning. Note also that `--isoseq` sets `s = 10`, which 
 default, so that half of the preset is a no-op. Same class as NGSpeciesID's Finding 14, and each
 preset needs its own equivalence case for exactly this reason.
 
-> Findings 13+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
+### Finding 13 — `index` crashes on a standard Ensembl GTF, and the smoke corpus cannot see it
+
+**The first corpus with a reference other than SIRV broke the reference implementation.** Indexing
+*Drosophila melanogaster* (Ensembl BDGP6.46 release 113, 167 MB, 24 278 genes / 41 610 transcripts /
+196 625 exons) against `genomes/fruitfly.fa`:
+
+```
+File "modules/create_augmented_gene.py", line 440, in create_graph_from_exon_parts
+    assert active_start <= exon.start - 1
+AssertionError
+```
+
+Exit 1 after 15.7 s. Root cause, measured rather than inferred — `create_augmented_gene.py:311`
+iterates
+
+```python
+for i, exon in enumerate(db.features_of_type('exon', order_by='seqid')):
+```
+
+and `order_by='seqid'` sorts by **contig only**. It says nothing about order *within* a contig, so
+the rows come back in the database's natural order, and the loop body assumes ascending `start`.
+Counting the exons gffutils actually returns:
+
+| corpus | exons returned | returned out of ascending-start order |
+| --- | --- | --- |
+| SIRV (`test/SIRV_genes_C_170612a.gtf`) | 339 | **0** |
+| Drosophila (Ensembl BDGP6.46) | 196 625 | **99 961** |
+
+SIRV's annotation happens to be coordinate-sorted within each contig, so the assumption has never
+been violated by anything in the repository. Ensembl's is grouped by gene, so it is violated 99 961
+times.
+
+**The fix is one word**: `order_by='seqid,start'`. Measured consequences:
+
+| | |
+| --- | --- |
+| Drosophila index | **exit 1 → exit 0**, 9.25 s, 785.8 MB peak RSS, 640 MB index |
+| SIRV index files changed | **2 of 21** — `parts_to_segments.pickle`, `gene_to_small_segments.pickle` |
+| **SIRV `reads.sam`, 10 000 real ONT reads** | **byte-identical** |
+
+So it converts a crash into a working index and does not change alignments. It is **not** a no-op on
+the index itself, though, so it must not land between recording goldens and verifying against them —
+and the byte-identity check above is so far one corpus, not five.
+
+The sibling loop at line 481 uses the same `order_by='seqid'` but is order-independent (it
+accumulates a max and a min, and its inner exon loop already passes `order_by='start'`), so the bug
+is confined to line 311.
+
+This is very likely related to [issue #20](https://github.com/ksahlin/ultra/issues/20), which is a
+GENCODE-based index report, though that user's visible error comes from a downstream `gffcompare`
+step and the connection is not yet proven.
+
+Belongs on `fix/installation` — or rather a `fix/exon-ordering` branch, since it is a correctness fix
+and not an installation one, and it changes index bytes.
+
+> Findings 14+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
 > the most useful artifact of the project.
 
 ---

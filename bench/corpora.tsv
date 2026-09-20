@@ -1,0 +1,37 @@
+# uLTRA equivalence corpora.
+#
+# Rule 5 of this port: verify on 5+ real datasets, not the repo's smoke corpus.
+# test/reads.fa is FOUR reads and is blind to essentially every parameter, so it
+# is a smoke case only and is never on its own a green result.
+#
+# READS ARE NOT COMMITTED. This repository's other goal is to shrink from 2.1 GB,
+# so committing gigabytes of fastq would be self-defeating. Every row pins a
+# sha256 for the reference, the annotation AND the reads;
+# bench/corpora_resolve.sh resolves a row to local paths and verifies all three
+# before any run. A silently-substituted corpus is exactly the kind of thing that
+# makes a suite green for the wrong reason.
+#
+# Kristoffer confirmed (2026-09-19) that everything under /Users/krsa3529/data in
+# annotations/, lrRNA-seq/ and genomes/ is public. $ULTRA_DATA points there
+# (default $HOME/data). Sources written as http(s) URLs are fetched and cached
+# under $ULTRA_BENCH_CACHE (default $HOME/.cache/ultra-bench).
+#
+# COVERAGE NOTE. sirv-* all share ONE reference: 7 sequences, a 339-line GTF.
+# That is fine for the align stage and useless for the index stage, which is the
+# largest rewrite in the port. droso-20k exists to close that gap: a real genome
+# (143 MB, 55 contigs) and a real annotation (167 MB, 24 278 genes, 41 610
+# transcripts, 196 625 exons). Do not drop it to save time.
+#
+# columns:
+#   name  tier  ref  ref_sha256  gtf  gtf_sha256  reads  reads_sha256  notes
+#   tier: smoke | core | heavy      (heavy is opt-in via CORPORA=heavy)
+#   gtf "-" means the corpus is align-only and reuses another corpus's index.
+#
+name	tier	ref	ref_sha256	gtf	gtf_sha256	reads	reads_sha256	notes
+smoke	smoke	test/SIRV_genes.fasta	659a223e2252fd4bfa73a3e35baac13b320590e765169e4252abf74ddf8b9b1e	test/SIRV_genes_C_170612a.gtf	c98c5999b467c501f22c75daae5496c43d8cd0dee867f47a516c84584d20b8d0	test/reads.fa	f29641968bee0ad0cf453e7fd269dcaffd2839759d78f0f06f952a23373233ac	the repo fixture; 4 reads; CLI and exit-code cases only
+sirv-10k	core	test/SIRV_genes.fasta	659a223e2252fd4bfa73a3e35baac13b320590e765169e4252abf74ddf8b9b1e	test/SIRV_genes_C_170612a.gtf	c98c5999b467c501f22c75daae5496c43d8cd0dee867f47a516c84584d20b8d0	$ULTRA_DATA/lrRNA-seq/sirv/SIRV_real_10k.fastq	a1e3a7310a28b3260345cf8239513cf50cd585c444663b5818be076a0b468098	real ONT reads on the repo's own reference; the development corpus
+sirv-100k	core	test/SIRV_genes.fasta	659a223e2252fd4bfa73a3e35baac13b320590e765169e4252abf74ddf8b9b1e	test/SIRV_genes_C_170612a.gtf	c98c5999b467c501f22c75daae5496c43d8cd0dee867f47a516c84584d20b8d0	$ULTRA_DATA/lrRNA-seq/sirv/SIRV_real_100k.fastq	6632bd99ee0d62dd94943e822b6e315e1a14f1f74858582662e16513441fa31f	10x sirv-10k; every timing in PORTING.md Part 2 was measured here
+sirv-sim-err0	core	test/SIRV_genes.fasta	659a223e2252fd4bfa73a3e35baac13b320590e765169e4252abf74ddf8b9b1e	test/SIRV_genes_C_170612a.gtf	c98c5999b467c501f22c75daae5496c43d8cd0dee867f47a516c84584d20b8d0	$ULTRA_DATA/lrRNA-seq/sirv/reads_10k_err0.fastq	070162452b255afe9b5622def41f4f0b9ef48be52321863b77af449ba5adcd65	simulated ERROR-FREE; isolates seeding and chaining from error handling
+sirv-sim-err7	core	test/SIRV_genes.fasta	659a223e2252fd4bfa73a3e35baac13b320590e765169e4252abf74ddf8b9b1e	test/SIRV_genes_C_170612a.gtf	c98c5999b467c501f22c75daae5496c43d8cd0dee867f47a516c84584d20b8d0	$ULTRA_DATA/lrRNA-seq/sirv/reads_10k_err7%.fastq	8dc456aa3e1ed5b18815c8b4a75651d005a0947fdd121c47527edc25bb7b2832	simulated at 7% error; the paired opposite of err0; exercises --min_acc
+droso-20k	core	$ULTRA_DATA/genomes/fruitfly.fa	865260b6ee96bb7ba7f6c3aa3f1cd2aa985d371ef35ba08953b36aeb1c70036b	https://ftp.ensembl.org/pub/release-113/gtf/drosophila_melanogaster/Drosophila_melanogaster.BDGP6.46.113.gtf.gz	d731d93448d41fea5dfb0887f1d16e4015ff286202f1f92330acb640e7377175	$ULTRA_DATA/lrRNA-seq/droso/full_length_output_first_20k.fq	97dbeb4e7b23fdd7a7974c8dc69d1d65e411ed36d344c601209e7e3b93b4b2cc	THE INDEX-STAGE CORPUS: real genome + real annotation, 13 contigs shared with the GTF
+sirv-full	heavy	test/SIRV_genes.fasta	659a223e2252fd4bfa73a3e35baac13b320590e765169e4252abf74ddf8b9b1e	test/SIRV_genes_C_170612a.gtf	c98c5999b467c501f22c75daae5496c43d8cd0dee867f47a516c84584d20b8d0	$ULTRA_DATA/lrRNA-seq/sirv/SIRV_real_full.fastq	6918dc50e2f4b5c00557f3730a283c95e3f051a0f596a16b32f226898ce5c3f1	1.3M reads, 1.8 GB; the only corpus that reaches Finding 5's buffer behaviour at scale
