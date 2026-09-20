@@ -672,7 +672,84 @@ goldens, so it is correct at `COLUMNS=80` and does not reflow. Matching argparse
 widths is not attempted and is not contract — if it ever needs to be, this Finding is where the
 decision gets recorded.
 
-> Findings 20+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
+### Finding 20 — the index keys are platform-width dependent, and that fixes the port's encoding
+
+Every segment, part, exon and flank is keyed by `array("L", [chr_id, start, stop]).tobytes()` and
+read back with `struct.unpack("LLL", key)`. Both use the **native** `unsigned long`, so:
+
+| platform | `array("L").itemsize` | key length |
+| --- | --- | --- |
+| Linux / macOS, 64-bit (LP64) | 8 | 24 bytes |
+| Windows 64-bit (LLP64), and any 32-bit | 4 | 12 bytes |
+
+The two halves agree with each other, so nothing breaks *within* a platform — but an index built on
+one cannot be read on another. In practice uLTRA is Unix-only, so this has never bitten anyone.
+
+For the port this is good news rather than bad: **Rust `u64` little-endian is byte-identical to
+`array("L")` on every platform uLTRA actually runs on**, so the port writes `u64` LE explicitly and
+is both compatible and no longer platform-dependent. That is a silent improvement, and it is
+recorded here rather than left to be rediscovered.
+
+### Finding 21 — two index structures vary run-to-run, and it provably does not matter
+
+`parts_to_segments` and `gene_to_small_segments` are the only `array("L")` structures, and their
+contents are in **set-iteration order**, so they change with `PYTHONHASHSEED`. Measured on SIRV,
+comparing two indexes built at seeds 0 and 12345:
+
+| | differ |
+| --- | --- |
+| raw pickles | **14 of 20** |
+| oracle rendering, arrays in stored order | 2 of 20 — exactly these two |
+| oracle rendering, arrays sorted | **0 of 20** |
+
+The order is noise, not data, and this is established two independent ways rather than assumed:
+
+- **Both consumers de-duplicate.** `gene_to_small_segments` is read into a `set(...)` at
+  `classify_read_with_mams.py:266`. `parts_to_segments` feeds `segment_hit_locations`, which is
+  `list(set(segment_hit_locations))` and then sorted at `:244-245`.
+- **`reads.sam` is byte-identical across hash seeds** while 14 of the 20 pickles are not.
+
+So the port is free to build these in any order, and `bench/dump_reference.py` sorts them by default
+rather than pinning an order the reference does not really have. `--array-order stored` shows the raw
+order for debugging.
+
+This is the reason the index oracle is a *semantic* contract and not a byte one, stated concretely.
+
+### Finding 22 — DIVERGENCE TAKEN: `gene_to_small_segments` is built for every active gene
+
+The port does **not** reproduce Finding 14's leaked loop variable. It implements the evident intent:
+
+```rust
+// reference: add_items(gene_to_small_segments[gene_id], ...)   <- gene_id is whatever
+//            was left bound by an earlier, unrelated loop
+for gene_id in &active_gene_ids {
+    add_items(gene_to_small_segments.entry(gene_id), chr_id, e_start, e_stop);
+}
+```
+
+matching the two sibling call sites that were written correctly. Decision taken by the author on
+2026-09-20: *implement the evident intent, document the divergence.*
+
+**What it costs.** The port's `gene_to_small_segments` will differ from the reference's wherever a
+part has more than one active gene, or where the leaked value was simply wrong. Measured at the
+default `--small_exon_threshold`:
+
+| corpus | site reached | reference files under a gene that is not active | reference reaches a part with >1 active gene |
+| --- | --- | --- | --- |
+| SIRV | 22 | 0 | 0 |
+| Drosophila | 1 048 | 6 | 835 |
+
+So on SIRV the divergence is expected to be **empty** — every part there has exactly one active gene,
+which makes SIRV useless for confirming the fix works and essential for confirming it breaks nothing.
+On Drosophila the two will differ on up to 841 entries, and the port's is the correct one.
+
+**How it is verified rather than asserted.** `equivalence.sh stage index` compares the oracle
+rendering structure by structure, so this divergence is confined to one named file
+(`gene_to_small_segments.txt`) and every other structure must still match exactly. A divergence that
+leaks into a second structure is a bug, not a decision. The expected-diff list lives in
+`bench/stage_diffs.tsv` so it cannot be widened silently.
+
+> Findings 23+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
 > the most useful artifact of the project.
 
 ---

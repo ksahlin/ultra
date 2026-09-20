@@ -1,0 +1,23 @@
+# Expected divergences between the reference and the port, per stage oracle.
+#
+# A structure listed here is allowed to differ; EVERY OTHER structure must match
+# exactly. This file is the whole point of the arrangement: a deliberate
+# divergence has to be named, justified and bounded, and it cannot quietly grow
+# to cover a second structure because someone could not make the second one
+# match.
+#
+# `equivalence.sh stage index` reports three classes and they are all printed:
+#     match      identical to the reference
+#     DIVERGED   differs, and is listed here -> expected
+#     FAIL       differs, and is NOT listed here -> a bug
+# plus the inverse check:
+#     STALE      listed here but actually identical -> the divergence is gone,
+#                remove the row (otherwise the list rots into a mute list)
+#
+# columns:  stage  structure  finding  corpora  notes
+#   corpora: a comma-separated list, or "*" for all. Naming corpora matters:
+#            on SIRV the Finding 22 divergence is expected to be EMPTY, because
+#            every SIRV part has exactly one active gene.
+#
+stage	structure	finding	corpora	notes
+index	gene_to_small_segments	22	droso-20k	the port fills every active gene; the reference uses a leaked loop variable. On SIRV this must still MATCH - 22 of 22 sites there have a single active gene - so SIRV is the control and droso is the test.

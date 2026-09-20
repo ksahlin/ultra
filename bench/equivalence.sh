@@ -8,6 +8,10 @@
 #                                           are reproducible before you trust them
 #   bench/equivalence.sh cli record|verify  the CLI contract: exit codes, stdout,
 #                                           stderr and the outfolder side effect
+#   bench/equivalence.sh stage index record|verify [corpus]
+#                                           the index stage oracle - a semantic
+#                                           contract, because the reference's
+#                                           index is Python pickles + sqlite
 #   bench/equivalence.sh list               show cases and corpora
 #
 # Environment:
@@ -433,8 +437,94 @@ cli_audit() {
   [[ $bad -eq 0 ]]
 }
 
+# ---------------------------------------------------------------------------
+# Stage oracles.
+#
+# The index stage has NO byte-identity contract: its output is 20 Python
+# pickles and a gffutils sqlite database, neither of which a Rust port will
+# ever produce. So the contract is the canonical text rendering produced by
+# bench/dump_reference.py (from the reference) and by `uLTRA dump-index`
+# (from the port), compared structure by structure.
+#
+# Renderings are large -- 265 MB on Drosophila -- so the golden stores a
+# sha256 per structure, not the text.
+# ---------------------------------------------------------------------------
+expected_diff() {   # expected_diff <stage> <structure> <corpus> -> 0 if listed
+  awk -F'\t' -v st="$1" -v sr="$2" -v co="$3" '
+    !/^#/ && NF>3 && $1!="stage" && $1==st && $2==sr {
+      if ($4=="*") { found=1; exit }
+      n=split($4, a, ","); for (i=1;i<=n;i++) if (a[i]==co) { found=1; exit }
+    }
+    END { exit(found?0:1) }' "$BENCH/stage_diffs.tsv"
+}
+
+cmd_stage() {   # cmd_stage index record|verify [corpus]
+  local stage="${1:-index}" mode="${2:-record}" only="${3:-}"
+  [[ "$stage" == index ]] || die "unknown stage: $stage (only 'index' exists so far)"
+  local engine=ref; [[ "$mode" == verify ]] && engine=port
+  [[ "$engine" == port ]] && check_bin_fresh
+  mkdir -p "$WORK"
+
+  local corpora; corpora="$(corpora_of_tier "$CORPORA")"
+  [[ -n "$only" ]] && corpora="$only"
+  local match=0 diverged=0 failed=0 stale=0
+
+  for corpus in $corpora; do
+    echo
+    echo "######## stage=$stage corpus=$corpus ########"
+    local idx="$WORK/stage/$corpus/idx" ren="$WORK/stage/$corpus/$mode"
+    rm -rf "$idx" "$ren"; mkdir -p "$idx" "$ren"
+
+    # Build the index with whichever engine we are testing.
+    run_case "$engine" "$corpus" idx-default index - "" "$idx"
+    local rc; rc="$(cat "$idx.exit")"
+    if [[ "$rc" != 0 ]]; then bad "$corpus: index build failed (exit $rc)"; failed=$((failed+1)); continue; fi
+
+    if [[ "$engine" == ref ]]; then
+      "$REF_PYTHON" "$BENCH/dump_reference.py" --index "$idx" --out "$ren" >/dev/null || {
+        bad "$corpus: dump_reference.py failed"; failed=$((failed+1)); continue; }
+    else
+      "$PORT_BIN" dump-index "$idx" "$ren" >/dev/null || {
+        bad "$corpus: port dump-index failed"; failed=$((failed+1)); continue; }
+    fi
+
+    local gdir="$GOLDEN/$corpus/stage-$stage"
+    if [[ "$mode" == record ]]; then
+      mkdir -p "$gdir"
+      ( cd "$ren" && for f in *.txt; do printf '%s\t%s\n' "${f%.txt}" "$(SHA "$f")"; done ) \
+        | LC_ALL=C sort > "$gdir/structures.tsv"
+      ok "$corpus  ($(wc -l < "$gdir/structures.tsv" | tr -d ' ') structures)"
+      match=$((match+1))
+    else
+      [[ -f "$gdir/structures.tsv" ]] || { warn "$corpus: no stage golden"; continue; }
+      while IFS=$'\t' read -r name want; do
+        local got; got="$(SHA "$ren/$name.txt" 2>/dev/null || echo MISSING)"
+        if [[ "$got" == "$want" ]]; then
+          if expected_diff "$stage" "$name" "$corpus"; then
+            printf '%sSTALE%s   %-34s listed as an expected divergence but MATCHES - remove the row\n' "$YEL" "$OFF" "$name"
+            stale=$((stale+1))
+          else
+            match=$((match+1))
+          fi
+        elif expected_diff "$stage" "$name" "$corpus"; then
+          printf '%sDIVERGED%s %-34s (expected; see bench/stage_diffs.tsv)\n' "$YEL" "$OFF" "$name"
+          diverged=$((diverged+1))
+        else
+          bad "$name  differs and is NOT an expected divergence"
+          failed=$((failed+1))
+        fi
+      done < "$gdir/structures.tsv"
+    fi
+  done
+
+  echo
+  echo "======== stage $stage $mode: $match match, $diverged diverged, $failed FAILED, $stale stale ========"
+  [[ $failed -eq 0 && $stale -eq 0 ]]
+}
+
 case "${1:-check}" in
   check)  cmd_check ;;
+  stage)  shift; cmd_stage "${1:-index}" "${2:-record}" "${3:-}" ;;
   cli)    shift; cmd_cli "${1:-record}" ;;
   cli_audit) cli_audit ;;
   record) shift; sweep record "${1:-}" ;;
