@@ -11,6 +11,7 @@ mod dump;
 mod fasta;
 mod gtf;
 mod index;
+mod namfinder;
 mod text;
 
 use std::io::Write;
@@ -31,6 +32,14 @@ fn main() -> ExitCode {
     //                    [--small_exon_threshold N] [--min_segm N]
     if argv.first().map(|s| s.as_str()) == Some("dump-index") {
         return dump_index(&argv[1..]);
+    }
+
+    // Also port-only: a passthrough to the LINKED namfinder, so the harness can
+    // diff it against the upstream binary. Not part of the CLI contract.
+    if argv.first().map(|s| s.as_str()) == Some("namfinder") {
+        let mut a = vec!["namfinder".to_string()];
+        a.extend(argv[1..].iter().cloned());
+        return ExitCode::from(namfinder::run(&a) as u8);
     }
 
     match cli::parse(&argv) {

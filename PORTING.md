@@ -277,19 +277,20 @@ osx-arm64** (Finding 2). Three ways out, and they are not equivalent:
 | **B. compute strobemers inside the Rust binary** | **removes an external tool and fixes osx-arm64 outright**; only minimap2 left | achievable *if* the NAM output is reproduced exactly — an oracle problem of the same shape as spoa in the NGSpeciesID port | a port, plus one hard oracle |
 | **C. revive MEM seeding** | still needs mummer or slaMEM, or a new MEM finder | **impossible** — different seeds give different alignments | a research change, not a port |
 
-**Decision taken: B.** Strobemers are computed inside the Rust binary; namfinder stops being a
-runtime dependency. **A is the fallback** if the NAM oracle cannot be made exact — that is a
-measurement, not a preference, and it is made before the seeding stage is written, not after.
+**Decision taken: B, and implemented by LINKING rather than reimplementing.** Strobemers are computed
+inside the Rust binary and namfinder is no longer a runtime dependency — but the port does not
+reimplement randstrobe seeding. It vendors namfinder's own sources and calls `run_strobealign`, the
+very function namfinder's `main` calls. See *Finding 26*: this is exact by construction, so the NAM
+oracle became a regression check rather than a specification, and fallback A was never needed.
 
 C is *Deferred improvements*. MEMs may well be more sensitive than NAMs, but changing the seeds
 changes every output file, so C cannot be evaluated until the port is exact enough to serve as the
 control. Port first, then measure MEMs against a known-good baseline. Reviving it would also mean
 reviving `get_mem_records`, which is dead *and* broken (Finding 7).
 
-Because B is a byte-identity risk concentrated in one place, it gets the treatment spoa got in the
-NGSpeciesID port: `bench/dump_reference.py --stage seeds` records namfinder's NAM output on every
-corpus, and `rust/tests/nam_oracle.rs` replays it. The port does not proceed past seeding until that
-oracle is green or A has been adopted with a Finding explaining why.
+This is the treatment spoa got in the NGSpeciesID port, and for the same reason: *"a vendored library
+built at compile time is strictly better than either alternative. It needs a C++ toolchain and CMake
+to build, and nothing at all to run."* Here it does not even need CMake.
 
 Filed upstream: **[ksahlin/namfinder#1](https://github.com/ksahlin/namfinder/issues/1)** asks for
 `osx-arm64` in the bioconda recipe. That fixes the *reference's* install on Apple Silicon
@@ -861,7 +862,52 @@ an exon but never declared gets a transcript, one that was declared is left alon
 because there is no decision the user is better placed to make. `--disable_infer` is still accepted
 and ignored.
 
-> Findings 26+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
+### Finding 26 — namfinder already builds as a library, so the seeding stage is exact by construction
+
+The seeding decision assumed the choice was *reimplement randstrobes* or *keep the subprocess*. It is
+not. namfinder's own CMake already separates a static library from its CLI:
+
+```cmake
+add_library(salib STATIC ... src/randstrobes.cpp src/nam.cpp src/output.cpp ...)
+add_executable(namfinder src/main.cpp)
+target_link_libraries(namfinder PUBLIC salib)
+```
+
+and `main()` is a four-line wrapper around `run_strobealign(argc, argv)`. Everything that decides the
+output — argument parsing, index construction, NAM finding, and `output_nams`, which emits the
+`> read` / `> read Reverse` format uLTRA parses — is in the library.
+
+So the port vendors `src/` and `ext/` (**1.1 MB, 51 files, MIT, same author**) and calls
+`run_strobealign` through a six-line C ABI shim. `rust/build.rs` compiles exactly upstream's `salib`
+source list with `cc`, plus `main.cpp` with `-Dmain=namfinder_cli_main` so its entry point does not
+collide with Rust's. **No CMake is needed** — upstream's two generated headers carry one `#define`
+each and `build.rs` writes them.
+
+Verified byte-identical against the upstream v0.1.3 binary:
+
+| input | output | result |
+| --- | --- | --- |
+| SIRV parts + 4 reads | 18 lines | **identical** |
+| 144 221 Drosophila parts + 20 000 reads | **6 542 313 lines** | **identical** |
+
+and the SIRV digest `3a2cdf42…` is the same one already recorded in the `aln-keep-temp` golden's
+`seeds.txt.gz`, so it agrees with the reference too, not just with the binary.
+
+The resulting uLTRA binary links only `libc++`, `libz` and `libSystem`, and produces correct NAMs with
+**no namfinder anywhere on `PATH`**.
+
+What this buys, beyond not writing a strobemer implementation:
+
+- **It fixes Finding 2 at the root.** namfinder missing from `osx-arm64` is the only reason the
+  bioconda recipe cannot be solved there. The port has no such dependency.
+- **It halves the external-tool surface.** Only `minimap2` remains, and deferred improvement D2 is
+  about removing that too.
+- **Finding 8 dissolves.** There is no `os.system` shell string left to quote badly.
+
+Cost: a C++17 compiler and zlib at **build** time, nothing at run time. `libz` is currently a dynamic
+link; making it static is a Stage 7 distribution question, not a correctness one.
+
+> Findings 27+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
 > the most useful artifact of the project.
 
 ---
@@ -971,15 +1017,18 @@ when `align` needs to read one.
 Bugs the reference has here, all found by running the new corpus rather than by reading:
 Findings 13, 14, 22, 23, 24, 25.
 
-### Stage 3 — seeds and I/O
+### Stage 3 — seeds and I/O — **seeding DONE; read I/O outstanding**
 
-**Strobemers computed natively (decision B).** The NAM oracle comes first: record namfinder's output
-across every corpus, then make the Rust seeder reproduce it exactly. `--s` and `--thinning` map onto
-namfinder's `-k/-s/-l/-u` exactly as `find_nams_namfinder` derives them, including the
-`(strobe_size + 1)//3` and `//5` thinning arithmetic, which is integer division and must stay so.
+**Seeding is done and exact**, by vendoring and linking namfinder rather than reimplementing it
+(*Finding 26*). Byte-identical to the upstream binary on 4 reads and on 6 542 313 output lines of
+Drosophila, and equal to the digest already recorded in the `aln-keep-temp` golden.
+`namfinder::argv_for` reproduces `find_nams_namfinder`'s argument derivation including the
+`(strobe_size + 1)//3` and `//5` thinning arithmetic, which is truncating integer division and must
+stay so. Finding 8 has dissolved: there is no `os.system` string left.
 
-Also here: the read parser, with a real error on malformed fastq instead of silent truncation
-(Finding 6). Finding 8 dissolves — there is no `os.system` line left to quote badly.
+**Still outstanding in this stage:** uLTRA's own read handling — the `reads_tmp.fa.gz` writer, the
+gzip seed reader, and the read parser with a real error on malformed fastq instead of the silent
+`zip()` truncation of *Finding 6*.
 
 ### Stage 4 — the alignment core
 
