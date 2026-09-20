@@ -184,6 +184,49 @@ if _dir:
             return out
         am.find_exons = find_exons
 
+        from modules import sam_output as so
+        _sm = so.main
+        def sam_main(read_id, read_seq, read_qual, ref_id, classification, predicted_exons,
+                     read_aln, ref_aln, annotated_to_transcript_id, is_rc, is_secondary,
+                     map_score, aln_score=0):
+            out = _sm(read_id, read_seq, read_qual, ref_id, classification, predicted_exons,
+                      read_aln, ref_aln, annotated_to_transcript_id, is_rc, is_secondary,
+                      map_score, aln_score)
+            _rec("sam_output.main", {
+                "read_id": read_id, "read_seq": read_seq, "read_qual": read_qual,
+                "ref_id": ref_id, "classification": classification,
+                "predicted_exons": [list(e) for e in predicted_exons],
+                "read_aln": read_aln, "ref_aln": ref_aln,
+                "annotated_to_transcript_id": annotated_to_transcript_id,
+                "is_rc": bool(is_rc), "is_secondary": bool(is_secondary),
+                "map_score": map_score, "aln_score": aln_score,
+                "line": out,
+            })
+            return out
+        so.main = sam_main
+        am.sam_output.main = sam_main
+
+        from modules import classify_alignment2 as ca
+        _cm = ca.main
+        def classify_main(chr_id, predicted_splices, splices_to_transcripts,
+                          transcripts_to_splices, all_splice_pairs_annotations,
+                          all_splice_sites_annotations):
+            out = _cm(chr_id, predicted_splices, splices_to_transcripts,
+                      transcripts_to_splices, all_splice_pairs_annotations,
+                      all_splice_sites_annotations)
+            _rec("classify_alignment2.main", {
+                "chr_id": chr_id,
+                "predicted_splices": [list(t) for t in predicted_splices],
+                "splice_pairs": sorted("%d,%d" % t for t in all_splice_pairs_annotations[chr_id]),
+                "splice_sites": sorted(all_splice_sites_annotations[chr_id]),
+                "tx_splices": {k: [list(t) for t in v]
+                               for k, v in transcripts_to_splices[chr_id].items()},
+                "classification": out[0], "annotated_to": out[1],
+            })
+            return out
+        ca.main = classify_main
+        am.classify_alignment2.main = classify_main
+
         am.colinear_solver.read_coverage = read_coverage
         am.colinear_solver.n_logn_read_coverage = n_logn_read_coverage
         try:

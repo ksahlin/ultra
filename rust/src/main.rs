@@ -18,6 +18,7 @@ mod index;
 mod mam;
 mod namfinder;
 mod reads;
+mod samout;
 mod text;
 
 use std::io::Write;

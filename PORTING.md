@@ -1419,9 +1419,26 @@ What is **not** yet written is the `align_single` driver itself — the loop tha
 applies `--dropoff` and `--max_loc`, handles the reverse complement, and emits SAM. That is stage 5
 work, because it cannot be verified per function: it is verified by `reads.sam`.
 
-### Stage 5 — SAM output and the minimap2 merge
+### Stage 5 — SAM output and the minimap2 merge — **the writer is DONE**
 
-`sam_output.py` and `prefilter_genomic_reads.py`. `reads.sam` byte-identical against the goldens.
+`sam_output.main` reproduces **900 recorded SAM lines byte-for-byte**, compared as whole lines rather
+than field by field, across all six classification outcomes (FSM, NO_SPLICE, NIC_novel,
+ISM/NIC_known, Insufficient_junction_coverage_unclassified, unaligned). That covers `get_segments`,
+`get_cigars`, `get_genomic_cigar` and `edit_distance`, including the leading-`D`-becomes-an-offset
+and leading-`I`-becomes-a-soft-clip trimming.
+
+`classify_alignment2.main` replays 96 of 96.
+
+**A fifth site of Finding 33's family, and the only one that reaches the SAM text.** The FSM branch
+returns `",".join(...)` over a **set** of transcript ids, so when several transcripts share a splice
+pattern the order of the `XA:Z` tag is CPython's string-set order. The port sorts. Measured on SIRV:
+**0 of 1 000** FSM results name more than one transcript, so it does not bite there — and
+`tests/sam_oracle.rs` counts the multi-transcript cases it sees, printing the number every run, so a
+corpus that does produce them cannot pass silently.
+
+**Still outstanding:** `prefilter_genomic_reads` (the minimap2 driver and the genomic/indexed split),
+`output_final_alignments` (the minimap2-vs-uLTRA cross-check), and the `align_single` driver that
+sequences everything and applies `--dropoff` and `--max_loc`.
 
 ### Stage 6 — parallelism
 
