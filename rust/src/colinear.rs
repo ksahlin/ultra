@@ -160,13 +160,16 @@ pub fn read_coverage(mems: &[Mem], max_intron: i64) -> (Vec<Vec<Mem>>, i64) {
 // up on a handful of reads in a large run and nowhere else.
 // ---------------------------------------------------------------------------
 
-const NEG: i64 = -(1i64 << 32);
+const NEG: f64 = -(4294967296.0); // -2**32, as the reference writes it
 
 #[derive(Clone, Debug)]
 struct TNode {
     d: i64,
     j: i64,
-    cj: i64,
+    /// f64 because the MAM variant scores in floating point. The Mem variant's
+    /// values are integers, and every magnitude involved is far below 2^53, so
+    /// holding them as f64 is exact.
+    cj: f64,
     j_max: i64,
 }
 
@@ -202,7 +205,7 @@ struct Rmq {
 impl Rmq {
     fn new(leafs: &[TNode]) -> Self {
         let n = leafs.len();
-        let blank = TNode { d: 0, j: 0, cj: 0, j_max: 0 };
+        let blank = TNode { d: 0, j: 0, cj: 0.0, j_max: 0 };
         let mut tree = vec![blank; 2 * n];
         for i in 0..n {
             tree[n + i] = leafs[i].clone();
@@ -219,7 +222,7 @@ impl Rmq {
     }
 
     /// `update(tree, leaf_pos, value, n)`.
-    fn update(&mut self, leaf_pos: usize, value: i64) {
+    fn update(&mut self, leaf_pos: usize, value: f64) {
         let mut pos = leaf_pos + self.n;
         self.tree[pos].cj = value;
         while pos > 1 {
@@ -236,7 +239,7 @@ impl Rmq {
     }
 
     /// `range_query(tree, l, r, n)` -> (C_max, j_max, node_pos)
-    fn range_query(&self, l: i64, r: i64) -> (i64, i64, usize) {
+    fn range_query(&self, l: i64, r: i64) -> (f64, i64, usize) {
         debug_assert!(l <= r);
         let (mut l_pos, mut r_pos) = (1usize, 1usize);
         let mut v = 1usize;
@@ -330,8 +333,8 @@ pub fn n_logn_read_coverage(mems: &[Mem]) -> (Vec<Vec<Mem>>, i64) {
     let mut c = vec![0i64; mems.len() + 1];
     let mut trace = vec![0usize; mems.len() + 1];
 
-    t.update(0, 0);
-    i_tree.update(0, 0);
+    t.update(0, 0.0);
+    i_tree.update(0, 0.0);
     let _ = n;
 
     for (j, mem) in mems.iter().enumerate() {
@@ -340,9 +343,9 @@ pub fn n_logn_read_coverage(mems: &[Mem]) -> (Vec<Vec<Mem>>, i64) {
             None => continue,
         };
         let (t_max, j_prime_a, _) = t.range_query(-1, mem.c - 1);
-        let c_a = t_max + mem.d - mem.c + 1;
+        let c_a = t_max as i64 + mem.d - mem.c + 1;
         let (i_max, j_prime_b, _) = i_tree.range_query(mem.c, mem.d);
-        let c_b = i_max + mem.d;
+        let c_b = i_max as i64 + mem.d;
 
         let (which, value) = if c_a >= c_b { (0, c_a) } else { (1, c_b) };
         c[j + 1] = value;
@@ -350,8 +353,8 @@ pub fn n_logn_read_coverage(mems: &[Mem]) -> (Vec<Vec<Mem>>, i64) {
 
         trace[j + 1] = if j_prime < 0 || value == 0 { 0 } else { (j_prime + 1) as usize };
 
-        t.update(leaf, value);
-        i_tree.update(leaf, value - mem.d);
+        t.update(leaf, value as f64);
+        i_tree.update(leaf, (value - mem.d) as f64);
     }
 
     let c_max = c[argmax(&c)];
@@ -485,5 +488,103 @@ pub fn read_coverage_mam_score(mams: &[Mam], overlap_threshold: i64) -> (Vec<Mam
         }
     }
 
+    (solution, value, unique)
+}
+
+/// `n_logn_read_coverage_mams(mams, overlap_threshold=5)`.
+///
+/// The >200-mam MAM chaining variant. NOT exercised by any registered corpus
+/// (the largest MAM set observed is 171, on 20 000 Drosophila reads), so its
+/// oracle is SYNTHETIC: real recorded mam sets concatenated until they cross
+/// the threshold, with the reference's output recorded on them. See
+/// PORTING.md Finding 31.
+///
+/// FAITHFUL BUG: `mams[j_prime_b]` is indexed with the j_max the I-tree
+/// returns, which is NEGATIVE for the padding leaves added to reach a power of
+/// two. Python does not raise on that -- `mams[-1]` is the LAST mam -- so the
+/// overlap penalty is silently computed against an unrelated mam. Reproduced
+/// with the same wrap-around, because diverging here would change results.
+pub fn n_logn_read_coverage_mams(mams: &[Mam], overlap_threshold: i64) -> (Vec<Mam>, f64, bool) {
+    // reuse the Mem-shaped tree by projecting the fields it needs
+    let as_mem: Vec<Mem> = mams
+        .iter()
+        .map(|m| Mem { x: m.x, y: m.y, c: m.c, d: m.d, val: 0, j: m.j, exon_part_id: String::new() })
+        .collect();
+    let t_leafs = make_leafs(&as_mem);
+    let mut t = Rmq::new(&t_leafs);
+    let mut i_tree = Rmq::new(&make_leafs(&as_mem));
+
+    let mut mem_to_leaf: std::collections::HashMap<i64, usize> = Default::default();
+    for (i, l) in t_leafs.iter().enumerate() {
+        mem_to_leaf.insert(l.j, i);
+    }
+
+    let n = mams.len();
+    let mut c = vec![0.0f64; n + 1];
+    let mut trace = vec![0usize; n + 1];
+
+    t.update(0, 0.0);
+    i_tree.update(0, 0.0);
+
+    for (j, mam) in mams.iter().enumerate() {
+        let leaf = match mem_to_leaf.get(&(j as i64)) {
+            Some(&x) => x,
+            None => continue,
+        };
+        let (t_max, j_prime_a, _) = t.range_query(-1, mam.c - 1);
+        let c_a = t_max + mam.val;
+
+        let (i_max, j_prime_b, _) = i_tree.range_query(mam.c, mam.c - 1 + overlap_threshold);
+        // Python negative indexing, reproduced deliberately (see above).
+        let idx_b = if j_prime_b < 0 {
+            let k = n as i64 + j_prime_b;
+            if k >= 0 { k as usize } else { 0 }
+        } else {
+            (j_prime_b as usize).min(n.saturating_sub(1))
+        };
+        let other = &mams[idx_b];
+        let ovl_penalty = if mam.x != other.y {
+            (other.d - (mam.c - 1)) as f64 + 0.0001
+        } else {
+            0.0001
+        };
+        let c_b = i_max + mam.val - ovl_penalty;
+
+        let (which, value) = if c_a >= c_b { (0, c_a) } else { (1, c_b) };
+        c[j + 1] = value;
+        let j_prime = if which == 0 { j_prime_a } else { j_prime_b };
+
+        trace[j + 1] = if j_prime < 0 || value == 0.0 { 0 } else { (j_prime + 1) as usize };
+
+        // NOTE both trees are updated with `value` here, unlike
+        // n_logn_read_coverage which updates I with `value - mem.d`.
+        t.update(leaf, value);
+        i_tree.update(leaf, value);
+    }
+
+    let mut si = 0usize;
+    for (i, x) in c.iter().enumerate() {
+        if *x > c[si] {
+            si = i;
+        }
+    }
+    let value = c[si];
+    let mut solution = Vec::new();
+    let mut idx = si;
+    while idx > 0 {
+        solution.push(mams[idx - 1].clone());
+        idx = trace[idx];
+    }
+    solution.reverse();
+
+    let mut unique = true;
+    'outer: for i in 0..=n {
+        for k in (i + 1)..=n {
+            if c[i] == c[k] {
+                unique = false;
+                break 'outer;
+            }
+        }
+    }
     (solution, value, unique)
 }

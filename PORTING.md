@@ -1101,7 +1101,57 @@ Two rules earned:
 - **When a comparison fails by an amount that looks like rounding, find the cause before loosening
   the comparison.** The epsilon is the last resort, not the first.
 
-> Findings 31+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
+### Finding 31 — one chaining variant is unreachable on every corpus, and it contains a live bug
+
+`classify_read_with_mams.main` picks between two MAM chainers on size:
+
+```python
+if len(mam_instance) > 200:
+    mam_solution, value, unique = colinear_solver.n_logn_read_coverage_mams(mam_instance, overlap_threshold=5)
+else:
+    mam_solution, value, unique = colinear_solver.read_coverage_mam_score(mam_instance, overlap_threshold=20)
+```
+
+Measured by recording every call:
+
+| corpus | `read_coverage_mam_score` | `n_logn_read_coverage_mams` | largest MAM set |
+| --- | --- | --- | --- |
+| SIRV, 10 000 reads | 368 | **0** | 100 |
+| Drosophila, 20 000 reads | 21 365 | **0** | **171** |
+
+**The >200 branch does not fire on any registered corpus**, and 171 is not close enough to 200 to be
+luck — no real read in either dataset produces that many MAMs. Note also that the two branches use
+*different* overlap thresholds, 5 against 20, so they are not interchangeable implementations of one
+function; reaching the second changes the scoring.
+
+Two consequences.
+
+**It cannot be verified from real data, so its oracle is synthetic and labelled as such.** Real
+recorded MAM sets are concatenated until they cross the threshold, re-sorted by `y` and re-indexed,
+and the *reference* is run on them to record the expected output — 25 inputs of 217 to 421 MAMs. That
+is weaker than a real corpus, because the concatenation may not produce MAM geometries a genome
+actually yields, and `bench/oracle/mam_chaining_calls.jsonl.gz` marks those records `synthetic: true`
+so the distinction cannot be lost.
+
+**It contains a bug that has therefore never been hit.** The I-tree query returns a `j_max`, which is
+**negative** for the padding leaves added to round the leaf count up to a power of two, and the code
+then does:
+
+```python
+prev_end = max(mam.c - 1, mams[j_prime_b].d)
+ovl_penalty = mams[j_prime_b].d - (mam.c - 1) + 0.0001 if mam.x != mams[j_prime_b].y else 0.0001
+```
+
+`mams[-1]` does not raise in Python; it is the **last** MAM. So on a padding hit the overlap penalty
+is computed against an unrelated MAM at the other end of the list. The sibling
+`n_logn_read_coverage` avoids this by only using `j_prime` as a traceback index, never to look up a
+neighbour.
+
+The port reproduces the wrap-around, because the alternative is a silent behaviour change in code
+that is already hard to test. It is marked in `colinear.rs` as a faithful bug, and it is a candidate
+for *Deferred improvements* once the port is exact.
+
+> Findings 32+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
 > the most useful artifact of the project.
 
 ---
@@ -1239,8 +1289,10 @@ score. See *Finding 29* for why the rare branch got the careful treatment.
 identically, including the float score compared **exactly** — see *Finding 30* for what that
 uncovered.
 
-**Still outstanding:** `n_logn_read_coverage_mams` (the >200-mam variant, not yet observed firing on
-any corpus), `add_segment_to_mam` and the two `get_unique_*` helpers,
+**Both MAM chainers are ported.** `read_coverage_mam_score` against 368 real recorded calls and
+`n_logn_read_coverage_mams` against 25 synthetic ones (*Finding 31*): 393 total, all identical.
+
+**Still outstanding:** `add_segment_to_mam` and the two `get_unique_*` helpers,
 `classify_read_with_mams.main`'s orchestration, `align.annotate_guaranteed_optimal_bound`, and
 `align.find_exons`.
 

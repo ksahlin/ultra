@@ -38,14 +38,17 @@ fn mam_chaining_matches_recorded_reference_calls() {
 
     for line in std::io::BufReader::new(f).lines() {
         let v: Value = serde_json::from_str(&line.unwrap()).unwrap();
-        if v["kind"] != "read_coverage_mam_score" {
-            skipped += 1;
-            continue;
-        }
+        let kind = v["kind"].as_str().unwrap();
         let mams: Vec<colinear::Mam> = v["mams"].as_array().unwrap().iter().map(mam_from).collect();
         let ot = v["overlap_threshold"].as_i64().unwrap();
 
-        let (sol, value, unique) = colinear::read_coverage_mam_score(&mams, ot);
+        let (sol, value, unique) = if kind == "read_coverage_mam_score" {
+            colinear::read_coverage_mam_score(&mams, ot)
+        } else {
+            // the >200 variant; its records are SYNTHETIC (Finding 31)
+            skipped += 1;
+            colinear::n_logn_read_coverage_mams(&mams, ot)
+        };
 
         let want_value = v["value"].as_f64().unwrap();
         // EXACT float comparison, deliberately
@@ -54,7 +57,7 @@ fn mam_chaining_matches_recorded_reference_calls() {
                 v["solution"].as_array().unwrap().iter().map(mam_from).collect();
             let same_chain = sol == want_sol;
             failures.push(format!(
-                "value {value:?} != {want_value:?} ({} mams, diff {:e}, same_chain={same_chain})",
+                "[{kind}] value {value:?} != {want_value:?} ({} mams, diff {:e}, same_chain={same_chain})",
                 mams.len(), (value - want_value).abs()
             ));
             continue;
@@ -77,7 +80,7 @@ fn mam_chaining_matches_recorded_reference_calls() {
     }
 
     assert!(checked > 0, "no read_coverage_mam_score calls in the oracle");
-    println!("mam chaining: {checked} recorded calls replayed identically ({skipped} n_logn records skipped)");
+    println!("mam chaining: {checked} calls replayed identically ({skipped} via the n log n variant, synthetic inputs)");
     assert!(
         failures.is_empty(),
         "{} of {} MAM chaining calls differ:\n  {}",
