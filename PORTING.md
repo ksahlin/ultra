@@ -567,6 +567,67 @@ osx-arm64 bioconda build (Finding 2), which fixes the reference's install on App
 
 ---
 
+## Deferred improvements
+
+These land **after** the port is exact, each in its own commit, each measured against the byte-identical
+port as the control. That ordering is the whole point: none of them can be evaluated honestly until
+there is a known-good baseline to compare against.
+
+### D1 — multi-context seeds (MCS), as in strobealign
+
+uLTRA seeds with randstrobes (two strobes), and a seed is found only if **both** strobes match.
+strobealign v0.15.0 changed its index layout so that a miss can fall back to looking up a single
+strobe — a *partial seed* — and enabled this by default in v0.16.0. Two strategies exist there: the
+default searches all full seeds and falls back to partial only if *none* hit, while `--mcs` falls
+back **per seed** and is more accurate and slower.
+
+Reported to improve mapping rate and accuracy for reads up to ~200 nt
+([Tolstoganov et al., Genome Biol 2026](https://doi.org/10.1186/s13059-026-04017-x)). uLTRA's reads
+are long transcriptomic reads, i.e. far above that range, so **the gain here is a hypothesis to test,
+not a result to import** — the published benefit is at a read length uLTRA does not operate at. What
+may still transfer is sensitivity in short exons, which is exactly where uLTRA claims its advantage,
+and where a full randstrobe may not fit. That is the experiment: accuracy per exon size, MCS on
+versus off, against the exact port.
+
+Prerequisite: decision B, since partial-seed lookup requires uLTRA to own the index layout rather
+than parse namfinder's output.
+
+### D2 — drop minimap2 by seeding against the full genome as well as the annotation
+
+Today minimap2 is 33 % of default wall clock and one of two external binaries. It does **two** jobs,
+and both must be replaced for it to go away:
+
+1. **Genomic-read detection.** `prefilter_genomic_reads` maps with minimap2, builds an interval tree
+   of uLTRA-indexed regions, and calls a read genomic when more than `--genomic_frac` (0.1) of its
+   aligned length falls outside them. Replacing this means indexing the **whole genome**, not just
+   annotated regions plus `--flank_size` flanks — a much larger index, which interacts directly with
+   goal 4.
+2. **Primary-alignment cross-check.** `output_final_alignments` keeps the better of minimap2's and
+   uLTRA's alignment per read. On the 4-read smoke corpus minimap2 still wins occasionally — the tool
+   itself reports *"1 primary alignments had slightly better score with alternative aligner (typically
+   ends bonus giving better scoring in ends, which needs to be implemented in uLTRA)"*. So this is an
+   **accuracy** question, not only an engineering one, and the ends-bonus gap is a concrete,
+   already-documented prerequisite.
+
+The payoff is large and should be stated plainly: it removes the last external dependency, making the
+binary genuinely self-contained, **and it invalidates the 2.5× ceiling recorded in Part 2** — that
+ceiling exists only because 33 % of wall clock belongs to a subprocess a port cannot speed up. Note
+the replacement is not free: seeding against the full genome costs time and memory that minimap2
+currently absorbs, so the ceiling moves rather than vanishes, and by how much is a measurement.
+
+### D3 — MEM seeding instead of NAMs
+
+Carried over from *The seeding decision*. MEMs may be more sensitive than NAMs; changing the seeds
+changes every output file, so it needs the exact port as a control. Also requires reviving
+`get_mem_records`, which is dead *and* broken (Finding 7).
+
+### D4 — drop `dill` from the Python reference
+
+Four `defaultdict(lambda: array("L"))` factories are the only reason dill is a dependency
+(Hypothesis 3). Module-level named functions remove it. This is an upstream commit against the
+Python tool, independent of the port, and it changes the index pickles — so it must not land between
+recording goldens and verifying against them.
+
 ## Working agreements
 
 - Python is the spec. Divergences are numbered Findings, never silent.
