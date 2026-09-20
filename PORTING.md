@@ -107,6 +107,14 @@ install surface completely. What it **cannot** remove is decided by the subproce
 | sirv-10k | same | 10 000 real ONT reads, 14 155 093 B | |
 | sirv-100k | same | 100 000 real ONT reads, 141 954 278 B | the workhorse |
 | gencode | — | — | GENCODE v47 human GTF, **1 805 576 649 B**, 4 105 490 lines |
+| droso | `genomes/fruitfly.fa` (contigs named `2L`, `2R`, …) | `lrRNA-seq/droso/full_length_output_first_*.fq` | **needs a GTF that does not exist locally** — see below |
+
+The only Drosophila annotation on hand is `annotations/dmel-all-r6.68.gff`, and it is unusable by
+uLTRA as it stands: it is `##gff-version 3` with GFF3 attributes (`ID=`, `Parent=`) rather than
+`gene_id`/`transcript_id`; its transcript feature is named **`mRNA`**, while uLTRA queries
+`features_of_type('transcript')` and would therefore find **zero**; and it is 6.77 GB because the
+genome is appended after `##FASTA` at line 31 790 958. Either convert with AGAT as the README
+advises, or fetch the Ensembl BDGP6 GTF, whose contig naming already matches `fruitfly.fa`.
 
 > **The committed fixture is four reads.** Rule 5 of this project exists because of corpora like
 > this one. Every parameter in the tool is invisible to it.
@@ -240,7 +248,7 @@ immutable index, shared by reference across threads.
 
 | program | invoked from | live? |
 | --- | --- | --- |
-| `namfinder` | `seed_wrapper.find_nams_namfinder`, via **`os.system`** with a shell pipeline: `namfinder … -S ref reads 2> err \| gzip -1 --stdout > seeds.txt.gz` | **live — must stay a subprocess** (it is C++ and already the author's) |
+| `namfinder` | called from **`uLTRA:364`**, unconditionally, via `seed_wrapper.find_nams_namfinder`, which uses **`os.system`** with a shell pipeline: `namfinder … -S ref reads 2> err \| gzip -1 --stdout > seeds.txt.gz` | **live, and it is the *only* seed finder** — see *The seeding decision* |
 | `minimap2` | `prefilter_genomic_reads.align_with_minimap2`, `subprocess.check_call` | **live — must stay a subprocess** |
 | `mummer` | `seed_wrapper.find_mems_mummer` | **dead** — called only from `find_mems_slamem` |
 | `slaMEM` | `seed_wrapper.find_mems_slamem` | **dead** — nothing calls it |
@@ -251,7 +259,27 @@ at the top of `seed_wrapper.py`. The two live call sites use `read_seeds` instea
 
 **So the port's external-tool constraint is exactly two binaries, both of which must be on `PATH`.**
 That is what bounds the "portable prebuilt binary" story: the uLTRA binary itself can be static, but
-it will still shell out to `minimap2` and `namfinder`.
+as things stand it will still shell out to `minimap2` and `namfinder`.
+
+### The seeding decision — open
+
+There is **no flag selecting a seed finder**. `uLTRA:364` calls namfinder unconditionally, and the
+MEM-based alternatives are the dead code of Finding 7. So strobemer/NAM seeding is not one option
+among several; it is what the tool does.
+
+That matters more than it looks, because **namfinder is the sole reason the bioconda recipe fails on
+osx-arm64** (Finding 2). Three ways out, and they are not equivalent:
+
+| option | install effect | byte-identity | scope |
+| --- | --- | --- | --- |
+| **A. keep namfinder as a subprocess** | osx-arm64 stays broken until the feedstock gains a build | achievable — same binary, same seeds | a port |
+| **B. compute strobemers inside the Rust binary** | **removes an external tool and fixes osx-arm64 outright**; only minimap2 left | achievable *if* the NAM output is reproduced exactly — an oracle problem of the same shape as spoa in the NGSpeciesID port | a port, plus one hard oracle |
+| **C. revive MEM seeding** | still needs mummer or slaMEM, or a new MEM finder | **impossible** — different seeds give different alignments | a research change, not a port |
+
+Recommendation: **B, with A as the fallback if the oracle cannot be made exact.** C belongs in
+*Deferred improvements*: MEMs may well be more sensitive than NAMs, but changing the seeds changes
+every output file, so it cannot be evaluated until the port is exact enough to be a control. Do the
+port first, then measure MEMs against it.
 
 ---
 
