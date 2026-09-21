@@ -76,8 +76,9 @@ pub fn align_read(
     hits_rc: &[String],
     p: &Params,
 ) -> Vec<String> {
-    let seq_mod = reads::remove_read_polya_ends(seq, p.reduce_read_polya, 1);
-    let qual_mod = qual.map(|q| q.to_string());
+    // the reference compresses sequence AND quality together, with to_len = 1
+    // here (not 5 as in the namfinder preprocessing)
+    let (seq_mod, qual_mod) = reads::remove_read_polya_ends_q(seq, qual, p.reduce_read_polya, 1);
 
     let mems = to_mems(hits);
     let mems_rc = to_mems(hits_rc);

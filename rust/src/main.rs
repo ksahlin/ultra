@@ -271,7 +271,11 @@ fn run_index(args: &cli::Args) -> ExitCode {
         Err(e) => { eprintln!("uLTRA: cannot read reference {}: {e}", args.reference); return ExitCode::from(1); }
     };
     let mut refs_lengths: std::collections::BTreeMap<String, u64> = Default::default();
-    for r in &refs { refs_lengths.insert(r.name.clone(), r.seq.len() as u64); }
+    let mut ref_order: Vec<String> = Vec::new();
+    for r in &refs {
+        refs_lengths.insert(r.name.clone(), r.seq.len() as u64);
+        ref_order.push(r.name.clone());
+    }
 
     let parsed = match gtf::parse(&args.gtf) {
         Ok(g) => g,
@@ -282,6 +286,7 @@ fn run_index(args: &cli::Args) -> ExitCode {
         small_exon_threshold: args.small_exon_threshold as u64,
         min_segm: args.min_segm as u64,
     });
+    ix.ref_order = ref_order;
     let mut by_id: std::collections::HashMap<u64, &[u8]> = Default::default();
     for r in &refs {
         if let Some(&cid) = ix.chr_to_id.get(&r.name) {
@@ -326,7 +331,120 @@ fn run_align(args: &cli::Args) -> ExitCode {
         Ok(i) => i,
         Err(e) => { eprintln!("uLTRA: cannot read index {}: {e}", idx_path.display()); return ExitCode::from(1); }
     };
-    eprintln!("uLTRA: align is not fully wired yet (index loads: {} parts, {} segments)",
-        ix.ref_part_sequences.len(), ix.ref_segment_sequences.len());
-    ExitCode::from(70)
+    let out = std::path::PathBuf::from(&args.outfolder);
+
+    // 1. refs_sequences.fa -- the part and flank sequences namfinder indexes,
+    //    named `chr^start^stop`. The reference writes these in dict order; the
+    //    port writes them sorted (PORTING.md Finding 27 established that the
+    //    reference's order is hash-dependent and reaches results, and the fix
+    //    branch sorts them too).
+    let refs_path = out.join("refs_sequences.fa");
+    {
+        let f = match std::fs::File::create(&refs_path) {
+            Ok(f) => f,
+            Err(e) => { eprintln!("uLTRA: cannot write {}: {e}", refs_path.display()); return ExitCode::from(1); }
+        };
+        let mut w = std::io::BufWriter::new(f);
+        for (k, seq) in ix.ref_part_sequences.iter() {
+            if writeln!(w, ">{}^{}^{}", k.0, k.1, k.2).is_err() || writeln!(w, "{seq}").is_err() {
+                eprintln!("uLTRA: cannot write {}", refs_path.display());
+                return ExitCode::from(1);
+            }
+        }
+        let _ = w.flush();
+    }
+
+    // 2. the reads namfinder sees: polyA-compressed, as uLTRA does before
+    //    seeding. Written uncompressed; namfinder reads either.
+    let reads_tmp = out.join("reads_tmp.fa");
+    let recs = {
+        let f = match std::fs::File::open(&args.reads) {
+            Ok(f) => f,
+            Err(e) => { eprintln!("uLTRA: cannot read {}: {e}", args.reads); return ExitCode::from(1); }
+        };
+        match reads::readfq(std::io::BufReader::new(f), false) {
+            Ok(r) => r,
+            Err(e) => { eprintln!("uLTRA: {e}"); return ExitCode::from(1); }
+        }
+    };
+    {
+        let f = std::fs::File::create(&reads_tmp).expect("create reads_tmp");
+        let mut w = std::io::BufWriter::new(f);
+        for r in &recs {
+            let s = reads::remove_read_polya_ends(&r.seq, args.reduce_read_polya as usize, 5);
+            let _ = writeln!(w, ">{}", r.name);
+            let _ = writeln!(w, "{s}");
+        }
+        let _ = w.flush();
+    }
+
+    // 3. seeds, from the LINKED namfinder (Finding 26) -- no subprocess, and
+    //    nothing required on PATH.
+    let seeds_path = out.join("seeds.txt");
+    {
+        let argv = namfinder::argv_for(
+            refs_path.to_str().unwrap(), reads_tmp.to_str().unwrap(),
+            args.nr_cores, args.s, args.thinning);
+        let saved = unsafe { libc_dup(1) };
+        let fd = match std::fs::File::create(&seeds_path) {
+            Ok(f) => { use std::os::unix::io::IntoRawFd; f.into_raw_fd() }
+            Err(e) => { eprintln!("uLTRA: cannot write {}: {e}", seeds_path.display()); return ExitCode::from(1); }
+        };
+        unsafe { libc_dup2(fd, 1); }
+        let rc = namfinder::run(&argv);
+        unsafe { libc_dup2(saved, 1); libc_close(fd); libc_close(saved); }
+        if rc != 0 {
+            eprintln!("uLTRA: namfinder failed with status {rc}");
+            return ExitCode::from(1);
+        }
+    }
+
+    // 4. align, one read at a time over a SHARED index (Finding 4: the
+    //    reference loads a copy per worker instead).
+    let seed_recs = {
+        let f = std::fs::File::open(&seeds_path).expect("open seeds");
+        match reads::read_seeds(std::io::BufReader::new(f)) {
+            Ok(v) => v,
+            Err(e) => { eprintln!("uLTRA: {e}"); return ExitCode::from(1); }
+        }
+    };
+    let by_name: std::collections::HashMap<&str, &reads::SeedRecord> =
+        seed_recs.iter().map(|s| (s.acc.as_str(), s)).collect();
+
+    let p = driver::Params {
+        max_intron: args.max_intron,
+        min_acc: args.min_acc,
+        dropoff: args.dropoff,
+        max_loc: args.max_loc,
+        alignment_threshold: args.alignment_threshold,
+        non_covered_cutoff: args.non_covered_cutoff,
+        reduce_read_polya: args.reduce_read_polya as usize,
+    };
+
+    let sam_path = out.join(format!("{}.sam", args.prefix));
+    let f = std::fs::File::create(&sam_path).expect("create sam");
+    let mut w = std::io::BufWriter::new(f);
+    // @SQ only -- no @PG, no @HD, matching the reference exactly (Part 5)
+    for name in &ix.ref_order {
+        let _ = writeln!(w, "@SQ\tSN:{}\tLN:{}", name, ix.refs_lengths.get(name).copied().unwrap_or(0));
+    }
+    let empty: Vec<String> = Vec::new();
+    for r in &recs {
+        let (hits, hits_rc) = match by_name.get(r.name.as_str()) {
+            Some(s) => (&s.hits, &s.hits_rc),
+            None => (&empty, &empty),
+        };
+        for line in driver::align_read(&ix, &r.name, &r.seq, r.qual.as_deref(), hits, hits_rc, &p) {
+            let _ = w.write_all(line.as_bytes());
+        }
+    }
+    let _ = w.flush();
+    println!("Done.");
+    ExitCode::from(0)
+}
+
+extern "C" {
+    #[link_name = "dup"]   fn libc_dup(fd: i32) -> i32;
+    #[link_name = "dup2"]  fn libc_dup2(a: i32, b: i32) -> i32;
+    #[link_name = "close"] fn libc_close(fd: i32) -> i32;
 }

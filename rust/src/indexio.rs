@@ -66,8 +66,12 @@ pub fn write(ix: &Index, path: &std::path::Path) -> std::io::Result<()> {
     wu64(&mut w, ix.chr_to_id.len() as u64)?;
     for (name, id) in &ix.chr_to_id { wstr(&mut w, name)?; wu64(&mut w, *id)?; }
 
-    wu64(&mut w, ix.refs_lengths.len() as u64)?;
-    for (name, l) in &ix.refs_lengths { wstr(&mut w, name)?; wu64(&mut w, *l)?; }
+    // refs_lengths, written in FASTA order so the @SQ header survives
+    wu64(&mut w, ix.ref_order.len() as u64)?;
+    for name in &ix.ref_order {
+        wstr(&mut w, name)?;
+        wu64(&mut w, *ix.refs_lengths.get(name).unwrap_or(&0))?;
+    }
 
     wu64(&mut w, ix.refs_id_lengths.len() as u64)?;
     for (id, l) in &ix.refs_id_lengths { wu64(&mut w, *id)?; wu64(&mut w, *l)?; }
@@ -147,7 +151,11 @@ pub fn read(path: &std::path::Path) -> std::io::Result<Index> {
         ix.chr_to_id.insert(name, id);
     }
     let n = ru64(&mut r)?;
-    for _ in 0..n { let name = rstr(&mut r)?; let l = ru64(&mut r)?; ix.refs_lengths.insert(name, l); }
+    for _ in 0..n {
+        let name = rstr(&mut r)?; let l = ru64(&mut r)?;
+        ix.ref_order.push(name.clone());
+        ix.refs_lengths.insert(name, l);
+    }
     let n = ru64(&mut r)?;
     for _ in 0..n { let id = ru64(&mut r)?; let l = ru64(&mut r)?; ix.refs_id_lengths.insert(id, l); }
     let n = ru64(&mut r)?;

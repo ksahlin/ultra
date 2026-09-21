@@ -21,6 +21,12 @@ pub struct Index {
     pub chr_to_id: BTreeMap<String, u64>,
     pub id_to_chr: BTreeMap<u64, String>,
     pub refs_lengths: BTreeMap<String, u64>,
+    /// The reference names in FASTA order. The SAM `@SQ` header is written in
+    /// this order -- the reference builds it from `list(refs_lengths.keys())`,
+    /// i.e. Python dict insertion order, which is the order `load_reference`
+    /// read the fasta. Sorting instead would coincide on SIRV and differ on any
+    /// assembly with mixed-form contig names.
+    pub ref_order: Vec<String>,
     pub refs_id_lengths: BTreeMap<u64, u64>,
 
     pub exon_choordinates_to_id: BTreeSet<Key>,

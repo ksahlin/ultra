@@ -151,6 +151,58 @@ pub fn readfq<R: BufRead>(r: R, strict: bool) -> Result<Vec<Record>, ReadError> 
 /// whole read is dropped. Faithful, and noted here so it is not mistaken for a
 /// porting slip.
 pub fn remove_read_polya_ends(seq: &str, threshold_len: usize, to_len: usize) -> String {
+    remove_read_polya_ends_q(seq, None, threshold_len, to_len).0
+}
+
+/// The same, carrying the quality string along.
+///
+/// The reference compresses BOTH together -- `qual_list.extend(qualgroup[:to_len])`
+/// keeps the FIRST `to_len` quality values of a collapsed homopolymer run, so
+/// the quality stays the same length as the sequence. Dropping this is what
+/// made the port emit `*` for the quality on every read with a polyA tail.
+pub fn remove_read_polya_ends_q(
+    seq: &str, qual: Option<&str>, threshold_len: usize, to_len: usize,
+) -> (String, Option<String>) {
+    let n = seq.len();
+    let window = std::cmp::min(n / 2, 100);
+    if window == 0 {
+        return (String::new(), qual.map(|_| String::new()));
+    }
+    let head = &seq[..n - window];
+    let tail = seq[n - window..].as_bytes();
+    let qtail: Option<&[u8]> = qual.map(|q| {
+        let qn = q.len();
+        if qn >= window { &q.as_bytes()[qn - window..] } else { q.as_bytes() }
+    });
+
+    let mut out = String::with_capacity(n);
+    out.push_str(head);
+    let mut qout: Option<String> = qual.map(|q| {
+        let qn = q.len();
+        if qn >= window { q[..qn - window].to_string() } else { String::new() }
+    });
+
+    let mut i = 0usize;
+    while i < tail.len() {
+        let ch = tail[i];
+        let mut j = i;
+        while j < tail.len() && tail[j] == ch { j += 1; }
+        let run = j - i;
+        let keep = if run > threshold_len && (ch == b'A' || ch == b'T') { to_len } else { run };
+        for _ in 0..keep { out.push(ch as char); }
+        if let (Some(qo), Some(qt)) = (qout.as_mut(), qtail) {
+            // the FIRST `keep` quality values of this run
+            for k in 0..keep.min(run) {
+                if i + k < qt.len() { qo.push(qt[i + k] as char); }
+            }
+        }
+        i = j;
+    }
+    (out, qout)
+}
+
+#[allow(dead_code)]
+fn remove_read_polya_ends_seq_only(seq: &str, threshold_len: usize, to_len: usize) -> String {
     let n = seq.len();
     let window = std::cmp::min(n / 2, 100);
     if window == 0 {

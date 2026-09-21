@@ -1539,11 +1539,32 @@ reads it back and compares every structure — nothing external validates this f
 truncation would surface much later as an alignment bug. A second test checks that a foreign file is
 *refused with a message telling the user to rebuild*, rather than parsed as garbage.
 
-**Still outstanding:** wiring `run_align` to actually drive `align_read` over a corpus — the seed
-file, the minimap2 prefilter and the merge have to be sequenced — and the streaming half of
-`output_final_alignments` (five passes over two files, with a `del` that assumes each read appears
-once as primary). Until that is done `reads.sam` is not produced, and none of the twelve oracles has
-yet been checked against the real contract.
+**`reads.sam` is produced, and on the `--disable_mm2` path it is very nearly exact.**
+
+| corpus | result |
+| --- | --- |
+| smoke, 4 reads | **byte-identical**, header and all 4 records |
+| sirv-10k, 10 000 real ONT reads | **9 987 of 10 000 reads identical** |
+
+Of the 13 that differ, **6 are Finding 33's approved divergence** — established by comparing the port
+against a reference patched to use the same total order, which leaves 7 — and that 6 matches the
+number measured independently from the reference side, which is the corroboration worth having.
+
+**7 reads remain unexplained**, differing in `XA` (5), `SEQ`/`QUAL` (2, i.e. a strand choice),
+`CIGAR`, `XC` and `NM` (1 each). Those are real gaps, not divergences, and are not yet diagnosed.
+
+Speed on that run: **7.6 s against the reference's ~59 s** at `--t 3`, single-threaded and before any
+parallelism.
+
+One bug found by the end-to-end comparison that no per-function oracle could have caught:
+`remove_read_polyA_ends` compresses the **quality alongside the sequence**, keeping the first
+`to_len` values of a collapsed homopolymer. The port had ported only the sequence half, so the
+quality no longer matched the sequence length and `sam_record` emitted `*` — on **169 of 10 000
+reads**. Every individual oracle still passed; it took `reads.sam` to show it.
+
+**Still outstanding:** the minimap2 path — `prefilter_genomic_reads` is ported but not sequenced into
+`run_align`, and the streaming half of `output_final_alignments` is not written — plus the 7
+unexplained reads, and threading.
 
 ### Stage 6 — parallelism
 
