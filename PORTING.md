@@ -1253,6 +1253,38 @@ assert!(failures.len() <= BUDGET, "find_exons divergence grew past its budget ..
 
 which fails if the divergence ever widens, and prints the count every run.
 
+**A fifth site, and the only one that is not even reproducible in the reference.**
+`classify_alignment2.py:27` builds the `XA:Z:` tag on the FSM branch by joining a *set of transcript
+ids*:
+
+```python
+transcript = ",".join( tr for tr in splices_to_transcripts[chr_id][tuple(predicted_splices)])
+```
+
+The value is built with `.add()` in `create_augmented_gene.py:516`, so it is a `set` — of **strings**,
+not of int tuples. String hashing is randomised per process, so unlike the four sites above this one
+does not merely depend on set iteration order, it depends on `PYTHONHASHSEED`. Measured directly on
+the set that the differing reads produce:
+
+```
+PYTHONHASHSEED=0  -> SIRV705,SIRV701      <- the recorded golden
+PYTHONHASHSEED=1  -> SIRV701,SIRV705
+PYTHONHASHSEED=2  -> SIRV701,SIRV705
+PYTHONHASHSEED=3  -> SIRV701,SIRV705
+PYTHONHASHSEED=4  -> SIRV705,SIRV701
+PYTHONHASHSEED=5  -> SIRV701,SIRV705
+```
+
+So the golden's `XA:Z:SIRV705,SIRV701` is an artefact of the seed the goldens were recorded under,
+and the reference emits the other order on most seeds. The port sorts, and so is stable across runs
+where the reference is not — here the divergence is an improvement, not a cost.
+
+It affects **4 reads in 10 000** on SIRV (`read_63_1228`, `read_64_3620`, `read_64_9843`,
+`read_66_3566`). An earlier measurement of mine said *no* read named more than one transcript; that
+was taken over 1 000 reads, where the count is genuinely zero. It only appears at 10 000. The
+counter in `rust/tests/sam_oracle.rs` that reports how many records carry a multi-transcript `XA`
+exists because of this, so the next corpus cannot hide it the same way.
+
 ### Finding 34 — QUAL is reversed relative to SEQ for reverse-strand reads
 
 `prefilter_genomic_reads.filter_reads_to_align` writes the reads that survive the genomic filter:
@@ -1317,7 +1349,74 @@ quality field is four characters long regardless of the read. uLTRA survives it 
 `readfq` requires the quality to be at least as long as the sequence, never reaches that length,
 hits EOF and degrades the record to "fasta, no quality" — the right answer by accident.
 
-> Findings 37+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
+### Finding 37 — PORT BUG, FIXED: Python slices clamp, and a guard that refuses to
+
+`classify_read_with_mams.main` trims a segment down to the part a partial hit actually covers:
+
+```python
+partial_segm_seq = segment_seq[: len(segment_seq) - (e_stop - (s_stop + 1)) ]
+if partial_segm_seq not in segm_already_tried and len(partial_segm_seq) > 5:
+```
+
+When the hit runs to the very end of the segment, `e_stop - (s_stop + 1)` goes to `-1` and the
+computed index is **one past the end of the string**. Python slicing clamps, so `segment_seq[:26]`
+on a 25-character string is the whole string and the candidate is kept. The port's first version
+instead treated an out-of-range index as a reason to skip:
+
+```rust
+let cut = seq.len() as i64 - (e_stop - (s_stop + 1));
+if cut > 0 && (cut as usize) <= seq.len() {      // wrong: silently drops the clamped case
+```
+
+so it dropped exactly the partial hits that end flush with their segment. On `read_49_2074` this
+removed the `(6,1820,1845)` candidate, the chain took `(6,2026,2120)` instead, and the read gained a
+spurious exon and was reclassified `FSM` → `NIC_novel`. Both sides had the same 62 MAM candidates
+and — verified by instrumenting both — identical thresholds and identical partial-hit key order, which
+is what localised it to the slice itself. Fixed by clamping both branches the way Python does.
+
+**Cost of the fix:** 1 read in 10 000 on SIRV (9 993 → 9 994 identical against the total-order-patched
+reference).
+
+**The part worth keeping.** This bug sits in the loop *between* two hooked functions —
+`get_unique_exon_and_flank_locations` feeds it and `add_segment_to_mam` consumes it — and both of
+their oracles passed throughout, 800 and 1 500 calls green. The glue was never hooked, so nothing
+tested it. This is the third time in this port that an unhooked seam between two verified functions
+was the defect (see also `remove_read_polyA_ends`), and each time only the end-to-end comparison
+found it. **Oracles bound the functions they hook and say nothing whatever about the code between
+them**; the end-to-end byte comparison is not a formality on top of them, it is the only thing
+covering the seams.
+
+### Finding 38 — REFERENCE DEFECT: the unaligned record is written from a leaked loop variable
+
+When a read produces no alignment at all, `align.py:524` emits the unaligned SAM record:
+
+```python
+if len(read_alignments) == 0:
+    sam_aln_entry = sam_output.main(read_acc, read_seq, read_qual, '*', 'unaligned', [], ...)
+```
+
+`read_seq` and `read_qual` are not the read. They are whatever the enclosing `for` loop over
+candidate chainings last assigned — the loop reverse-complements the read to try the other strand and
+does not restore it. So for an unaligned read the SEQ and QUAL written out depend on which strand
+happened to be examined last.
+
+Measured on SIRV, 10 000 reads: **2 reads** (`read_28_354`, `read_51_1715`). For both, verified
+directly:
+
+```
+ref SEQ  == revcomp(port SEQ)
+ref QUAL == reversed(port QUAL)
+```
+
+Both records carry `FLAG 4`, so the strand is unrecorded and a consumer cannot tell which orientation
+it was given. This is the same class as *Finding 14* — a loop variable read after the loop — and it
+makes the unaligned records of the reference orientation-unstable.
+
+The port writes the read as it was read from the input, forward strand, always. **This is a silent
+divergence from the goldens on those 2 records and a deliberate one**: reproducing it would mean
+reproducing which strand the search abandoned last.
+
+> Findings 39+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
 > the most useful artifact of the project.
 
 ---

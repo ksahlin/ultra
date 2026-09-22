@@ -45,6 +45,15 @@ fn index_survives_a_write_and_read() {
     assert_eq!(back.chr_to_id, ix.chr_to_id, "chr_to_id");
     assert_eq!(back.id_to_chr, ix.id_to_chr, "id_to_chr");
     assert_eq!(back.refs_lengths, ix.refs_lengths, "refs_lengths");
+    assert!(!back.refs_lengths.is_empty(), "refs_lengths round-tripped empty");
+    // ref_order is populated by the caller, not by index::build. This test
+    // deliberately leaves it unset, which is how the silent loss of every
+    // reference length was caught; the reader must still recover them all.
+    assert_eq!(
+        back.ref_order.iter().cloned().collect::<std::collections::BTreeSet<_>>(),
+        ix.refs_lengths.keys().cloned().collect::<std::collections::BTreeSet<_>>(),
+        "ref_order must cover every reference"
+    );
     assert_eq!(back.refs_id_lengths, ix.refs_id_lengths, "refs_id_lengths");
     assert_eq!(back.max_intron_chr, ix.max_intron_chr, "max_intron_chr");
     assert_eq!(back.parts_to_segments, ix.parts_to_segments, "parts_to_segments");

@@ -66,11 +66,22 @@ pub fn write(ix: &Index, path: &std::path::Path) -> std::io::Result<()> {
     wu64(&mut w, ix.chr_to_id.len() as u64)?;
     for (name, id) in &ix.chr_to_id { wstr(&mut w, name)?; wu64(&mut w, *id)?; }
 
-    // refs_lengths, written in FASTA order so the @SQ header survives
-    wu64(&mut w, ix.ref_order.len() as u64)?;
+    // refs_lengths, written in FASTA order so the @SQ header survives.
+    // ref_order is set by the caller, not by index::build, so it can be short
+    // or empty; drive the write off refs_lengths and use ref_order only to
+    // order it, or an index built without it loses every reference silently.
+    let mut order: Vec<&String> = Vec::with_capacity(ix.refs_lengths.len());
     for name in &ix.ref_order {
+        if ix.refs_lengths.contains_key(name) { order.push(name); }
+    }
+    let seen: std::collections::BTreeSet<&String> = order.iter().cloned().collect();
+    for name in ix.refs_lengths.keys() {
+        if !seen.contains(name) { order.push(name); }
+    }
+    wu64(&mut w, order.len() as u64)?;
+    for name in order {
         wstr(&mut w, name)?;
-        wu64(&mut w, *ix.refs_lengths.get(name).unwrap_or(&0))?;
+        wu64(&mut w, ix.refs_lengths[name])?;
     }
 
     wu64(&mut w, ix.refs_id_lengths.len() as u64)?;

@@ -381,28 +381,29 @@ pub fn classify_read(
         };
         let (e_start, e_stop) = (loc.1 as i64, loc.2 as i64);
         let eid = u.segments_partial.get(loc).map(|v| format!("{:?}", v.3)).unwrap_or_default();
+        // Python slicing CLAMPS: seq[n:] with n past the end is empty, and
+        // seq[:n] with n past the end is the whole string. Rejecting those
+        // cases instead -- as an early version of this port did -- silently
+        // drops partial hits the reference keeps.
         if e_stop <= final_first_stop {
-            let off = (s_start - e_start).max(0) as usize;
-            if off <= seq.len() {
-                let part = &seq[off..];
-                let ps = String::from_utf8_lossy(part).into_owned();
-                if part.len() > 5 && !tried.contains(&ps) {
-                    add_segment_to_mam(read_seq, loc.0 as i64, part, e_start, e_stop, &eid,
-                                       min_acc, "_partial_segment_start", &mut mams);
-                    tried.insert(ps);
-                }
+            let off = ((s_start - e_start).max(0) as usize).min(seq.len());
+            let part = &seq[off..];
+            let ps = String::from_utf8_lossy(part).into_owned();
+            if part.len() > 5 && !tried.contains(&ps) {
+                add_segment_to_mam(read_seq, loc.0 as i64, part, e_start, e_stop, &eid,
+                                   min_acc, "_partial_segment_start", &mut mams);
+                tried.insert(ps);
             }
         } else if final_last_start <= e_start {
             let s_stop = u.segments_partial.get(loc).map(|v| v.2).unwrap_or(0);
             let cut = seq.len() as i64 - (e_stop - (s_stop + 1));
-            if cut > 0 && (cut as usize) <= seq.len() {
-                let part = &seq[..cut as usize];
-                let ps = String::from_utf8_lossy(part).into_owned();
-                if part.len() > 5 && !tried.contains(&ps) {
-                    add_segment_to_mam(read_seq, loc.0 as i64, part, e_start, e_stop, &eid,
-                                       min_acc, "_partial_segment_end", &mut mams);
-                    tried.insert(ps);
-                }
+            let cut = cut.max(0).min(seq.len() as i64) as usize;
+            let part = &seq[..cut];
+            let ps = String::from_utf8_lossy(part).into_owned();
+            if part.len() > 5 && !tried.contains(&ps) {
+                add_segment_to_mam(read_seq, loc.0 as i64, part, e_start, e_stop, &eid,
+                                   min_acc, "_partial_segment_end", &mut mams);
+                tried.insert(ps);
             }
         }
     }
@@ -433,6 +434,7 @@ pub fn classify_read(
     for (j, m) in mams.iter_mut().enumerate() {
         m.j = j as i64;
     }
+
 
     if mams.is_empty() {
         return (Vec::new(), -1.0, Vec::new());

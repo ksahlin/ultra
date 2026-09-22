@@ -162,6 +162,7 @@ pub fn align_read(
         let ex = aligndriver::find_exons(*chr_id, &mam_solution, &ix.ref_exon_sequences,
             &ix.ref_segment_sequences, &ix.ref_flank_sequences, &pairs);
 
+
         let (classification, annotated_to) = classify_for(ix, *chr_id, &ex.predicted_splices);
 
         let largest_intron = mam_solution.windows(2)
