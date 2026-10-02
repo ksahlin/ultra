@@ -403,23 +403,51 @@ fn run_align(args: &cli::Args) -> ExitCode {
         let _ = w.flush();
     }
 
-    // 3. seeds, from the LINKED namfinder (Finding 26) -- no subprocess, and
-    //    nothing required on PATH.
+    // 3. seeds, from the LINKED namfinder (Finding 26) -- nothing required on
+    //    PATH. It runs in a forked child all the same: namfinder's index is by
+    //    far the largest allocation in the run (1 042 MB of a 1 196 MB peak on
+    //    sirv-10k) and it does not return that memory to the OS when it
+    //    finishes, so calling it in-process would leave the whole alignment
+    //    phase running on top of it. Forking gets the subprocess's memory
+    //    behaviour back without reintroducing the subprocess's dependency.
+    //    See Finding 41.
     let seeds_path = out.join("seeds.txt");
     {
         let argv = namfinder::argv_for(
             refs_path.to_str().unwrap(), reads_tmp.to_str().unwrap(),
             args.nr_cores, args.s, args.thinning);
-        let saved = unsafe { libc_dup(1) };
         let fd = match std::fs::File::create(&seeds_path) {
             Ok(f) => { use std::os::unix::io::IntoRawFd; f.into_raw_fd() }
             Err(e) => { eprintln!("uLTRA: cannot write {}: {e}", seeds_path.display()); return ExitCode::from(1); }
         };
-        unsafe { libc_dup2(fd, 1); }
-        let rc = namfinder::run(&argv);
-        unsafe { libc_dup2(saved, 1); libc_close(fd); libc_close(saved); }
-        if rc != 0 {
-            eprintln!("uLTRA: namfinder failed with status {rc}");
+        // The parent is still single-threaded here, and the child only calls
+        // into C, so there is nothing for fork to tear in half. Flush first or
+        // anything still buffered is written twice, once by each process.
+        let _ = std::io::stdout().flush();
+        let _ = std::io::stderr().flush();
+        let pid = unsafe { libc_fork() };
+        if pid == 0 {
+            unsafe {
+                libc_dup2(fd, 1);
+                let rc = namfinder::run(&argv);
+                // _exit, not exit: the child must not run atexit handlers or
+                // flush streams the parent still owns.
+                libc__exit(rc);
+            }
+            unreachable!();
+        }
+        unsafe { libc_close(fd) };
+        if pid < 0 {
+            eprintln!("uLTRA: could not fork for namfinder");
+            return ExitCode::from(1);
+        }
+        let mut status: i32 = 0;
+        let rc = unsafe { libc_waitpid(pid, &mut status, 0) };
+        // WIFEXITED / WEXITSTATUS, which are macros and so not in the ABI
+        let exited = status & 0x7f == 0;
+        let code = (status >> 8) & 0xff;
+        if rc < 0 || !exited || code != 0 {
+            eprintln!("uLTRA: namfinder failed (status {status})");
             return ExitCode::from(1);
         }
     }
@@ -446,30 +474,22 @@ fn run_align(args: &cli::Args) -> ExitCode {
         reduce_read_polya: args.reduce_read_polya as usize,
     };
 
-    let sam_path = out.join(format!("{}.sam", args.prefix));
-    let f = std::fs::File::create(&sam_path).expect("create sam");
-    let mut w = std::io::BufWriter::new(f);
     // @SQ only -- no @PG, no @HD, matching the reference exactly (Part 5)
-    for name in &ix.ref_order {
-        let _ = writeln!(w, "@SQ\tSN:{}\tLN:{}", name, ix.refs_lengths.get(name).copied().unwrap_or(0));
-    }
-    let mut header: Vec<String> = Vec::new();
-    for name in &ix.ref_order {
-        header.push(format!("@SQ\tSN:{}\tLN:{}", name,
-            ix.refs_lengths.get(name).copied().unwrap_or(0)));
-    }
-    let empty: Vec<String> = Vec::new();
-    for r in &recs {
-        let (hits, hits_rc) = match by_name.get(r.name.as_str()) {
-            Some(s) => (&s.hits, &s.hits_rc),
-            None => (&empty, &empty),
-        };
-        for line in driver::align_read(&ix, &r.name, &r.seq, r.qual.as_deref(), hits, hits_rc, &p) {
-            let _ = w.write_all(line.as_bytes());
+    let header: Vec<String> = ix.ref_order.iter()
+        .map(|name| format!("@SQ\tSN:{}\tLN:{}", name,
+                            ix.refs_lengths.get(name).copied().unwrap_or(0)))
+        .collect();
+
+    let sam_path = out.join(format!("{}.sam", args.prefix));
+    {
+        let f = std::fs::File::create(&sam_path).expect("create sam");
+        let mut w = std::io::BufWriter::new(f);
+        for h in &header {
+            let _ = writeln!(w, "{h}");
         }
+        align_all(&ix, &recs, &by_name, &p, args.nr_cores, &mut w);
+        let _ = w.flush();
     }
-    let _ = w.flush();
-    drop(w);
 
     // 5. merge uLTRA's alignments with minimap2's, keeping whichever scored
     //    better per read.
@@ -512,4 +532,97 @@ extern "C" {
     #[link_name = "dup"]   fn libc_dup(fd: i32) -> i32;
     #[link_name = "dup2"]  fn libc_dup2(a: i32, b: i32) -> i32;
     #[link_name = "close"] fn libc_close(fd: i32) -> i32;
+    #[link_name = "fork"]  fn libc_fork() -> i32;
+    #[link_name = "_exit"] fn libc__exit(code: i32) -> !;
+    #[link_name = "waitpid"] fn libc_waitpid(pid: i32, status: *mut i32, options: i32) -> i32;
+}
+
+/// Align every read, on `nr_cores` threads over a SHARED index.
+///
+/// The reference starts one *process* per core and each re-imports the index
+/// from disk (Finding 4). Threads over one `&Index` is the whole reason the
+/// port can be faster and smaller at once, so the index is never copied.
+///
+/// Output order is the input read order, not completion order -- `reads.sam`
+/// is a byte-identity target, so a thread count that changed the record order
+/// would be a bug, not a detail. Chunks are claimed in order and a chunk that
+/// finishes early waits its turn in `pending`.
+fn align_all(
+    ix: &index::Index,
+    recs: &[reads::Record],
+    by_name: &std::collections::HashMap<&str, &reads::SeedRecord>,
+    p: &driver::Params,
+    nr_cores: i64,
+    w: &mut (impl Write + Send),
+) {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::{Condvar, Mutex};
+
+    // Small enough that the tail does not idle most threads on a short run,
+    // large enough that the handoff is not the cost. Reads vary by an order
+    // of magnitude in alignment time, so smaller chunks also even out the
+    // load better than they cost.
+    const CHUNK: usize = 32;
+
+    let nthreads = nr_cores.max(1) as usize;
+    let nchunks = recs.len().div_ceil(CHUNK);
+    if nchunks == 0 {
+        return;
+    }
+
+    let claim = AtomicUsize::new(0);
+    // `next` is the chunk the writer wants; `done` holds chunks that finished
+    // out of turn. Bounded, or one slow chunk at the front would let every
+    // other chunk's output accumulate in memory.
+    struct Queue {
+        next: usize,
+        done: std::collections::BTreeMap<usize, String>,
+    }
+    let q = Mutex::new(Queue { next: 0, done: std::collections::BTreeMap::new() });
+    let room = Condvar::new();
+    let backlog = 4 * nthreads;
+    let w = Mutex::new(w);
+
+    std::thread::scope(|scope| {
+        for _ in 0..nthreads {
+            scope.spawn(|| {
+                let empty: Vec<String> = Vec::new();
+                loop {
+                    let i = claim.fetch_add(1, Ordering::Relaxed);
+                    if i >= nchunks {
+                        break;
+                    }
+                    let lo = i * CHUNK;
+                    let hi = (lo + CHUNK).min(recs.len());
+                    let mut buf = String::new();
+                    for r in &recs[lo..hi] {
+                        let (hits, hits_rc) = match by_name.get(r.name.as_str()) {
+                            Some(s) => (&s.hits, &s.hits_rc),
+                            None => (&empty, &empty),
+                        };
+                        for line in driver::align_read(
+                            ix, &r.name, &r.seq, r.qual.as_deref(), hits, hits_rc, p) {
+                            buf.push_str(&line);
+                        }
+                    }
+
+                    let mut g = q.lock().unwrap();
+                    // Never make the chunk the writer is waiting for wait:
+                    // that one is what unblocks everyone else.
+                    while g.next != i && g.done.len() >= backlog {
+                        g = room.wait(g).unwrap();
+                    }
+                    g.done.insert(i, buf);
+                    let mut out = w.lock().unwrap();
+                    while let Some(s) = { let n = g.next; g.done.remove(&n) } {
+                        let _ = out.write_all(s.as_bytes());
+                        g.next += 1;
+                    }
+                    drop(out);
+                    drop(g);
+                    room.notify_all();
+                }
+            });
+        }
+    });
 }

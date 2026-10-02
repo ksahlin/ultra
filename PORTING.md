@@ -1526,7 +1526,83 @@ verified field by field across 10 000 round-tripped records.
 port that writes the bytes itself has to reproduce the *library's* output, not the upstream tool's,
 and the difference is invisible until something downstream is compared byte for byte.
 
-> Findings 41+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
+### Finding 41 — a linked library keeps its peak memory for the rest of the run
+
+*Finding 26* replaced the `namfinder` subprocess with the same code linked into the binary, which
+removed the only thing uLTRA still needed on `PATH` for seeding. Measuring the threaded aligner
+turned up what that cost.
+
+namfinder's strobemer index is **by far** the largest allocation anywhere in a uLTRA run. Measured
+on sirv-10k, standalone, with the exact arguments the port passes it:
+
+```
+namfinder alone                      1 042 MB
+uLTRA's own alignment phase            156 MB
+```
+
+A subprocess hands that back to the OS when it exits, and the reference's does, before any worker
+starts. Called in-process the allocator keeps it, so the whole alignment phase then runs on top of
+it — and the port measured **1 196 MB** against the reference's 1 139 MB. Linking had turned a 156 MB
+aligner into the heavier of the two.
+
+The fix keeps both properties: namfinder still ships inside the binary, but it is invoked in a
+`fork()`ed child, so the OS reclaims the index when the child exits. The parent is single-threaded
+at that point and the child only calls into C, so there is nothing for `fork` to tear in half;
+`_exit` rather than `exit` keeps the child from flushing streams the parent owns. Peak falls to
+**1 078 MB** with byte-identical output.
+
+**What it means for goal 4.** Peak memory is now namfinder, not uLTRA — 1 042 of 1 078 MB. Tuning
+uLTRA's own allocation would move 3 % of the total. The lever is namfinder's index, which means
+*D1* or *D3*, not anything in this port.
+
+**The general shape.** Vendoring a tool to remove a dependency silently inherits its memory
+profile for the remainder of the process. A subprocess has a memory *lifetime* as well as a
+dependency cost, and only the dependency cost is obvious when you decide to link.
+
+### Stage 6 measured — parallelism
+
+Threads over one shared `&Index`, chunks of 32 reads claimed in order. The reference starts one
+*process* per core and each re-imports the index from disk (*Finding 4*).
+
+Output order is the input read order, not completion order, because `reads.sam` is a byte-identity
+target: a chunk that finishes early waits its turn, and the queue of early finishers is bounded so
+one slow chunk at the front cannot accumulate the whole run's output in memory. **Verified: the
+SHA-256 of `reads.sam` is identical at `--t 1, 2, 3, 8, 16`**, with and without the minimap2
+pre-pass, identical to the pre-threading serial output, and identical across `--t 1` and `--t 8` on
+Drosophila as well.
+
+sirv-10k, full `align` including minimap2 and namfinder, on a 16-core machine (12 performance +
+4 efficiency):
+
+| `--t` | reference wall | port wall | reference peak | port peak |
+| --- | --- | --- | --- | --- |
+| 1 | — | 16.3 s | — | **1 077 MB** |
+| 3 *(default)* | 11.2 s | **6.2 s** | 1 139 MB | **1 077 MB** |
+| 8 | — | 2.8 s | — | **1 078 MB** |
+| 16 | 4.9 s | **2.2 s** | **2 845 MB** | **1 078 MB** |
+
+Two things to read off it. The port is 1.8× at the default and 2.2× at 16 threads — modest, because
+minimap2 and namfinder are *the same code in both* and together account for roughly 2.9 s of the
+port's 6.2 s. Speedup of the part the port actually owns is better than the end-to-end figure
+suggests, and *D2* (dropping minimap2) is what moves the rest.
+
+The memory column is the more interesting one. **The port's peak does not move with thread count**
+— 1 077 MB at one thread and 1 078 MB at sixteen — while the reference's grows from 1 139 MB to
+2 845 MB, because every worker process holds its own copy of the index. At 16 threads the port uses
+**2.6× less memory and runs 2.2× faster at the same time**, which is the whole argument for threads
+over processes, measured rather than asserted. The Stage 6 plan asked for exactly this check —
+"verify that peak RSS is flat in `--t` rather than +337 MB per worker" — and it is.
+
+droso-20k, where the index is real rather than seven synthetic transcripts:
+
+| `--t` | port wall | port peak |
+| --- | --- | --- |
+| 1 | 100.7 s | 3 521 MB |
+| 8 | **22.4 s** | 3 194 MB |
+
+4.5× on 8 threads, and again flat in memory.
+
+> Findings 42+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
 > the most useful artifact of the project.
 
 ---
@@ -1775,10 +1851,11 @@ reads**. Every individual oracle still passed; it took `reads.sam` to show it.
 `run_align`, and the streaming half of `output_final_alignments` is not written — plus the 7
 unexplained reads, and threading.
 
-### Stage 6 — parallelism
+### Stage 6 — parallelism — DONE
 
 One shared immutable index, threads not processes (Finding 4). This is where goal 4 is won; verify
-that peak RSS is flat in `--t` rather than +337 MB per worker.
+that peak RSS is flat in `--t` rather than +337 MB per worker. **Done — see "Stage 6 measured"
+above and Finding 41.** Peak RSS is flat in `--t`; the remaining peak is namfinder's, not uLTRA's.
 
 ### Stage 7 — distribution
 
