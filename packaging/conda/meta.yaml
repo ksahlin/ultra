@@ -1,0 +1,75 @@
+# Bioconda recipe for the Rust uLTRA.
+#
+# This is the copy kept with the source; the one that builds is the identical
+# file in bioconda-recipes. Submitting it is a separate, deliberate act -- see
+# packaging/README.md.
+#
+# NOTE ON MIGRATION: the existing `ultra_bioinformatics` package is the Python
+# tool, with parasail-python, pysam, dill, gffutils and intervaltree as runtime
+# dependencies and namfinder missing on osx-arm64 entirely. This recipe builds
+# the Rust binary, whose only runtime dependency is minimap2. Whether that
+# lands as a new major version of the same package or a separate one is a
+# decision for the author, not something a recipe should assume.
+
+{% set name = "ultra_bioinformatics" %}
+{% set version = "0.1.0" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://github.com/ksahlin/ultra/archive/refs/tags/v{{ version }}.tar.gz
+  # Filled in from the release tarball at submission time; a placeholder here
+  # would be worse than an obvious gap.
+  sha256: 0000000000000000000000000000000000000000000000000000000000000000
+
+build:
+  number: 0
+  # namfinder, edlib and zlib are vendored and statically linked, so there is
+  # nothing to find at build time beyond a C/C++ toolchain and cargo.
+  script: cd rust && cargo install --no-track --locked --root $PREFIX --path .
+  run_exports:
+    - {{ pin_subpackage(name|lower, max_pin="x") }}
+
+requirements:
+  build:
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
+    - {{ compiler('rust') }}
+  run:
+    # The only runtime dependency. Present on linux-64, linux-aarch64, osx-64
+    # and osx-arm64, so this recipe builds everywhere the Python one could not
+    # (namfinder has no osx-arm64 build; PORTING.md Finding 26 removed that
+    # blocker by linking it in).
+    - minimap2
+
+test:
+  commands:
+    - uLTRA --version
+    - uLTRA --help
+    - uLTRA index --help
+  # A real run, not just --version: a binary that starts but cannot align
+  # passes --version happily. --disable_mm2 keeps the test to the binary's own
+  # code; the minimap2 path is covered by the repository's equivalence
+  # harness, which needs corpora a recipe should not download.
+  source_files:
+    - test/
+  script: run_test.sh
+
+about:
+  home: https://github.com/ksahlin/ultra
+  license: GPL-3.0-only
+  license_family: GPL3
+  # BLOCKER: this file does not exist. README.md declares "GPL v3.0" and links
+  # to LICENCE.txt on master, but no licence file has ever been committed --
+  # the link is a 404. bioconda will not accept a recipe without license_file,
+  # so the repository needs the GPL-3.0 text added before this can be
+  # submitted. Choosing and adding it is the author's call, not the port's.
+  license_file: LICENSE.txt
+  summary: Splice alignment of long transcriptomic reads to a genome, guided by exon annotations
+  dev_url: https://github.com/ksahlin/ultra
+
+extra:
+  recipe-maintainers:
+    - ksahlin

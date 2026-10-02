@@ -1,0 +1,117 @@
+# Build the portable binaries and RUN them on the platforms they target.
+#
+# The point of the run-* jobs is rule 1 of this port: a binary verified on the
+# machine that built it is not verified. The Linux binaries are exercised
+# inside manylinux2014 images, whose glibc is exactly the 2.17 floor they
+# claim, and the macOS binary is exercised through the quarantine attribute a
+# real browser download sets (PORTING.md Finding 42).
+#
+# Nothing here publishes, tags or uploads a release. Adding that step is a
+# deliberate act for the author.
+
+name: build
+
+on:
+  push:
+    branches: [master, develop]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  # `uLTRA pipeline --disable_mm2` over the repository's own SIRV fixtures.
+  # Verified identical on macOS arm64 and x86_64; the Linux jobs are what tell
+  # us whether it holds across OS as well as architecture.
+  SMOKE_SHA256: 3b9dbd88b22d660fd408f22970d8ddb4d3e58de44b60c291d231a01253ccc7a8
+
+jobs:
+  test:
+    name: test suite (linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --release --locked --manifest-path rust/Cargo.toml
+
+  build:
+    name: cross-build all targets
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: >-
+            x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu,
+            x86_64-apple-darwin,aarch64-apple-darwin
+      - run: cargo install cargo-zigbuild --locked
+      - run: ./packaging/build-release.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tarballs
+          path: packaging/dist/*
+
+  run-linux:
+    name: run on glibc 2.17 (${{ matrix.arch }})
+    needs: build
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: x86_64,  runner: ubuntu-latest }
+          - { arch: aarch64, runner: ubuntu-24.04-arm }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: tarballs, path: dist }
+      # The job itself runs on a current runner and only the BINARY is put in
+      # front of the old glibc. Running the whole job in a manylinux2014
+      # container does not work: actions/checkout ships node20, which needs
+      # glibc 2.28, so the checkout would fail before the binary was reached.
+      - name: run the binary against glibc 2.17
+        run: |
+          set -eux
+          tar xzf dist/uLTRA-*-linux-${{ matrix.arch }}.tar.gz
+          img=quay.io/pypa/manylinux2014_${{ matrix.arch }}
+          docker run --rm -v "$PWD:/w" -w /w -e SMOKE_SHA256 "$img" bash -euxc '
+            ldd --version | head -1
+            # if anything we failed to vendor is missing, it fails here
+            ldd ./uLTRA || true
+            ./uLTRA --version
+            ./uLTRA pipeline --disable_mm2 \
+                test/SIRV_genes.fasta test/SIRV_genes_C_170612a.gtf test/reads.fa out
+            echo "$SMOKE_SHA256  out/reads.sam" | sha256sum -c -
+          '
+
+  run-macos:
+    name: run on macOS (${{ matrix.arch }}, quarantined)
+    needs: build
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: arm64,  runner: macos-14 }
+          - { arch: x86_64, runner: macos-13 }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: tarballs, path: dist }
+      - name: quarantine the tarball, as a browser download would
+        run: |
+          set -eux
+          f=$(ls dist/uLTRA-*-macos-${{ matrix.arch }}.tar.gz)
+          xattr -w com.apple.quarantine \
+            "0081;$(printf %x $(date +%s));Safari;$(uuidgen)" "$f"
+          xattr "$f"
+      - name: command-line tar must not propagate the quarantine
+        run: |
+          set -eux
+          tar xzf dist/uLTRA-*-macos-${{ matrix.arch }}.tar.gz
+          # Finding 42: if com.apple.quarantine appears here, Gatekeeper will
+          # SIGKILL the binary on every user's machine and --version below
+          # will exit 137.
+          ! xattr ./uLTRA | grep -q com.apple.quarantine
+          ./uLTRA --version
+          ./uLTRA pipeline --disable_mm2 \
+              test/SIRV_genes.fasta test/SIRV_genes_C_170612a.gtf test/reads.fa out
+          echo "$SMOKE_SHA256  out/reads.sam" | shasum -a 256 -c -

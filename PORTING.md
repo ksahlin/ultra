@@ -1602,7 +1602,95 @@ droso-20k, where the index is real rather than seven synthetic transcripts:
 
 4.5× on 8 threads, and again flat in memory.
 
-> Findings 42+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
+### Finding 42 — macOS kills a downloaded binary, and the archive format decides whether it is one
+
+Rule 1 of this port exists because a release binary fetched with `gh release download` passed and
+was broken for users: `gh` does not set `com.apple.quarantine`, a browser does. Testing that
+properly for the port's own binaries turned up something sharper than "it gets blocked".
+
+An unsigned, unnotarised Mach-O carrying `com.apple.quarantine` is not warned about and not offered
+a dialog. It is **SIGKILLed**:
+
+```
+$ xattr -w com.apple.quarantine "0081;…;Safari;…" ./uLTRA
+$ ./uLTRA --help
+Killed: 9
+$ echo $?
+137
+```
+
+The same bytes with the attribute cleared run normally. So the failure a user sees is an immediate
+`Killed: 9` with no indication of why, which is close to the worst possible first impression.
+
+**The archive format decides it.** The attribute is set on what is downloaded, and whether it
+reaches the binary depends on what unpacks it:
+
+| how it arrives | quarantined | runs |
+| --- | --- | --- |
+| `curl … \| tar xz` | no | **yes** |
+| `.tar.gz`, command-line `tar` | no | **yes** |
+| `.zip`, Archive Utility (`ditto -x -k`) | **yes** | **no — killed** |
+| bare binary from a browser | **yes** | **no — killed** |
+
+Each row measured, not reasoned about. Archive Utility is what double-clicking a `.zip` runs, and
+it propagates the attribute to every extracted file; `tar` does not.
+
+**So the release ships `.tar.gz` and never `.zip`**, which is a correctness requirement rather than
+a preference — shipping `.zip` would ship something that cannot start. `packaging/build-release.sh`
+produces only tarballs and says why at the top, so the next person does not helpfully "improve" it
+to zip.
+
+The real fix is notarisation, which needs a paid Apple Developer account. Until there is one,
+conda is the channel that works without the user needing to know any of this: conda extracts
+packages itself and never sets the attribute.
+
+**The general shape, and why it is the same mistake as rule 1.** The quarantine attribute is set by
+the *delivery mechanism*, not by the artefact. Every way of testing a binary that does not involve
+actually downloading it the way a user downloads it — building it locally, fetching it with a CLI,
+copying it off a share — strips the one property that makes it fail. The artefact is fine in every
+test and broken in the field, and no amount of testing the artefact finds it.
+
+### Stage 7 measured — distribution
+
+Four targets, cross-compiled from one macOS machine with `cargo-zigbuild` and a pip-installed zig,
+so the toolchain is `rustup` plus `python3` and nothing else:
+
+| target | size | needs |
+| --- | --- | --- |
+| linux x86_64 | 867 KB | `libc`, `libpthread`, `libdl` — **GLIBC_2.17** |
+| linux aarch64 | 776 KB | `libc`, `libpthread`, `libdl` — **GLIBC_2.17** |
+| macOS arm64 | 648 KB | `libSystem`, `libc++` |
+| macOS x86_64 | 750 KB | `libSystem`, `libc++` |
+
+glibc 2.17 is RHEL/CentOS 7, 2012. The floor is checked with `objdump -T` in the build script
+rather than inferred from the target triple, because a binary that quietly needs a newer glibc
+fails on the user's machine and nowhere else.
+
+**zlib moved from the system to the binary.** namfinder needs zlib, and the port linked the
+system one. That is invisible on a developer's Mac and fatal when cross-compiling — zig ships no
+zlib headers, so there was nothing to `#include`. `libz-sys` with `features = ["static"]` builds it
+from source and exports its include path, which fixed the cross build *and* removed a shared
+dependency from the shipped binary. The native build's `otool -L` went from listing `libz` to
+listing only `libc++` and `libSystem`.
+
+**`c_char` is signed on x86_64 and unsigned on aarch64-linux.** Six `as *const i8` casts in the
+parasail FFI built fine on three targets and failed on the fourth. Replaced with
+`std::os::raw::c_char`. Worth stating because it is invisible until the fourth target exists.
+
+**Output is byte-identical across architectures.** `reads.sam` has the same SHA-256 from the macOS
+arm64 and x86_64 binaries on the smoke corpus *and* on 10 000 real SIRV reads — which exercises
+parasail's SIMD kernels and every float path in the MAM scoring. That is what makes a single
+expected hash a legitimate cross-platform assertion rather than a per-platform golden, and
+`.github/workflows/build.yml` asserts exactly that hash on every target.
+
+**What is still unverified, stated plainly.** The Linux binaries have not been *executed*. This is
+a macOS machine with no Linux and no container runtime; they are cross-compiled and statically
+checked only. The CI workflow runs each of them inside a `manylinux2014` image — glibc exactly
+2.17, the floor being claimed — and asserts the hash, and it closes the gap the moment it runs. It
+has not run yet. Calling the Linux binaries "working" before then would be rule 1 again, one level
+up.
+
+> Findings 43+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
 > the most useful artifact of the project.
 
 ---
@@ -1857,7 +1945,11 @@ One shared immutable index, threads not processes (Finding 4). This is where goa
 that peak RSS is flat in `--t` rather than +337 MB per worker. **Done — see "Stage 6 measured"
 above and Finding 41.** Peak RSS is flat in `--t`; the remaining peak is namfinder's, not uLTRA's.
 
-### Stage 7 — distribution
+### Stage 7 — distribution — DONE (unpublished)
+
+**Done — see "Stage 7 measured" above and Finding 42.** Binaries, recipe and CI all exist;
+nothing is tagged or published, and two decisions are the author's: the missing licence file and
+whether this replaces `ultra_bioinformatics`.
 
 cargo-zigbuild to `x86_64-unknown-linux-gnu.2.17` and aarch64, plus a bioconda recipe. Under
 decision B the recipe's only runtime dependency is `minimap2`, which is present on all four subdirs

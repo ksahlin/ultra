@@ -4,7 +4,9 @@
 //! its `main` renamed out of the way) and `shim.cpp`. See
 //! `vendor/namfinder/VENDORING.md`.
 //!
-//! Requirements: a C++17 compiler and zlib. No CMake, and nothing on PATH at
+//! Requirements: a C++17 compiler. zlib is built from source by libz-sys and
+//! linked statically, so there is nothing to find on the host. No CMake, and
+//! nothing on PATH at
 //! run time -- which is the point, since a missing namfinder is what makes the
 //! reference uninstallable on osx-arm64.
 
@@ -33,6 +35,14 @@ fn main() {
         "aln", "nam", "randstrobes", "version", "io",
     ];
 
+    // zlib comes from libz-sys, built from source and linked statically.
+    // Using the system zlib instead would mean a shared-library dependency on
+    // every machine the binary lands on, and -- the reason this changed --
+    // there are no zlib headers to find at all when cross-compiling, so
+    // `cargo zigbuild` could not build namfinder for Linux.
+    let zlib_include = std::env::var("DEP_Z_INCLUDE")
+        .expect("libz-sys did not export its include path (DEP_Z_INCLUDE)");
+
     let mut build = cc::Build::new();
     build
         .cpp(true)
@@ -40,6 +50,7 @@ fn main() {
         .include(root.join("src"))
         .include(root.join("ext"))
         .include(&out)
+        .include(&zlib_include)
         .warnings(false);
     for f in cpp {
         build.file(root.join("src").join(format!("{f}.cpp")));
@@ -70,6 +81,6 @@ fn main() {
         .compile("edlib");
     println!("cargo:rerun-if-changed=vendor/edlib");
 
-    println!("cargo:rustc-link-lib=z");
+    // No `cargo:rustc-link-lib=z` here: libz-sys emits the static link itself.
     println!("cargo:rerun-if-changed=vendor/namfinder");
 }

@@ -30,3 +30,7 @@ uLTRA_batch_*.stderr
 venv/
 .idea/
 .vscode/
+
+# packaging
+packaging/.zigenv/
+packaging/dist/

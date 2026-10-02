@@ -20,6 +20,10 @@ mod indexio;
 mod mam;
 mod namfinder;
 mod prefilter;
+// Linked for its static zlib, which namfinder's C++ needs; no Rust API is
+// used from it, so the compiler would otherwise drop the dependency.
+use libz_sys as _;
+
 mod samfmt;
 mod mm2;
 mod reads;

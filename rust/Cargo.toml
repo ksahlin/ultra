@@ -16,6 +16,10 @@ path = "src/main.rs"
 [dependencies]
 flate2 = "1"
 libparasail-sys = "0.2"
+# Built from source and linked statically: it supplies the headers namfinder
+# needs (there are none to find when cross-compiling) and removes a shared
+# dependency from the shipped binary.
+libz-sys = { version = "1", features = ["static"], default-features = false }
 
 [profile.release]
 opt-level = 3
