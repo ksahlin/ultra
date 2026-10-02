@@ -27,6 +27,12 @@ setup(
     author='Kristoffer Sahlin',  # Optional
     author_email='ksahlin@math.su.se',  # Optional
 
+    # The licence README.md has always declared. The text is in LICENSE.txt,
+    # which had never actually been committed until it was added alongside
+    # this.
+    license='GPL-3.0-only',
+    license_files=['LICENSE.txt'],
+
     # Classifiers help users find your project by categorizing it.
     #
     # For a list of valid classifiers, see
@@ -38,12 +44,14 @@ setup(
         #   5 - Production/Stable
         'Development Status :: 3 - Alpha',
 
-        # Indicate who your project is intended for
-        #'Intended Audience :: Developers',
-        #'Topic :: Software Development :: Build Tools',
-
-        # Pick your license as you wish
-        #'License :: OSI Approved :: MIT License',
+        # setuptools >= 77 warns that this classifier is deprecated in favour
+        # of the SPDX `license=` expression above, and will eventually make it
+        # an error. It is kept because it is still what PyPI's licence filter
+        # and most SBOM and licence-scanning tools read, while
+        # `License-Expression` needs metadata 2.4 that older setuptools does
+        # not emit. When that warning becomes an error, deleting this one line
+        # is the whole fix.
+        'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
 
         # Specify the Python versions you support here. In particular, ensure
         # that you indicate whether you support Python 2, Python 3 or both.

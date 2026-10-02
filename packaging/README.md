@@ -81,7 +81,7 @@ attribute, both passed and both were broken for real users.
 
 ## Before the recipe can be submitted
 
-`packaging/conda/meta.yaml` is complete. Three things are still the author's
+`packaging/conda/meta.yaml` is complete. Two things are still the author's
 to decide or do:
 
 1. **Whether this replaces `ultra_bioinformatics` or becomes a new package.**
@@ -91,10 +91,12 @@ to decide or do:
    subdirs.
 2. **The `source.sha256`** is a row of zeros until there is a release tarball
    to hash. A placeholder that looked plausible would be worse.
-3. **`setup.py` still has no licence metadata** — the classifier is the
-   commented-out cookiecutter line, `'License :: OSI Approved :: MIT
-   License'`. It affects the PyPI package, not this recipe, but it is the
-   last place the project does not say GPL-3.0.
+3. ~~`setup.py` licence metadata~~ — done. `license='GPL-3.0-only'`,
+   `license_files=['LICENSE.txt']` and the GPLv3 classifier. Verified by
+   building the real sdist on setuptools 58 and 84: both emit
+   `License: GPL-3.0-only` and ship `LICENSE.txt` intact. setuptools >= 77
+   deprecates the classifier in favour of the SPDX expression; it is kept
+   deliberately, with the reason and the one-line fix in a comment there.
 
 `LICENSE.txt` is the verbatim GPL-3.0 text from gnu.org, 35 149 bytes,
 sha256 `3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986`.
