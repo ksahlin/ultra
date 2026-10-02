@@ -1285,6 +1285,14 @@ was taken over 1 000 reads, where the count is genuinely zero. It only appears a
 counter in `rust/tests/sam_oracle.rs` that reports how many records carry a multi-transcript `XA`
 exists because of this, so the next corpus cannot hide it the same way.
 
+**The merge amplifies it.** `output_final_alignments` keeps minimap2's record unless uLTRA's scores
+*strictly* higher, which makes the choice of aligner a threshold on a score. A tie-order divergence
+that moves uLTRA's score by a single point can therefore change the whole record, not just its
+CIGAR. Measured on Drosophila: **45 records** come from a different aligner on each side, 44 of them
+reference-uLTRA against port-minimap2, with margins of 1 to 27 points (e.g. uLTRA 421 vs minimap2
+419 on one side, uLTRA ≤ 419 on the other). The underlying CIGAR difference is small; the merge
+turns it into a different alignment entirely.
+
 ### Finding 34 — QUAL is reversed relative to SEQ for reverse-strand reads
 
 `prefilter_genomic_reads.filter_reads_to_align` writes the reads that survive the genomic filter:
@@ -1315,6 +1323,17 @@ by phred — gets them backwards for those reads. The fix is one `[::-1]`.
 
 The port writes the quality in the same orientation as the sequence. **That is a divergence** and it
 changes `reads.sam`, so it is listed in `bench/stage_diffs.tsv` rather than applied silently.
+
+**It compounds with polyA compression.** `remove_read_polyA_ends` zips the sequence with the
+quality and collapses a run of more than 8 A/T in the last 100 bases down to 5, dropping characters
+from *both* strings at the same indices. The reference hands it a mismatched pair -- sequence
+restored to the read's orientation, quality still in the aligned one -- so the indices are chosen by
+a sequence the quality does not correspond to, and the quality is not merely reversed but scrambled
+around the trim site.
+
+Measured on sirv-10k through the minimap2 path: of the 759 records whose QUAL differs, **746 are an
+exact reversal** of the port's and **13 are not**. The polyA branch fires on **13 of those 13** and
+on **0 of the other 746** -- a clean separation, which is what identifies the mechanism.
 
 ### Finding 35 — `reads_after_genomic_filtering.fastq` is not valid FASTQ
 
@@ -1416,7 +1435,98 @@ The port writes the read as it was read from the input, forward strand, always. 
 divergence from the goldens on those 2 records and a deliberate one**: reproducing it would mean
 reproducing which strand the search abandoned last.
 
-> Findings 39+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
+### Finding 39 — REFERENCE DEFECT: reads minimap2 cannot align are dropped from the output
+
+`filter_reads_to_align` splits minimap2's SAM three ways. A read minimap2 placed outside the indexed
+regions goes to `unindexed.sam`; one it placed inside goes to `indexed.sam`; and one it could **not
+place at all** (`flag == 4`) goes to neither — it is written only to
+`reads_after_genomic_filtering.fastq`, so uLTRA does align it.
+
+`output_final_alignments` then builds the final file by streaming `indexed.sam` and appending
+`unindexed.sam`. There is no slot for a read in neither, so whatever uLTRA produced for it is
+**discarded**. The read vanishes from `reads.sam` entirely.
+
+Measured on sirv-10k:
+
+```
+reads handed to uLTRA : 10 000
+records in reads.sam  :  9 996
+missing               : read_21_2813, read_31_5574, read_51_1715, read_55_2651
+                        — all four exactly minimap2's flag-4 reads
+```
+
+Of the four, **three are reads uLTRA aligns and minimap2 could not** — SIRV3:4604, SIRV5:1006,
+SIRV4:1001 — which is precisely the case the tool exists for. The fourth uLTRA also fails to align.
+
+**SIRV badly understates it.** SIRV is seven synthetic transcripts that minimap2 places almost
+perfectly, so only four reads fall through. On Drosophila, 20 000 real reads against the BDGP6.46
+annotation:
+
+| | reference | port |
+| --- | --- | --- |
+| reads in | 20 000 | 20 000 |
+| reads in `reads.sam` | **18 310** | **20 000** |
+| dropped | **1 690 (8.5 %)** | 0 |
+
+So on a realistic corpus the reference silently discards one read in twelve — and every one of them
+is a read minimap2 could not place, which is the population uLTRA is most likely to be useful on.
+This is the strongest argument for taking the divergence rather than reproducing it.
+
+**The author wrote the handling for this and it cannot fire.** `output_final_alignments` carries a
+branch and a counter for exactly this case:
+
+```python
+if read.is_unmapped:
+    if read.query_name in ultra_scores:   # uLTRA aligned the read
+        ultra_better.add(read.query_name)
+        replaced_unaligned_cntr += 1
+```
+
+The counter prints `0` on every run, because no unmapped record ever reaches `indexed.sam`. Reviving
+it the obvious way — writing flag-4 records into `indexed.sam` — does not work either: the next
+statement calls `score(read.cigartuples)` on an unmapped record, and `score(None)` raises
+`TypeError: 'NoneType' object is not iterable`. So the intent is unambiguous and the code expressing
+it is both dead and broken.
+
+**Decision: the port implements the intent.** A read with no minimap2 record keeps uLTRA's
+alignment, appended after the merged records, and the count is reported:
+
+```
+4 reads had no minimap2 record at all; uLTRA's alignment is kept (PORTING.md Finding 39).
+```
+
+This changes the *record count* of the primary output, which is a larger divergence than any other
+taken so far — hence the explicit line on stdout and the row in `bench/stage_diffs.tsv`. Reverting
+it is one `if`.
+
+### Finding 40 — pysam rewrites float tags, so copying a record verbatim is not a copy
+
+The port writes `indexed.sam`, `unindexed.sam` and the merged `reads.sam` by passing minimap2's
+record text straight through. The reference passes it through *pysam*, which parses every record and
+re-serialises it — and for a float tag that is not the identity:
+
+```
+minimap2 writes   de:f:0.0450
+pysam writes      de:f:0.045
+```
+
+Verbatim copying therefore diverges wherever minimap2's spelling is not already canonical:
+**704 of 10 000 records** on sirv-10k, and 111 of the 1 069 distinct `de` values in that run.
+
+pysam's spelling is C's `%g` at the default precision of 6. Checked both ways rather than assumed:
+`%g` reproduces pysam on all 1 069 distinct values round-tripped through `pysam.AlignmentFile`, and
+`%g` of minimap2's raw text reproduces the reference's output on all 704 differing records.
+
+`rust/src/samfmt.rs` implements it and `rust/tests/format_g.rs` checks it against the **platform's
+own `printf`** over 4 024 values rather than a table of expected strings, so the imitation cannot
+drift from the thing imitated. Only `f`-typed tags are touched; every other field is passed through,
+verified field by field across 10 000 round-tripped records.
+
+**Worth generalising.** The reference's I/O goes through a library, and the library normalises. A
+port that writes the bytes itself has to reproduce the *library's* output, not the upstream tool's,
+and the difference is invisible until something downstream is compared byte for byte.
+
+> Findings 41+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
 > the most useful artifact of the project.
 
 ---

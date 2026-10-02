@@ -20,6 +20,8 @@ mod indexio;
 mod mam;
 mod namfinder;
 mod prefilter;
+mod samfmt;
+mod mm2;
 mod reads;
 mod samout;
 mod text;
@@ -333,6 +335,29 @@ fn run_align(args: &cli::Args) -> ExitCode {
     };
     let out = std::path::PathBuf::from(&args.outfolder);
 
+    // 0. the genomic prefilter. minimap2 is run over the whole genome and the
+    //    reads it places outside uLTRA's indexed regions are kept as minimap2
+    //    aligned them, never reaching uLTRA's aligner.
+    let mut reads_src = args.reads.clone();
+    let mut split: Option<(std::path::PathBuf, std::path::PathBuf)> = None;
+    if !args.disable_mm2 {
+        println!("Filtering reads aligned to unindexed regions with minimap2 ");
+        let keys: Vec<index::Key> = ix.ref_part_sequences.keys().cloned().collect();
+        let regions = prefilter::IndexedRegions::from_parts(&keys, &ix.id_to_chr);
+        let sam = match mm2::run_minimap2(
+            &args.reference, &args.reads, &out, args.nr_cores, args.mm2_ksize) {
+            Ok(p) => p,
+            Err(e) => { eprintln!("uLTRA: {e}"); return ExitCode::from(1); }
+        };
+        let o = match mm2::filter_reads_to_align(&sam, &regions, &out, args.genomic_frac) {
+            Ok(o) => o,
+            Err(e) => { eprintln!("uLTRA: {e}"); return ExitCode::from(1); }
+        };
+        println!("Done filtering. Reads filtered:{}", o.nr_unindexed);
+        reads_src = o.reads_path.to_string_lossy().into_owned();
+        split = Some((o.indexed_path, o.unindexed_path));
+    }
+
     // 1. refs_sequences.fa -- the part and flank sequences namfinder indexes,
     //    named `chr^start^stop`. The reference writes these in dict order; the
     //    port writes them sorted (PORTING.md Finding 27 established that the
@@ -358,9 +383,9 @@ fn run_align(args: &cli::Args) -> ExitCode {
     //    seeding. Written uncompressed; namfinder reads either.
     let reads_tmp = out.join("reads_tmp.fa");
     let recs = {
-        let f = match std::fs::File::open(&args.reads) {
+        let f = match std::fs::File::open(&reads_src) {
             Ok(f) => f,
-            Err(e) => { eprintln!("uLTRA: cannot read {}: {e}", args.reads); return ExitCode::from(1); }
+            Err(e) => { eprintln!("uLTRA: cannot read {reads_src}: {e}"); return ExitCode::from(1); }
         };
         match reads::readfq(std::io::BufReader::new(f), false) {
             Ok(r) => r,
@@ -428,6 +453,11 @@ fn run_align(args: &cli::Args) -> ExitCode {
     for name in &ix.ref_order {
         let _ = writeln!(w, "@SQ\tSN:{}\tLN:{}", name, ix.refs_lengths.get(name).copied().unwrap_or(0));
     }
+    let mut header: Vec<String> = Vec::new();
+    for name in &ix.ref_order {
+        header.push(format!("@SQ\tSN:{}\tLN:{}", name,
+            ix.refs_lengths.get(name).copied().unwrap_or(0)));
+    }
     let empty: Vec<String> = Vec::new();
     for r in &recs {
         let (hits, hits_rc) = match by_name.get(r.name.as_str()) {
@@ -439,6 +469,41 @@ fn run_align(args: &cli::Args) -> ExitCode {
         }
     }
     let _ = w.flush();
+    drop(w);
+
+    // 5. merge uLTRA's alignments with minimap2's, keeping whichever scored
+    //    better per read.
+    if let Some((indexed, unindexed)) = split {
+        match mm2::output_final_alignments(&sam_path, &indexed, &unindexed, &header) {
+            Ok(st) => {
+                println!("Total mm2's primary alignments replaced with uLTRA: {}", st.ultra_better);
+                println!("{} primary alignments had equal score with alternative aligner.", st.equal_score);
+                println!("{} primary alignments had slightly better score with alternative aligner.", st.slightly_worse);
+                println!("{} primary alignments had significantly better score with alternative aligner.", st.worse);
+                println!("{} reads were unmapped with ultra but not by alternative aligner.", st.ultra_unmapped);
+                println!("{} reads were not attempted to be aligned with ultra (unindexed regions), instead alternative aligner was used.", st.not_attempted);
+                if st.mm2_absent > 0 {
+                    println!("{} reads had no minimap2 record at all; uLTRA's alignments are kept rather than dropped (PORTING.md Finding 39).", st.mm2_absent);
+                }
+            }
+            Err(e) => { eprintln!("uLTRA: merging alignments failed: {e}"); return ExitCode::from(1); }
+        }
+    }
+
+    if !args.keep_temporary_files {
+        let _ = std::fs::remove_file(out.join("refs_sequences.fa"));
+        if !args.disable_mm2 {
+            for f in ["minimap2.sam", "minimap2_errors.1",
+                      "reads_after_genomic_filtering.fastq", "indexed.sam", "unindexed.sam"] {
+                let _ = std::fs::remove_file(out.join(f));
+            }
+        }
+        // The reference also lists `reads_tmp.fa`, but it writes
+        // `reads_tmp.fa.gz`, so that deletion is a no-op and the file
+        // survives. The port writes the uncompressed name and keeps it, to
+        // leave the same file present; reconciling the .gz naming is still
+        // outstanding (Part 5).
+    }
     println!("Done.");
     ExitCode::from(0)
 }
