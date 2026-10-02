@@ -61,11 +61,6 @@ about:
   home: https://github.com/ksahlin/ultra
   license: GPL-3.0-only
   license_family: GPL3
-  # BLOCKER: this file does not exist. README.md declares "GPL v3.0" and links
-  # to LICENCE.txt on master, but no licence file has ever been committed --
-  # the link is a 404. bioconda will not accept a recipe without license_file,
-  # so the repository needs the GPL-3.0 text added before this can be
-  # submitted. Choosing and adding it is the author's call, not the port's.
   license_file: LICENSE.txt
   summary: Splice alignment of long transcriptomic reads to a genome, guided by exon annotations
   dev_url: https://github.com/ksahlin/ultra

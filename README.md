@@ -182,7 +182,7 @@ when using uLTRA. **Please also cite** [minimap2](https://github.com/lh3/minimap
 LICENCE
 ----------------
 
-GPL v3.0, see [LICENSE.txt](https://github.com/ksahlin/uLTRA/blob/master/LICENCE.txt).
+GPL v3.0, see [LICENSE.txt](LICENSE.txt).
 
 
 

@@ -81,15 +81,22 @@ attribute, both passed and both were broken for real users.
 
 ## Before the recipe can be submitted
 
-`packaging/conda/meta.yaml` is complete except for two things that are the
-author's to decide:
+`packaging/conda/meta.yaml` is complete. Three things are still the author's
+to decide or do:
 
-1. **There is no licence file in the repository.** `README.md` says "GPL
-   v3.0, see LICENCE.txt" and links to it on `master`; that link is a 404 and
-   no such file has ever been committed. bioconda requires `license_file`, so
-   the GPL-3.0 text has to be added before submission.
-2. **Whether this replaces `ultra_bioinformatics` or becomes a new package.**
+1. **Whether this replaces `ultra_bioinformatics` or becomes a new package.**
    The existing one is the Python tool, with parasail-python, pysam, dill,
    gffutils and intervaltree at runtime and no osx-arm64 build at all. This
    recipe's only runtime dependency is minimap2 and it builds on all four
    subdirs.
+2. **The `source.sha256`** is a row of zeros until there is a release tarball
+   to hash. A placeholder that looked plausible would be worse.
+3. **`setup.py` still has no licence metadata** — the classifier is the
+   commented-out cookiecutter line, `'License :: OSI Approved :: MIT
+   License'`. It affects the PyPI package, not this recipe, but it is the
+   last place the project does not say GPL-3.0.
+
+`LICENSE.txt` is the verbatim GPL-3.0 text from gnu.org, 35 149 bytes,
+sha256 `3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986`.
+Note that copies bundled with older GNU packages are 35 147 bytes and differ
+only in one moved FSF URL; this is the current revision.

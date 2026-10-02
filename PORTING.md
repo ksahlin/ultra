@@ -1948,8 +1948,10 @@ above and Finding 41.** Peak RSS is flat in `--t`; the remaining peak is namfind
 ### Stage 7 — distribution — DONE (unpublished)
 
 **Done — see "Stage 7 measured" above and Finding 42.** Binaries, recipe and CI all exist;
-nothing is tagged or published, and two decisions are the author's: the missing licence file and
-whether this replaces `ultra_bioinformatics`.
+nothing is tagged or published. `LICENSE.txt` was missing entirely and is now the verbatim GPL-3.0
+text from gnu.org, which was the one hard blocker on submitting the recipe — bioconda requires
+`license_file`. What remains is the author's call: whether this replaces `ultra_bioinformatics` or
+becomes a new package, and the `source.sha256`, which needs a release tarball to exist first.
 
 cargo-zigbuild to `x86_64-unknown-linux-gnu.2.17` and aarch64, plus a bioconda recipe. Under
 decision B the recipe's only runtime dependency is `minimap2`, which is present on all four subdirs
