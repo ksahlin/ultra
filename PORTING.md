@@ -1734,12 +1734,57 @@ The largest single items, all historical and none present at HEAD:
 | 5 × 93.1 MB | `data/1M_NIC.fa.bz200` … `bz204` |
 
 `data/` at HEAD is only 4.0 MB / 26 files, **no code references it**, and the README links to exactly
-one part of it — `data/images`, for the small-exon examples. So the reviewed removal list is
-"everything ever under `data/` except the images at HEAD", and the repository goes from 2.1 GB to
-roughly 17 MB.
+one part of it — `data/images`, for the small-exon examples. So the removal list is "everything ever
+under `data/` except what the branch tips hold".
 
-The rewrite is a force-push. It is reviewed on its own, on its own branch, and it is **not** performed
-without an explicit go-ahead.
+### The rewrite, performed and verified — not pushed
+
+`packaging/history-rewrite.sh` does it on a mirror clone and never touches the repository it runs
+from. Re-measured rather than taken from the table above: 204 blobs, **2 213.6 MB**, every one of
+them a blob that has only ever lived under `data/` and is in no branch tip.
+
+```
+pack: 2.04 GiB  ->  6.68 MiB          313x smaller, 99.68 % removed
+fresh clone of develop: 18 MB total   (6.9 MB .git + 11 MB working tree)
+```
+
+Verified, each check run by the script itself so it cannot rot:
+
+| check | result |
+| --- | --- |
+| `master` HEAD tree | **identical**, `413fb8120f67` |
+| `develop` HEAD tree | **identical**, `a48aa02e682e` |
+| commits on `master` | **698 → 698** |
+| commits on `develop` | **736 → 736** |
+| author, email, author date, commit date, subject | **identical for every commit, in order** |
+| branches and tags | all 5 + 5 present |
+| stripped blobs surviving | **0 of 204** |
+| non-data tree of every tag | **identical** |
+| `cargo test` from a fresh clone | **29 passed** |
+| end-to-end `uLTRA pipeline` from a fresh clone | `reads.sam` matches the expected hash |
+
+**Tag `v0.0.1` is the one thing that loses content**: its tree carried 34 data files totalling
+**1 050.6 MB**, nearly half the repository. Its non-data tree is unchanged, and the other four tags
+lose nothing at all, because their `data/` files are the same blobs the branch tips still hold.
+
+**Two things the first attempt got wrong, both caught by measuring rather than by reading.**
+
+*Keeping everything reachable from any ref tip halves the saving.* That rule sounds obviously safe
+and strips only 1 163.0 MB instead of 2 213.6 MB — because `v0.0.1` is a ref tip holding 1 050.6 MB.
+The keep set has to be **branch** tips, with tags treated as history like everything else. Nothing
+about this is visible without listing `data/` size per ref, which is now a step in the script.
+
+*`git filter-repo` prunes commits that become empty, by default.* The first run silently dropped
+**78 commits** from each branch — every one a pure data dump, with messages like `+`, `new res` and
+`added ens data`. They carry almost nothing, so pruning is defensible, but it is a content decision
+and the default made it invisibly. `--prune-empty never` keeps them; it costs **0.02 MiB** and makes
+the rewrite a pure blob removal, which is far easier to review: the commit count is a check that
+either passes or does not.
+
+**What the rewrite does not do.** It does not destroy anything on GitHub. The old objects stay
+reachable by SHA until GitHub's own garbage collection runs, so this is a size measure, not a way to
+unpublish something. It also breaks every existing clone, which is why it is a force-push that waits
+for an explicit go-ahead at the time.
 
 ---
 
