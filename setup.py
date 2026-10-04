@@ -38,11 +38,15 @@ setup(
     # For a list of valid classifiers, see
     # https://pypi.python.org/pypi?%3Aaction=list_classifiers
     classifiers=[  # Optional
-        # How mature is this project? Common values are
-        #   3 - Alpha
-        #   4 - Beta
-        #   5 - Production/Stable
-        'Development Status :: 3 - Alpha',
+        # Was '3 - Alpha', which it has not been for years. 14 releases on
+        # PyPI between 2020-08 and 2023-05, 698 commits since 2019, peer
+        # reviewed in Bioinformatics (Sahlin & Makinen 2021,
+        # doi:10.1093/bioinformatics/btab540) with a citation request in the
+        # README, and packaged by third parties into bioconda, biocontainers
+        # and a Galaxy singularity image. People run it on real data and cite
+        # it in papers. The 0.x version number is the usual argument for
+        # Beta, but this classifier describes maturity of use, not semver.
+        'Development Status :: 5 - Production/Stable',
 
         # setuptools >= 77 warns that this classifier is deprecated in favour
         # of the SPDX `license=` expression above, and will eventually make it
