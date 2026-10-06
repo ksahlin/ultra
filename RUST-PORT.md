@@ -48,46 +48,71 @@ uLTRA: on sirv-10k namfinder alone accounts for 1042 MB of the 1078 MB total.
 How it was verified
 -------------------
 
-The Python implementation is the specification, and byte-identical output was the acceptance
-criterion. `reads.sam` is compared read by read against the Python implementation on real corpora,
-and every difference is accounted for by one of the documented divergences below — not tolerated as
-noise. Supporting this there are oracle tests that replay recorded Python function calls through
-the Rust code: 1866 edlib alignments, 2182 prefilter decisions, 2081 CIGAR merges, 900 SAM records
-compared byte for byte, and others.
+The Python implementation is the specification and byte-identical output is the acceptance
+criterion. `reads.sam` is compared **read by read** against the Python implementation, and every
+difference has to fall into one of the documented classes below — none is tolerated as noise.
+Behind that sit oracle tests replaying recorded Python calls through the Rust code: 1866 edlib
+alignments, 2182 prefilter decisions, 2081 CIGAR merges, 900 SAM records byte for byte, and others.
 
-On 10 000 real SIRV reads with `--disable_mm2`, **9990 of 10 000 records are byte-identical**, and
-all 10 that differ fall into the classes below.
+| corpus | mode | reference | port | identical | differ |
+| --- | --- | --- | --- | --- | --- |
+| sirv-100k | `--disable_mm2` | 100 000 | 100 000 | **99 879 (99.88 %)** | 121 |
+| sirv-100k | with minimap2 | 99 934 | 100 000 | 92 020 (92.08 %) | 7 914 |
+| droso-20k | `--disable_mm2` | 20 000 | 20 000 | 17 208 (86.04 %) | 2 792 |
+| droso-20k | with minimap2 | 18 310 | 20 000 | 16 927 (92.45 %) | 1 383 |
+
+**Every single difference in all four runs is accounted for by a documented cause** — checked by
+decomposing each differing record into causes rather than bucketing it, so that a record differing
+for two known reasons at once is not miscounted as unexplained.
+
+Two things the table shows that a smaller corpus does not. The minimap2 runs are dominated by the
+QUAL-orientation fix, which is why they look *less* identical than the `--disable_mm2` ones: on
+sirv-100k, 7 905 of the 7 914 differences are that one fix. And the port emits more reads than the
+reference in both minimap2 runs — 66 and 1 690 — which is the dropped-read defect below.
 
 How the output differs
 ----------------------
 
 **Reads that minimap2 cannot place are no longer dropped.** This is the one that can change a
 result. `filter_reads_to_align` writes such a read to neither `indexed.sam` nor `unindexed.sam`, so
-the merge that builds the final file has no slot for it and whatever uLTRA aligned is discarded.
-The read vanishes. Measured: **4 of 10 000** on SIRV, and **1690 of 20 000 — 8.5% — on
-Drosophila**, every one of them a read minimap2 could not place, which is the population uLTRA is
-most likely to help with. The Rust version keeps uLTRA's alignment and prints the count. The branch
-handling this case exists in the Python source and can never run; see PORTING.md *Finding 39*.
+the merge that builds the final file has no slot for it, and `uLTRA:309` then moves that merged file
+*over* uLTRA's own SAM — so the alignments are computed, written, and deleted. Measured: **1 690 of
+20 000 (8.5 %) on Drosophila**, of which **1 283 had a real uLTRA alignment** and 407 were
+unalignable; and 66 of 100 000 on SIRV, 57 of them aligned. The port keeps uLTRA's alignment where
+there is one and uLTRA's `FLAG 4` record where there is not, so **every input read appears in the
+output exactly once**. The branch handling this case exists in the Python source and can never run
+(*Finding 39*).
 
-**Unaligned records have a stable sequence.** For a read nothing aligned, the Python implementation
-writes whichever orientation the strand search happened to examine last, so SEQ is sometimes the
-read and sometimes its reverse complement, with the FLAG giving no indication which. The Rust
-version always writes the read as it was given. 2 of 10 000 on SIRV (*Finding 38*).
+**Mapped records carry the strand their FLAG says they do.** `align.py:550` writes every alignment
+using the enclosing loop's `read_seq`, so when the chosen alignment is not the last orientation
+examined, SEQ is the reverse complement of what its own FLAG and CIGAR describe. Checked against
+the genome: the reference's SEQ scores **26.0 % median identity** to the locus it claims — what
+unrelated sequence scores — against the port's **97.1 %**, and the port is the better match in
+**181 of 181** records checked. 167 of 20 000 on Drosophila without minimap2 (*Finding 43*). This
+matters more than it sounds: a `FLAG 4` record warns you not to trust its orientation, a mapped one
+does not, so anything downstream reading sequence rather than re-deriving it gets wrong bases
+silently.
 
 **QUAL matches SEQ for reverse-strand reads.** The Python implementation restores SEQ to the read's
-orientation but leaves QUAL in the aligned one, so the two are reversed relative to each other.
-This only arises on the minimap2 path. 759 of 10 000 records on SIRV (*Finding 34*).
+orientation but leaves QUAL in the aligned one. Only on the minimap2 path; 7 905 of 100 000 on SIRV
+(*Finding 34*).
 
-**`XA:Z:` transcript lists are sorted.** When a read's splices match several transcripts, the
-Python implementation joins a `set` of transcript ids, so the order depends on `PYTHONHASHSEED` and
-is not reproducible between runs of the Python tool itself. The Rust version sorts. 4 of 10 000
-(*Finding 33*, fifth site).
+**Unaligned records have a stable sequence** — always the read as given, rather than whichever
+orientation the strand search examined last (*Finding 38*).
 
-**A few alignments differ where the Python implementation's choice was arbitrary.** Segments tied
-on start coordinate come out in CPython's `set` iteration order, which decides which is aligned
-first and reaches the CIGAR. The Rust version uses a total order. 4 of 10 000 on SIRV, 0 of 2000 on
-Drosophila. Reproducing it would mean reimplementing CPython's `setobject.c` probe sequence
+**`XA:Z:` transcript lists are sorted.** The Python implementation joins a `set` of transcript ids,
+so its order depends on `PYTHONHASHSEED` and is not reproducible between runs of the Python tool
+itself (*Finding 33*).
+
+**A few alignments differ where the Python implementation's choice was arbitrary**, because segments
+tied on start coordinate come out in CPython's `set` iteration order. The port uses a total order
 (*Finding 33*).
+
+**The cost of that last one, stated plainly.** On Drosophila without minimap2, **21 reads of 20 000
+(0.105 %) that the reference aligns are reported unaligned by the port**, and 2 go the other way.
+It is not a seeding failure — at `--alignment_threshold 0` the port aligns 20 of the 21 — but a
+marginally lower coverage crossing a threshold. SIRV shows zero in both directions at 10 000 and
+100 000 reads, so the small corpus cannot see it (*Finding 44*).
 
 Reproducing the comparison
 --------------------------

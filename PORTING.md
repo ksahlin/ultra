@@ -1690,7 +1690,82 @@ checked only. The CI workflow runs each of them inside a `manylinux2014` image �
 has not run yet. Calling the Linux binaries "working" before then would be rule 1 again, one level
 up.
 
-> Findings 43+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
+### Finding 43 — REFERENCE DEFECT: a *mapped* record can carry the wrong strand's SEQ
+
+*Finding 38* found the unaligned record being written from a leaked loop variable. The same variable
+is used for the aligned ones, and that is much worse.
+
+`align.py:550` writes every alignment with
+
+```python
+sam_aln_entry = sam_output.main(read_acc, read_seq, read_qual, id_to_chr[chr_id], ...)
+```
+
+`read_seq` is the enclosing loop's variable, not anything derived from the alignment being written.
+The tuple unpacked one line earlier carries a per-alignment `is_rc`, but the *sequence* is whatever
+the strand search last assigned. When the chosen alignment is not the last orientation examined, the
+SAM record gets the reverse complement of the sequence its own FLAG and CIGAR describe.
+
+Measured on Drosophila, 20 000 reads:
+
+| | `--disable_mm2` | with minimap2 |
+| --- | --- | --- |
+| mapped records whose SEQ differs | **167** (0.84 %) | **14** |
+| SEQ is an exact reverse complement | 167 of 167 | 14 of 14 |
+| CIGAR identical on both sides | 167 of 167 | 14 of 14 |
+
+Identical FLAG, identical CIGAR, reverse-complemented SEQ — so one side must disagree with the
+genome. Aligning both against the actual `fruitfly.fa` over the full CIGAR settles which:
+
+```
+median identity to the genome    reference 26.0 %    port 97.1 %
+port's SEQ is the better match in 167 of 167;  reference's in 0
+```
+
+26 % is what two unrelated sequences score. **The reference's SEQ does not match the locus it says
+the read aligns to**, in every one of the 181 records checked across both modes.
+
+This is worse than *Finding 38* and worth separating from it. An unaligned record carries `FLAG 4`,
+so a consumer knows not to trust its orientation. A *mapped* record is taken at face value —
+anything downstream that reads sequence rather than re-deriving it from the reference (variant
+calling, consensus, re-alignment, polishing) silently gets the wrong bases for those reads. Nothing
+in the record indicates it.
+
+The port writes the read in the orientation its own FLAG describes.
+
+### Finding 44 — DIVERGENCE COST: Finding 33 can push a marginal read below the acceptance threshold
+
+The first measured case where the port reports **fewer** alignments than the reference.
+
+On Drosophila with `--disable_mm2`, **21 reads of 20 000 (0.105 %)** are aligned by the reference and
+reported unaligned by the port; **2** go the other way. On SIRV, at 10 000 and 100 000 reads, in both
+modes, the count is **zero** either way.
+
+It is not a seeding failure. Re-running just those 21 reads with `--alignment_threshold 0` aligns
+**20 of them**, and with `--alignment_threshold 1` none:
+
+```
+threshold 0: 20 aligned, 1 unaligned (of 21)
+threshold 1:  0 aligned, 21 unaligned
+```
+
+So the port finds these alignments; they score marginally below the default coverage threshold of
+0.5 where the reference's score marginally above. 17 of the 21 are `NO_SPLICE` with visibly noisy
+CIGARs — borderline alignments either way.
+
+The cause is *Finding 33* propagating: a different choice among segments tied on start coordinate
+gives a slightly different chain, slightly different coverage, and the threshold turns a fractional
+difference into a binary one. The same mechanism produces the 2 reads where the reference emits a
+secondary alignment with `MAPQ 0` and the port emits one primary with `MAPQ 60` — a second
+equal-scoring alignment that one side finds and the other does not.
+
+**This is a cost, not a bug, and it is the honest price of Finding 33.** It is recorded here because
+"the port is faster and strictly better" would be false: on a real annotation it loses one alignment
+in ten thousand, and SIRV — seven synthetic transcripts — is blind to it entirely. That is also why
+it took a Drosophila run without minimap2 to find: with minimap2 enabled these reads get an
+alignment from minimap2 instead, and the difference never reaches `reads.sam`.
+
+> Findings 45+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
 > the most useful artifact of the project.
 
 ---

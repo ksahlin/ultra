@@ -8,25 +8,17 @@ of exon annotations. It is particularly accurate when aligning to small exons
 [paper](https://doi.org/10.1093/bioinformatics/btab540), or this
 [YouTube video](https://www.youtube.com/watch?v=M7cK80kXXMU).
 
-## uLTRA is now written in Rust
+## v0.2.0 — uLTRA is now written in Rust
 
-Same command line, so existing pipelines do not need editing. It is a **single binary** —
-namfinder, edlib and zlib are compiled in, so the only runtime dependency is minimap2, and the
-Python stack (parasail-python, pysam, dill, gffutils, intervaltree) is gone. It also installs on
-Apple Silicon, where the conda recipe cannot be solved at all because namfinder has no osx-arm64
-build — previously the only way in was compiling namfinder yourself.
+Same command line, so existing pipelines do not need editing. A **single binary** with minimap2 as
+its only runtime dependency, which also makes it installable on Apple Silicon. About **2x faster**,
+and peak memory no longer grows with `--t`. **Output differs**: reads minimap2 cannot place are no
+longer dropped from `reads.sam` — the Python implementation discarded 8.5 % of reads on a real
+Drosophila dataset, 1283 of them already aligned by uLTRA.
 
-About **2x faster**, and **peak memory no longer grows with `--t`** — the Python implementation
-starts one process per core and each loads its own copy of the index.
-
-**Output differs in a few documented ways, and one of them matters**: reads that minimap2 cannot
-place are no longer dropped from `reads.sam`. The Python implementation discards them — 8.5% of
-reads on a real Drosophila dataset — even when uLTRA aligned them. Numbers, the other differences,
-and how the port was verified against the Python implementation read by read:
-**[RUST-PORT.md](RUST-PORT.md)**.
-
-The Python implementation is still here and is the reference the Rust version is checked against;
-see [INSTALL-python.md](INSTALL-python.md).
+The Python implementation is still here, kept as the reference the Rust version is verified
+against. Numbers, the other output differences, and how it was checked read by read:
+**[RUST-PORT.md](RUST-PORT.md)**. Its installation: **[INSTALL-python.md](INSTALL-python.md)**.
 
 Install
 -------
