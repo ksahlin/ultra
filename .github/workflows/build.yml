@@ -83,15 +83,18 @@ jobs:
           '
 
   run-macos:
-    name: run on macOS (${{ matrix.arch }}, quarantined)
+    name: run on macOS (quarantined)
     needs: build
-    runs-on: ${{ matrix.runner }}
+    # Both binaries run here. There is no x86_64 macOS runner any more --
+    # macos-13 was the last Intel image and a job targeting it simply never
+    # gets a runner, which is not a failure, it is a queue that never moves.
+    # The arm64 runners have Rosetta, so the x86_64 binary is exercised
+    # through that instead, which is how it is checked locally too.
+    runs-on: macos-14
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { arch: arm64,  runner: macos-14 }
-          - { arch: x86_64, runner: macos-13 }
+        arch: [arm64, x86_64]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
