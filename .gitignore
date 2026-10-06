@@ -34,3 +34,4 @@ venv/
 # packaging
 packaging/.zigenv/
 packaging/dist/
+packaging/.rewrite/
