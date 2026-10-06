@@ -1,189 +1,111 @@
 uLTRA
 ===========
-[![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/ultra_bioinformatics/README.html) [![Build Status](https://travis-ci.org/ksahlin/uLTRA.svg?branch=master)](https://travis-ci.org/ksahlin/uLTRA)
+[![build](https://github.com/ksahlin/ultra/actions/workflows/build.yml/badge.svg)](https://github.com/ksahlin/ultra/actions/workflows/build.yml) [![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/ultra_bioinformatics/README.html)
 
+uLTRA is a tool for splice alignment of long transcriptomic reads to a genome, guided by a database
+of exon annotations. It is particularly accurate when aligning to small exons
+[(examples)](data/images). See the
+[paper](https://doi.org/10.1093/bioinformatics/btab540), or this
+[YouTube video](https://www.youtube.com/watch?v=M7cK80kXXMU).
 
-uLTRA is a tool for splice alignment of long transcriptomic reads to a genome, guided by a database of exon annotations. uLTRA is particularly accurate when aligning to small exons [see some examples](https://github.com/ksahlin/ultra/tree/master/data/images). 
+## uLTRA is now written in Rust
 
-uLTRA is distributed as a python package supported on Linux / OSX with python (versions 3.4 or above). 
+Same command line, so existing pipelines do not need editing. It is a **single binary** —
+namfinder, edlib and zlib are compiled in, so the only runtime dependency is minimap2, and the
+Python stack (parasail-python, pysam, dill, gffutils, intervaltree) is gone. It also installs on
+Apple Silicon, where the conda recipe cannot be solved at all because namfinder has no osx-arm64
+build — previously the only way in was compiling namfinder yourself.
 
-Here is a [YouTube video](https://www.youtube.com/watch?v=M7cK80kXXMU) that describes uLTRA.
+About **2x faster**, and **peak memory no longer grows with `--t`** — the Python implementation
+starts one process per core and each loads its own copy of the index.
 
+**Output differs in a few documented ways, and one of them matters**: reads that minimap2 cannot
+place are no longer dropped from `reads.sam`. The Python implementation discards them — 8.5% of
+reads on a real Drosophila dataset — even when uLTRA aligned them. Numbers, the other differences,
+and how the port was verified against the Python implementation read by read:
+**[RUST-PORT.md](RUST-PORT.md)**.
 
-Table of Contents
-=================
+The Python implementation is still here and is the reference the Rust version is checked against;
+see [INSTALL-python.md](INSTALL-python.md).
 
-  * [INSTALLATION](#INSTALLATION)
-  * [USAGE](#USAGE)
-    * [Indexing](#Indexing)
-    * [aligning](#Aligning)
-    * [Output](#Output)
-    * [Parameters](#Parameters)
-  * [CREDITS](#CREDITS)
-  * [LICENCE](#LICENCE)
+Install
+-------
 
+Needs a Rust toolchain (1.74+). No Rust?
+`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
 
-
-INSTALLATION
-=================
-
-## Conda recipe
-
-There is a [bioconda recipe](https://bioconda.github.io/recipes/ultra_bioinformatics/README.html), [docker image](https://quay.io/repository/biocontainers/ultra_bioinformatics?tab=tags), and a [singularity container](https://depot.galaxyproject.org/singularity/ultra_bioinformatics%3A0.0.4--pyh5e36f6f_1) of uLTRA created by [sguizard](https://github.com/sguizard). You can use, e.g., the bioconda recipe for an easy automated installation. 
-
-Alternative ways of installations are provided below.
-
-## Using the INSTALL.sh script
-
-You can clone this repository and 
-run the script `INSTALL.sh` as
-
-```
-git clone https://github.com/ksahlin/uLTRA.git --depth 1
-cd uLTRA
-./INSTALL.sh <install_directory>
+```bash
+git clone https://github.com/ksahlin/ultra.git
+cd ultra
+cargo build --release --manifest-path rust/Cargo.toml
 ```
 
-The install script is tested in bash environment. 
+That builds `rust/target/release/uLTRA`. Copy it onto your `PATH`.
 
-To run uLTRA, you need to activate the conda environment "ultra":
+[minimap2](https://github.com/lh3/minimap2) must also be on your `PATH`; it is used to detect reads
+aligning outside the annotated regions. `--disable_mm2` skips that step and needs nothing at all.
 
-```
-conda activate ultra
-```
+> The bioconda package still installs the Python implementation. It switches to the Rust build at
+> the next release.
 
-## Without the INSTALL.sh script
+#### Test the installation
 
-You can also manually perform below steps for more control.
-
-#### 1. Create conda environment
-
-Create a conda environment called ultra and activate it
-
-```
-conda create -n ultra python=3 pip 
-conda activate ultra
+```bash
+uLTRA pipeline test/SIRV_genes.fasta test/SIRV_genes_C_170612a.gtf test/reads.fa /tmp/ultra_test
 ```
 
-#### 2. Install uLTRA 
+This writes four aligned reads to `/tmp/ultra_test/reads.sam`.
 
-```
-pip install ultra-bioinformatics
-```
+Usage
+-----
 
-#### 3. Install third party tools 
+uLTRA works with PacBio Iso-Seq and ONT cDNA/dRNA reads.
 
-Install [namfinder](https://github.com/ksahlin/namfinder) and [minimap2](https://github.com/lh3/minimap2) and
-place the generated binaries `namfinder` and `minimap2` in your path. 
+```bash
+# everything in one command
+uLTRA pipeline genome.fasta /full/path/to/annotation.gtf reads.fa outfolder/
 
-#### 4. Verify installation
-
-You should now have 'uLTRA' installed; try it
-
-```
-uLTRA --help
+# or index once and align many times
+uLTRA index genome.fasta /full/path/to/annotation.gtf outfolder/
+uLTRA align genome.fasta reads.fq outfolder/ --ont --t 8      # ONT cDNA
+uLTRA align genome.fasta reads.fq outfolder/ --isoseq --t 8   # PacBio Iso-Seq
 ```
 
-Upon start/login to your server/computer you need to activate the conda environment "ultra" to run uLTRA as:
-```
-conda activate ultra
-```
+Alignments are written to `outfolder/reads.sam`.
 
-You can also download and use test data available in this repository [here](https://github.com/ksahlin/ultra/tree/master/test) and run: 
+| parameter | |
+| --- | --- |
+| `--t` | threads (default 3) |
+| `--index PATH` | read the index from somewhere other than `outfolder/` |
+| `--prefix NAME` | write `outfolder/NAME.sam` instead of `reads.sam` |
+| `--disable_infer` | much faster indexing, if your GTF has `gene` and `transcript` features |
+| `--disable_mm2` | skip the minimap2 step entirely |
 
-```
-uLTRA pipeline [/your/full/path/to/test]/SIRV_genes.fasta  \
-               /your/full/path/to/test/SIRV_genes_C_170612a.gtf  \
-               [/your/full/path/to/test]/reads.fa outfolder/  [optional parameters]
-```
+`uLTRA --help` lists the rest.
 
+#### A properly formatted GTF file
 
+This is the most common cause of failure. If you have GFF or another format, convert it with
+[AGAT](https://github.com/NBISweden/AGAT) — many other converters do not respect the GTF format:
 
-## Entirly from source
-
-
-Make sure the below-listed dependencies are installed (installation links below). All below dependencies except `namfinder` can be installed as `pip install X` or through conda.
-* [parasail](https://github.com/jeffdaily/parasail-python)
-* [edlib](https://github.com/Martinsos/edlib)
-* [pysam](http://pysam.readthedocs.io/en/latest/installation.html) (>= v0.11)
-* [dill](https://pypi.org/project/dill/)
-* [intervaltree](https://github.com/chaimleib/intervaltree/tree/master/intervaltree)
-* [gffutils](https://pythonhosted.org/gffutils/)
-* [namfinder](https://github.com/ksahlin/namfinder)
-
-With these dependencies installed. Run
-
-```sh
-git clone https://github.com/ksahlin/uLTRA.git
-cd uLTRA
-./uLTRA
-```
-
-
-USAGE
-----------------
-
-uLTRA can be used with either PacBio Iso-Seq or ONT cDNA/dRNA reads. 
-
-### Indexing
-
-```
-uLTRA index genome.fasta  /full/path/to/annotation.gtf  outfolder/  [parameters]
-```
-
-Important parameters: 
-
-1. `--disable_infer` can speed up the indexing considerably, but it only works if you have the `gene feature` and `transcript feature` in your GTF file.
-
-### Aligning
-
-For example
-
-```
-uLTRA align genome.fasta reads.[fa/fq] outfolder/  --ont --t 8   # ONT cDNA reads using 8 cores
-uLTRA align genome.fasta reads.[fa/fq] outfolder/  --isoseq --t 8 # PacBio isoseq reads
-```
-
-Important parameters:
-
-1. `--index [PATH]`: You can set a custom location of where to get the index from using, otherwise, uLTRA will try to read the index from the `outfolder/` by default. 
-2. `--prefix [PREFIX OF FILE]`: The aligned reads will be written to `outfolder/reads.sam` unless `--prefix` is set. For example, `--prefix sample_X` will output the reads in `outfolder/sample_X.sam`.
-
-### Pipeline
-
-Perform all the steps in one
-
-```
-uLTRA pipeline genome.fasta /full/path/to/annotation.gtf reads.fa outfolder/  [parameters]
-```
-
-### Common errors
-
-Not having a properly formatted GTF file. Before running uLTRA, notice that it reqires a _properly formatted GTF file_. If you have a GFF file or other annotation format, it is adviced to use [AGAT](https://github.com/NBISweden/AGAT) for file conversion to GTF as many other conversion tools do not respect GTF format. For example, you can run AGAT as:
-
-```
+```bash
 agat_convert_sp_gff2gtf.pl --gff annot.gff3 --gtf annot.gtf
 ```
 
+Credits
+-------
 
+Please cite:
 
-CREDITS
-----------------
+1. Kristoffer Sahlin, Veli Mäkinen, Accurate spliced alignment of long RNA sequencing reads,
+   *Bioinformatics*, Volume 37, Issue 24, 15 December 2021, Pages 4643–4651,
+   https://doi.org/10.1093/bioinformatics/btab540
 
-Please cite 
+**Please also cite** [minimap2](https://github.com/lh3/minimap2), which uLTRA uses to align genomic
+reads outside the indexed regions. For example: "We aligned reads to the genome using uLTRA [1],
+which incorporates minimap2 [CIT]."
 
-1. Kristoffer Sahlin, Veli Mäkinen, Accurate spliced alignment of long RNA sequencing reads, Bioinformatics, Volume 37, Issue 24, 15 December 2021, Pages 4643–4651, https://doi.org/10.1093/bioinformatics/btab540
-
-when using uLTRA. **Please also cite** [minimap2](https://github.com/lh3/minimap2) as uLTRA incorporates minimap2 for alignment of some genomic reads outside indexed regions. For example "We aligned reads to the genome using uLTRA [1], which incorporates minimap2 [CIT].".
-
-
-
-
-LICENCE
-----------------
+Licence
+-------
 
 GPL v3.0, see [LICENSE.txt](LICENSE.txt).
-
-
-
-
