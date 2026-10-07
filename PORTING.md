@@ -1627,13 +1627,34 @@ reaches the binary depends on what unpacks it:
 
 | how it arrives | quarantined | runs |
 | --- | --- | --- |
-| `curl … \| tar xz` | no | **yes** |
-| `.tar.gz`, command-line `tar` | no | **yes** |
+| `curl … \| tar xz` (streamed) | no | **yes** |
+| `.tar.gz`, command-line `tar` | **OS-dependent — see below** | |
 | `.zip`, Archive Utility (`ditto -x -k`) | **yes** | **no — killed** |
 | bare binary from a browser | **yes** | **no — killed** |
 
 Each row measured, not reasoned about. Archive Utility is what double-clicking a `.zip` runs, and
-it propagates the attribute to every extracted file; `tar` does not.
+it propagates the attribute to every extracted file.
+
+**The `tar` row changed under us, within one session.** On Darwin 25.5.0 command-line `tar` did not
+propagate the attribute and the extracted binary ran. The machine then upgraded to macOS 27.0.1
+(Darwin 27.0.0) and the same measurement, on the same tarball, gives the opposite answer:
+
+```
+tar xzf <quarantined file>              quarantined -> KILLED
+cat <quarantined file> | tar xz         clean       -> runs
+tar xzf, then xattr -d com.apple.quarantine         -> runs
+```
+
+So on current macOS **`tar` propagates quarantine too**, and only a *streamed* extraction escapes it
+— because nothing carrying the attribute is ever written to disk. `curl … | tar xz`, which the
+README already recommends, still works; "download the tarball, then extract it" no longer does.
+
+Two things follow. `.tar.gz` over `.zip` is still right, but it is no longer sufficient on its own,
+so the install instructions have to pipe rather than download-then-extract. And **a measurement
+about OS behaviour has a shelf life**: this one was correct when taken, was the basis of a shipped
+instruction, and was falsified by an OS upgrade a few hours later. The quarantine check belongs in
+CI — where it already is, as `run-macos` — precisely so the runner's OS version, not a stale local
+observation, is what the claim rests on.
 
 **So the release ships `.tar.gz` and never `.zip`**, which is a correctness requirement rather than
 a preference — shipping `.zip` would ship something that cannot start. `packaging/build-release.sh`

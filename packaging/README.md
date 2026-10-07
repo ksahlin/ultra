@@ -38,10 +38,14 @@ dialog. Measured:
 
 | how it arrives | quarantined? | runs? |
 | --- | --- | --- |
-| `curl … \| tar xz` | no | **yes** |
-| `.tar.gz`, extracted with command-line `tar` | no | **yes** |
+| `curl … \| tar xz` (streamed) | no | **yes** |
+| `.tar.gz`, downloaded then extracted with `tar` | **yes on macOS 26+** | **no — killed** |
 | `.zip`, double-clicked (Archive Utility) | **yes** | **no — killed** |
 | the bare binary, downloaded in a browser | **yes** | **no — killed** |
+
+**Pipe it; do not download and then extract.** Command-line `tar` used to leave the attribute
+behind and current macOS does not — measured on Darwin 25.5.0 (clean) and again on macOS 27.0.1
+(quarantined, killed). Only a streamed extraction avoids writing a file that carries it.
 
 Hence: **releases ship `.tar.gz`, never `.zip`, and never a bare binary.**
 Anyone who ends up with a quarantined copy anyway can clear it:

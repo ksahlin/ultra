@@ -24,7 +24,20 @@ against. Numbers, the other output differences, and how it was checked read by r
 Install
 -------
 
-Needs a Rust toolchain (1.74+). No Rust?
+A prebuilt binary, for linux-x86_64, linux-aarch64, macOS arm64 or macOS x86_64:
+
+```bash
+curl -L https://github.com/ksahlin/ultra/releases/download/v0.3.0/uLTRA-0.3.0-macos-arm64.tar.gz | tar xz
+```
+
+**Pipe it — do not download the tarball and then extract it.** On current macOS, extracting a
+downloaded archive marks the binary with `com.apple.quarantine` and Gatekeeper kills it on sight
+with no message. Streaming it straight out of `curl` never writes a file carrying the attribute.
+If you end up with a blocked copy anyway: `xattr -d com.apple.quarantine ./uLTRA`.
+
+The Linux binaries need only glibc 2.17 (RHEL/CentOS 7, 2012).
+
+Or build it yourself — needs a Rust toolchain (1.74+). No Rust?
 `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
 
 ```bash
