@@ -8,18 +8,16 @@ of exon annotations. It is particularly accurate when aligning to small exons
 [paper](https://doi.org/10.1093/bioinformatics/btab540), or this
 [YouTube video](https://www.youtube.com/watch?v=M7cK80kXXMU).
 
-## v0.2.0 — uLTRA is now written in Rust
+## v0.3.0 — uLTRA is now written in Rust
 
-Same command line, so existing pipelines do not need editing. A **single binary** with minimap2 as
-its only runtime dependency, which also makes it installable on Apple Silicon. **1.4-2.9x faster**
-depending on the annotation, and peak memory no longer grows with `--t`. **Output differs**: reads
-minimap2 cannot place are no
-longer dropped from `reads.sam` — the Python implementation discarded 8.5 % of reads on a real
-Drosophila dataset, 1283 of them already aligned by uLTRA.
+Same command line and output files, so existing pipelines do not need editing. A minimap2 binary is
+the only dependency. **1.4–2.9x faster** depending on the annotation, and peak memory no longer
+grows with `--t`. Alignment accuracy is slightly improved, and reads minimap2 cannot place are no
+longer dropped — on Drosophila that is **~13% more records** in `reads.sam`.
 
-The Python implementation is still here, kept as the reference the Rust version is verified
-against. Numbers, the other output differences, and how it was checked read by read:
-**[RUST-PORT.md](RUST-PORT.md)**. Its installation: **[INSTALL-python.md](INSTALL-python.md)**.
+The Python implementation is still here ([INSTALL-python.md](INSTALL-python.md)), kept as the
+reference the Rust version is verified against. More detailed stats in
+**[RUST-PORT.md](RUST-PORT.md)**.
 
 Install
 -------
