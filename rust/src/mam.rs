@@ -45,6 +45,27 @@ pub fn edlib_path(query: &[u8], target: &[u8], k: i32) -> (Vec<(i64, i64)>, i32,
     (r.locations, r.edit_distance, acc)
 }
 
+/// Python's `seq[n:]`, including NEGATIVE `n`.
+///
+/// `seq[-6:]` is the last six bytes, not the whole sequence. Clamping a
+/// negative offset to 0 — which this port did — hands `add_segment_to_mam` the
+/// entire segment instead of a six-base tail, and the resulting whole-segment
+/// partial hit starts at read position 0, which then evicts every legitimate
+/// partial start through the "keep only the outermost" filter below. See
+/// PORTING.md Finding 48.
+fn py_from(seq: &[u8], n: i64) -> &[u8] {
+    let len = seq.len() as i64;
+    let start = if n < 0 { (len + n).max(0) } else { n.min(len) };
+    &seq[start as usize..]
+}
+
+/// Python's `seq[:n]`, including negative `n`: `seq[:-6]` drops the last six.
+fn py_upto(seq: &[u8], n: i64) -> &[u8] {
+    let len = seq.len() as i64;
+    let end = if n < 0 { (len + n).max(0) } else { n.min(len) };
+    &seq[..end as usize]
+}
+
 /// `add_segment_to_mam`, appending to `out`.
 ///
 /// Three independent blocks, all reproduced including their quirks:
@@ -372,6 +393,12 @@ pub fn classify_read(
     let final_first_stop = std::cmp::max(h.first_part_stop as i64, first_valid_stop);
     let final_last_start = std::cmp::min(h.last_part_start as i64, last_valid_start);
 
+    if std::env::var("ULTRA_DBG_MAMS").is_ok() {
+        eprintln!("DBGP final_first_stop={final_first_stop} final_last_start={final_last_start}");
+        eprintln!("DBGP partial_segment_vals={:?}", u.segments_partial.iter().map(|(k,v)| (k, v.0, v.1, v.2)).collect::<Vec<_>>());
+        eprintln!("DBGP partial_flank_keys={:?}", u.flanks_partial.keys().collect::<Vec<_>>());
+        eprintln!("DBGP full_segment_keys={:?}", u.segments.keys().collect::<Vec<_>>());
+    }
     let mut tried: BTreeSet<String> = BTreeSet::new();
     for (loc, (_c, s_start, _s_stop)) in u.segments_partial.iter().map(|(k, v)| (k, (v.0, v.1, v.2))) {
         let key: Key = (loc.0, loc.1, loc.2);
@@ -386,8 +413,7 @@ pub fn classify_read(
         // cases instead -- as an early version of this port did -- silently
         // drops partial hits the reference keeps.
         if e_stop <= final_first_stop {
-            let off = ((s_start - e_start).max(0) as usize).min(seq.len());
-            let part = &seq[off..];
+            let part = py_from(seq, s_start - e_start);
             let ps = String::from_utf8_lossy(part).into_owned();
             if part.len() > 5 && !tried.contains(&ps) {
                 add_segment_to_mam(read_seq, loc.0 as i64, part, e_start, e_stop, &eid,
@@ -396,9 +422,7 @@ pub fn classify_read(
             }
         } else if final_last_start <= e_start {
             let s_stop = u.segments_partial.get(loc).map(|v| v.2).unwrap_or(0);
-            let cut = seq.len() as i64 - (e_stop - (s_stop + 1));
-            let cut = cut.max(0).min(seq.len() as i64) as usize;
-            let part = &seq[..cut];
+            let part = py_upto(seq, seq.len() as i64 - (e_stop - (s_stop + 1)));
             let ps = String::from_utf8_lossy(part).into_owned();
             if part.len() > 5 && !tried.contains(&ps) {
                 add_segment_to_mam(read_seq, loc.0 as i64, part, e_start, e_stop, &eid,
@@ -429,8 +453,7 @@ pub fn classify_read(
         let fid = format!("flank_{}_{}", loc.1, loc.2);
 
         // flank_seq[s_start - f_start:]
-        let off = ((s_start - f_start).max(0) as usize).min(seq.len());
-        let part = &seq[off..];
+        let part = py_from(seq, s_start - f_start);
         let ps = String::from_utf8_lossy(part).into_owned();
         if part.len() > 5 && !tried.contains(&ps) {
             add_segment_to_mam(read_seq, loc.0 as i64, part, f_start, f_stop, &fid,
@@ -439,9 +462,7 @@ pub fn classify_read(
         }
 
         // flank_seq[: len(flank_seq) - (f_stop - (s_stop + 1))]
-        let cut = seq.len() as i64 - (f_stop - (s_stop + 1));
-        let cut = cut.max(0).min(seq.len() as i64) as usize;
-        let part = &seq[..cut];
+        let part = py_upto(seq, seq.len() as i64 - (f_stop - (s_stop + 1)));
         let ps = String::from_utf8_lossy(part).into_owned();
         if part.len() > 5 && !tried.contains(&ps) {
             add_segment_to_mam(read_seq, loc.0 as i64, part, f_start, f_stop, &fid,

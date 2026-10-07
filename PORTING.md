@@ -1836,7 +1836,7 @@ when its exact DP turned out to be 65 % of its runtime. That would have been a c
 addressing 8 % of the problem. The sibling port's conclusion did not transfer, because the profiles
 are not alike.
 
-### Finding 46 — OPEN: the port's alignments are measurably worse on ~2 % of Drosophila reads
+### Finding 46 — RESOLVED by Findings 47 and 48: the port's alignments were worse on ~2 % of Drosophila reads
 
 *Finding 44* recorded that 21 reads of 20 000 fall below the acceptance threshold. Scoring the
 alignments rather than counting them shows that was the visible tip of something larger, and that
@@ -1879,8 +1879,10 @@ anything feeding it. That is where to look next, and `bench/compare_sam.py` is t
 it splits differences into different-locus / different-CIGAR / reporting-only and scores both sides
 against the genome, so a change can be called better or worse rather than merely different.
 
-**Resolved by *Finding 47*:** the missing partial-flank block. The alignment differs on 0.515 % of
-reads after that fix, not 2.3 %, and the score gap closes from -6.78 % to -3.83 %.
+**Resolved by *Findings 47 and 48*:** the missing partial-flank block, and Python's negative slice
+indices. The alignment differs on **0.231 %** of reads after both, not 2.3 %, and the score goes
+from -6.78 % to **+3.06 %** — the port now scores slightly higher than the reference where they
+differ.
 
 ### Finding 47 — PORT BUG, FIXED: the partial-flank block was never ported
 
@@ -1960,7 +1962,73 @@ candidates, then solution. Three prints, one read. The debug hook that does it h
 removed as clutter, and needed again within a week; it now lives behind `ULTRA_DBG_READ` and
 `ULTRA_DBG_MAMS` permanently.
 
-> Findings 48+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
+### Finding 48 — PORT BUG, FIXED: Python's negative slice indices
+
+The 934 reads *Finding 47* left at a different locus split cleanly in two when scored, and the split
+was the whole diagnosis:
+
+| | reads | scores **equal** | port lower |
+| --- | --- | --- | --- |
+| different contig | 373 | **326 (87 %)** | 23 |
+| same contig, shifted | 561 | 18 | **453** |
+
+The different-contig group is **equal-scoring multi-mappings** — two loci fit the read equally well
+and the implementations pick different ones. Benign, and the port was marginally ahead on total
+score. The same-contig group was not benign: median shift **24 bp**, clipping 3 611 against the
+port's 20 759, and the port clipping the **start** of the read (`256S`, `239S`, `234S`) where the
+reference aligns from base 1.
+
+Instrumenting `104:1094|ERR3588905.224522` the same way as *Finding 47* — chaining, candidates,
+solution — showed chaining, partial-hit keys, partial-hit values and both thresholds **all
+identical**, and the port still missing the leading MAM. The loop body was the only thing left.
+
+For the partial segment `(17, 2359565, 2360393)`, `s_start - e_start` is `2359559 - 2359565` =
+**-6**:
+
+```python
+partial_segm_seq = segment_seq[s_start - e_start:]   # segment_seq[-6:]
+```
+
+Python takes the **last six bytes**. The port clamped the offset to zero and took the whole 828-base
+segment, producing a partial hit that starts at read position 0 — and `c = 0` is as outermost as a
+start can get, so the "keep only the outermost partial hits" filter immediately **evicted the
+legitimate `c = 5` partial starts** belonging to the neighbouring segment. One wrong slice removed a
+different segment's MAMs.
+
+Four sites had the same defect — partial segment start and end, partial flank start and end. All
+four now go through
+
+```rust
+fn py_from(seq: &[u8], n: i64) -> &[u8]   // seq[n:],  n may be negative
+fn py_upto(seq: &[u8], n: i64) -> &[u8]   // seq[:n],  n may be negative
+```
+
+**Result.** droso-200k `--disable_mm2`, across both fixes:
+
+| | before F47 | after F47 | **after F48** |
+| --- | --- | --- | --- |
+| records byte-identical | 172 325 (86.16 %) | 175 648 (87.82 %) | **176 184 (88.09 %)** |
+| **the alignment itself differs** | 4 542 (2.271 %) | 1 046 (0.523 %) | **462 (0.231 %)** |
+| different locus | 2 139 | 934 | **387** (371 of them equal-scoring ties) |
+| same locus, different CIGAR | 2 104 | 55 | **50** |
+| reference aligns, port does not | 263 | 25 | **16** |
+| alignment score vs the reference | -6.78 % | -1.85 % | **+3.06 %** |
+
+**The port now scores slightly higher than the reference** where the two differ, on 200 000 real
+reads, and clips essentially the same number of bases (1 532 against 1 513). The quality regression
+of *Finding 46* is gone.
+
+SIRV improves too — 99 879 to **99 891** identical of 100 000, alignment differences 36 to **24**,
+and **zero** different-locus reads where there were 7.
+
+**Why this one hid.** `seq[-6:]` is not an edge case the type system flags: `(s_start - e_start)`
+is a perfectly ordinary subtraction that happens to go negative when a MEM starts a few bases
+before its segment. The port's `.max(0)` looked like defensive clamping and was in fact a semantic
+change. It belongs with *Finding 37* — Python slices clamp *out-of-range* indices but *wrap*
+negative ones, and those are two different rules that a single `.max(0).min(len)` gets wrong in
+opposite directions.
+
+> Findings 49+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
 > the most useful artifact of the project.
 
 ---
