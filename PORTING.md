@@ -1832,7 +1832,53 @@ when its exact DP turned out to be 65 % of its runtime. That would have been a c
 addressing 8 % of the problem. The sibling port's conclusion did not transfer, because the profiles
 are not alike.
 
-> Findings 46+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
+### Finding 46 — OPEN: the port's alignments are measurably worse on ~2 % of Drosophila reads
+
+*Finding 44* recorded that 21 reads of 20 000 fall below the acceptance threshold. Scoring the
+alignments rather than counting them shows that was the visible tip of something larger, and that
+"a different equally-optimal path" is **not** what is happening.
+
+On droso-20k `--disable_mm2`, over the 444 reads the two sides align differently, scored under
+uLTRA's own scheme (match +2, mismatch -2, gap open 3, extend 1, introns free):
+
+| | reference | port |
+| --- | --- | --- |
+| total score | 704 293 | **656 541** (-6.78 %) |
+| port scores higher / lower / equal | | **14 / 399 / 31** |
+| aligned bases | 397 132 | 369 195 |
+| **soft- or hard-clipped bases** | 2 255 | **31 743** |
+
+The port clips roughly 29 000 bases these reads align in the reference. The mechanism is visible in
+the worst case, `527:3671|ERR3588905.20865`, a 3 135 bp read: the two CIGARs agree for **159
+operations**, both place 7 introns, and then the reference keeps aligning to the end while the port
+emits `22=1477S` — abandoning 47 % of the read. On `110:1410|ERR3588905.13370` the port instead
+inserts a 21 481 bp intron and clips 361.
+
+**So the port's chain terminates early.** That is a quality regression, not a tie-break, and it is
+what *Finding 44* is downstream of: a chain that stops early covers less of the read, and marginal
+cases then fall under `--alignment_threshold`.
+
+**Two hypotheses measured and eliminated.**
+
+*It is not the segment tie-break (Finding 33).* The three tie-break sites sort by `(start, chr,
+stop)`, preferring the shorter segment on a tie. Reversing that to prefer the longer one produced
+**byte-identical output** on 20 000 Drosophila reads — the tie-break is not what distinguishes these
+alignments.
+
+*It is not the index.* `dump-index` against `bench/dump_reference.py` on the full Drosophila
+annotation: **19 of 20 structures byte-identical**. The twentieth is `gene_to_small_segments`, and
+it differs in **2 lines of 16 640** — the known *Finding 22*, two genes where the port fills
+segments the reference's leaked loop variable misses. Two genes cannot account for 444 reads.
+
+So the divergence is in the alignment driver — the MAM chaining or `classify_read` — and not in
+anything feeding it. That is where to look next, and `bench/compare_sam.py` is the instrument:
+it splits differences into different-locus / different-CIGAR / reporting-only and scores both sides
+against the genome, so a change can be called better or worse rather than merely different.
+
+**This is open.** It is recorded now because the honest summary of the port today is "faster, and on
+a real annotation slightly worse on 2 % of reads", not "faster and equivalent".
+
+> Findings 47+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
 > the most useful artifact of the project.
 
 ---
