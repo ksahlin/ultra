@@ -20,9 +20,8 @@ package:
 
 source:
   url: https://github.com/ksahlin/ultra/archive/refs/tags/v{{ version }}.tar.gz
-  # Filled in from the release tarball at submission time; a placeholder here
-  # would be worse than an obvious gap.
-  sha256: 0000000000000000000000000000000000000000000000000000000000000000
+  # sha256 of the v0.3.0 source tarball, verified by downloading it.
+  sha256: 05a16bc19c6dc86a8c736b100767bd21839e1f2c92debc69aa158ebf4cb3c6f6
 
 build:
   number: 0

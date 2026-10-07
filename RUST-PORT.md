@@ -36,9 +36,14 @@ here:
 | droso-20k | minimap2 | 8 | 14.5 s | **10.1 s** | 1.4x |
 | droso-20k | `--disable_mm2` | 3 | 13.8 s | **9.3 s** | 1.5x |
 | droso-20k | minimap2 | 3 | 20.8 s | **14.4 s** | 1.4x |
+| droso-200k | `--disable_mm2` | 8 | 46.5 s | **25.9 s** | **1.8x** |
+| droso-200k | minimap2 | 8 | 72.1 s | **40.0 s** | **1.8x** |
 
-**The speedup depends on the annotation, so quote the range, not a single number**: 1.4x on
-Drosophila, up to 2.9x on SIRV. Earlier versions of this file said "about 2x" on the strength of
+**The speedup depends on the annotation and on how many reads you give it**, so quote the range
+rather than a single number: 1.4x to 2.9x. The low end is droso-20k, where the port's fixed startup
+cost -- loading the index and building the per-chromosome annotation tables -- is a large share of a
+10-second run. It amortises: the same corpus at ten times the reads is **1.8x**, and that is the
+figure to expect on a realistic Drosophila run. Earlier versions of this file said "about 2x" on the strength of
 SIRV alone, and at that point the port was in fact **2.3x slower** on Drosophila — see PORTING.md
 *Finding 45*, which is also why SIRV could not show it.
 
