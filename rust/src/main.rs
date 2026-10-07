@@ -491,7 +491,9 @@ fn run_align(args: &cli::Args) -> ExitCode {
         for h in &header {
             let _ = writeln!(w, "{h}");
         }
-        align_all(&ix, &recs, &by_name, &p, args.nr_cores, &mut w);
+        // Built once, not once per alignment (Finding 45).
+        let tabs = driver::build_classify_tables(&ix);
+        align_all(&ix, &tabs, &recs, &by_name, &p, args.nr_cores, &mut w);
         let _ = w.flush();
     }
 
@@ -553,6 +555,7 @@ extern "C" {
 /// finishes early waits its turn in `pending`.
 fn align_all(
     ix: &index::Index,
+    tabs: &std::collections::BTreeMap<u64, driver::ClassifyTables>,
     recs: &[reads::Record],
     by_name: &std::collections::HashMap<&str, &reads::SeedRecord>,
     p: &driver::Params,
@@ -605,7 +608,7 @@ fn align_all(
                             None => (&empty, &empty),
                         };
                         for line in driver::align_read(
-                            ix, &r.name, &r.seq, r.qual.as_deref(), hits, hits_rc, p) {
+                            ix, tabs, &r.name, &r.seq, r.qual.as_deref(), hits, hits_rc, p) {
                             buf.push_str(&line);
                         }
                     }

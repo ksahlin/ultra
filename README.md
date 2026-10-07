@@ -11,8 +11,9 @@ of exon annotations. It is particularly accurate when aligning to small exons
 ## v0.2.0 — uLTRA is now written in Rust
 
 Same command line, so existing pipelines do not need editing. A **single binary** with minimap2 as
-its only runtime dependency, which also makes it installable on Apple Silicon. About **2x faster**,
-and peak memory no longer grows with `--t`. **Output differs**: reads minimap2 cannot place are no
+its only runtime dependency, which also makes it installable on Apple Silicon. **1.4-2.9x faster**
+depending on the annotation, and peak memory no longer grows with `--t`. **Output differs**: reads
+minimap2 cannot place are no
 longer dropped from `reads.sam` — the Python implementation discarded 8.5 % of reads on a real
 Drosophila dataset, 1283 of them already aligned by uLTRA.
 

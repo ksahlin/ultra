@@ -22,28 +22,33 @@ ones need only glibc 2.17 (RHEL/CentOS 7, 2012).
 Speed and memory
 ----------------
 
-sirv-10k, full `uLTRA align` including the minimap2 and namfinder steps, on a 16-core machine
-(12 performance + 4 efficiency):
+Full `uLTRA align` including the minimap2 and namfinder steps, on a 16-core machine (12 performance
++ 4 efficiency). minimap2 and namfinder are *the same code in both*, so they dilute every figure
+here:
 
-| `--t` | Python | Rust | Python peak | Rust peak |
-| --- | --- | --- | --- | --- |
-| 3 *(default)* | 11.2 s | **6.2 s** | 1139 MB | **1077 MB** |
-| 16 | 4.9 s | **2.2 s** | **2845 MB** | **1078 MB** |
+| corpus | mode | `--t` | Python | Rust | |
+| --- | --- | --- | --- | --- | --- |
+| sirv-10k | `--disable_mm2` | 8 | 4.3 s | **1.5 s** | 2.9x |
+| sirv-10k | minimap2 | 8 | 6.0 s | **2.6 s** | 2.3x |
+| sirv-10k | `--disable_mm2` | 3 | 7.2 s | **3.0 s** | 2.4x |
+| sirv-10k | minimap2 | 3 | 10.6 s | **5.8 s** | 1.8x |
+| droso-20k | `--disable_mm2` | 8 | 9.1 s | **6.7 s** | 1.4x |
+| droso-20k | minimap2 | 8 | 14.7 s | **10.0 s** | 1.5x |
+| droso-20k | `--disable_mm2` | 3 | 13.8 s | **9.3 s** | 1.5x |
+| droso-20k | minimap2 | 3 | 20.5 s | **14.4 s** | 1.4x |
 
-Two things to read off it.
+**The speedup depends on the annotation, so quote the range, not a single number**: 1.4x on
+Drosophila, up to 2.9x on SIRV. Earlier versions of this file said "about 2x" on the strength of
+SIRV alone, and at that point the port was in fact **2.3x slower** on Drosophila — see PORTING.md
+*Finding 45*, which is also why SIRV could not show it.
 
-The speedup is about **2x end to end**, which understates the port, because minimap2 and namfinder
-are *the same code in both* and account for roughly half the Rust version's runtime. Dropping the
-minimap2 dependency entirely is a possible future change; it is what would move the rest.
+**Peak memory does not grow with `--t`.** 1077 MB at one thread and 1078 MB at sixteen on sirv-10k,
+where the Python implementation grows from 1139 MB to 2845 MB because it starts one process per
+core and each re-loads the index. At 16 threads that is 2.6x less memory and 2.3x faster at the
+same time.
 
-**Peak memory does not grow with `--t`** — 1077 MB at one thread and 1078 MB at sixteen. The Python
-implementation starts one process per core and each re-loads the index, so it grows to 2845 MB at
-16 threads. At that thread count the Rust version uses **2.6x less memory and runs 2.2x faster at
-the same time**.
-
-On Drosophila (20 000 reads against BDGP6.46), the Rust version takes 100.7 s on one thread and
-**22.4 s on eight**, memory flat at ~3.2 GB. Most of that peak is namfinder's seed index, not
-uLTRA: on sirv-10k namfinder alone accounts for 1042 MB of the 1078 MB total.
+Most of that peak is namfinder's seed index rather than uLTRA: on sirv-10k, namfinder alone accounts
+for 1042 MB of the 1078 MB total.
 
 How it was verified
 -------------------
@@ -54,12 +59,29 @@ difference has to fall into one of the documented classes below — none is tole
 Behind that sit oracle tests replaying recorded Python calls through the Rust code: 1866 edlib
 alignments, 2182 prefilter decisions, 2081 CIGAR merges, 900 SAM records byte for byte, and others.
 
-| corpus | mode | reference | port | identical | differ |
+| corpus | mode | reference | port | identical | the **alignment** differs |
 | --- | --- | --- | --- | --- | --- |
-| sirv-100k | `--disable_mm2` | 100 000 | 100 000 | **99 879 (99.88 %)** | 121 |
-| sirv-100k | with minimap2 | 99 934 | 100 000 | 92 020 (92.08 %) | 7 914 |
-| droso-20k | `--disable_mm2` | 20 000 | 20 000 | 17 208 (86.04 %) | 2 792 |
-| droso-20k | with minimap2 | 18 310 | 20 000 | 16 927 (92.45 %) | 1 383 |
+| sirv-100k | `--disable_mm2` | 100 000 | 100 000 | **99.88 %** | 36 (0.036 %) |
+| sirv-100k | minimap2 | 99 934 | 100 000 | 92.08 % | 9 (0.009 %) |
+| droso-20k | `--disable_mm2` | 20 000 | 20 000 | 86.04 % | 467 (2.34 %) |
+| droso-20k | minimap2 | 18 310 | 20 000 | 92.45 % | 56 (0.31 %) |
+| droso-200k | `--disable_mm2` | 200 000 | 200 000 | 86.16 % | 4 542 (2.27 %) |
+| droso-200k | minimap2 | 176 828 | 200 000 | 90.93 % | 551 (0.31 %) |
+
+The last column is the one that matters, and it is worth separating from the rest. Differences
+split three ways:
+
+| | droso-200k `--disable_mm2` | droso-200k minimap2 |
+| --- | --- | --- |
+| **A. different locus** (RNAME/POS) | 2 139 (1.07 %) | 441 (0.25 %) |
+| **B. same locus, different CIGAR** | 2 104 (1.05 %) | 110 (0.06 %) |
+| **C. same alignment, reporting only** | 20 143 (10.07 %) | 15 481 (8.76 %) |
+| mapped on one side, unmapped on the other | 299 (0.15 %) | — |
+
+**About 90 % of all differences are class C — the alignment is identical and only how it is written
+down differs** (QUAL orientation, SEQ strand, `XA` ordering). Where the alignment genuinely differs,
+identity against the genome is the same on both sides, median 97.8 %; the port simply aligns
+slightly fewer bases, **-0.225 % of aligned bases overall**, concentrated in 2 % of reads.
 
 **Every single difference in all four runs is accounted for by a documented cause** — checked by
 decomposing each differing record into causes rather than bucketing it, so that a record differing

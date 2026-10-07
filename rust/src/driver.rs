@@ -69,6 +69,7 @@ fn exact_alignment(read_seq: &[u8], created_ref: &[u8], mam_sol_exons_length: i6
 /// Align one read and return its SAM records, primary first.
 pub fn align_read(
     ix: &Index,
+    tabs: &BTreeMap<u64, ClassifyTables>,
     read_acc: &str,
     seq: &str,
     qual: Option<&str>,
@@ -163,7 +164,7 @@ pub fn align_read(
             &ix.ref_segment_sequences, &ix.ref_flank_sequences, &pairs);
 
 
-        let (classification, annotated_to) = classify_for(ix, *chr_id, &ex.predicted_splices);
+        let (classification, annotated_to) = classify_for(tabs, *chr_id, &ex.predicted_splices);
 
         let largest_intron = mam_solution.windows(2)
             .map(|w| w[1].x - w[0].y).max().unwrap_or(0);
@@ -236,25 +237,64 @@ pub fn align_read(
     out
 }
 
-fn classify_for(ix: &Index, chr_id: u64, predicted_splices: &[(i64, i64)]) -> (&'static str, String) {
-    let empty_pairs = Default::default();
-    let pairs_raw = ix.all_splice_pairs_annotations.get(&chr_id).unwrap_or(&empty_pairs);
-    let pairs: BTreeMap<(i64, i64), std::collections::BTreeSet<String>> = pairs_raw
-        .iter().map(|((a, b), t)| ((*a as i64, *b as i64), t.clone())).collect();
-    let empty_sites = Default::default();
-    let sites: std::collections::BTreeSet<i64> = ix
-        .all_splice_sites_annotations.get(&chr_id).unwrap_or(&empty_sites)
-        .iter().map(|x| *x as i64).collect();
-    let empty_tx = Default::default();
-    let t2s_raw = ix.transcripts_to_splices.get(&chr_id).unwrap_or(&empty_tx);
-    let mut t2s: BTreeMap<String, Vec<(i64, i64)>> = BTreeMap::new();
-    let mut s2t: BTreeMap<Vec<(i64, i64)>, std::collections::BTreeSet<String>> = BTreeMap::new();
-    for (tid, sp) in t2s_raw {
-        let v: Vec<(i64, i64)> = sp.iter().map(|(a, b)| (*a as i64, *b as i64)).collect();
-        s2t.entry(v.clone()).or_default().insert(tid.clone());
-        t2s.insert(tid.clone(), v);
+/// The per-chromosome annotation tables `classify_alignment` needs, in the
+/// types it wants them in.
+///
+/// These used to be rebuilt inside `classify_for`, which runs once per
+/// candidate alignment. That is `O(transcripts on the chromosome)` of String
+/// cloning and BTreeMap building per alignment, and it is the single largest
+/// cost in the port on a real annotation: SIRV's biggest chromosome holds 18
+/// transcripts, Drosophila's holds 9 005. Profiling a Drosophila run put
+/// ~31 % of samples in malloc/free, ~18 % in memcmp over String keys and ~12 %
+/// in BTreeMap<String> operations, against 8 % in parasail and 6 % in edlib.
+/// Building them once is PORTING.md Finding 45.
+pub struct ClassifyTables {
+    pairs: BTreeMap<(i64, i64), std::collections::BTreeSet<String>>,
+    sites: std::collections::BTreeSet<i64>,
+    t2s: BTreeMap<String, Vec<(i64, i64)>>,
+    s2t: BTreeMap<Vec<(i64, i64)>, std::collections::BTreeSet<String>>,
+}
+
+/// Build them once, for every chromosome the index knows about.
+pub fn build_classify_tables(ix: &Index) -> BTreeMap<u64, ClassifyTables> {
+    let mut chrs: std::collections::BTreeSet<u64> = std::collections::BTreeSet::new();
+    chrs.extend(ix.all_splice_pairs_annotations.keys().copied());
+    chrs.extend(ix.all_splice_sites_annotations.keys().copied());
+    chrs.extend(ix.transcripts_to_splices.keys().copied());
+    let mut out = BTreeMap::new();
+    for chr_id in chrs {
+        let empty_pairs = Default::default();
+        let pairs = ix.all_splice_pairs_annotations.get(&chr_id).unwrap_or(&empty_pairs)
+            .iter().map(|((a, b), t)| ((*a as i64, *b as i64), t.clone())).collect();
+        let empty_sites = Default::default();
+        let sites = ix.all_splice_sites_annotations.get(&chr_id).unwrap_or(&empty_sites)
+            .iter().map(|x| *x as i64).collect();
+        let empty_tx = Default::default();
+        let mut t2s: BTreeMap<String, Vec<(i64, i64)>> = BTreeMap::new();
+        let mut s2t: BTreeMap<Vec<(i64, i64)>, std::collections::BTreeSet<String>> = BTreeMap::new();
+        for (tid, sp) in ix.transcripts_to_splices.get(&chr_id).unwrap_or(&empty_tx) {
+            let v: Vec<(i64, i64)> = sp.iter().map(|(a, b)| (*a as i64, *b as i64)).collect();
+            s2t.entry(v.clone()).or_default().insert(tid.clone());
+            t2s.insert(tid.clone(), v);
+        }
+        out.insert(chr_id, ClassifyTables { pairs, sites, t2s, s2t });
     }
-    samout::classify_alignment(predicted_splices, &s2t, &t2s, &pairs, &sites)
+    out
+}
+
+fn classify_for(tabs: &BTreeMap<u64, ClassifyTables>, chr_id: u64,
+                predicted_splices: &[(i64, i64)]) -> (&'static str, String) {
+    match tabs.get(&chr_id) {
+        Some(t) => samout::classify_alignment(
+            predicted_splices, &t.s2t, &t.t2s, &t.pairs, &t.sites),
+        None => {
+            // a chromosome with no annotation at all: same answer the rebuilt
+            // empty tables gave
+            let (p, s, t, u) = (Default::default(), Default::default(),
+                                Default::default(), Default::default());
+            samout::classify_alignment(predicted_splices, &p, &s, &t, &u)
+        }
+    }
 }
 
 fn to_mems(hits: &[String]) -> BTreeMap<u64, Vec<Mem>> {

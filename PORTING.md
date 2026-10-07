@@ -1765,7 +1765,74 @@ in ten thousand, and SIRV — seven synthetic transcripts — is blind to it ent
 it took a Drosophila run without minimap2 to find: with minimap2 enabled these reads get an
 alignment from minimap2 instead, and the difference never reaches `reads.sam`.
 
-> Findings 45+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
+### Finding 45 — PORT BUG, FIXED: per-alignment work that scales with the annotation
+
+The port was **2.3x slower than the Python implementation on Drosophila** while being 2.4x faster on
+SIRV. The benchmark that produced the "2x faster" claim only ever ran SIRV, and SIRV is structurally
+incapable of showing this.
+
+`classify_for` runs once per candidate alignment. It rebuilt, on every call, four maps covering
+*every transcript on the chromosome* — cloning each transcript-id `String` twice:
+
+```rust
+let pairs = ... .map(|((a,b),t)| ((*a as i64,*b as i64), t.clone())).collect();
+let sites = ... .collect();
+for (tid, sp) in t2s_raw {
+    s2t.entry(v.clone()).or_default().insert(tid.clone());
+    t2s.insert(tid.clone(), v);
+}
+```
+
+| | transcripts on the largest chromosome |
+| --- | --- |
+| SIRV | **18** |
+| Drosophila (BDGP6.46) | **9 005** |
+
+A 500x difference in the cost of a call made once per alignment per read. On SIRV it is free; on a
+real annotation it is the dominant cost of the whole program.
+
+**The profile said so plainly, once it was read correctly.** `sample` over a Drosophila run, leaf
+attribution taken from the report's own *"Sort by top of stack"* section rather than computed by
+hand from the call tree — an earlier attempt at the latter put thread roots at the top and parasail
+second, which is how this nearly became "replace parasail":
+
+| | share of the working thread |
+| --- | --- |
+| malloc / free | **~31 %** |
+| `align_read` self | ~22 % |
+| `memcmp` / `memmove` (String keys) | **~18 %** |
+| `BTreeMap`/`BTreeSet<String>` operations | **~12 %** |
+| parasail | 8 % |
+| edlib | 6 % |
+
+Roughly 60 % of runtime was building and tearing down these maps. **Alignment — the actual work —
+was 14 %.**
+
+Building the tables once at index-load time and passing a reference:
+
+| corpus | mode | `--t` | reference | port before | port after |
+| --- | --- | --- | --- | --- | --- |
+| droso-20k | `--disable_mm2` | 8 | 9.1 s | 18.3 s | **6.7 s** |
+| droso-20k | `--disable_mm2` | 3 | 13.8 s | 35.7 s | **9.3 s** |
+
+Output is **byte-identical** before and after, verified on 20 000 Drosophila reads and 100 000 SIRV
+reads, with all 29 tests green. It is a pure performance change.
+
+**Two things worth keeping.**
+
+*A benchmark corpus can be structurally blind.* SIRV is seven synthetic transcripts. No amount of
+running more SIRV reads would have found this — 100 000 reads against 18 transcripts per chromosome
+exercises the bug 100 000 times and it costs nothing every time. It needed a corpus with a *real
+annotation*, and the defect is in a cost that scales with annotation size, not read count. This is
+the same lesson as *Finding 44*, from the opposite direction.
+
+*Profile before optimising, and check the profiler's own aggregation.* The first instinct here was
+that parasail was slow and should be replaced with `block-aligner`, which is what isONcorrect did
+when its exact DP turned out to be 65 % of its runtime. That would have been a correct change
+addressing 8 % of the problem. The sibling port's conclusion did not transfer, because the profiles
+are not alike.
+
+> Findings 46+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
 > the most useful artifact of the project.
 
 ---
