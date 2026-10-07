@@ -29,13 +29,13 @@ here:
 | corpus | mode | `--t` | Python | Rust | |
 | --- | --- | --- | --- | --- | --- |
 | sirv-10k | `--disable_mm2` | 8 | 4.3 s | **1.5 s** | 2.9x |
-| sirv-10k | minimap2 | 8 | 6.0 s | **2.6 s** | 2.3x |
+| sirv-10k | minimap2 | 8 | 6.0 s | **2.7 s** | 2.3x |
 | sirv-10k | `--disable_mm2` | 3 | 7.2 s | **3.0 s** | 2.4x |
-| sirv-10k | minimap2 | 3 | 10.6 s | **5.8 s** | 1.8x |
-| droso-20k | `--disable_mm2` | 8 | 9.1 s | **6.7 s** | 1.4x |
-| droso-20k | minimap2 | 8 | 14.7 s | **10.0 s** | 1.5x |
+| sirv-10k | minimap2 | 3 | 10.7 s | **5.8 s** | 1.8x |
+| droso-20k | `--disable_mm2` | 8 | 9.2 s | **6.5 s** | 1.4x |
+| droso-20k | minimap2 | 8 | 14.5 s | **10.1 s** | 1.4x |
 | droso-20k | `--disable_mm2` | 3 | 13.8 s | **9.3 s** | 1.5x |
-| droso-20k | minimap2 | 3 | 20.5 s | **14.4 s** | 1.4x |
+| droso-20k | minimap2 | 3 | 20.8 s | **14.4 s** | 1.4x |
 
 **The speedup depends on the annotation, so quote the range, not a single number**: 1.4x on
 Drosophila, up to 2.9x on SIRV. Earlier versions of this file said "about 2x" on the strength of
@@ -61,36 +61,29 @@ alignments, 2182 prefilter decisions, 2081 CIGAR merges, 900 SAM records byte fo
 
 | corpus | mode | reference | port | identical | the **alignment** differs |
 | --- | --- | --- | --- | --- | --- |
-| sirv-100k | `--disable_mm2` | 100 000 | 100 000 | **99.88 %** | 36 (0.036 %) |
-| sirv-100k | minimap2 | 99 934 | 100 000 | 92.08 % | 9 (0.009 %) |
-| droso-20k | `--disable_mm2` | 20 000 | 20 000 | 86.04 % | 467 (2.34 %) |
-| droso-20k | minimap2 | 18 310 | 20 000 | 92.45 % | 56 (0.31 %) |
-| droso-200k | `--disable_mm2` | 200 000 | 200 000 | 86.16 % | 4 542 (2.27 %) |
-| droso-200k | minimap2 | 176 828 | 200 000 | 90.93 % | 551 (0.31 %) |
+| sirv-100k | `--disable_mm2` | 100 000 | 100 000 | **99.89 %** | 24 (0.024 %) |
+| sirv-100k | minimap2 | 99 934 | 100 000 | 92.09 % | **5 (0.005 %)** |
+| droso-200k | `--disable_mm2` | 200 000 | 200 000 | 88.09 % | 462 (0.231 %) |
+| droso-200k | minimap2 | 176 828 | 200 000 | 91.07 % | **48 (0.027 %)** |
 
 The last column is the one that matters, and it is worth separating from the rest. Differences
 split three ways:
 
 | | droso-200k `--disable_mm2` | droso-200k minimap2 |
 | --- | --- | --- |
-| **A. different locus** (RNAME/POS) | 2 139 (1.07 %) | 441 (0.25 %) |
-| **B. same locus, different CIGAR** | 2 104 (1.05 %) | 110 (0.06 %) |
-| **C. same alignment, reporting only** | 20 143 (10.07 %) | 15 481 (8.76 %) |
-| mapped on one side, unmapped on the other | 299 (0.15 %) | — |
+| **A. different locus** (RNAME/POS) | 387 (0.19 %) | 42 (0.02 %) |
+| **B. same locus, different CIGAR** | 50 (0.03 %) | 6 (0.00 %) |
+| **C. same alignment, reporting only** | 20 358 (10.2 %) | 15 740 (8.9 %) |
 
-**About 90 % of all differences are class C — the alignment is identical and only how it is written
-down differs** (QUAL orientation, SEQ strand, `XA` ordering). Where the alignment genuinely differs,
-identity against the genome is the same on both sides, median 97.8 %; the port simply aligns
-slightly fewer bases, **-0.225 % of aligned bases overall**, concentrated in 2 % of reads.
+**Over 97 % of all differences are class C — the alignment is identical and only how it is written
+down differs** (QUAL orientation, SEQ strand, `XA` ordering). Of the class-A differences on
+Drosophila, 371 of 387 are **equal-scoring multi-mappings**: two loci fit the read equally well and
+the implementations pick different ones.
 
-**Every single difference in all four runs is accounted for by a documented cause** — checked by
-decomposing each differing record into causes rather than bucketing it, so that a record differing
-for two known reasons at once is not miscounted as unexplained.
-
-Two things the table shows that a smaller corpus does not. The minimap2 runs are dominated by the
-QUAL-orientation fix, which is why they look *less* identical than the `--disable_mm2` ones: on
-sirv-100k, 7 905 of the 7 914 differences are that one fix. And the port emits more reads than the
-reference in both minimap2 runs — 66 and 1 690 — which is the dropped-read defect below.
+Where the alignment genuinely differs, the port is **slightly ahead**: scored under uLTRA's own
+scheme, +3.06 % on droso-200k without minimap2 and +0.01 % with it, clipping fewer bases than the
+reference (160 against 277 with minimap2). Earlier versions of the port were measurably *worse*
+here — see PORTING.md *Findings 46, 47 and 48*.
 
 How the output differs
 ----------------------
