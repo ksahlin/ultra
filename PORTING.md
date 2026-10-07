@@ -2092,7 +2092,71 @@ thing done, before the dependency was added.
   endorsed by a simulated corpus was wrong on real data, and widening lowered the error rate without
   reaching zero.
 
-> Findings 50+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
+### Finding 50 — WFA is 4.25x faster and still cannot express uLTRA's objective
+
+*Finding 49* ended by naming WFA as the next candidate: these are 97.8 %-identity alignments, the
+regime wavefront alignment is built for, and WFA2 expresses ends-free alignment directly. It does.
+It is also genuinely fast. It is still not a drop-in, and for the same underlying reason as
+block-aligner.
+
+**First, two things that are not the issue.** parasail's own choice of kernel is already optimal:
+replayed over the recorded calls, `scan` 221 ms against `striped` 544 ms and `diag` 428 ms, with
+**identical scores and identical CIGARs on all 194** — so the reference's `sg_trace_scan_16` is both
+the fastest strategy and free of tie-break risk. And both libraries are the originals: parasail is
+Jeff Daily's C built from source by `libparasail-sys`, edlib is Martin Šošić's v1.2.7 C++ vendored
+directly, using Myers' bit-vector algorithm.
+
+**The objective mismatch.** WFA minimises a penalty with `match = 0`; uLTRA maximises a score with
+`match = +2`. For a *global* alignment the two are equivalent — with X mismatches, G gap bases in g
+runs, `score = (m+n) - 4X - 2G - 2g`, so maximising the score is minimising `4X + 2G + 2g`, exactly
+WFA's affine penalty at mismatch 4, open 2, extend 2. For **ends-free** the `(m+n)` term depends on
+where the alignment starts and stops, and the correspondence breaks.
+
+It breaks spectacularly in the configuration that actually matches parasail's `sg`. With all four
+ends free and `match = 0`, **aligning nothing costs nothing** and is therefore optimal:
+
+| free ends | equal uLTRA score | median loss |
+| --- | --- | --- |
+| **all four free** (= parasail `sg`) | **0 of 194** | 993 |
+| read end-to-end, reference free | 77 | 4 |
+| **read free, reference end-to-end** | **116 (60 %)** | 5 |
+| end-to-end (global) | 69 | 4 |
+
+Scored under *uLTRA's own scheme*, not WFA's — the only comparison that means anything when the
+units differ. The best configuration reproduces parasail's optimum on 60 % of calls and loses a
+median of 5 points on the rest.
+
+**Speed, with the heuristic separated from the objective.** WFA2 defaults to
+`wf_heuristic_wfadaptive`, which trades optimality for speed, so a naive benchmark conflates the two:
+
+| | equal to parasail | speed vs parasail |
+| --- | --- | --- |
+| exact WFA (`wf_heuristic_none`) | 116 / 194 | **1.34x** |
+| heuristic WFA (default) | 114 / 194 | **4.25x** |
+
+The heuristic is nearly free in accuracy here — 116 to 114 — and worth 3.2x. **The accuracy is lost
+to the objective, not the heuristic.**
+
+**Not adopted.** At 4.25x on 47 % of runtime the whole tool would get about **1.56x** faster, in
+exchange for a different, slightly worse alignment on ~40 % of the calls that produce most of the
+final CIGARs. For a tool whose stated strength is accuracy on small exons, and in a session that
+had just finished removing a 2.3 % alignment divergence (*Findings 47* and *48*), that is the wrong
+trade. It would also add **cmake** as a build dependency, which `build.rs` currently avoids
+entirely.
+
+The dev-dependency was removed again. If WFA2 ever gains a both-ends-free mode with a match reward,
+this is worth re-measuring, and the numbers above are the baseline to beat.
+
+**A harness bug worth recording, because it nearly produced a false rejection.** The first run had
+WFA losing by a median of 993 in *every* configuration, including plain global where the mapping is
+provably exact. That was not WFA: **WFA2's CIGAR `I` consumes the text and `D` the pattern, the
+opposite of the SAM convention** this port uses everywhere else, so the scorer walked the sequences
+out of step. A two-line sanity check — a sequence against itself, then a known 4 bp gap — found it
+immediately: self-alignment scored a perfect 80/80 while the gap case scored -2 where parasail said
+26. With the operations the right way round it scores 26 exactly. **Any new aligner gets that pair
+of checks before its numbers are believed.**
+
+> Findings 51+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
 > the most useful artifact of the project.
 
 ---
