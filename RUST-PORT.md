@@ -98,6 +98,23 @@ there is one and uLTRA's `FLAG 4` record where there is not, so **every input re
 output exactly once**. The branch handling this case exists in the Python source and can never run
 (*Finding 39*).
 
+**Do not read this as 13 % more useful alignments.** Measured on droso-200k against reads both
+implementations align:
+
+| | aligned by both | only in the port |
+| --- | --- | --- |
+| median read length | 598 bp | **71 bp** |
+| median aligned bases | 558 | **65** |
+| median identity to the genome | 97.4 % | 96.1 % |
+| identity below 90 % | 0.4 % | **8.3 %** |
+| classification | mixed | **99.4 % `NO_SPLICE`** |
+
+Three quarters of the recovered records carry an alignment and a quarter are `FLAG 4`, and the
+aligned ones are overwhelmingly **short single-exon fragments** — median 71 bp, which is why
+minimap2 declined them. They align end to end at reasonable identity, but they are not the spliced
+alignments uLTRA exists to find. The value here is that `reads.sam` accounts for every input read,
+which is what a SAM file is normally expected to do; it is not a sensitivity gain.
+
 **Mapped records carry the strand their FLAG says they do.** `align.py:550` writes every alignment
 using the enclosing loop's `read_seq`, so when the chosen alignment is not the last orientation
 examined, SEQ is the reverse complement of what its own FLAG and CIGAR describe. Checked against

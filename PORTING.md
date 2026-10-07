@@ -1458,6 +1458,24 @@ missing               : read_21_2813, read_31_5574, read_51_1715, read_55_2651
 Of the four, **three are reads uLTRA aligns and minimap2 could not** — SIRV3:4604, SIRV5:1006,
 SIRV4:1001 — which is precisely the case the tool exists for. The fourth uLTRA also fails to align.
 
+**What the recovered reads actually are, since "8.5 % of reads" invites the wrong conclusion.**
+Measured on droso-200k against the reads both implementations align:
+
+| | aligned by both | only in the port |
+| --- | --- | --- |
+| median read length | 598 bp | **71 bp** |
+| median aligned bases | 558 | **65** |
+| median identity to the genome | 97.4 % | 96.1 % |
+| identity below 90 % | 0.4 % | **8.3 %** |
+| classification | mixed | **99.4 % `NO_SPLICE`** |
+
+Three quarters carry an alignment, a quarter are `FLAG 4`, and the aligned ones are overwhelmingly
+**short single-exon fragments** — median 71 bp, which is exactly why minimap2 declined them. So the
+defect is real and the fix is right, but it is a *completeness* fix, not a sensitivity gain: the
+output now accounts for every input read, which is what a SAM file is normally expected to do. The
+README said "~13 % more records" for one revision and that overstated it; the claim is now
+"every input read appears", with this table behind it.
+
 **SIRV badly understates it.** SIRV is seven synthetic transcripts that minimap2 places almost
 perfectly, so only four reads fall through. On Drosophila, 20 000 real reads against the BDGP6.46
 annotation:
