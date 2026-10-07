@@ -13,8 +13,7 @@ of exon annotations. It is particularly accurate when aligning to small exons
 Same command line and output files, so existing pipelines do not need editing. A minimap2 binary is
 the only dependency. **1.4–2.9x faster** depending on the annotation, and peak memory no longer
 grows with `--t`. Alignment accuracy is slightly improved. Every input read now appears in
-`reads.sam` — the Python implementation silently discards the ones minimap2 could not place, though
-these are mostly short fragments rather than useful alignments.
+`reads.sam` — the Python implementation silently discards the ones minimap2 could not place.
 
 The Python implementation is still here ([INSTALL-python.md](INSTALL-python.md)), kept as the
 reference the Rust version is verified against. More detailed stats in
