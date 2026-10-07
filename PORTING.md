@@ -2028,7 +2028,71 @@ change. It belongs with *Finding 37* — Python slices clamp *out-of-range* indi
 negative ones, and those are two different rules that a single `.max(0).min(len)` gets wrong in
 opposite directions.
 
-> Findings 49+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
+### Finding 49 — MEASURED AND REJECTED: block-aligner cannot replace parasail here
+
+After *Finding 45* removed the map-rebuilding cost, parasail became **47 %** of the port's runtime
+and edlib 36 %, so replacing parasail was the obvious next move. isONcorrect had already done
+exactly that — its exact DP was 65 % of its runtime and `block-aligner` cut it, finding an optimal
+score on 1 400 of 1 400 recorded alignments. The conclusion does not transfer, and the reason is
+specific enough to be worth recording.
+
+**uLTRA needs a semi-global alignment that frees end gaps on *both* sequences.** Verified directly
+rather than read off the function name: a 20 bp core padded on either side scores the full 40 under
+`sg_trace_scan_16` whichever sequence carries the padding.
+
+That objective is not optional here. On the 194 recorded reference calls, parasail's semi-global and
+a global alignment of the same pair agree on **2 of 194 (1 %)**, differing by a median of 9 points
+and up to 169. uLTRA's `created_ref_seq` is built from the MAM solution and the read routinely hangs
+off its ends; isONcorrect's call site, where semi-global "looked inherited rather than chosen",
+is not this one.
+
+block-aligner does offer free end gaps, but **only for the query** — `FREE_QUERY_START_GAPS` and
+`FREE_QUERY_END_GAPS`, as const generics on `Block`. Configured that way and replayed against the
+same recorded calls, with the block sized from the length difference as isONcorrect's `min_block`
+does:
+
+| | |
+| --- | --- |
+| identical score to parasail | **32 of 194 (16.5 %)** |
+| identical CIGAR | **0** |
+| lower score / higher | 155 / 7 |
+| score loss where lower | median 5, max 54 |
+| **runtime, 194 calls × 5** | parasail 222 ms, block-aligner 684 ms — **0.32×** |
+
+**It is both wrong and slower here**, and the slowness has a specific cause that no amount of tuning
+removes: block-aligner asserts
+
+```
+Min block size must be larger than the query length for FREE_QUERY_END_GAPS!
+```
+
+so in free-end-gap mode the block must span the **entire query**. uLTRA's queries are ~570 bp median.
+A block that wide is a full-width DP, and the adaptive narrow band that makes block-aligner fast is
+gone by construction. What remains is a SIMD full DP competing with parasail's striped scan kernel,
+which is what parasail is good at.
+
+**So parasail stays.** The dependency was removed again rather than carried for a rejected approach,
+since every dependency costs something across four target triples (*Part 7*).
+
+**What this says about borrowing a sibling port's conclusion.** *Finding 45* already recorded that
+the profiles were not alike; this records that the *objectives* are not alike either. isONcorrect
+could move to a global aligner because its call site did not need semi-global. Checking that took
+one measurement — comparing `sg` against `nw` on recorded inputs — and it should have been the first
+thing done, before the dependency was added.
+
+**Where the 47 % might still go**, in the order the evidence supports:
+
+- **WFA.** These are high-identity alignments — median 97.8 % against the genome — which is the
+  regime wavefront alignment is built for, and it expresses semi-global directly. This is the
+  candidate worth measuring next.
+- **Fewer or smaller parasail calls.** `get_exact_alignment` sends a pair to edlib only above 20 kb
+  or on the `1000 < len(read) < mam_sol_exons_length/10` branch. Moving that boundary is a
+  divergence, but a measurable one.
+- **Not a hand-written banded DP.** isONcorrect measured banding and rejected it: a half-band
+  endorsed by a simulated corpus was wrong on real data, and widening lowered the error rate without
+  reaching zero.
+
+> Findings 50+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
 > the most useful artifact of the project.
 
 ---
