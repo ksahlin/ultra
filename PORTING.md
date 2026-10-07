@@ -1733,9 +1733,13 @@ in the record indicates it.
 
 The port writes the read in the orientation its own FLAG describes.
 
-### Finding 44 — DIVERGENCE COST: Finding 33 can push a marginal read below the acceptance threshold
+### Finding 44 — RESOLVED by Finding 47: reads falling below the acceptance threshold
 
-The first measured case where the port reports **fewer** alignments than the reference.
+The first measured case where the port reported **fewer** alignments than the reference. **The
+diagnosis below is wrong and is kept because the error is instructive**: this was attributed to
+*Finding 33*'s tie ordering shifting coverage across a threshold. It was not. The reads were missing
+their terminal flank MAM, because the partial-flank block had never been ported — *Finding 47*. With
+that fixed the count in this direction is **0**.
 
 On Drosophila with `--disable_mm2`, **21 reads of 20 000 (0.105 %)** are aligned by the reference and
 reported unaligned by the port; **2** go the other way. On SIRV, at 10 000 and 100 000 reads, in both
@@ -1875,10 +1879,88 @@ anything feeding it. That is where to look next, and `bench/compare_sam.py` is t
 it splits differences into different-locus / different-CIGAR / reporting-only and scores both sides
 against the genome, so a change can be called better or worse rather than merely different.
 
-**This is open.** It is recorded now because the honest summary of the port today is "faster, and on
-a real annotation slightly worse on 2 % of reads", not "faster and equivalent".
+**Resolved by *Finding 47*:** the missing partial-flank block. The alignment differs on 0.515 % of
+reads after that fix, not 2.3 %, and the score gap closes from -6.78 % to -3.83 %.
 
-> Findings 47+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
+### Finding 47 — PORT BUG, FIXED: the partial-flank block was never ported
+
+*Finding 46* left open why the port's chains terminate early. Instrumenting one read on both sides
+answered it in a single step, and the answer was not subtle: **a whole block of
+`classify_read_with_mams.main` had no counterpart in the port.**
+
+`527:3671|ERR3588905.20865`, a 3 135 bp Drosophila read, with both implementations printing the same
+variables:
+
+| | reference | port (before) |
+| --- | --- | --- |
+| chaining | chr 18, score 2494, 53 mems, span 9242329..9246007 | **identical** |
+| MAM candidates | 12 | 12 |
+| `mam_value` | 2844.56 | **1561.92** |
+| MAMs in the solution | **9** | 8 |
+| `covered` | 3132 | **1659** |
+
+The chaining was identical and the first eight MAMs matched exactly. The port was missing the ninth,
+`(9244410, 9246764, 1658, 3130)` — the terminal MAM covering the read's last 1 472 bases, which is
+the `1477S` in its CIGAR.
+
+Dumping the candidate lists made it obvious. Both had twelve, but the twelfth was a different object:
+
+```
+reference  x=9244410 y=9246764 c=1658 d=3130 val=1282.64  flank_9244410_9246764_partial_flank_end
+port       x=9244170 y=9244410 c=1421 d=1657 val=227.21   (18, 9244170, 9244410)_partial_segment_end
+```
+
+`classify_read_with_mams.py:504-523` emits `_partial_flank_start` and `_partial_flank_end`
+candidates from `unique_flank_choordinates_partial_hits`. The port computed `flanks_partial`
+faithfully and then **never consumed it**: it only ever emitted `_full_flank`. A read extending
+part-way into a flank lost that MAM, the chain stopped at the last full segment, and the remainder
+was soft-clipped.
+
+Unlike the partial-*segment* block, this one has no first/last gating — the reference emits both a
+start and an end partial for every partial flank, and resets `segm_already_tried` first. Slices
+clamp, per *Finding 37*.
+
+**With the block ported, that read reproduces the reference exactly** — `mam_value`, MAM count,
+non-covered vector and `covered` all identical. Across droso-20k `--disable_mm2`:
+
+| | before | after |
+| --- | --- | --- |
+| records byte-identical | 17 208 (86.04 %) | **17 550 (87.75 %)** |
+| **the alignment itself differs** | 467 (2.335 %) | **103 (0.515 %)** |
+| different locus | 233 | **94** |
+| same locus, different CIGAR | 211 | **7** |
+| reference aligns, port does not | **21** | **0** |
+| clipped bases over the differing reads | 31 743 | **2 857** |
+| alignment score vs the reference | -6.78 % | **-3.83 %** |
+
+**This closes *Finding 44*.** The 21 reads that fell below `--alignment_threshold` were not a
+threshold-margin effect of the tie ordering at all; they were reads whose terminal flank MAM was
+missing. The count is now zero in that direction.
+
+Confirmed at ten times the scale, droso-200k `--disable_mm2`:
+
+| | before | after |
+| --- | --- | --- |
+| records byte-identical | 172 325 (86.16 %) | **175 648 (87.82 %)** |
+| **the alignment itself differs** | 4 542 (2.271 %) | **1 046 (0.523 %)** |
+| different locus | 2 139 | **934** |
+| same locus, different CIGAR | 2 104 | **55** |
+| reference aligns, port does not | 263 | **25** |
+| alignment score vs the reference | — | **-1.85 %** |
+
+SIRV is essentially unmoved — 99 879 to 99 880 identical of 100 000 — which is the point: a flank is
+the annotated region's edge, and reads running off the edge of a seven-transcript synthetic
+reference are rare. On a real annotation they are not. All 29 tests stay green, because the oracles
+replay *reference* calls and the port now matches more of them.
+
+**What it cost to find, and what that says.** The two eliminated hypotheses in *Finding 46* — the
+tie-break and the index — were both reasonable and both wrong, and each took a measurement to
+discard. What found it was printing the same variable on both sides for one read: chaining, then
+candidates, then solution. Three prints, one read. The debug hook that does it had been added,
+removed as clutter, and needed again within a week; it now lives behind `ULTRA_DBG_READ` and
+`ULTRA_DBG_MAMS` permanently.
+
+> Findings 48+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
 > the most useful artifact of the project.
 
 ---

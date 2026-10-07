@@ -408,6 +408,48 @@ pub fn classify_read(
         }
     }
 
+    // Partial hits of the flanks. This block was MISSING from the port
+    // entirely, which is PORTING.md Finding 47: `flanks_partial` was computed
+    // and then never consumed, so a read extending only part-way into a flank
+    // lost that MAM, the chain stopped at the last full segment, and the rest
+    // of the read was soft-clipped.
+    //
+    // Unlike the segment block above there is no first/last gating here: the
+    // reference emits BOTH a start and an end partial for every partial flank,
+    // and it resets `segm_already_tried` first. Slices clamp, as in Finding 37.
+    let mut tried: BTreeSet<String> = BTreeSet::new();
+    for (loc, v) in u.flanks_partial.iter() {
+        let key: Key = (loc.0, loc.1, loc.2);
+        let seq = match ref_flank_sequences.get(&key) {
+            Some(s) => s.as_bytes(),
+            None => continue,
+        };
+        let (f_start, f_stop) = (loc.1 as i64, loc.2 as i64);
+        let (s_start, s_stop) = (v.1, v.2);
+        let fid = format!("flank_{}_{}", loc.1, loc.2);
+
+        // flank_seq[s_start - f_start:]
+        let off = ((s_start - f_start).max(0) as usize).min(seq.len());
+        let part = &seq[off..];
+        let ps = String::from_utf8_lossy(part).into_owned();
+        if part.len() > 5 && !tried.contains(&ps) {
+            add_segment_to_mam(read_seq, loc.0 as i64, part, f_start, f_stop, &fid,
+                               min_acc, "_partial_flank_start", &mut mams);
+            tried.insert(ps);
+        }
+
+        // flank_seq[: len(flank_seq) - (f_stop - (s_stop + 1))]
+        let cut = seq.len() as i64 - (f_stop - (s_stop + 1));
+        let cut = cut.max(0).min(seq.len() as i64) as usize;
+        let part = &seq[..cut];
+        let ps = String::from_utf8_lossy(part).into_owned();
+        if part.len() > 5 && !tried.contains(&ps) {
+            add_segment_to_mam(read_seq, loc.0 as i64, part, f_start, f_stop, &fid,
+                               min_acc, "_partial_flank_end", &mut mams);
+            tried.insert(ps);
+        }
+    }
+
     // Keep only the OUTERMOST partial hits. Note the reference's `elif`: an id
     // containing both "_start" and "_end" only ever updates the start side.
     let mut outmost_start = 1i64 << 32;
@@ -433,6 +475,14 @@ pub fn classify_read(
     mams.sort_by_key(|m| m.y);
     for (j, m) in mams.iter_mut().enumerate() {
         m.j = j as i64;
+    }
+    // `ULTRA_DBG_MAMS=1` dumps the MAM candidate list in the same shape the
+    // instrumented reference prints it, for diffing one read.
+    if std::env::var("ULTRA_DBG_MAMS").is_ok() {
+        eprintln!("DBGM candidates: {}", mams.len());
+        for m in &mams {
+            eprintln!("DBGM   x={} y={} c={} d={} val={} id={}", m.x, m.y, m.c, m.d, m.val, m.mam_id);
+        }
     }
 
 

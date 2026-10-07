@@ -132,6 +132,22 @@ pub fn align_read(
     });
     let best_chaining_score = chainings[0].2 as f64;
 
+    // Debug facility for comparing a single read against the instrumented
+    // reference. `ULTRA_DBG_READ=<accession>` prints the chainings and the MAM
+    // solution each one produces, in the same shape `modules/align.py` prints
+    // them under the same variable. Removed once and immediately needed again,
+    // so it stays.
+    let dbg = std::env::var("ULTRA_DBG_READ").ok().as_deref() == Some(read_acc);
+    if dbg {
+        eprintln!("DBG chainings: {}", chainings.len());
+        for (i, (c, sol, sc, rc)) in chainings.iter().take(6).enumerate() {
+            eprintln!("DBG   chain[{i}] chr={c} score={sc} is_rc={rc} nmems={} span={}..{}",
+                sol.len(), sol.first().map(|m| m.x).unwrap_or(0), sol.last().map(|m| m.y).unwrap_or(0));
+            eprintln!("DBG     mems={:?}",
+                sol.iter().map(|m| (m.x, m.y, m.c, m.d)).collect::<Vec<_>>());
+        }
+    }
+
     let mut candidates: Vec<Candidate> = Vec::new();
     let mut seen_mam_solutions: Vec<Vec<Mam>> = Vec::new();
 
@@ -150,6 +166,12 @@ pub fn align_read(
         if seen_mam_solutions.contains(&mam_solution) {
             continue;
         }
+        if dbg {
+            eprintln!("DBG chain[{i}] -> mam_value={mam_value}  n_mams={}  noncov={:?}",
+                mam_solution.len(), non_covered);
+            eprintln!("DBG   mams={:?}",
+                mam_solution.iter().map(|m| (m.x, m.y, m.c, m.d)).collect::<Vec<_>>());
+        }
         seen_mam_solutions.push(mam_solution.clone());
         if mam_value <= 0.0 {
             continue;
@@ -163,6 +185,10 @@ pub fn align_read(
         let ex = aligndriver::find_exons(*chr_id, &mam_solution, &ix.ref_exon_sequences,
             &ix.ref_segment_sequences, &ix.ref_flank_sequences, &pairs);
 
+
+        if dbg {
+            eprintln!("DBG chain[{i}] -> covered={} predicted_exons={:?}", ex.covered, ex.predicted_exons);
+        }
 
         let (classification, annotated_to) = classify_for(tabs, *chr_id, &ex.predicted_splices);
 
