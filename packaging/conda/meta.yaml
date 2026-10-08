@@ -26,6 +26,12 @@ requirements:
     - {{ compiler('cxx') }}
     - {{ compiler('rust') }}
     - {{ stdlib('c') }}
+    # libparasail-sys probes pkg-config for a module named `parasail` and
+    # otherwise builds its vendored copy with cmake. bioconda's parasail
+    # package ships `parasail-1.pc`, so the probe cannot match it and the
+    # cmake path is the one taken. The source is vendored in the crate, so
+    # this needs no network.
+    - cmake
     - cargo-bundle-licenses
   run:
     # The only runtime dependency. uLTRA calls minimap2 to detect reads
