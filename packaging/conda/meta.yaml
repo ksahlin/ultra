@@ -25,6 +25,7 @@ requirements:
     - {{ compiler('c') }}
     - {{ compiler('cxx') }}
     - {{ compiler('rust') }}
+    - {{ stdlib('c') }}
     - cargo-bundle-licenses
   run:
     # The only runtime dependency. uLTRA calls minimap2 to detect reads
