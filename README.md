@@ -23,21 +23,15 @@ reference the Rust version is verified against. More detailed stats in
 Install
 -------
 
-A prebuilt binary, for linux-x86_64, linux-aarch64, macOS arm64 or macOS x86_64:
+A prebuilt binary — needs only glibc 2.17 (RHEL/CentOS 7, 2012).
+[Releases](https://github.com/ksahlin/ultra/releases) also has `linux-aarch64`, `macos-arm64` and
+`macos-x86_64`:
 
 ```bash
-curl -L https://github.com/ksahlin/ultra/releases/download/v0.3.0/uLTRA-0.3.0-macos-arm64.tar.gz | tar xz
+curl -L https://github.com/ksahlin/ultra/releases/download/v0.3.0/uLTRA-0.3.0-linux-x86_64.tar.gz | tar xz
 ```
 
-**Pipe it — do not download the tarball and then extract it.** On current macOS, extracting a
-downloaded archive marks the binary with `com.apple.quarantine` and Gatekeeper kills it on sight
-with no message. Streaming it straight out of `curl` never writes a file carrying the attribute.
-If you end up with a blocked copy anyway: `xattr -d com.apple.quarantine ./uLTRA`.
-
-The Linux binaries need only glibc 2.17 (RHEL/CentOS 7, 2012).
-
-Or build it yourself — needs a Rust toolchain (1.74+). No Rust?
-`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
+Or from source, with a Rust toolchain (1.74+):
 
 ```bash
 git clone https://github.com/ksahlin/ultra.git
@@ -50,8 +44,8 @@ That builds `rust/target/release/uLTRA`. Copy it onto your `PATH`.
 [minimap2](https://github.com/lh3/minimap2) must also be on your `PATH`; it is used to detect reads
 aligning outside the annotated regions. `--disable_mm2` skips that step and needs nothing at all.
 
-> The bioconda package still installs the Python implementation. It switches to the Rust build at
-> the next release.
+> The bioconda package still installs the Python implementation. The update to this version is
+> [in review](https://github.com/bioconda/bioconda-recipes/pull/70047).
 
 #### Test the installation
 
