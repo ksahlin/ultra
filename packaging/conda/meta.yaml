@@ -14,6 +14,9 @@ build:
   run_exports:
     - {{ pin_subpackage(name | lower, max_pin="x.x") }}
   script:
+    # libparasail-sys generates its bindings with bindgen, which loads
+    # libclang at build time and does not find it on its own.
+    - export LIBCLANG_PATH=$BUILD_PREFIX/lib
     - cd rust
     - cargo-bundle-licenses --format yaml --output ../THIRDPARTY.yml
     - cargo install -v --locked --no-track --root $PREFIX --path .
@@ -33,6 +36,7 @@ requirements:
     # vendored in the crate, so this needs no network.
     - cmake
     - make
+    - clangdev
     - cargo-bundle-licenses
   run:
     # The only runtime dependency. uLTRA calls minimap2 to detect reads
