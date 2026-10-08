@@ -2195,7 +2195,39 @@ immediately: self-alignment scored a perfect 80/80 while the gap case scored -2 
 26. With the operations the right way round it scores 26 exactly. **Any new aligner gets that pair
 of checks before its numbers are believed.**
 
-> Findings 51+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
+### Finding 51 — the memory claim rested entirely on SIRV until it was checked
+
+"Peak memory does not grow with `--t`" had been in the README, RUST-PORT.md and the release notes
+since *Stage 6*, and every number behind it came from sirv-10k — seven synthetic transcripts, the
+same corpus that was structurally blind to *Finding 45*. There was no Drosophila measurement of the
+Python implementation's memory at all. The claim happened to be true; nothing in the project
+established that.
+
+Measured on droso-200k `--disable_mm2`, peak RSS summed over the whole process tree:
+
+| `--t` | Python | Rust | |
+| --- | --- | --- | --- |
+| 3 | 5 182 MB | 3 676 MB | 1.4x less |
+| 8 | **10 376 MB** | **3 841 MB** | **2.7x less** |
+
+The shape holds and is starker than on SIRV: from 3 to 8 threads the Python implementation
+**doubles** while the port moves 4.5 %. In absolute terms it is the difference between 10.4 GB and
+3.8 GB on a run anyone might do, which is a laptop fitting it or not — a more useful statement than
+the ratio.
+
+**Two method notes.** `/usr/bin/time -l` reports the maximum resident set over *children*, not the
+sum over the tree, so it understates a forking program by roughly its worker count; these numbers
+come from sampling the whole process tree. And the figures were taken sequentially on an idle
+machine, after an earlier round of timings was invalidated by running measurements concurrently with
+other jobs.
+
+**The pattern worth naming.** This is the third time a claim in this port turned out to rest on SIRV
+alone: *Finding 44* (a cost SIRV could not show), *Finding 45* (a cost that scales with annotation
+size, invisible at 18 transcripts per chromosome), and now this. SIRV is the fast corpus and so it
+is the one that gets run; every headline claim needs at least one Drosophila number before it is
+written down.
+
+> Findings 52+ will be added as the port proceeds. The NGSpeciesID port accumulated 30 and they were
 > the most useful artifact of the project.
 
 ---

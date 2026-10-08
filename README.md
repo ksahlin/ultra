@@ -12,7 +12,8 @@ of exon annotations. It is particularly accurate when aligning to small exons
 
 Same command line and output files, so existing pipelines do not need editing. A minimap2 binary is
 the only dependency. **1.4–2.9x faster** depending on the annotation, and peak memory no longer
-grows with `--t`. Alignment accuracy is slightly improved. Every input read now appears in
+grows with `--t` — 3.8 GB against the Python implementation's 10.4 GB on 200 000 Drosophila reads
+at `--t 8`. Alignment accuracy is slightly improved. Every input read now appears in
 `reads.sam` — the Python implementation silently discards the ones minimap2 could not place.
 
 The Python implementation is still here ([INSTALL-python.md](INSTALL-python.md)), kept as the

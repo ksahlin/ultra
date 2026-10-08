@@ -47,13 +47,25 @@ figure to expect on a realistic Drosophila run. Earlier versions of this file sa
 SIRV alone, and at that point the port was in fact **2.3x slower** on Drosophila — see PORTING.md
 *Finding 45*, which is also why SIRV could not show it.
 
-**Peak memory does not grow with `--t`.** 1077 MB at one thread and 1078 MB at sixteen on sirv-10k,
-where the Python implementation grows from 1139 MB to 2845 MB because it starts one process per
-core and each re-loads the index. At 16 threads that is 2.6x less memory and 2.3x faster at the
-same time.
+**Peak memory does not grow with `--t`.** The Python implementation starts one process per core and
+each re-loads the index; the port shares one immutable index across threads. Peak RSS summed over
+the whole process tree — `/usr/bin/time -l` reports the maximum over children, not the tree total,
+which understates a forking program by roughly its worker count:
 
-Most of that peak is namfinder's seed index rather than uLTRA: on sirv-10k, namfinder alone accounts
-for 1042 MB of the 1078 MB total.
+| corpus | `--t` | Python | Rust | |
+| --- | --- | --- | --- | --- |
+| sirv-10k | 1 | — | 1 077 MB | |
+| sirv-10k | 3 | 1 139 MB | 1 077 MB | 1.1x less |
+| sirv-10k | 16 | 2 845 MB | **1 078 MB** | **2.6x less** |
+| droso-200k | 3 | 5 182 MB | 3 676 MB | 1.4x less |
+| droso-200k | 8 | **10 376 MB** | **3 841 MB** | **2.7x less** |
+
+The shape is the point: from 3 to 8 threads the Python implementation **doubles**, 5 182 MB to
+10 376 MB, while the port moves 4.5 %. On 200 000 Drosophila reads at `--t 8` that is 10.4 GB
+against 3.8 GB — the difference between fitting in a laptop's memory and not.
+
+Most of the port's remaining peak is namfinder's seed index rather than uLTRA: on sirv-10k,
+namfinder alone accounts for 1 042 MB of the 1 078 MB total.
 
 How it was verified
 -------------------
