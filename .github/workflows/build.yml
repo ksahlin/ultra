@@ -106,15 +106,36 @@ jobs:
           xattr -w com.apple.quarantine \
             "0081;$(printf %x $(date +%s));Safari;$(uuidgen)" "$f"
           xattr "$f"
-      - name: command-line tar must not propagate the quarantine
+      - name: the documented install route must produce a runnable binary
         run: |
           set -eux
-          tar xzf dist/uLTRA-*-macos-${{ matrix.arch }}.tar.gz
-          # Finding 42: if com.apple.quarantine appears here, Gatekeeper will
-          # SIGKILL the binary on every user's machine and --version below
-          # will exit 137.
-          ! xattr ./uLTRA | grep -q com.apple.quarantine
-          ./uLTRA --version
-          ./uLTRA pipeline --disable_mm2 \
+          # This is exactly what README.md tells a user to do: stream the
+          # archive, never write a file that carries the attribute. Asserting
+          # on the DOCUMENTED route keeps the test true whatever the OS does
+          # with the others.
+          mkdir -p piped && cat dist/uLTRA-*-macos-${{ matrix.arch }}.tar.gz | ( cd piped && tar xz )
+          ! xattr piped/uLTRA | grep -q com.apple.quarantine
+          piped/uLTRA --version
+          piped/uLTRA pipeline --disable_mm2 \
               test/SIRV_genes.fasta test/SIRV_genes_C_170612a.gtf test/reads.fa out
           echo "$SMOKE_SHA256  out/reads.sam" | shasum -a 256 -c -
+
+      - name: record what download-then-extract does on this runner
+        run: |
+          # NOT an assertion. Finding 42 measured that command-line tar does
+          # not propagate com.apple.quarantine, and macOS 26 changed that --
+          # the same test on the same tarball gives opposite answers on
+          # Darwin 25.5.0 and on macOS 27.0.1. An earlier version of this job
+          # asserted the old behaviour and passed only because the runner is
+          # macos-14. Report it instead, so the log shows when the runner's
+          # OS changes rather than the suite going red for an OS change that
+          # does not affect the documented install route.
+          set -x
+          sw_vers
+          mkdir -p plain && ( cd plain && tar xzf ../dist/uLTRA-*-macos-${{ matrix.arch }}.tar.gz )
+          if xattr plain/uLTRA 2>/dev/null | grep -q com.apple.quarantine; then
+            echo "NOTE: tar propagates com.apple.quarantine on $(sw_vers -productVersion);" \
+                 "download-then-extract is blocked here, piping is not."
+          else
+            echo "NOTE: tar does not propagate com.apple.quarantine on $(sw_vers -productVersion)."
+          fi

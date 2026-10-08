@@ -1670,9 +1670,16 @@ README already recommends, still works; "download the tarball, then extract it" 
 Two things follow. `.tar.gz` over `.zip` is still right, but it is no longer sufficient on its own,
 so the install instructions have to pipe rather than download-then-extract. And **a measurement
 about OS behaviour has a shelf life**: this one was correct when taken, was the basis of a shipped
-instruction, and was falsified by an OS upgrade a few hours later. The quarantine check belongs in
-CI — where it already is, as `run-macos` — precisely so the runner's OS version, not a stale local
-observation, is what the claim rests on.
+instruction, and was falsified by an OS upgrade a few hours later.
+
+**The CI check had the same bug as the instruction.** `run-macos` asserted that command-line `tar`
+does not propagate the attribute, and passed — on `macos-14`, where that is still true. It was
+green while asserting something false for anyone on a current macOS, and would only have gone red
+when GitHub upgraded its runners. It now asserts the **documented** route instead, the piped
+extraction the README gives, which is true on any version; and it *reports* what
+download-then-extract does on the runner, printing the OS version alongside, so a change shows up
+in the log rather than as a red suite for behaviour that does not affect how anyone is told to
+install.
 
 **So the release ships `.tar.gz` and never `.zip`**, which is a correctness requirement rather than
 a preference — shipping `.zip` would ship something that cannot start. `packaging/build-release.sh`
@@ -2382,7 +2389,7 @@ when `align` needs to read one.
 Bugs the reference has here, all found by running the new corpus rather than by reading:
 Findings 13, 14, 22, 23, 24, 25.
 
-### Stage 3 — seeds and I/O — **seeding DONE; read I/O outstanding**
+### Stage 3 — seeds and I/O — **DONE**
 
 **Seeding is done and exact**, by vendoring and linking namfinder rather than reimplementing it
 (*Finding 26*). Byte-identical to the upstream binary on 4 reads and on 6 542 313 output lines of
@@ -2395,7 +2402,7 @@ stay so. Finding 8 has dissolved: there is no `os.system` string left.
 gzip seed reader, and the read parser with a real error on malformed fastq instead of the silent
 `zip()` truncation of *Finding 6*.
 
-### Stage 4 — the alignment core — **aligners DONE; chaining outstanding**
+### Stage 4 — the alignment core — **DONE**
 
 **The aligners are done and exact.** Only three live call sites exist (*Finding 28*); edlib is
 vendored and parasail comes from `libparasail-sys`, and both replay recorded reference calls
@@ -2438,7 +2445,7 @@ What is **not** yet written is the `align_single` driver itself — the loop tha
 applies `--dropoff` and `--max_loc`, handles the reverse complement, and emits SAM. That is stage 5
 work, because it cannot be verified per function: it is verified by `reads.sam`.
 
-### Stage 5 — SAM output and the minimap2 merge — **the writer is DONE**
+### Stage 5 — SAM output and the minimap2 merge — **DONE**
 
 `sam_output.main` reproduces **900 recorded SAM lines byte-for-byte**, compared as whole lines rather
 than field by field, across all six classification outcomes (FSM, NO_SPLICE, NIC_novel,
@@ -2527,13 +2534,26 @@ One shared immutable index, threads not processes (Finding 4). This is where goa
 that peak RSS is flat in `--t` rather than +337 MB per worker. **Done — see "Stage 6 measured"
 above and Finding 41.** Peak RSS is flat in `--t`; the remaining peak is namfinder's, not uLTRA's.
 
-### Stage 7 — distribution — DONE (unpublished)
+### Stage 7 — distribution — **DONE and released**
 
-**Done — see "Stage 7 measured" above and Finding 42.** Binaries, recipe and CI all exist;
-nothing is tagged or published. `LICENSE.txt` was missing entirely and is now the verbatim GPL-3.0
-text from gnu.org, which was the one hard blocker on submitting the recipe — bioconda requires
-`license_file`. What remains is the author's call: whether this replaces `ultra_bioinformatics` or
-becomes a new package, and the `source.sha256`, which needs a release tarball to exist first.
+**Done and released.** v0.3.0 is tagged, the four binaries are attached to the GitHub release, and
+the bioconda recipe is submitted as
+[bioconda-recipes#70047](https://github.com/bioconda/bioconda-recipes/pull/70047) — green on lint,
+linux-64, linux-aarch64 and osx-64, awaiting maintainer review. `LICENSE.txt` was missing from the
+repository entirely and is now the verbatim GPL-3.0 text, which was the hard blocker on submitting
+at all.
+
+Five fixes were needed to get the recipe green, and four of them were build tools the x86_64
+container lacks that both a developer machine and the ARM builder have: `stdlib('c')`, `cmake`,
+`make`, and `clangdev` with `LIBCLANG_PATH` for `libparasail-sys`'s bindgen. The fifth was a
+harness constraint — bioconda's *mulled* test installs the package into a bare container with no
+source tree, so `test.source_files` is unavailable and the recipe's test cannot run a real
+alignment. It checks the subcommands instead; `.github/workflows/build.yml` still runs the full
+pipeline against the SIRV fixtures on every push.
+
+Using bioconda's packaged `parasail` instead of the crate's vendored copy was checked and is not
+possible: the package ships `parasail-1.pc` while `libparasail-sys` probes pkg-config for a module
+named `parasail`.
 
 cargo-zigbuild to `x86_64-unknown-linux-gnu.2.17` and aarch64, plus a bioconda recipe. Under
 decision B the recipe's only runtime dependency is `minimap2`, which is present on all four subdirs
